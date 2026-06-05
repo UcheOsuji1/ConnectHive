@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__nano-banana__get_configuration_status",
+      "PowerShell(Get-Content *)",
+      "PowerShell(Get-ChildItem *)",
+      "mcp__nano-banana__generate_image",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"luxury networking social community professional elegant premium\" --design-system -p \"ConnectHive\")",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"landing page hero social proof community\" --domain landing)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"animation accessibility hover scroll\" --domain ux)",
+      "Bash(python .claude/skills/ui-ux-pro-max/scripts/search.py \"layout responsive navbar footer card\" --stack html-tailwind)",
+      "Bash(if not *)",
+      "Bash(python -c ' *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\osuji\\ConnectHive1"
+    ]
+  }
+}
