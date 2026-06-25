@@ -1,0 +1,368 @@
+/* ── Category Deep Dive ──────────────────────────────────────── */
+
+.cdd-root {
+  background: #f5f0e8;
+  min-height: 100vh;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.cdd-wrap {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+}
+
+/* ── Top Bar ─────────────────────────────────────────────────── */
+.cdd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 32px;
+}
+
+.cdd-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+}
+
+.cdd-wordmark {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #1a1508;
+}
+
+.cdd-back-btn {
+  border: 0.5px solid #e2dacb;
+  border-radius: 20px;
+  padding: 6px 16px;
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #8a8070;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.cdd-back-btn:hover {
+  border-color: #c49a28;
+  color: #c49a28;
+}
+
+/* ── Progress Bar ────────────────────────────────────────────── */
+.cdd-progress-track {
+  height: 2px;
+  background: #e2dacb;
+  border-radius: 2px;
+  margin-bottom: 28px;
+}
+
+.cdd-progress-fill {
+  height: 100%;
+  background: #c49a28;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+/* ── Page Header ─────────────────────────────────────────────── */
+.cdd-eyebrow-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cdd-eyebrow-line {
+  width: 20px;
+  height: 0.5px;
+  background: #c49a28;
+  flex-shrink: 0;
+}
+
+.cdd-eyebrow-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #c49a28;
+}
+
+.cdd-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  font-weight: 300;
+  color: #1a1508;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+
+.cdd-title em {
+  font-style: italic;
+  font-weight: 300;
+  color: #c49a28;
+}
+
+.cdd-subtitle {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 300;
+  color: #8a8070;
+  line-height: 1.6;
+  max-width: 520px;
+  margin-bottom: 28px;
+}
+
+/* ── Sections ────────────────────────────────────────────────── */
+.cdd-section {
+  margin-bottom: 24px;
+}
+
+.cdd-section-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a8070;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid #e8e0d0;
+  margin-bottom: 10px;
+}
+
+.cdd-optional {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 10px;
+  font-weight: 400;
+  color: #b0a880;
+}
+
+/* ── Chips ───────────────────────────────────────────────────── */
+.cdd-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cdd-chip {
+  padding: 7px 15px;
+  border: 0.5px solid #d8d0bc;
+  border-radius: 20px;
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  color: #4a4030;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.cdd-chip:hover {
+  border-color: #c49a28;
+  color: #1a1508;
+}
+
+.cdd-chip.selected {
+  background: #c49a28;
+  border-color: #c49a28;
+  color: #0f0d07;
+  font-weight: 500;
+}
+
+.cdd-chip-dashed {
+  padding: 7px 15px;
+  border: 0.5px dashed #c49a28;
+  border-radius: 20px;
+  background: #fffdf7;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  color: #8a6510;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.cdd-chip-dashed:hover {
+  background: #fdf5e0;
+}
+
+/* ── Custom Input Row ────────────────────────────────────────── */
+.cdd-custom-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.cdd-custom-input {
+  flex: 1;
+  height: 40px;
+  border: 0.5px solid #d8d0bc;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #1a1508;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.cdd-custom-input::placeholder { color: #c0b89a; }
+.cdd-custom-input:focus         { border-color: #c49a28; }
+
+.cdd-custom-add {
+  height: 40px;
+  padding: 0 16px;
+  border: 0.5px solid #c49a28;
+  border-radius: 8px;
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #c49a28;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+
+.cdd-custom-add:hover { background: #fdf5e0; }
+
+/* ── Option Cards ────────────────────────────────────────────── */
+.cdd-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.cdd-card {
+  border: 0.5px solid #d8d0bc;
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+
+.cdd-card:hover {
+  border-color: #c49a28;
+  background: #fffdf7;
+}
+
+.cdd-card.selected {
+  border-color: #c49a28;
+  background: #fffbf0;
+  box-shadow: 0 0 0 1px #c49a28;
+}
+
+.cdd-card-emoji {
+  font-size: 20px;
+  line-height: 1;
+  margin-bottom: 7px;
+}
+
+.cdd-card-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px;
+  font-weight: 500;
+  color: #1a1508;
+  margin-bottom: 4px;
+}
+
+.cdd-card-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 300;
+  color: #a09880;
+  line-height: 1.4;
+}
+
+/* ── Textarea ────────────────────────────────────────────────── */
+.cdd-textarea {
+  width: 100%;
+  height: 72px;
+  border: 0.5px solid #d8d0bc;
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px 13px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #1a1508;
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.cdd-textarea::placeholder { color: #c0b89a; }
+.cdd-textarea:focus         { border-color: #c49a28; }
+
+/* full-width single-line text input (e.g. Travel destinations) */
+.cdd-text-input {
+  width: 100%;
+  height: 40px;
+  border: 0.5px solid #d8d0bc;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #1a1508;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.cdd-text-input::placeholder { color: #c0b89a; }
+.cdd-text-input:focus         { border-color: #c49a28; }
+
+/* ── Bottom Nav ──────────────────────────────────────────────── */
+.cdd-nav {
+  border-top: 0.5px solid #e8e0d0;
+  padding-top: 20px;
+  margin-top: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cdd-nav-back {
+  height: 42px;
+  padding: 0 22px;
+  border: 0.5px solid #d8d0bc;
+  border-radius: 8px;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6a6050;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.cdd-nav-back:hover {
+  border-color: #c49a28;
+  color: #1a1508;
+}
+
+.cdd-nav-next {
+  height: 42px;
+  padding: 0 28px;
+  background: #c49a28;
+  border: none;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0f0d07;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cdd-nav-next:hover { background: #d4aa38; }

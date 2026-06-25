@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/signup.css';
 
 const STEPS = [
@@ -11,8 +12,28 @@ const STEPS = [
 const PILLS = ['Profile Setup', 'Find Your Hive', 'Your Hive'];
 
 export default function SignUpPage() {
-  const [showPw, setShowPw] = useState(false);
+  const [showPw,     setShowPw]     = useState(false);
+  const [email,      setEmail]      = useState('');
+  const [password,   setPassword]   = useState('');
+  const [error,      setError]      = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const { register } = useAuth();
   const navigate = useNavigate();
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setError('');
+    setSubmitting(true);
+    try {
+      await register(email, password);
+      navigate('/profile-setup');
+    } catch (err) {
+      setError(err.message || 'Something went wrong — please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="su-page">
@@ -170,7 +191,7 @@ export default function SignUpPage() {
             <div className="su-or-line" />
           </div>
 
-          {/* Name row — side by side */}
+          {/* Name row — side by side (captured during profile setup) */}
           <div className="su-name-row">
             <div className="su-field">
               <label className="su-label" htmlFor="su-first">First Name</label>
@@ -185,7 +206,15 @@ export default function SignUpPage() {
           {/* Email */}
           <div className="su-field">
             <label className="su-label" htmlFor="su-email">Email Address</label>
-            <input id="su-email" type="email" className="su-input" placeholder="you@example.com" autoComplete="email"/>
+            <input
+              id="su-email"
+              type="email"
+              className="su-input"
+              placeholder="you@example.com"
+              autoComplete="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+            />
           </div>
 
           {/* Password */}
@@ -198,6 +227,9 @@ export default function SignUpPage() {
                 className="su-input su-input--pw"
                 placeholder="Create a password"
                 autoComplete="new-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               />
               <button
                 type="button"
@@ -220,6 +252,13 @@ export default function SignUpPage() {
             </div>
           </div>
 
+          {/* Inline error */}
+          {error && (
+            <p style={{ margin: '0', fontSize: '12.5px', color: '#c0512a' }}>
+              {error}
+            </p>
+          )}
+
           {/* Terms */}
           <div className="su-terms">
             <input type="checkbox" className="su-check" id="su-agree"/>
@@ -232,13 +271,14 @@ export default function SignUpPage() {
             </label>
           </div>
 
-          {/* CTA — routes to profile setup (required for all new users) */}
+          {/* CTA */}
           <button
             type="button"
             className="su-cta"
-            onClick={() => navigate('/profile-setup')}
+            onClick={handleSubmit}
+            disabled={submitting}
           >
-            Create Account &amp; Continue →
+            {submitting ? 'Creating account…' : 'Create Account & Continue →'}
           </button>
 
           {/* Journey trail */}

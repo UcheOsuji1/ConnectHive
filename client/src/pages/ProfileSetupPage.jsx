@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/profile-setup.css';
 
@@ -308,6 +308,197 @@ const LogoSVG = ({ size = 28 }) => (
   </svg>
 );
 
+// ── CelebrationScreen ─────────────────────────────────────────
+function CelebrationScreen() {
+  const canvasRef = useRef(null);
+  const [counts, setCounts] = useState({ match: '0%', hives: '0', interests: '0', skills: '0' });
+
+  useEffect(() => {
+    // Orbiting dots
+    const orbitEl = document.getElementById('ps-orbit-dots');
+    if (orbitEl) {
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * 2 * Math.PI - Math.PI / 2;
+        const x = 70 + 65 * Math.cos(angle);
+        const y = 70 + 65 * Math.sin(angle);
+        const dot = document.createElement('div');
+        dot.style.cssText = `position:absolute;width:5px;height:5px;border-radius:50%;background:#c49a28;left:${(x-2.5).toFixed(1)}px;top:${(y-2.5).toFixed(1)}px;animation:ps-twinkle 2s ease-in-out infinite;animation-delay:${i*0.25}s`;
+        orbitEl.appendChild(dot);
+      }
+    }
+
+    // Confetti
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth || 700;
+    canvas.height = canvas.offsetHeight || 600;
+    const colors = ['#c49a28','#e8c84a','#8a6510','#faf8f4','#d4aa38'];
+    const particles = [];
+    let frame = 0, animId;
+    const rnd = (a, b) => a + Math.random() * (b - a);
+    function spawn() {
+      particles.push({ x: Math.random()*canvas.width, y:-10, r:rnd(2,6),
+        color:colors[Math.floor(Math.random()*colors.length)],
+        vx:rnd(-1,1), vy:rnd(1,3), opacity:1,
+        rotation:rnd(0,360), rotSpeed:rnd(-4,4),
+        shape:Math.random()>0.5?'hex':'rect' });
+    }
+    function hexPath(c, r) {
+      c.beginPath();
+      for (let i=0;i<6;i++){const a=(Math.PI/3)*i-Math.PI/6;i===0?c.moveTo(r*Math.cos(a),r*Math.sin(a)):c.lineTo(r*Math.cos(a),r*Math.sin(a));}
+      c.closePath(); c.fill();
+    }
+    function tick() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      const n = frame<20?8:frame<80?3:0;
+      for(let i=0;i<n;i++) spawn();
+      frame++;
+      for(let i=particles.length-1;i>=0;i--){
+        const p=particles[i];
+        p.x+=p.vx; p.y+=p.vy; p.opacity-=0.005; p.rotation+=p.rotSpeed;
+        if(p.opacity<=0||p.y>canvas.height){particles.splice(i,1);continue;}
+        ctx.save(); ctx.globalAlpha=p.opacity; ctx.fillStyle=p.color;
+        ctx.translate(p.x,p.y); ctx.rotate(p.rotation*Math.PI/180);
+        p.shape==='hex'?hexPath(ctx,p.r):ctx.fillRect(-p.r/2,-p.r*2,p.r,p.r*4);
+        ctx.restore();
+      }
+      if(frame<80||particles.length>0) animId=requestAnimationFrame(tick);
+    }
+    animId = requestAnimationFrame(tick);
+
+    // Counters
+    const ease = t => 1 - Math.pow(1-t, 3);
+    function countUp(key, target, suffix, duration) {
+      let st = null;
+      const step = ts => {
+        if(!st) st=ts;
+        const p = Math.min((ts-st)/duration, 1);
+        setCounts(prev => ({...prev, [key]: Math.round(ease(p)*target)+suffix}));
+        if(p<1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    }
+    const tid = setTimeout(() => {
+      countUp('match',     94, '%', 1400);
+      countUp('hives',     12, '',  1200);
+      countUp('interests', 18, '',  1000);
+      countUp('skills',     9, '',   900);
+    }, 900);
+
+    return () => { cancelAnimationFrame(animId); clearTimeout(tid); };
+  }, []);
+
+  return (
+    <div className="ps-celeb">
+      <canvas ref={canvasRef} className="ps-celeb-canvas" />
+      <svg className="ps-celeb-hex-bg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
+        <defs>
+          <pattern id="ps-hex-bg" x="0" y="0" width="32" height="54" patternUnits="userSpaceOnUse">
+            <polygon points="16,0 32,9 32,27 16,36 0,27 0,9"      fill="none" stroke="#c49a28" strokeWidth="0.8"/>
+            <polygon points="0,27 16,36 16,54 0,63 -16,54 -16,36" fill="none" stroke="#c49a28" strokeWidth="0.8"/>
+            <polygon points="32,27 48,36 48,54 32,63 16,54 16,36" fill="none" stroke="#c49a28" strokeWidth="0.8"/>
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#ps-hex-bg)"/>
+      </svg>
+      <div className="ps-celeb-glow" />
+
+      <div className="ps-celeb-content">
+
+        <div className="ps-celeb-stamp">
+          <span className="ps-celeb-stamp-dot" />
+          <span className="ps-celeb-stamp-text">Profile Verified · Member Unlocked</span>
+        </div>
+
+        <div className="ps-celeb-ring-wrap">
+          <div id="ps-orbit-dots" className="ps-celeb-orbit-dots" />
+          <div className="ps-celeb-outer-ring" />
+          <div className="ps-celeb-inner-circle">
+            <svg width="44" height="40" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="ps-cl1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#e8c84a"/><stop offset="50%" stopColor="#c49a28"/><stop offset="100%" stopColor="#8a6510"/></linearGradient>
+                <linearGradient id="ps-cl2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#e8c84a"/><stop offset="50%" stopColor="#c49a28"/><stop offset="100%" stopColor="#8a6510"/></linearGradient>
+                <linearGradient id="ps-cl3" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#8a6510"/><stop offset="50%" stopColor="#c49a28"/><stop offset="100%" stopColor="#e8c84a"/></linearGradient>
+              </defs>
+              <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     fill="none" stroke="url(#ps-cl1)" strokeWidth="9" strokeLinejoin="round"/>
+              <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="url(#ps-cl2)" strokeWidth="9" strokeLinejoin="round"/>
+              <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#ps-cl3)" strokeWidth="9" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <span className="ps-celeb-sparkle" style={{top:'4px',right:'10px',animationDelay:'0s'}}>✦</span>
+          <span className="ps-celeb-sparkle" style={{bottom:'6px',left:'8px',animationDelay:'0.7s'}}>✦</span>
+          <span className="ps-celeb-sparkle" style={{top:'10px',left:'12px',animationDelay:'1.3s',fontSize:'8px'}}>✦</span>
+        </div>
+
+        <div className="ps-celeb-eyebrow">
+          <div className="ps-celeb-eyebrow-line" />
+          <span>Profile Complete</span>
+          <div className="ps-celeb-eyebrow-line" />
+        </div>
+
+        <h2 className="ps-celeb-headline">You&apos;re <em>in.</em></h2>
+
+        <p className="ps-celeb-subtext">You&apos;ve completed the full ConnectHive screening. Your compatibility profile is built. Your Hives are waiting.</p>
+
+        <div className="ps-celeb-badge">
+          <span className="ps-celeb-badge-icon">🔐</span>
+          <div>
+            <strong className="ps-celeb-badge-title">Exclusive Hive Access Unlocked</strong>
+            <span className="ps-celeb-badge-body">Only members who complete the full profile screening get matched with verified Hives. You made it.</span>
+          </div>
+        </div>
+
+        <div className="ps-celeb-card">
+          <div className="ps-celeb-card-glow" />
+          <svg className="ps-celeb-card-wm" width="120" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     fill="none" stroke="#c49a28" strokeWidth="9" strokeLinejoin="round"/>
+            <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="#c49a28" strokeWidth="9" strokeLinejoin="round"/>
+            <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="#c49a28" strokeWidth="9" strokeLinejoin="round"/>
+          </svg>
+          <div className="ps-celeb-card-top">
+            <div className="ps-celeb-avatar">
+              <div className="ps-celeb-avatar-ring" />
+              <span className="ps-celeb-initials">JB</span>
+            </div>
+            <div className="ps-celeb-name-block">
+              <div className="ps-celeb-name">Jordan Blake</div>
+              <div className="ps-celeb-type">The Builder · Project Collab</div>
+            </div>
+          </div>
+          <div className="ps-celeb-divider" />
+          <div className="ps-celeb-tags">
+            <span className="ps-celeb-tag ps-celeb-tag-gold">⚛️ Coding</span>
+            <span className="ps-celeb-tag ps-celeb-tag-gold">🎨 UI/UX</span>
+            <span className="ps-celeb-tag">🤖 AI / ML</span>
+            <span className="ps-celeb-tag">🚀 Startups</span>
+            <span className="ps-celeb-tag">🎬 Film</span>
+            <span className="ps-celeb-tag">🏋️ Fitness</span>
+          </div>
+          <div className="ps-celeb-stats">
+            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">{counts.match}</span><span className="ps-celeb-stat-lbl">Match Score</span></div>
+            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">{counts.hives}</span><span className="ps-celeb-stat-lbl">Hives Found</span></div>
+            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">Top 8%</span><span className="ps-celeb-stat-lbl">Profile Score</span></div>
+          </div>
+          <div className="ps-celeb-member-row">
+            <span className="ps-celeb-member-lbl">Member ID</span>
+            <span className="ps-celeb-member-val">CHV-2026-04892</span>
+          </div>
+        </div>
+
+        <div className="ps-celeb-pills-row">
+          <div className="ps-celeb-pill-card"><span className="ps-celeb-pill-num">6</span><span className="ps-celeb-pill-lbl">Steps Complete</span></div>
+          <div className="ps-celeb-pill-card"><span className="ps-celeb-pill-num">{counts.interests}</span><span className="ps-celeb-pill-lbl">Interests Tagged</span></div>
+          <div className="ps-celeb-pill-card"><span className="ps-celeb-pill-num">{counts.skills}</span><span className="ps-celeb-pill-lbl">Skills Logged</span></div>
+        </div>
+
+        <Link to="/find-your-hive" className="ps-celeb-cta">ENTER THE HIVE — SEE YOUR MATCHES →</Link>
+
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────
 export default function ProfileSetupPage() {
   const navigate = useNavigate();
@@ -399,7 +590,7 @@ export default function ProfileSetupPage() {
       )}
 
       {/* ── Card ── */}
-      <div className="ps-card">
+      <div className={`ps-card${step === 7 ? ' ps-card-dark' : ''}`}>
 
         {/* ══ STEP 1 — About You ══ */}
         {step === 1 && (
@@ -623,28 +814,8 @@ export default function ProfileSetupPage() {
           </>
         )}
 
-        {/* ══ STEP 7 — Completion ══ */}
-        {step === 7 && (
-          <div className="ps-completion">
-            <div className="ps-completion-icon">
-              <LogoSVG size={32} />
-            </div>
-            <h2 className="ps-completion-title">
-              Your profile is <em>ready.</em>
-            </h2>
-            <p className="ps-completion-sub">
-              We've built your compatibility profile. Based on your answers, we've already found Hives you'll love.
-            </p>
-            <div className="ps-completion-pills">
-              <span className="ps-completion-pill">94% Match Score Ready</span>
-              <span className="ps-completion-pill">12 Hives Found</span>
-              <span className="ps-completion-pill">Ready to Join</span>
-            </div>
-            <Link to="/find-your-hive" className="ps-completion-cta">
-              See My Matches →
-            </Link>
-          </div>
-        )}
+        {/* ══ STEP 7 — Celebration ══ */}
+        {step === 7 && <CelebrationScreen />}
 
       </div>
     </div>

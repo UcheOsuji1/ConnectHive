@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
+const PUBLIC_PATHS = ['/', '/login', '/signup'];
+
+const AUTH_NAV = [
+  { to: '/home',           label: 'Home' },
+  { to: '/find-your-hive', label: 'Find Your Hive' },
+  { to: '/my-hive',        label: 'My Hive' },
+  { to: '/profile',        label: 'Profile' },
+];
+
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -13,6 +22,10 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => setMenuOpen(false), [location]);
+
+  const isAuth = !PUBLIC_PATHS.includes(location.pathname);
+  const isActive = (to) =>
+    location.pathname === to || location.pathname.startsWith(to + '/');
 
   return (
     <>
@@ -34,16 +47,32 @@ export default function Navbar() {
             <span className="nav-logo-text">ConnectHive</span>
           </Link>
 
-          <ul className="nav-links" role="list">
-            <li><Link to="/">Home</Link></li>
-            <li><Link to="/find-your-hive">Find Your Hive</Link></li>
-            <li><Link to="/create-hive">Create a Hive</Link></li>
-          </ul>
-
-          <div className="nav-right">
-            <Link to="/login" className="nav-signin">Sign In</Link>
-            <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join ConnectHive</Link>
-          </div>
+          {isAuth ? (
+            <ul className="nav-links" role="list">
+              {AUTH_NAV.map(({ to, label }) => (
+                <li key={to}>
+                  <Link
+                    to={to}
+                    style={isActive(to) ? { color: '#c49a28' } : undefined}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <>
+              <ul className="nav-links" role="list">
+                <li><Link to="/">Home</Link></li>
+                <li><Link to="/find-your-hive">Find Your Hive</Link></li>
+                <li><Link to="/create-hive">Create a Hive</Link></li>
+              </ul>
+              <div className="nav-right">
+                <Link to="/login" className="nav-signin">Sign In</Link>
+                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join ConnectHive</Link>
+              </div>
+            </>
+          )}
 
           <button
             className={`hamburger${menuOpen ? ' open' : ''}`}
@@ -57,15 +86,32 @@ export default function Navbar() {
       </nav>
 
       <div className={`mobile-menu${menuOpen ? ' open' : ''}`} role="dialog" aria-label="Mobile navigation">
-        <ul>
-          <li><Link to="/">Home</Link></li>
-          <li><Link to="/find-your-hive">Find Your Hive</Link></li>
-          <li><Link to="/create-hive">Create a Hive</Link></li>
-        </ul>
-        <div className="mobile-ctas">
-          <Link to="/login" className="btn btn-ghost">Sign In</Link>
-          <Link to="/signup" className="btn btn-primary">Join ConnectHive</Link>
-        </div>
+        {isAuth ? (
+          <ul>
+            {AUTH_NAV.map(({ to, label }) => (
+              <li key={to}>
+                <Link
+                  to={to}
+                  style={isActive(to) ? { color: '#c49a28' } : undefined}
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <>
+            <ul>
+              <li><Link to="/">Home</Link></li>
+              <li><Link to="/find-your-hive">Find Your Hive</Link></li>
+              <li><Link to="/create-hive">Create a Hive</Link></li>
+            </ul>
+            <div className="mobile-ctas">
+              <Link to="/login" className="btn btn-ghost">Sign In</Link>
+              <Link to="/signup" className="btn btn-primary">Join ConnectHive</Link>
+            </div>
+          </>
+        )}
       </div>
     </>
   );

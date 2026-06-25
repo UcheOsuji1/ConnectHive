@@ -28,7 +28,7 @@
   --transition: 200ms cubic-bezier(.4,0,.2,1);
 }
 
-html { scroll-behavior: smooth; font-size: 16px; }
+html { scroll-behavior: smooth; font-size: 16px; overflow-y: auto; }
 
 body {
   font-family: 'DM Sans', sans-serif;
@@ -36,6 +36,7 @@ body {
   color: var(--text-main);
   line-height: 1.6;
   overflow-x: hidden;
+  overflow-y: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

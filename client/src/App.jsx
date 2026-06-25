@@ -4,7 +4,8 @@ import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import ProfileSetupPage from './pages/ProfileSetupPage';
 import HomePage from './pages/HomePage';
-import FindHivePage from './pages/FindHivePage'; // route: /find-your-hive
+import FindYourHivePage from './pages/FindYourHivePage';
+import CategoryDeepDivePage from './pages/CategoryDeepDivePage';
 import ChooseHivePathPage from './pages/ChooseHivePathPage';
 import HiveDiscoveryPage from './pages/HiveDiscoveryPage';
 import CreateHivePage from './pages/CreateHivePage';
@@ -20,7 +21,8 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/profile-setup" element={<ProfileSetupPage />} />
       <Route path="/home" element={<HomePage />} />
-      <Route path="/find-your-hive" element={<FindHivePage />} />
+      <Route path="/find-your-hive" element={<FindYourHivePage />} />
+      <Route path="/category-deep-dive" element={<CategoryDeepDivePage />} />
       <Route path="/choose-path" element={<ChooseHivePathPage />} />
       <Route path="/hive-discovery" element={<HiveDiscoveryPage />} />
       <Route path="/create-hive" element={<CreateHivePage />} />

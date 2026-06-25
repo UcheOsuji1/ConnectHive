@@ -1,15 +1,44 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import '../styles/signin.css';
 
 export default function LoginPage() {
-  const [showPw, setShowPw] = useState(false);
+  const [showPw,     setShowPw]     = useState(false);
+  const [email,      setEmail]      = useState('');
+  const [password,   setPassword]   = useState('');
+  const [error,      setError]      = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const { login } = useAuth();
+  const navigate  = useNavigate();
+
+  const handleSubmit = async () => {
+    if (submitting) return;
+    setError('');
+    setSubmitting(true);
+    try {
+      const user = await login(email, password);
+      // Route based on where the user is in the onboarding journey
+      if (!user.hasProfile) {
+        navigate('/profile-setup');
+      } else if (!user.hasActiveHive) {
+        navigate('/find-your-hive');
+      } else {
+        navigate('/my-hive');
+      }
+    } catch (err) {
+      setError(err.message || 'Something went wrong — please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
-    <div className="ch-page">
+    <div className="si-page">
 
       {/* ══ LEFT PANEL ══ */}
-      <div className="ch-left">
+      <div className="si-left">
 
         {/* Honeycomb tiling — hex circumradius 20, tile 34.64 × 60 */}
         <svg
@@ -19,12 +48,10 @@ export default function LoginPage() {
         >
           <defs>
             <pattern id="hexbg" x="0" y="0" width="34.64" height="60" patternUnits="userSpaceOnUse">
-              {/* Row 1 hex center (17.32, 20) */}
               <polygon
                 points="17.32,0 34.64,10 34.64,30 17.32,40 0,30 0,10"
                 fill="none" stroke="#c49a28" strokeWidth="1.5"
               />
-              {/* Row 2 hex center (0, 50) — partial, tiling completes it */}
               <polygon
                 points="0,30 17.32,40 17.32,60 0,70 -17.32,60 -17.32,40"
                 fill="none" stroke="#c49a28" strokeWidth="1.5"
@@ -41,10 +68,10 @@ export default function LoginPage() {
         }} />
 
         {/* Content block */}
-        <div className="ch-left-content">
+        <div className="si-left-content">
 
           {/* Logo + wordmark — links back to landing page */}
-          <Link to="/" className="ch-brand">
+          <Link to="/" className="si-brand">
             <svg width="36" height="34" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <defs>
                 <linearGradient id="lg1" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -67,30 +94,30 @@ export default function LoginPage() {
               <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"   fill="none" stroke="url(#lg2)" strokeWidth="9" strokeLinejoin="round"/>
               <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#lg3)" strokeWidth="9" strokeLinejoin="round"/>
             </svg>
-            <span className="ch-wordmark">CONNECTHIVE</span>
+            <span className="si-wordmark">CONNECTHIVE</span>
           </Link>
 
           {/* Heading */}
-          <div className="ch-heading">
-            <span className="ch-heading-line1">Find your</span>
-            <span className="ch-heading-line2">people.</span>
+          <div className="si-heading">
+            <span className="si-heading-line1">Find your</span>
+            <span className="si-heading-line2">people.</span>
           </div>
 
           {/* Subtext */}
-          <p className="ch-subtext">
+          <p className="si-subtext">
             Your Hive is waiting. Purpose-based groups built around who you are and what you actually want.
           </p>
 
           {/* Stats */}
-          <div className="ch-stats">
+          <div className="si-stats">
             {[
               { num: '12k+', label: 'Members' },
               { num: '850+', label: 'Hives' },
               { num: '94%',  label: 'Match Rate' },
             ].map(s => (
               <div key={s.label} style={{ textAlign: 'center' }}>
-                <div className="ch-stat-num">{s.num}</div>
-                <div className="ch-stat-label">{s.label}</div>
+                <div className="si-stat-num">{s.num}</div>
+                <div className="si-stat-label">{s.label}</div>
               </div>
             ))}
           </div>
@@ -99,39 +126,38 @@ export default function LoginPage() {
       </div>
 
       {/* ══ RIGHT PANEL ══ */}
-      <div className="ch-right">
+      <div className="si-right">
 
         {/* Back to landing page */}
-        <Link to="/" className="ch-back">
+        <Link to="/" className="si-back">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M10 3L5 8l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           Back to home
         </Link>
 
-        <div className="ch-form-inner">
+        <div className="si-form-inner">
 
           {/* Eyebrow */}
-          <div className="ch-eyebrow">
-            <div className="ch-eyebrow-dash" />
-            <span className="ch-eyebrow-text">Welcome Back</span>
+          <div className="si-eyebrow">
+            <div className="si-eyebrow-dash" />
+            <span className="si-eyebrow-text">Welcome Back</span>
           </div>
 
           {/* Title */}
-          <h1 className="ch-title">
+          <h1 className="si-title">
             Sign in to your <em>Hive</em>
           </h1>
 
           {/* Subtitle */}
-          <p className="ch-subtitle">
+          <p className="si-subtitle">
             Don't have an account?{' '}
             <Link to="/signup">Join ConnectHive →</Link>
           </p>
 
           {/* OAuth buttons */}
-          <div className="ch-oauth-row">
-            <button className="ch-oauth" type="button">
-              {/* Google */}
+          <div className="si-oauth-row">
+            <button className="si-oauth" type="button">
               <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -140,8 +166,7 @@ export default function LoginPage() {
               </svg>
               Continue with Google
             </button>
-            <button className="ch-oauth" type="button">
-              {/* Apple */}
+            <button className="si-oauth" type="button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#1a1508" aria-hidden="true">
                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
               </svg>
@@ -150,40 +175,45 @@ export default function LoginPage() {
           </div>
 
           {/* OR divider */}
-          <div className="ch-or">
-            <div className="ch-or-line" />
-            <span className="ch-or-text">OR</span>
-            <div className="ch-or-line" />
+          <div className="si-or">
+            <div className="si-or-line" />
+            <span className="si-or-text">OR</span>
+            <div className="si-or-line" />
           </div>
 
           {/* Email */}
-          <div className="ch-field">
-            <label className="ch-label" htmlFor="signin-email">Email Address</label>
-            <div className="ch-input-wrap">
+          <div className="si-field">
+            <label className="si-label" htmlFor="signin-email">Email Address</label>
+            <div className="si-input-wrap">
               <input
                 id="signin-email"
                 type="email"
-                className="ch-input"
+                className="si-input"
                 placeholder="you@example.com"
                 autoComplete="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
               />
             </div>
           </div>
 
           {/* Password */}
-          <div className="ch-field">
-            <label className="ch-label" htmlFor="signin-pw">Password</label>
-            <div className="ch-input-wrap">
+          <div className="si-field">
+            <label className="si-label" htmlFor="signin-pw">Password</label>
+            <div className="si-input-wrap">
               <input
                 id="signin-pw"
                 type={showPw ? 'text' : 'password'}
-                className="ch-input ch-input--pw"
+                className="si-input si-input--pw"
                 placeholder="Enter your password"
                 autoComplete="current-password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
               />
               <button
                 type="button"
-                className="ch-pw-toggle"
+                className="si-pw-toggle"
                 onClick={() => setShowPw(v => !v)}
                 aria-label={showPw ? 'Hide password' : 'Show password'}
               >
@@ -202,27 +232,39 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {/* Inline error */}
+          {error && (
+            <p style={{ margin: '0', fontSize: '12.5px', color: '#c0512a' }}>
+              {error}
+            </p>
+          )}
+
           {/* Remember + Forgot */}
-          <div className="ch-row">
-            <label className="ch-remember">
+          <div className="si-row">
+            <label className="si-remember">
               <input type="checkbox" />
               <span>Keep me signed in</span>
             </label>
-            <button type="button" className="ch-forgot">Forgot password?</button>
+            <button type="button" className="si-forgot">Forgot password?</button>
           </div>
 
           {/* CTA */}
-          <button type="button" className="ch-cta">
-            Sign In to ConnectHive
+          <button
+            type="button"
+            className="si-cta"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? 'Signing in…' : 'Sign In to ConnectHive'}
           </button>
 
           {/* Footer line */}
-          <p className="ch-footer-line">
+          <p className="si-footer-line">
             New here? <Link to="/signup">Create your profile</Link> and find your Hive.
           </p>
 
           {/* Legal */}
-          <p className="ch-legal">
+          <p className="si-legal">
             By signing in you agree to our{' '}
             <a href="#terms">Terms of Service</a>
             {' '}and{' '}

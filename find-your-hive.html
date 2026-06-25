@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Find Your Hive — ConnectHive</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #f5f0e8;
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .page-wrap {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 20px 32px;
+    }
+
+    /* ── NAVBAR ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 36px;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-wordmark {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #1a1508;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .nav-links a {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      color: #8a8070;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: #c49a28;
+    }
+
+    .btn-profile {
+      height: 36px;
+      padding: 0 18px;
+      background: #c49a28;
+      border-radius: 20px;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-profile:hover {
+      background: #b08820;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .eyebrow-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .eyebrow-line {
+      width: 28px;
+      height: 0.5px;
+      background: #c49a28;
+    }
+
+    .eyebrow-text {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #c49a28;
+    }
+
+    .page-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 46px;
+      font-weight: 300;
+      color: #1a1508;
+      line-height: 1.1;
+      margin-bottom: 10px;
+    }
+
+    .page-title em {
+      font-style: italic;
+      color: #c49a28;
+    }
+
+    .page-subtitle {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 300;
+      color: #8a8070;
+      line-height: 1.6;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    /* ── STATS STRIP ── */
+    .stats-strip {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-bottom: 36px;
+      padding-bottom: 24px;
+      border-bottom: 0.5px solid #e2dacb;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-number {
+      display: block;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 24px;
+      font-weight: 400;
+      color: #c49a28;
+    }
+
+    .stat-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #b0a880;
+    }
+
+    /* ── HEX GRID ── */
+    #hex-scene {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .hex-row {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .hex-row.offset {
+      margin-top: -26px;
+      margin-left: 116px;
+    }
+
+    .hex-item {
+      position: relative;
+      width: 196px;
+      height: 226px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.25s cubic-bezier(.4,0,.2,1);
+    }
+
+    .hex-item:hover {
+      transform: translateY(-6px);
+    }
+
+    .hex-item.selected {
+      transform: translateY(-4px);
+    }
+
+    .hex-bg-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .hex-shape {
+      fill: #fff;
+      stroke: #e2dacb;
+      stroke-width: 1;
+      transition: all 0.3s cubic-bezier(.4,0,.2,1);
+    }
+
+    .hex-item:hover .hex-shape {
+      fill: #fffdf7;
+      stroke: #c49a28;
+      stroke-width: 1.5;
+      filter: drop-shadow(0 6px 20px rgba(196,154,40,0.18));
+    }
+
+    .hex-item.selected .hex-shape {
+      fill: #fffbf0;
+      stroke: #c49a28;
+      stroke-width: 2;
+      filter: drop-shadow(0 6px 24px rgba(196,154,40,0.25));
+    }
+
+    .hex-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -54%);
+      text-align: center;
+      width: 148px;
+      pointer-events: none;
+    }
+
+    .hex-icon-wrap {
+      width: 54px;
+      height: 54px;
+      margin: 0 auto 10px;
+      position: relative;
+    }
+
+    .hex-icon-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 1px solid #e2dacb;
+      background: #f8f4ea;
+      transition: border-color 0.3s, background 0.3s;
+    }
+
+    .hex-item:hover .hex-icon-ring,
+    .hex-item.selected .hex-icon-ring {
+      border-color: #c49a28;
+      background: #fdf5e0;
+    }
+
+    .hex-icon-inner {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      z-index: 1;
+    }
+
+    .hex-check {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #c49a28;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.25s cubic-bezier(.34,1.56,.64,1);
+      z-index: 2;
+    }
+
+    .hex-item.selected .hex-check {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .hex-name {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px;
+      font-weight: 500;
+      color: #1a1508;
+      margin-bottom: 5px;
+      transition: color 0.2s;
+    }
+
+    .hex-item:hover .hex-name,
+    .hex-item.selected .hex-name {
+      color: #8a6510;
+    }
+
+    .hex-desc {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10.5px;
+      font-weight: 300;
+      color: #a09880;
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+
+    .hex-count {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 9px;
+      font-weight: 500;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #c49a28;
+    }
+
+    /* ── SELECTION BAR ── */
+    .sel-bar {
+      background: #fff;
+      border: 0.5px solid #e2dacb;
+      border-radius: 12px;
+      padding: 16px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 68px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(196,154,40,0.06);
+    }
+
+    .sel-bar-left {
+      flex: 1;
+    }
+
+    .sel-label {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #b0a880;
+      margin-bottom: 6px;
+    }
+
+    #sel-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      min-height: 22px;
+      align-items: center;
+    }
+
+    .sel-none {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-style: italic;
+      color: #c0b89a;
+    }
+
+    .sel-tag {
+      padding: 4px 10px;
+      border: 0.5px solid #c49a28;
+      border-radius: 20px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11.5px;
+      color: #8a6510;
+      background: #fdf8ec;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      animation: tagIn 0.2s ease forwards;
+    }
+
+    @keyframes tagIn {
+      from { opacity: 0; transform: scale(0.85); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    .sel-tag-x {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: #c49a28;
+      opacity: 0.5;
+      cursor: pointer;
+      line-height: 1;
+      transition: opacity 0.15s;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .sel-tag-x:hover {
+      opacity: 1;
+    }
+
+    #sel-btn {
+      height: 44px;
+      padding: 0 28px;
+      background: #c49a28;
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      flex-shrink: 0;
+    }
+
+    #sel-btn:hover:not(:disabled) {
+      background: #b08820;
+    }
+
+    #sel-btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    #sel-btn:disabled {
+      background: #e8e0d0;
+      color: #b0a880;
+      cursor: default;
+    }
+
+    /* ── FOOTER ── */
+    .page-footer {
+      text-align: center;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12.5px;
+      color: #b0a880;
+    }
+
+    .footer-link {
+      color: #c49a28;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .footer-link:hover {
+      text-decoration: underline;
+    }
+
+    @keyframes floatUp {
+      0%   { opacity: 0; transform: translateY(0) scale(0.3); }
+      30%  { opacity: 0.8; }
+      100% { opacity: 0; transform: translateY(-80px) scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+
+    <!-- NAVBAR -->
+    <nav>
+      <a href="#" class="nav-logo">
+        <svg width="30" height="28" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#e8c84a"/>
+              <stop offset="50%" stop-color="#c49a28"/>
+              <stop offset="100%" stop-color="#8a6510"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="100%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#e8c84a"/>
+              <stop offset="50%" stop-color="#c49a28"/>
+              <stop offset="100%" stop-color="#8a6510"/>
+            </linearGradient>
+            <linearGradient id="g3" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#8a6510"/>
+              <stop offset="50%" stop-color="#c49a28"/>
+              <stop offset="100%" stop-color="#e8c84a"/>
+            </linearGradient>
+          </defs>
+          <polygon points="60,2 88,18 88,48 60,64 32,48 32,18" fill="none" stroke="url(#g1)" stroke-width="9" stroke-linejoin="round"/>
+          <polygon points="32,46 60,62 60,92 32,108 4,92 4,62" fill="none" stroke="url(#g2)" stroke-width="9" stroke-linejoin="round"/>
+          <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#g3)" stroke-width="9" stroke-linejoin="round"/>
+        </svg>
+        <span class="nav-wordmark">ConnectHive</span>
+      </a>
+      <div class="nav-right">
+        <ul class="nav-links">
+          <li><a href="#">Home</a></li>
+          <li><a href="#">How It Works</a></li>
+          <li><a href="#">About</a></li>
+        </ul>
+        <button class="btn-profile">My Profile</button>
+      </div>
+    </nav>
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <div class="eyebrow-row">
+        <div class="eyebrow-line"></div>
+        <span class="eyebrow-text">Discover</span>
+        <div class="eyebrow-line"></div>
+      </div>
+      <h1 class="page-title">Choose your <em>purpose.</em></h1>
+      <p class="page-subtitle">Select one or more Hive categories. We'll match you with groups built around your goals, interests, and availability.</p>
+    </div>
+
+    <!-- STATS STRIP -->
+    <div class="stats-strip">
+      <div class="stat-item">
+        <span class="stat-number">12k+</span>
+        <span class="stat-label">Members</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">850+</span>
+        <span class="stat-label">Active Hives</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">94%</span>
+        <span class="stat-label">Match Rate</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-number">6</span>
+        <span class="stat-label">Categories</span>
+      </div>
+    </div>
+
+    <!-- HEX GRID -->
+    <div id="hex-scene">
+
+      <!-- Row 1 -->
+      <div class="hex-row">
+
+        <div class="hex-item" id="hex-1" onclick="toggleHex(this, 'Social Groups')">
+          <svg class="hex-bg-svg" viewBox="0 0 196 226" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="hex-shape" points="98,6 185,54 185,172 98,220 11,172 11,54"/>
+          </svg>
+          <div class="hex-content">
+            <div class="hex-icon-wrap">
+              <div class="hex-icon-ring"></div>
+              <div class="hex-icon-inner">👥</div>
+              <div class="hex-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="hex-name">Social Groups</div>
+            <div class="hex-desc">Friends, hangouts &amp; expanding your circle</div>
+            <div class="hex-count">3,240 members</div>
+          </div>
+        </div>
+
+        <div class="hex-item" id="hex-2" onclick="toggleHex(this, 'Professional')">
+          <svg class="hex-bg-svg" viewBox="0 0 196 226" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="hex-shape" points="98,6 185,54 185,172 98,220 11,172 11,54"/>
+          </svg>
+          <div class="hex-content">
+            <div class="hex-icon-wrap">
+              <div class="hex-icon-ring"></div>
+              <div class="hex-icon-inner">💼</div>
+              <div class="hex-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="hex-name">Professional</div>
+            <div class="hex-desc">Network, mentors &amp; career connections</div>
+            <div class="hex-count">2,810 members</div>
+          </div>
+        </div>
+
+        <div class="hex-item" id="hex-3" onclick="toggleHex(this, 'Travel Buddies')">
+          <svg class="hex-bg-svg" viewBox="0 0 196 226" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="hex-shape" points="98,6 185,54 185,172 98,220 11,172 11,54"/>
+          </svg>
+          <div class="hex-content">
+            <div class="hex-icon-wrap">
+              <div class="hex-icon-ring"></div>
+              <div class="hex-icon-inner">✈️</div>
+              <div class="hex-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="hex-name">Travel Buddies</div>
+            <div class="hex-desc">Explore cities, trips &amp; local adventures</div>
+            <div class="hex-count">1,920 members</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Row 2 (offset) -->
+      <div class="hex-row offset">
+
+        <div class="hex-item" id="hex-4" onclick="toggleHex(this, 'Project Collab')">
+          <svg class="hex-bg-svg" viewBox="0 0 196 226" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="hex-shape" points="98,6 185,54 185,172 98,220 11,172 11,54"/>
+          </svg>
+          <div class="hex-content">
+            <div class="hex-icon-wrap">
+              <div class="hex-icon-ring"></div>
+              <div class="hex-icon-inner">🚀</div>
+              <div class="hex-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="hex-name">Project Collab</div>
+            <div class="hex-desc">Build startups, apps &amp; creative work</div>
+            <div class="hex-count">2,140 members</div>
+          </div>
+        </div>
+
+        <div class="hex-item" id="hex-5" onclick="toggleHex(this, 'Event Buddies')">
+          <svg class="hex-bg-svg" viewBox="0 0 196 226" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="hex-shape" points="98,6 185,54 185,172 98,220 11,172 11,54"/>
+          </svg>
+          <div class="hex-content">
+            <div class="hex-icon-wrap">
+              <div class="hex-icon-ring"></div>
+              <div class="hex-icon-inner">🎟️</div>
+              <div class="hex-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="hex-name">Event Buddies</div>
+            <div class="hex-desc">Concerts, conferences &amp; campus events</div>
+            <div class="hex-count">1,650 members</div>
+          </div>
+        </div>
+
+        <div class="hex-item" id="hex-6" onclick="toggleHex(this, 'Specialized')">
+          <svg class="hex-bg-svg" viewBox="0 0 196 226" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="hex-shape" points="98,6 185,54 185,172 98,220 11,172 11,54"/>
+          </svg>
+          <div class="hex-content">
+            <div class="hex-icon-wrap">
+              <div class="hex-icon-ring"></div>
+              <div class="hex-icon-inner">⭐</div>
+              <div class="hex-check">
+                <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </div>
+            <div class="hex-name">Specialized</div>
+            <div class="hex-desc">Niche groups for specific purposes</div>
+            <div class="hex-count">980 members</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SELECTION BAR -->
+    <div class="sel-bar">
+      <div class="sel-bar-left">
+        <div class="sel-label">Your selected categories</div>
+        <div id="sel-tags">
+          <span id="sel-none" class="sel-none">No categories selected — tap a hexagon above</span>
+        </div>
+      </div>
+      <button id="sel-btn" disabled onclick="findHive()">Find My Hive →</button>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="page-footer">
+      Already know what you want? <a class="footer-link" onclick="findHive()">Browse all Hives directly →</a>
+    </div>
+
+  </div>
+
+  <script>
+    const selected = new Set();
+    let selNoneEl;
+
+    window.addEventListener('DOMContentLoaded', function () {
+      selNoneEl = document.getElementById('sel-none');
+    });
+
+    function toggleHex(el, name) {
+      if (el.classList.contains('selected')) {
+        el.classList.remove('selected');
+        selected.delete(name);
+      } else {
+        el.classList.add('selected');
+        selected.add(name);
+        spawnParticles(el);
+      }
+      updateSelBar();
+    }
+
+    function spawnParticles(el) {
+      var rect = el.getBoundingClientRect();
+      var cx = rect.left + rect.width / 2;
+      var cy = rect.top + rect.height / 2;
+      var colors = ['#c49a28', '#e8c84a', '#f0d870', '#8a6510'];
+
+      for (var i = 0; i < 8; i++) {
+        (function (i) {
+          var p = document.createElement('div');
+          var size = 4 + Math.random() * 5;
+          var angle = (i / 8) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+          var dist = 28 + Math.random() * 36;
+          var color = colors[i % colors.length];
+          var duration = (0.7 + Math.random() * 0.5).toFixed(2);
+
+          var px = cx + Math.cos(angle) * dist - size / 2;
+          var py = cy + Math.sin(angle) * dist - size / 2;
+
+          p.style.cssText =
+            'position:fixed;pointer-events:none;border-radius:50%;' +
+            'width:' + size.toFixed(1) + 'px;height:' + size.toFixed(1) + 'px;' +
+            'background:' + color + ';' +
+            'left:' + px.toFixed(1) + 'px;' +
+            'top:' + py.toFixed(1) + 'px;' +
+            'z-index:9999;' +
+            'animation:floatUp ' + duration + 's ease-out forwards;';
+
+          document.body.appendChild(p);
+          setTimeout(function () { p.remove(); }, 1400);
+        })(i);
+      }
+    }
+
+    function updateSelBar() {
+      var tags = document.getElementById('sel-tags');
+      var btn  = document.getElementById('sel-btn');
+
+      tags.innerHTML = '';
+
+      if (selected.size === 0) {
+        tags.appendChild(selNoneEl);
+        btn.disabled = true;
+      } else {
+        selected.forEach(function (name) {
+          var tag = document.createElement('span');
+          tag.className = 'sel-tag';
+
+          tag.appendChild(document.createTextNode(name));
+
+          var x = document.createElement('button');
+          x.className = 'sel-tag-x';
+          x.textContent = '×';
+          x.onclick = (function (n) {
+            return function () { removeTag(n); };
+          })(name);
+          tag.appendChild(x);
+
+          tags.appendChild(tag);
+        });
+        btn.disabled = false;
+      }
+    }
+
+    function removeTag(name) {
+      selected.delete(name);
+      document.querySelectorAll('.hex-item').forEach(function (item) {
+        var attr = item.getAttribute('onclick') || '';
+        if (attr.indexOf(name) !== -1) {
+          item.classList.remove('selected');
+        }
+      });
+      updateSelBar();
+    }
+
+    function findHive() {
+      var cats = Array.from(selected)
+        .map(function (n) { return n.replace(/\s+/g, '+'); })
+        .join(',');
+      window.location.href = 'hive-discovery.html?categories=' + cats;
+    }
+  </script>
+</body>
+</html>
