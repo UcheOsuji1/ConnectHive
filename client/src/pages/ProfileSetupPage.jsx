@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import { api } from '../lib/api.js';
+import { getInitials } from '../lib/initials.js';
 import '../styles/profile-setup.css';
 
 // ── Data ──────────────────────────────────────────────────────
@@ -134,7 +137,7 @@ function StepHeader({ n, title, subtitle }) {
   );
 }
 
-function NavButtons({ step, onBack, onNext, isLast }) {
+function NavButtons({ step, onBack, onNext, isLast, saving }) {
   return (
     <div className="ps-nav">
       <button
@@ -146,8 +149,8 @@ function NavButtons({ step, onBack, onNext, isLast }) {
         ← Back
       </button>
       <span className="ps-step-count">Step {step} of 6</span>
-      <button type="button" className="ps-btn-next" onClick={onNext}>
-        {isLast ? 'Find My Hive →' : 'Continue →'}
+      <button type="button" className="ps-btn-next" onClick={onNext} disabled={saving}>
+        {saving ? 'Saving…' : isLast ? 'Find My Hive →' : 'Continue →'}
       </button>
     </div>
   );
@@ -309,9 +312,9 @@ const LogoSVG = ({ size = 28 }) => (
 );
 
 // ── CelebrationScreen ─────────────────────────────────────────
-function CelebrationScreen() {
+function CelebrationScreen({ fullName, initials, avatarPreview, typeLine, tags, memberId, purposesCount, mattersCount, interestsTotal, skillsTotal }) {
   const canvasRef = useRef(null);
-  const [counts, setCounts] = useState({ match: '0%', hives: '0', interests: '0', skills: '0' });
+  const [counts, setCounts] = useState({ interests: '0', skills: '0' });
 
   useEffect(() => {
     // Orbiting dots
@@ -380,10 +383,8 @@ function CelebrationScreen() {
       requestAnimationFrame(step);
     }
     const tid = setTimeout(() => {
-      countUp('match',     94, '%', 1400);
-      countUp('hives',     12, '',  1200);
-      countUp('interests', 18, '',  1000);
-      countUp('skills',     9, '',   900);
+      countUp('interests', interestsTotal, '', 1000);
+      countUp('skills',    skillsTotal,    '',  900);
     }, 900);
 
     return () => { cancelAnimationFrame(animId); clearTimeout(tid); };
@@ -459,30 +460,30 @@ function CelebrationScreen() {
           <div className="ps-celeb-card-top">
             <div className="ps-celeb-avatar">
               <div className="ps-celeb-avatar-ring" />
-              <span className="ps-celeb-initials">JB</span>
+              {avatarPreview
+                ? <img src={avatarPreview} alt={fullName} className="ps-celeb-avatar-img" style={{ width:'100%', height:'100%', borderRadius:'50%', objectFit:'cover' }} />
+                : <span className="ps-celeb-initials">{initials}</span>}
             </div>
             <div className="ps-celeb-name-block">
-              <div className="ps-celeb-name">Jordan Blake</div>
-              <div className="ps-celeb-type">The Builder · Project Collab</div>
+              <div className="ps-celeb-name">{fullName}</div>
+              <div className="ps-celeb-type">{typeLine}</div>
             </div>
           </div>
           <div className="ps-celeb-divider" />
           <div className="ps-celeb-tags">
-            <span className="ps-celeb-tag ps-celeb-tag-gold">⚛️ Coding</span>
-            <span className="ps-celeb-tag ps-celeb-tag-gold">🎨 UI/UX</span>
-            <span className="ps-celeb-tag">🤖 AI / ML</span>
-            <span className="ps-celeb-tag">🚀 Startups</span>
-            <span className="ps-celeb-tag">🎬 Film</span>
-            <span className="ps-celeb-tag">🏋️ Fitness</span>
+            {tags.map((t, i) => (
+              <span key={t + i} className={`ps-celeb-tag${i < 2 ? ' ps-celeb-tag-gold' : ''}`}>{t}</span>
+            ))}
           </div>
+          {/* Phase 5: swap stats 1–2 to real Match Score + Hives Found from matching results */}
           <div className="ps-celeb-stats">
-            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">{counts.match}</span><span className="ps-celeb-stat-lbl">Match Score</span></div>
-            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">{counts.hives}</span><span className="ps-celeb-stat-lbl">Hives Found</span></div>
-            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">Top 8%</span><span className="ps-celeb-stat-lbl">Profile Score</span></div>
+            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">{purposesCount}</span><span className="ps-celeb-stat-lbl">Purposes Chosen</span></div>
+            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">{mattersCount}</span><span className="ps-celeb-stat-lbl">Goals Set</span></div>
+            <div className="ps-celeb-stat"><span className="ps-celeb-stat-num">100%</span><span className="ps-celeb-stat-lbl">Profile Complete</span></div>
           </div>
           <div className="ps-celeb-member-row">
             <span className="ps-celeb-member-lbl">Member ID</span>
-            <span className="ps-celeb-member-val">CHV-2026-04892</span>
+            <span className="ps-celeb-member-val">{memberId}</span>
           </div>
         </div>
 
@@ -502,6 +503,7 @@ function CelebrationScreen() {
 // ── Main component ────────────────────────────────────────────
 export default function ProfileSetupPage() {
   const navigate = useNavigate();
+  const { refreshUser, user } = useAuth();
   const [step, setStep] = useState(1);
 
   // Step 1
@@ -533,8 +535,49 @@ export default function ProfileSetupPage() {
   const [commitment, setCommitment]     = useState(null);
   const [ageRange, setAgeRange]         = useState(null);
 
-  const goNext = () => setStep(s => s >= 6 ? 7 : s + 1);
+  const [saving,    setSaving]    = useState(false);
+  const [saveError, setSaveError] = useState(null);
+
+  const goNext = () => setStep(s => Math.min(s + 1, 6));
   const goBack = () => setStep(s => Math.max(1, s - 1));
+
+  const handleFinish = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await api.post('/api/users/profile/setup', {
+        full_name:             [form1.firstName, form1.lastName].filter(Boolean).join(' ') || null,
+        age:                   form1.age      || null,
+        location:              form1.location || null,
+        school_company:        form1.school   || null,
+        bio:                   form1.bio      || null,
+        profile_photo_url:     null,
+        interests:             Object.values(interests).flat(),
+        skills:                Object.values(skills).flat(),
+        goals:                 matters,
+        availability,
+        group_size_preference: groupSize,
+        connection_preference: groupRole,
+        connection_purposes:   purposes,
+        social_preferences: {
+          socialEnergy,
+          commStyle,
+          energyLevel,
+          genderPref,
+          meetPref,
+          frequency,
+          commitment,
+          ageRange,
+        },
+      });
+      await refreshUser();
+      setStep(7);
+    } catch (err) {
+      setSaveError(err.data?.error ?? 'Failed to save profile — please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const togglePurpose = key =>
     setPurposes(p => p.includes(key) ? p.filter(k => k !== key) : [...p, key]);
@@ -557,6 +600,20 @@ export default function ProfileSetupPage() {
   }
 
   const f1 = (field, val) => setForm1(p => ({ ...p, [field]: val }));
+
+  // ── Celebration screen derivations ──────────────────────────
+  const fullName  = `${form1.firstName} ${form1.lastName}`.trim() || 'New Member';
+  const initials  = getInitials(fullName, user?.email);
+  const typeLine  = (() => {
+    const roleLabel    = groupRole    ? GROUP_ROLES.find(r => r.key === groupRole)?.name    : null;
+    const purposeLabel = purposes[0] ? PURPOSE_CARDS.find(p => p.key === purposes[0])?.name : null;
+    if (roleLabel && purposeLabel) return `${roleLabel} · ${purposeLabel}`;
+    if (roleLabel)    return roleLabel;
+    if (purposeLabel) return purposeLabel;
+    return 'ConnectHive Member';
+  })();
+  const tags     = [...Object.values(interests).flat(), ...Object.values(skills).flat()].slice(0, 6);
+  const memberId = user?.memberId || 'CHV-PENDING';
 
   return (
     <div className="ps-page">
@@ -810,12 +867,26 @@ export default function ProfileSetupPage() {
             <SectionLabel>Age range preference for your Hive</SectionLabel>
             <ChipRow chips={AGE_CHIPS} value={ageRange} onChange={setAgeRange} multi={false} />
 
-            <NavButtons step={6} onBack={goBack} onNext={goNext} isLast />
+            {saveError && <p style={{ color: '#c0392b', fontSize: '0.85rem', marginTop: '0.5rem', textAlign: 'center' }}>{saveError}</p>}
+            <NavButtons step={6} onBack={goBack} onNext={handleFinish} isLast saving={saving} />
           </>
         )}
 
         {/* ══ STEP 7 — Celebration ══ */}
-        {step === 7 && <CelebrationScreen />}
+        {step === 7 && (
+          <CelebrationScreen
+            fullName={fullName}
+            initials={initials}
+            avatarPreview={avatarPreview}
+            typeLine={typeLine}
+            tags={tags}
+            memberId={memberId}
+            purposesCount={purposes.length}
+            mattersCount={matters.length}
+            interestsTotal={Object.values(interests).flat().length}
+            skillsTotal={Object.values(skills).flat().length}
+          />
+        )}
 
       </div>
     </div>

@@ -53,7 +53,7 @@ export async function register(req, res) {
     const { rows } = await query(
       `INSERT INTO users (email, password_hash)
        VALUES ($1, $2)
-       RETURNING user_id, email, account_status, created_at`,
+       RETURNING user_id, email, account_status, created_at, member_id`,
       [email.toLowerCase(), passwordHash],
     );
     const user = rows[0];
@@ -68,6 +68,7 @@ export async function register(req, res) {
         email:         user.email,
         accountStatus: user.account_status,
         createdAt:     user.created_at,
+        memberId:      user.member_id,
       },
     });
   } catch (err) {
@@ -137,7 +138,7 @@ export async function getMe(req, res) {
 
     // User row
     const userResult = await query(
-      'SELECT user_id, email, account_status, created_at FROM users WHERE user_id = $1',
+      'SELECT user_id, email, account_status, created_at, member_id FROM users WHERE user_id = $1',
       [userId],
     );
     if (userResult.rows.length === 0) {
@@ -165,6 +166,7 @@ export async function getMe(req, res) {
         email:           user.email,
         accountStatus:   user.account_status,
         createdAt:       user.created_at,
+        memberId:        user.member_id,
         hasProfile:      profileResult.rows.length > 0,
         hasActiveHive:   hiveResult.rows.length > 0,
       },

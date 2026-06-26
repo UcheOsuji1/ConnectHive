@@ -6,16 +6,28 @@
 -- UUID generation (pgcrypto ships with Neon/standard Postgres)
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
+-- ─── Member ID sequence (CHV-YYYY-NNNNN) ─────────────────────────────────────
+CREATE SEQUENCE IF NOT EXISTS chv_member_seq;
+
 -- ─── Users ───────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
   user_id        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   email          TEXT        UNIQUE NOT NULL,
+  member_id      TEXT        UNIQUE NOT NULL DEFAULT
+                               'CHV-' || TO_CHAR(NOW(), 'YYYY') || '-' ||
+                               LPAD(NEXTVAL('chv_member_seq')::TEXT, 5, '0'),
   password_hash  TEXT        NOT NULL,
   account_status TEXT        NOT NULL DEFAULT 'active',
   last_login     TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent: add member_id to existing live tables and backfill each row
+-- (NEXTVAL is volatile, so Postgres evaluates it once per existing row)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS member_id TEXT DEFAULT
+  'CHV-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(nextval('chv_member_seq')::TEXT, 5, '0');
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_member_id ON users(member_id);
 
 -- ─── Profiles ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS profiles (
@@ -33,10 +45,16 @@ CREATE TABLE IF NOT EXISTS profiles (
   availability           JSONB       NOT NULL DEFAULT '[]',
   personality_type       TEXT,
   connection_preference  TEXT,
+  connection_purposes    JSONB       NOT NULL DEFAULT '[]',
+  social_preferences     JSONB       NOT NULL DEFAULT '{}',
   group_size_preference  TEXT,
   created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Idempotent column additions for databases created before these columns existed
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS connection_purposes JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS social_preferences  JSONB NOT NULL DEFAULT '{}';
 
 -- ─── Categories ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS categories (

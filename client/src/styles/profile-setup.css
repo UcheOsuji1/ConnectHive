@@ -860,11 +860,11 @@
 }
 .ps-celeb-member-lbl {
   font-family:'DM Sans',sans-serif; font-size:10px;
-  text-transform:uppercase; letter-spacing:0.1em; color:#4a4030;
+  text-transform:uppercase; letter-spacing:0.1em; color:#b0a07a;
 }
 .ps-celeb-member-val {
   font-family:'Cormorant Garamond',serif; font-size:13px;
-  color:#6a5828; letter-spacing:0.08em;
+  color:#e8c84a; letter-spacing:1px; font-weight:500;
 }
 
 /* Stats pills row */
