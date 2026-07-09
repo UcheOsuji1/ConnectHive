@@ -1,0 +1,349 @@
+/* ── Profile Page ────────────────────────────────────────────────────────────
+   Background: ivory #f5f0e8 · Cards: cream #fffdf7 / 1px #ebe1cd / r-16
+   Headings: Cormorant Garamond · Body: DM Sans
+   Gold: #c49a28 · Gradient: 120deg #e8c84a → #c49a28 → #8a6510
+   Reuses globals.css vars where they overlap (--charcoal, --gold, --beige, etc.)
+────────────────────────────────────────────────────────────────────────────── */
+
+/* ── Page shell ───────────────────────────────────────────────── */
+.prof-page {
+  min-height: 100vh;
+  background: #f5f0e8;
+  padding-top: calc(var(--nav-h) + 32px);
+  padding-bottom: 64px;
+}
+
+.prof-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Page title ───────────────────────────────────────────────── */
+.prof-title-block { margin-bottom: 4px; }
+
+.prof-eyebrow {
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c49a28;
+  margin-bottom: 4px;
+}
+
+.prof-h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--charcoal, #1e1b18);
+  line-height: 1.15;
+}
+
+/* ── Cards ────────────────────────────────────────────────────── */
+.prof-card {
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 16px;
+  padding: 24px;
+  overflow: hidden;
+}
+
+/* ── Hero card ────────────────────────────────────────────────── */
+.prof-hero-card { padding: 0; }
+
+.prof-cover {
+  height: 90px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 55%, #8a6510 100%);
+  border-radius: 15px 15px 0 0;
+}
+
+.prof-hero-body { padding: 0 24px 24px; }
+
+.prof-hero-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: -46px;
+  margin-bottom: 14px;
+}
+
+.prof-avatar-ring {
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px #fffdf7, 0 0 0 7px #ebe1cd;
+  display: inline-block;
+  line-height: 0;
+}
+
+.prof-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #1a1508;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: opacity 0.18s;
+  align-self: flex-end;
+}
+.prof-edit-btn:hover { opacity: 0.88; }
+
+.prof-hero-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--charcoal, #1e1b18);
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.prof-hero-location {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  color: var(--text-muted, #6b6057);
+  margin-bottom: 12px;
+}
+
+/* ── Badge row ────────────────────────────────────────────────── */
+.prof-badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.prof-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: #f0e8d4;
+  border: 1px solid #dfd0b0;
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted, #6b6057);
+}
+
+.prof-badge-gold {
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  border-color: transparent;
+  color: #1a1508;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ── Completeness ─────────────────────────────────────────────── */
+.prof-complete-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.prof-meter-wrap { display: flex; flex-direction: column; gap: 6px; }
+
+.prof-meter-track {
+  height: 5px;
+  background: #e8ddc7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.prof-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e8c84a 0%, #c49a28 100%);
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(.4, 0, .2, 1);
+}
+
+.prof-meter-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: var(--text-muted, #6b6057);
+}
+
+/* ── Section label ────────────────────────────────────────────── */
+.prof-section-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c49a28;
+  margin-bottom: 14px;
+}
+
+/* ── Bio ──────────────────────────────────────────────────────── */
+.prof-bio {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  color: var(--charcoal, #1e1b18);
+  line-height: 1.7;
+}
+
+/* ── Chips ────────────────────────────────────────────────────── */
+.prof-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ch-gchip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  background: rgba(196, 154, 40, 0.1);
+  border: 1px solid rgba(196, 154, 40, 0.3);
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #8a6510;
+}
+
+.ch-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  background: #f0ece4;
+  border: 1px solid #dfd0b0;
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--charcoal, #1e1b18);
+}
+
+/* ── 2-col grid (Skills + Goals) ─────────────────────────────── */
+.prof-2col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+/* ── Preferences ─────────────────────────────────────────────── */
+.prof-pref-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prof-pref-row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.prof-pref-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b6057);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.prof-pref-value {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: var(--charcoal, #1e1b18);
+}
+
+/* ── My Hives empty state ─────────────────────────────────────── */
+.prof-hives-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 28px 16px;
+  border: 1.5px dashed #d4c49a;
+  border-radius: 12px;
+}
+
+.prof-hives-icon { display: flex; justify-content: center; margin-bottom: 12px; }
+
+.prof-hives-msg {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--charcoal, #1e1b18);
+  margin-bottom: 6px;
+}
+
+.prof-hives-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b6057);
+  max-width: 300px;
+  margin-bottom: 16px;
+}
+
+.prof-hives-cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 20px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #1a1508;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: opacity 0.18s;
+}
+.prof-hives-cta:hover { opacity: 0.88; }
+
+/* ── State cards (loading / error / no-profile) ───────────────── */
+.prof-state-card {
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 16px;
+  padding: 48px 32px;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.95rem;
+  color: var(--text-muted, #6b6057);
+}
+
+.prof-state-error { color: var(--error, #ef4444); border-color: rgba(239, 68, 68, 0.2); }
+
+.prof-state-msg {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--charcoal, #1e1b18);
+  margin-bottom: 8px;
+}
+
+.prof-state-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: var(--text-muted, #6b6057);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .prof-inner { padding: 0 16px; gap: 16px; }
+  .prof-h1 { font-size: 1.8rem; }
+  .prof-hero-row { margin-top: -38px; }
+  .prof-pref-row { grid-template-columns: 1fr; gap: 2px; }
+  .prof-pref-label { font-size: 0.72rem; }
+}

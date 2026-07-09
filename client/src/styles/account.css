@@ -1,0 +1,222 @@
+/* ── Account & Settings Page ─────────────────────────────────────────────────
+   Ivory #f5f0e8 bg · Cards #fffdf7 / 1px #ebe1cd / r-16
+   Cormorant Garamond headings · DM Sans body · Gold #c49a28
+────────────────────────────────────────────────────────────────────────────── */
+
+.acct-page {
+  min-height: 100vh;
+  background: #f5f0e8;
+  padding-top: calc(var(--nav-h) + 32px);
+  padding-bottom: 64px;
+}
+
+.acct-inner {
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ── Page title ───────────────────────────────────────────────── */
+.acct-title-block { margin-bottom: 4px; }
+
+.acct-eyebrow {
+  display: block;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c49a28;
+  margin-bottom: 4px;
+}
+
+.acct-h1 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.2rem;
+  font-weight: 600;
+  color: var(--charcoal, #1e1b18);
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+
+.acct-subtitle {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  color: var(--text-muted, #6b6057);
+}
+
+/* ── Cards ────────────────────────────────────────────────────── */
+.acct-card {
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.acct-card-danger {
+  background: rgba(239, 68, 68, 0.03);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* ── Section label ────────────────────────────────────────────── */
+.acct-section-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #c49a28;
+  margin-bottom: 16px;
+}
+
+.acct-section-label-danger { color: #dc2626; }
+
+/* ── Label / value rows ───────────────────────────────────────── */
+.acct-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.acct-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0e8d4;
+}
+.acct-row:last-child { border-bottom: none; padding-bottom: 0; }
+.acct-row:first-child { padding-top: 0; }
+
+.acct-row-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-muted, #6b6057);
+  flex-shrink: 0;
+  min-width: 180px;
+}
+
+.acct-row-value {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: var(--charcoal, #1e1b18);
+  text-align: right;
+}
+
+.acct-row-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.acct-member-id {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #c49a28;
+  letter-spacing: 0.04em;
+}
+
+/* ── Action group (button + Soon together) ────────────────────── */
+.acct-action-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.acct-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.18s;
+  white-space: nowrap;
+}
+
+.acct-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.acct-btn-outline {
+  background: transparent;
+  border: 1px solid #d4c49a;
+  color: var(--text-muted, #6b6057);
+}
+.acct-btn-outline:not(:disabled):hover { background: #f0e8d4; }
+
+.acct-btn-gold {
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #1a1508;
+}
+.acct-btn-gold:hover { opacity: 0.88; }
+
+.acct-btn-danger {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #dc2626;
+}
+.acct-btn-danger:not(:disabled):hover { background: rgba(239, 68, 68, 0.15); }
+
+/* ── "Soon" pill ──────────────────────────────────────────────── */
+.acct-soon {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: #f0ece4;
+  border: 1px solid #dfd0b0;
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b6057);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* ── Session / Danger rows ────────────────────────────────────── */
+.acct-session-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.acct-session-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--charcoal, #1e1b18);
+  margin-bottom: 3px;
+}
+
+.acct-session-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b6057);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .acct-inner { padding: 0 16px; gap: 16px; }
+  .acct-h1 { font-size: 1.8rem; }
+  .acct-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .acct-row-label { min-width: unset; }
+  .acct-row-value { text-align: left; }
+  .acct-row-action { justify-content: flex-start; }
+  .acct-session-row { flex-direction: column; align-items: flex-start; }
+}

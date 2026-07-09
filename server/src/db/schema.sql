@@ -83,10 +83,13 @@ CREATE TABLE IF NOT EXISTS hives (
   pinned_goal            TEXT,
   ground_rules           TEXT,
   icebreaker             TEXT,
+  cadence                TEXT,
   hive_status            TEXT        NOT NULL DEFAULT 'active',
   created_at             TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at             TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS cadence TEXT;
 
 -- ─── Hive Members ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS hive_members (
@@ -97,6 +100,15 @@ CREATE TABLE IF NOT EXISTS hive_members (
                       CHECK (role IN ('owner', 'admin', 'member')),
   membership_status TEXT        NOT NULL DEFAULT 'active',
   joined_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (hive_id, user_id)
+);
+
+-- ─── Hive Followers (follow without joining) ─────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_followers (
+  follower_id  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  user_id      UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  followed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (hive_id, user_id)
 );
 
@@ -151,6 +163,41 @@ CREATE TABLE IF NOT EXISTS waitlist (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- ─── Hive Posts ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_posts (
+  post_id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id         UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  author_user_id  UUID        NOT NULL REFERENCES users(user_id),
+  post_type       TEXT        NOT NULL DEFAULT 'update'
+                    CHECK (post_type IN ('update', 'event')),
+  headline        TEXT        NOT NULL,
+  body            TEXT,
+  media_url       TEXT,
+  event_at        TIMESTAMPTZ,
+  event_location  TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── Post Reactions ───────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS post_reactions (
+  reaction_id  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id      UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  user_id      UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  reaction     TEXT        NOT NULL DEFAULT 'like',
+  reacted_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (post_id, user_id)
+);
+
+-- ─── Post Comments ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS post_comments (
+  comment_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id       UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  user_id       UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  body          TEXT        NOT NULL,
+  commented_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- ─── Indexes ──────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id          ON profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_hives_creator             ON hives(creator_user_id);
@@ -163,3 +210,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_hive_sent        ON messages(hive_id, se
 CREATE INDEX IF NOT EXISTS idx_compat_user               ON compatibility_scores(user_id);
 CREATE INDEX IF NOT EXISTS idx_compat_hive               ON compatibility_scores(hive_id);
 CREATE INDEX IF NOT EXISTS idx_waitlist_category         ON waitlist(category_id);
+CREATE INDEX IF NOT EXISTS idx_hive_followers_hive       ON hive_followers(hive_id);
+CREATE INDEX IF NOT EXISTS idx_hive_followers_user       ON hive_followers(user_id);
+CREATE INDEX IF NOT EXISTS idx_posts_hive                ON hive_posts(hive_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_author              ON hive_posts(author_user_id);
+CREATE INDEX IF NOT EXISTS idx_reactions_post            ON post_reactions(post_id);
+CREATE INDEX IF NOT EXISTS idx_comments_post             ON post_comments(post_id, commented_at);

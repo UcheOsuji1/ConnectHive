@@ -9,28 +9,35 @@ import {
   joinHive,
   getMyHive,
   getHiveMessages,
+  followHive,
+  unfollowHive,
+  getFollowedHives,
 } from '../controllers/hivesController.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getHivePosts } from '../controllers/postsController.js';
 
 const router = Router();
 
-// Matching & discovery (called by HiveDiscoveryPage)
-router.post('/match', matchHives);
+// ── Static paths (must come before /:id) ─────────────────────────────────────
+router.post('/match',      matchHives);
+router.post('/draft',      requireAuth, saveDraft);
+router.get('/mine',        requireAuth, getMyHive);
+router.get('/my',          requireAuth, getMyHive);   // alias kept for compat
+router.get('/following',   requireAuth, getFollowedHives);
 
-// Draft save (called by CreateHivePage "Save Draft")
-router.post('/draft', requireAuth, saveDraft);
-
-// My hive (must come before /:id to avoid conflict)
-router.get('/my', requireAuth, getMyHive);
-
-// Core CRUD
+// ── Collection ────────────────────────────────────────────────────────────────
 router.get('/',    getHives);
 router.post('/',   requireAuth, createHive);
-router.get('/:id', getHive);
-router.put('/:id', requireAuth, updateHive);
 
-// Member actions
+// ── Single hive by id ─────────────────────────────────────────────────────────
+router.get('/:id',          getHive);
+router.put('/:id',          requireAuth, updateHive);
+
+// ── Member & follower actions ──────────────────────────────────────────────────
 router.post('/:id/join',    requireAuth, joinHive);
 router.get('/:id/messages', requireAuth, getHiveMessages);
+router.post('/:id/follow',  requireAuth, followHive);
+router.delete('/:id/follow', requireAuth, unfollowHive);
+router.get('/:id/posts',    requireAuth, getHivePosts);
 
 export default router;

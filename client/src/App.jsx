@@ -12,6 +12,7 @@ import CreateHivePage from './pages/CreateHivePage';
 import MyHivePage from './pages/MyHivePage';
 import DirectHivePage from './pages/DirectHivePage';
 import ProfilePage from './pages/ProfilePage';
+import AccountSettingsPage from './pages/AccountSettingsPage';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/profile-setup" element={<ProfileSetupPage />} />
+      <Route path="/profile/edit" element={<ProfileSetupPage />} />
       <Route path="/home" element={<HomePage />} />
       <Route path="/find-your-hive" element={<FindYourHivePage />} />
       <Route path="/category-deep-dive" element={<CategoryDeepDivePage />} />
@@ -30,6 +32,7 @@ export default function App() {
       <Route path="/hive/:id" element={<DirectHivePage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/profile/:id" element={<ProfilePage />} />
+      <Route path="/settings" element={<AccountSettingsPage />} />
     </Routes>
   );
 }

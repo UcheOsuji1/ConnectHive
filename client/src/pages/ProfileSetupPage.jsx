@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import { getInitials } from '../lib/initials.js';
@@ -137,7 +137,10 @@ function StepHeader({ n, title, subtitle }) {
   );
 }
 
-function NavButtons({ step, onBack, onNext, isLast, saving }) {
+function NavButtons({ step, onBack, onNext, isLast, saving, editMode }) {
+  const nextLabel = saving ? 'Saving…'
+    : isLast ? (editMode ? 'Save Changes →' : 'Find My Hive →')
+    : 'Continue →';
   return (
     <div className="ps-nav">
       <button
@@ -150,7 +153,7 @@ function NavButtons({ step, onBack, onNext, isLast, saving }) {
       </button>
       <span className="ps-step-count">Step {step} of 6</span>
       <button type="button" className="ps-btn-next" onClick={onNext} disabled={saving}>
-        {saving ? 'Saving…' : isLast ? 'Find My Hive →' : 'Continue →'}
+        {nextLabel}
       </button>
     </div>
   );
@@ -503,8 +506,22 @@ function CelebrationScreen({ fullName, initials, avatarPreview, typeLine, tags, 
 // ── Main component ────────────────────────────────────────────
 export default function ProfileSetupPage() {
   const navigate = useNavigate();
-  const { refreshUser, user } = useAuth();
+  const location = useLocation();
+  const isEdit = location.pathname === '/profile/edit';
+  const { refreshUser, user, loading } = useAuth();
+
+  // Redirect users who already completed onboarding away from the blank form.
+  // Depends on [loading] only so it fires once when the session resolves and
+  // does NOT re-run when refreshUser() flips hasProfile at the end of step 6
+  // (which would otherwise kick the user off their own celebration screen).
+  // Edit mode is exempt: /profile/edit must be reachable even when hasProfile=true.
+  useEffect(() => {
+    if (loading) return;
+    if (user?.hasProfile && !isEdit) navigate('/find-your-hive', { replace: true });
+  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [step, setStep] = useState(1);
+  const [hydrating, setHydrating] = useState(false);
 
   // Step 1
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -538,40 +555,97 @@ export default function ProfileSetupPage() {
   const [saving,    setSaving]    = useState(false);
   const [saveError, setSaveError] = useState(null);
 
+  // In edit mode, fetch saved profile on mount and pre-fill all state.
+  useEffect(() => {
+    if (!isEdit) return;
+    setHydrating(true);
+    api.get('/api/users/profile')
+      .then(data => {
+        const p = data.profile;
+        if (!p) return;
+        const parts = (p.full_name || '').trim().split(/\s+/);
+        setForm1({
+          firstName: parts[0] || '',
+          lastName:  parts.slice(1).join(' ') || '',
+          age:       p.age != null ? String(p.age) : '',
+          location:  p.location || '',
+          school:    p.school_company || '',
+          bio:       p.bio || '',
+        });
+        setPurposes(Array.isArray(p.connection_purposes) ? p.connection_purposes : []);
+        const rawInterests = Array.isArray(p.interests) ? p.interests : [];
+        const iMap = {};
+        INTEREST_CATS.forEach(cat => {
+          const m = rawInterests.filter(c => cat.chips.includes(c));
+          if (m.length) iMap[cat.key] = m;
+        });
+        setInterests(iMap);
+        const rawSkills = Array.isArray(p.skills) ? p.skills : [];
+        const sMap = {};
+        SKILL_CATS.forEach(cat => {
+          const m = rawSkills.filter(c => cat.chips.includes(c));
+          if (m.length) sMap[cat.key] = m;
+        });
+        setSkills(sMap);
+        const sp = p.social_preferences && typeof p.social_preferences === 'object'
+          ? p.social_preferences : {};
+        setSocialEnergy(sp.socialEnergy ?? null);
+        setGroupRole(p.connection_preference ?? null);
+        setCommStyle(sp.commStyle ?? null);
+        setEnergyLevel(sp.energyLevel ?? 5);
+        setMatters(Array.isArray(p.goals) ? p.goals : []);
+        setAvailability(Array.isArray(p.availability) ? p.availability : []);
+        setGroupSize(p.group_size_preference ?? null);
+        setGenderPref(sp.genderPref ?? null);
+        setMeetPref(sp.meetPref ?? null);
+        setFrequency(sp.frequency ?? null);
+        setCommitment(sp.commitment ?? null);
+        setAgeRange(sp.ageRange ?? null);
+      })
+      .catch(() => {})
+      .finally(() => setHydrating(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const goNext = () => setStep(s => Math.min(s + 1, 6));
   const goBack = () => setStep(s => Math.max(1, s - 1));
+
+  const saveProfile = () => api.post('/api/users/profile/setup', {
+    full_name:             [form1.firstName, form1.lastName].filter(Boolean).join(' ') || null,
+    age:                   form1.age      || null,
+    location:              form1.location || null,
+    school_company:        form1.school   || null,
+    bio:                   form1.bio      || null,
+    profile_photo_url:     null,
+    interests:             Object.values(interests).flat(),
+    skills:                Object.values(skills).flat(),
+    goals:                 matters,
+    availability,
+    group_size_preference: groupSize,
+    connection_preference: groupRole,
+    connection_purposes:   purposes,
+    social_preferences: {
+      socialEnergy,
+      commStyle,
+      energyLevel,
+      genderPref,
+      meetPref,
+      frequency,
+      commitment,
+      ageRange,
+    },
+  });
 
   const handleFinish = async () => {
     setSaving(true);
     setSaveError(null);
     try {
-      await api.post('/api/users/profile/setup', {
-        full_name:             [form1.firstName, form1.lastName].filter(Boolean).join(' ') || null,
-        age:                   form1.age      || null,
-        location:              form1.location || null,
-        school_company:        form1.school   || null,
-        bio:                   form1.bio      || null,
-        profile_photo_url:     null,
-        interests:             Object.values(interests).flat(),
-        skills:                Object.values(skills).flat(),
-        goals:                 matters,
-        availability,
-        group_size_preference: groupSize,
-        connection_preference: groupRole,
-        connection_purposes:   purposes,
-        social_preferences: {
-          socialEnergy,
-          commStyle,
-          energyLevel,
-          genderPref,
-          meetPref,
-          frequency,
-          commitment,
-          ageRange,
-        },
-      });
+      await saveProfile();
       await refreshUser();
-      setStep(7);
+      if (isEdit) {
+        navigate('/profile');
+      } else {
+        setStep(7);
+      }
     } catch (err) {
       setSaveError(err.data?.error ?? 'Failed to save profile — please try again.');
     } finally {
@@ -615,6 +689,19 @@ export default function ProfileSetupPage() {
   const tags     = [...Object.values(interests).flat(), ...Object.values(skills).flat()].slice(0, 6);
   const memberId = user?.memberId || 'CHV-PENDING';
 
+  if (hydrating) {
+    return (
+      <div className="ps-page">
+        <div className="ps-topbar">
+          <Link to="/" className="ps-brand"><LogoSVG size={28} /><span className="ps-wordmark">CONNECTHIVE</span></Link>
+        </div>
+        <div className="ps-card" style={{ textAlign: 'center', padding: '60px 24px', color: '#8a7a5a' }}>
+          Loading your profile…
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ps-page">
 
@@ -624,7 +711,10 @@ export default function ProfileSetupPage() {
           <LogoSVG size={28} />
           <span className="ps-wordmark">CONNECTHIVE</span>
         </Link>
-        <Link to="/find-your-hive" className="ps-skip">Skip for now →</Link>
+        {isEdit
+          ? <Link to="/profile" className="ps-skip">Cancel</Link>
+          : <Link to="/find-your-hive" className="ps-skip">Skip for now →</Link>
+        }
       </div>
 
       {/* ── Progress bar (hidden on completion) ── */}
@@ -632,12 +722,22 @@ export default function ProfileSetupPage() {
         <div className="ps-progress">
           <div className="ps-step-labels">
             {STEP_LABELS.map((label, i) => (
-              <span
-                key={label}
-                className={`ps-step-label${step === i + 1 ? ' active' : step > i + 1 ? ' done' : ''}`}
-              >
-                {label}
-              </span>
+              isEdit
+                ? <button
+                    key={label}
+                    type="button"
+                    className={`ps-step-label${step === i + 1 ? ' active' : step > i + 1 ? ' done' : ''}`}
+                    onClick={() => setStep(i + 1)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}
+                  >
+                    {label}
+                  </button>
+                : <span
+                    key={label}
+                    className={`ps-step-label${step === i + 1 ? ' active' : step > i + 1 ? ' done' : ''}`}
+                  >
+                    {label}
+                  </span>
             ))}
           </div>
           <div className="ps-track-wrap">
@@ -868,12 +968,39 @@ export default function ProfileSetupPage() {
             <ChipRow chips={AGE_CHIPS} value={ageRange} onChange={setAgeRange} multi={false} />
 
             {saveError && <p style={{ color: '#c0392b', fontSize: '0.85rem', marginTop: '0.5rem', textAlign: 'center' }}>{saveError}</p>}
-            <NavButtons step={6} onBack={goBack} onNext={handleFinish} isLast saving={saving} />
+            <NavButtons step={6} onBack={goBack} onNext={handleFinish} isLast saving={saving} editMode={isEdit} />
           </>
         )}
 
-        {/* ══ STEP 7 — Celebration ══ */}
-        {step === 7 && (
+        {/* ══ Persistent Save Changes bar (edit mode, steps 1–5) ══ */}
+        {isEdit && step >= 1 && step <= 5 && (
+          <div style={{ borderTop: '1px solid #ebe1cd', paddingTop: '16px', marginTop: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            {saveError && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: 0, textAlign: 'center' }}>{saveError}</p>}
+            <button
+              type="button"
+              onClick={handleFinish}
+              disabled={saving}
+              style={{
+                background: 'linear-gradient(120deg,#e8c84a 0%,#c49a28 100%)',
+                color: '#1a1508',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '11px 32px',
+                fontFamily: "'DM Sans',sans-serif",
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.65 : 1,
+                letterSpacing: '0.01em',
+              }}
+            >
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        )}
+
+        {/* ══ STEP 7 — Celebration (onboarding only) ══ */}
+        {step === 7 && !isEdit && (
           <CelebrationScreen
             fullName={fullName}
             initials={initials}

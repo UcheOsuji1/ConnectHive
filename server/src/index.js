@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes  from './routes/auth.js';
 import hiveRoutes  from './routes/hives.js';
 import userRoutes  from './routes/users.js';
+import postRoutes  from './routes/posts.js';
 import { testConnection } from './db/index.js';
 
 const app        = express();
@@ -26,6 +27,7 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth',  authRoutes);
 app.use('/api/hives', hiveRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/posts', postRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

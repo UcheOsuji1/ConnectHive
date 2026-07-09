@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import Avatar from '../components/Avatar.jsx';
+import { getInitials } from '../lib/initials.js';
 
 const heroImages = [
   '/Hero Images/ConnectHive College Conert.png',
@@ -70,6 +73,13 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (loading) return;
+    if (user && !window.location.hash) navigate('/find-your-hive', { replace: true });
+  }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -136,8 +146,19 @@ export default function LandingPage() {
           </ul>
 
           <div className="nav-right">
-            <Link to="/login" className="nav-signin">Sign In</Link>
-            <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join ConnectHive</Link>
+            {loading ? null : user ? (
+              <>
+                <Link to="/find-your-hive" className="btn btn-primary btn-sm">Go to your Hive</Link>
+                <Link to="/profile" aria-label="Your profile">
+                  <Avatar name={user.fullName} email={user.email} src={user.profilePhotoUrl} size={34} />
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link to="/login" className="nav-signin">Sign In</Link>
+                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join ConnectHive</Link>
+              </>
+            )}
           </div>
 
           <button
@@ -162,8 +183,17 @@ export default function LandingPage() {
           <li><a href="#about" onClick={closeMenu}>About</a></li>
         </ul>
         <div className="mobile-ctas">
-          <Link to="/login" className="btn btn-ghost" onClick={closeMenu}>Sign In</Link>
-          <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>Join ConnectHive</Link>
+          {loading ? null : user ? (
+            <>
+              <Link to="/find-your-hive" className="btn btn-primary" onClick={closeMenu}>Go to your Hive</Link>
+              <Link to="/profile" className="btn btn-ghost" onClick={closeMenu}>Profile</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="btn btn-ghost" onClick={closeMenu}>Sign In</Link>
+              <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>Join ConnectHive</Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -201,7 +231,7 @@ export default function LandingPage() {
               group based on your goals, interests, and availability.
             </p>
             <div className="hero-ctas reveal reveal-delay-4">
-              <Link to="/signup" className="btn btn-primary btn-lg">
+              <Link to={user ? '/find-your-hive' : '/signup'} className="btn btn-primary btn-lg">
                 Start Finding Your Hive
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>

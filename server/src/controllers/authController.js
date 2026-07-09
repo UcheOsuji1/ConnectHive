@@ -146,11 +146,12 @@ export async function getMe(req, res) {
     }
     const user = userResult.rows[0];
 
-    // Has profile?
+    // Has profile? (also pull name + photo for Navbar/me response)
     const profileResult = await query(
-      'SELECT profile_id FROM profiles WHERE user_id = $1 LIMIT 1',
+      'SELECT profile_id, full_name, profile_photo_url FROM profiles WHERE user_id = $1 LIMIT 1',
       [userId],
     );
+    const profile = profileResult.rows[0];
 
     // Has active hive membership?
     const hiveResult = await query(
@@ -167,8 +168,10 @@ export async function getMe(req, res) {
         accountStatus:   user.account_status,
         createdAt:       user.created_at,
         memberId:        user.member_id,
-        hasProfile:      profileResult.rows.length > 0,
+        hasProfile:      Boolean(profile),
         hasActiveHive:   hiveResult.rows.length > 0,
+        fullName:        profile?.full_name         ?? null,
+        profilePhotoUrl: profile?.profile_photo_url ?? null,
       },
     });
   } catch (err) {

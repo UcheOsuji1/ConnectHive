@@ -1,0 +1,399 @@
+/* ── Home Page ───────────────────────────────────────────────────────────────── */
+
+.home-page {
+  min-height: 100vh;
+  background: #f5f0e8;
+  padding-top: calc(var(--nav-h) + 28px);
+  padding-bottom: 64px;
+}
+
+.home-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ── Action bar ──────────────────────────────────────────────────────────────── */
+.home-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.home-search-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.home-search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #a09080;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+}
+
+.home-search-input {
+  width: 100%;
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 999px;
+  padding: 10px 16px 10px 42px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  color: #1e1b18;
+  outline: none;
+  cursor: default;
+}
+.home-search-input::placeholder { color: #a09080; }
+
+.home-bell-btn {
+  width: 40px;
+  height: 40px;
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.home-bell-badge {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  background: #c49a28;
+  border-radius: 50%;
+  border: 1.5px solid #fffdf7;
+}
+
+.home-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 18px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #1a1508;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.home-create-btn:hover { opacity: 0.88; }
+
+/* ── Welcome header ──────────────────────────────────────────────────────────── */
+.home-welcome {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.home-welcome-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: #1e1b18;
+  line-height: 1.2;
+}
+
+.home-welcome-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.83rem;
+  color: #6b6057;
+  margin-top: 2px;
+}
+
+/* ── Profile nudge card ──────────────────────────────────────────────────────── */
+.home-nudge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(120deg, #fbf3df, #f6ead0);
+  border: 1px solid #e6d3a3;
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+}
+
+.home-nudge-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-nudge-pct {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #c49a28;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.home-nudge-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: #5a4a2a;
+  line-height: 1.45;
+}
+
+.home-nudge-link {
+  font-weight: 700;
+  color: #c49a28;
+  text-decoration: underline;
+  margin-left: 6px;
+}
+.home-nudge-link:hover { opacity: 0.8; }
+
+.home-nudge-dismiss {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  color: #b0903a;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.home-nudge-dismiss:hover { opacity: 1; }
+
+/* ── Feed tabs ───────────────────────────────────────────────────────────────── */
+.home-tabs {
+  display: flex;
+  border-bottom: 1px solid #ebe1cd;
+  margin-bottom: 20px;
+}
+
+.home-tab {
+  padding: 10px 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.87rem;
+  font-weight: 500;
+  color: #6b6057;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s;
+  margin-bottom: -1px;
+}
+
+.home-tab.active {
+  color: #c49a28;
+  border-bottom-color: #c49a28;
+  font-weight: 700;
+}
+
+.home-tab:hover:not(.active) { color: #1e1b18; }
+
+/* ── Two-column body ──────────────────────────────────────────────────────────── */
+.home-body {
+  display: grid;
+  grid-template-columns: 1fr 228px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Dark premium card base ───────────────────────────────────────────────────── */
+.home-dark-card {
+  background: #17120a;
+  border: 1px solid rgba(51, 41, 21, 0.5);
+  border-radius: 16px;
+  box-shadow: 0 5px 18px #1a15081f;
+  overflow: hidden;
+}
+
+/* ── Feed empty state ─────────────────────────────────────────────────────────── */
+.home-feed-empty {
+  padding: 52px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.home-feed-empty-icon {
+  margin-bottom: 6px;
+  opacity: 0.9;
+}
+
+.home-feed-empty-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f3ecdd;
+}
+
+.home-feed-empty-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: #8a8070;
+  max-width: 300px;
+  line-height: 1.55;
+}
+
+.home-feed-discover-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 22px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #1a1508;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: 999px;
+  text-decoration: none;
+  margin-top: 6px;
+  transition: opacity 0.15s;
+}
+.home-feed-discover-btn:hover { opacity: 0.88; }
+
+/* ── Right sidebar ────────────────────────────────────────────────────────────── */
+.home-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-sidebar-card {
+  padding: 18px;
+}
+
+.home-sidebar-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: #c49a28;
+  margin-bottom: 14px;
+}
+
+/* ── Your Hives list ──────────────────────────────────────────────────────────── */
+.home-hive-list {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.home-hive-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.home-hive-row:hover { opacity: 0.78; }
+
+.home-hive-info { flex: 1; min-width: 0; }
+
+.home-hive-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.94rem;
+  font-weight: 600;
+  color: #f3ecdd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.home-hive-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  color: #8a8070;
+  margin-top: 2px;
+  text-transform: capitalize;
+}
+
+/* ── Sidebar empty / util ─────────────────────────────────────────────────────── */
+.home-sidebar-empty {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: #8a8070;
+  text-align: center;
+  padding: 4px 0 2px;
+  line-height: 1.5;
+}
+
+.home-sidebar-empty-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c49a28;
+  text-decoration: none;
+}
+.home-sidebar-empty-link:hover { text-decoration: underline; }
+
+/* ── Suggested CTA ────────────────────────────────────────────────────────────── */
+.home-suggest-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  color: #8a8070;
+  margin-bottom: 10px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.home-suggest-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border: 1px solid #c49a28;
+  border-radius: 999px;
+  color: #c49a28;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.home-suggest-link:hover { background: rgba(196, 154, 40, 0.1); }
+
+/* ── Skeleton shimmer ─────────────────────────────────────────────────────────── */
+.home-skeleton-line {
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #251d10 25%, #352810 50%, #251d10 75%);
+  background-size: 200% 100%;
+  animation: home-shimmer 1.4s infinite;
+  margin-bottom: 9px;
+}
+
+@keyframes home-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .home-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .home-inner { padding: 0 14px; }
+  .home-tab { padding: 10px 12px; font-size: 0.8rem; }
+  .home-create-btn .home-create-label { display: none; }
+}

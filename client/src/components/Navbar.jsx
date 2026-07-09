@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-
-const PUBLIC_PATHS = ['/', '/login', '/signup'];
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
+import Avatar from './Avatar.jsx';
 
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
@@ -11,9 +11,13 @@ const AUTH_NAV = [
 ];
 
 export default function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled,     setScrolled]     = useState(false);
+  const [menuOpen,     setMenuOpen]     = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, loading, logout } = useAuth();
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -21,17 +25,35 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  useEffect(() => setMenuOpen(false), [location]);
+  useEffect(() => { setMenuOpen(false); setUserMenuOpen(false); }, [location]);
 
-  const isAuth = !PUBLIC_PATHS.includes(location.pathname);
+  useEffect(() => {
+    function onDoc(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setUserMenuOpen(false);
+    }
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, []);
+
   const isActive = (to) =>
     location.pathname === to || location.pathname.startsWith(to + '/');
+
+  const firstName = user?.fullName?.trim().split(/\s+/)[0]
+    || user?.email?.split('@')[0]
+    || 'Member';
+
+  async function handleLogout() {
+    await logout();
+    setUserMenuOpen(false);
+    navigate('/');
+  }
 
   return (
     <>
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="navbar-inner">
-          <Link to="/" className="nav-logo" aria-label="ConnectHive home">
+
+          <Link to={user ? '/home' : '/'} className="nav-logo" aria-label="ConnectHive home">
             <svg className="nav-logo-icon" viewBox="8 2 68 66" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <defs>
                 <linearGradient id="g-nav-shared" x1="8" y1="2" x2="76" y2="68" gradientUnits="userSpaceOnUse">
@@ -47,19 +69,47 @@ export default function Navbar() {
             <span className="nav-logo-text">ConnectHive</span>
           </Link>
 
-          {isAuth ? (
-            <ul className="nav-links" role="list">
-              {AUTH_NAV.map(({ to, label }) => (
-                <li key={to}>
-                  <Link
-                    to={to}
-                    style={isActive(to) ? { color: '#c49a28' } : undefined}
+          {loading ? null : user ? (
+            <>
+              <ul className="nav-links" role="list">
+                {AUTH_NAV.map(({ to, label }) => (
+                  <li key={to}>
+                    <Link to={to} style={isActive(to) ? { color: '#c49a28' } : undefined}>
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <div className="nav-right">
+                <div className="nav-user" ref={menuRef}>
+                  <button
+                    className="nav-user-btn"
+                    aria-haspopup="menu"
+                    aria-expanded={userMenuOpen}
+                    onClick={() => setUserMenuOpen(o => !o)}
                   >
-                    {label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+                    <Avatar name={user.fullName} email={user.email} src={user.profilePhotoUrl} size={34} />
+                    <span className="nav-user-name">{firstName}</span>
+                  </button>
+                  {userMenuOpen && (
+                    <div className="nav-user-menu" role="menu">
+                      <div className="nav-user-menu-header">
+                        <Avatar name={user.fullName} email={user.email} src={user.profilePhotoUrl} size={42} />
+                        <div className="nav-user-menu-info">
+                          <span className="nav-user-menu-name">{user.fullName || firstName}</span>
+                          <span className="nav-user-menu-email">{user.email}</span>
+                          {user.memberId && <span className="nav-user-menu-id">{user.memberId}</span>}
+                        </div>
+                      </div>
+                      <div className="nav-user-menu-divider" />
+                      <Link to="/profile"  className="nav-user-menu-item" role="menuitem">Profile</Link>
+                      <Link to="/settings" className="nav-user-menu-item" role="menuitem">Settings</Link>
+                      <button className="nav-user-menu-item nav-user-menu-logout" role="menuitem" onClick={handleLogout}>Log out</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
           ) : (
             <>
               <ul className="nav-links" role="list">
@@ -86,19 +136,34 @@ export default function Navbar() {
       </nav>
 
       <div className={`mobile-menu${menuOpen ? ' open' : ''}`} role="dialog" aria-label="Mobile navigation">
-        {isAuth ? (
-          <ul>
-            {AUTH_NAV.map(({ to, label }) => (
-              <li key={to}>
-                <Link
-                  to={to}
-                  style={isActive(to) ? { color: '#c49a28' } : undefined}
-                >
-                  {label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        {loading ? null : user ? (
+          <>
+            <div className="mobile-user-header">
+              <Avatar name={user.fullName} email={user.email} src={user.profilePhotoUrl} size={40} />
+              <div className="mobile-user-info">
+                <span className="mobile-user-name">{user.fullName || firstName}</span>
+                {user.memberId && <span className="mobile-user-id">{user.memberId}</span>}
+              </div>
+            </div>
+            <ul>
+              {AUTH_NAV.map(({ to, label }) => (
+                <li key={to}>
+                  <Link to={to} style={isActive(to) ? { color: '#c49a28' } : undefined}>
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="mobile-ctas">
+              <button
+                className="btn btn-ghost"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={handleLogout}
+              >
+                Log out
+              </button>
+            </div>
+          </>
         ) : (
           <>
             <ul>

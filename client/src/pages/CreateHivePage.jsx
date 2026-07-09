@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { api } from '../lib/api';
 import '../styles/create-hive.css';
 
 // ── Tunable defaults ──────────────────────────────────────────────────────────
@@ -79,25 +80,15 @@ const BANNER_AVATARS = [
   { init: 'A', bg: '#b8902a' },
 ];
 
-// ── API calls (swap body only when endpoints are ready) ───────────────────────
+// ── API calls ────────────────────────────────────────────────────────────────
 
 async function createHive(payload) {
-  const res = await fetch('/api/hives', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`Server responded ${res.status}`);
-  return res.json(); // expected shape: { id: string, ... }
+  return api.post('/api/hives', payload);
 }
 
 async function saveDraft(payload) {
   try {
-    await fetch('/api/hives/draft', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(payload),
-    });
+    await api.post('/api/hives/draft', payload);
   } catch {
     // Endpoint not built yet — no-op
   }
