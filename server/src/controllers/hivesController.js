@@ -39,10 +39,82 @@ export const getHives = async (req, res) => {
 
 export const getHive = async (req, res) => {
   try {
-    // TODO: fetch hive by id with members, messages preview, join request status
-    res.json({ hive: null, message: 'getHive — not yet implemented' });
+    const { rows: [row] } = await query(
+      `SELECT
+         h.*,
+         c.category_name,
+         COUNT(DISTINCT hm_all.user_id) FILTER (WHERE hm_all.membership_status = 'active') AS member_count,
+         COUNT(DISTINCT hf.user_id)                                                         AS follower_count,
+         my_mem.role                                                                         AS my_role,
+         EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)   AS is_following
+       FROM hives h
+       LEFT JOIN categories    c       ON c.category_id  = h.category_id
+       LEFT JOIN hive_members  hm_all  ON hm_all.hive_id = h.hive_id
+       LEFT JOIN hive_followers hf     ON hf.hive_id     = h.hive_id
+       LEFT JOIN hive_members  my_mem  ON my_mem.hive_id = h.hive_id
+                                      AND my_mem.user_id = $1
+                                      AND my_mem.membership_status = 'active'
+       WHERE h.hive_id = $2
+       GROUP BY h.hive_id, c.category_name, my_mem.role`,
+      [req.userId, req.params.id],
+    );
+    if (!row) return res.status(404).json({ error: 'Hive not found.' });
+
+    if (!row.discoverable && row.my_role === null) {
+      return res.json({
+        hive: {
+          hive_id:       row.hive_id,
+          hive_name:     row.hive_name,
+          category_name: row.category_name,
+          member_count:  row.member_count,
+          discoverable:  false,
+          my_role:       null,
+          is_following:  row.is_following,
+          private:       true,
+        },
+      });
+    }
+
+    res.json({ hive: row });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[hives/getHive]', err);
+    res.status(500).json({ error: 'Failed to fetch Hive.' });
+  }
+};
+
+export const getHiveMembers = async (req, res) => {
+  try {
+    const { rows: [hive] } = await query(
+      `SELECT h.discoverable, my_mem.role AS my_role
+       FROM hives h
+       LEFT JOIN hive_members my_mem ON my_mem.hive_id = h.hive_id
+                                    AND my_mem.user_id = $1
+                                    AND my_mem.membership_status = 'active'
+       WHERE h.hive_id = $2`,
+      [req.userId, req.params.id],
+    );
+    if (!hive) return res.status(404).json({ error: 'Hive not found.' });
+    if (!hive.discoverable && !hive.my_role) {
+      return res.status(403).json({ error: 'This Hive is private.' });
+    }
+
+    const { rows } = await query(
+      `SELECT hm.role, hm.joined_at,
+              u.user_id, u.member_id,
+              p.full_name, p.profile_photo_url, p.bio, p.location
+       FROM hive_members hm
+       JOIN  users    u ON u.user_id  = hm.user_id
+       LEFT JOIN profiles p ON p.user_id = hm.user_id
+       WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
+       ORDER BY
+         CASE hm.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
+         hm.joined_at ASC NULLS LAST`,
+      [req.params.id],
+    );
+    res.json({ members: rows });
+  } catch (err) {
+    console.error('[hives/getHiveMembers]', err);
+    res.status(500).json({ error: 'Failed to fetch members.' });
   }
 };
 

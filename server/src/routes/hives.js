@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getHives,
   getHive,
+  getHiveMembers,
   createHive,
   saveDraft,
   matchHives,
@@ -30,14 +31,15 @@ router.get('/',    getHives);
 router.post('/',   requireAuth, createHive);
 
 // ── Single hive by id ─────────────────────────────────────────────────────────
-router.get('/:id',          getHive);
-router.put('/:id',          requireAuth, updateHive);
+router.get('/:id',             requireAuth, getHive);
+router.put('/:id',             requireAuth, updateHive);
 
 // ── Member & follower actions ──────────────────────────────────────────────────
-router.post('/:id/join',    requireAuth, joinHive);
-router.get('/:id/messages', requireAuth, getHiveMessages);
-router.post('/:id/follow',  requireAuth, followHive);
-router.delete('/:id/follow', requireAuth, unfollowHive);
-router.get('/:id/posts',    requireAuth, getHivePosts);
+router.get('/:id/members',     requireAuth, getHiveMembers);
+router.post('/:id/join',       requireAuth, joinHive);
+router.get('/:id/messages',    requireAuth, getHiveMessages);
+router.post('/:id/follow',     requireAuth, followHive);
+router.delete('/:id/follow',   requireAuth, unfollowHive);
+router.get('/:id/posts',       requireAuth, getHivePosts);
 
 export default router;

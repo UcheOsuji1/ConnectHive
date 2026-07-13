@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { api } from '../lib/api';
 import '../styles/post.css';
 
-export default function CreatePostModal({ hives: allHives, onClose, onCreated }) {
+export default function CreatePostModal({ hives: allHives, defaultHiveId, onClose, onCreated }) {
   const hives = allHives.filter(h => h.role === 'owner' || h.role === 'admin');
-  const [hiveId,        setHiveId]        = useState(hives[0]?.hive_id ?? '');
+  const [hiveId, setHiveId] = useState(defaultHiveId || hives[0]?.hive_id || '');
   const [postType,      setPostType]      = useState('update');
   const [headline,      setHeadline]      = useState('');
   const [body,          setBody]          = useState('');
