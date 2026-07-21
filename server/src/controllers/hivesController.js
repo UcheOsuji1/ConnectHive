@@ -1,6 +1,13 @@
 import { query } from '../db/index.js';
+import {
+  scorePurpose,
+  scorePair,
+  aggregatePeopleFit,
+  blendScores,
+  buildReasons,
+} from '../lib/compatibility.js';
 
-const CATEGORY_NAME_MAP = {
+export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
   professional: 'Professional Networking',
   travel:       'Travel Buddies',
@@ -11,11 +18,234 @@ const CATEGORY_NAME_MAP = {
 
 export const matchHives = async (req, res) => {
   try {
-    // TODO: run compatibility matching for req.body.category + prefillData,
-    //       return { hives: [...], waitingCount: N }
-    res.json({ hives: [], waitingCount: 0, message: 'matchHives — not yet implemented' });
+    const { category, textValues } = req.body;
+
+    // 1. Load caller profile
+    const { rows: [profile] } = await query(
+      'SELECT * FROM profiles WHERE user_id = $1',
+      [req.userId],
+    );
+    if (!profile) return res.json({ hives: [], waitingCount: 0, needsProfile: true });
+
+    // Enrich profile location with search-form city if profile has none
+    const locationFromSearch =
+      textValues?.['social-city'] ||
+      textValues?.['event-city']  ||
+      textValues?.['professional-city'] ||
+      null;
+    const enrichedProfile = {
+      ...profile,
+      location: profile.location || locationFromSearch,
+    };
+
+    // 2. Resolve category → category_id
+    let categoryId = null;
+    if (category) {
+      const catName = CATEGORY_NAME_MAP[category] ?? null;
+      if (catName) {
+        const { rows: [cat] } = await query(
+          'SELECT category_id FROM categories WHERE category_name = $1',
+          [catName],
+        );
+        categoryId = cat?.category_id ?? null;
+      }
+    }
+
+    // 3. Query candidate hives (discoverable, active, not full, caller not already a member)
+    const candidateParams = [req.userId];
+    let categoryFilter = '';
+    if (categoryId) {
+      candidateParams.push(categoryId);
+      categoryFilter = `AND h.category_id = $${candidateParams.length}`;
+    }
+
+    const { rows: candidates } = await query(
+      `SELECT h.*,
+              c.category_name,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count,
+              EXISTS(
+                SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1
+              ) AS is_following,
+              EXISTS(
+                SELECT 1 FROM join_requests WHERE hive_id = h.hive_id AND user_id = $1 AND status = 'pending'
+              ) AS request_pending
+       FROM hives h
+       LEFT JOIN categories   c  ON c.category_id = h.category_id
+       LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
+       WHERE h.discoverable = TRUE
+         AND h.hive_status  = 'active'
+         AND NOT EXISTS(
+           SELECT 1 FROM hive_members
+           WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active'
+         )
+         ${categoryFilter}
+       GROUP BY h.hive_id, c.category_id, c.category_name
+       HAVING (h.max_members IS NULL OR
+               COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') < h.max_members)`,
+      candidateParams,
+    );
+
+    // 4. Score each candidate
+    const scored = [];
+    for (const hive of candidates) {
+      const { factors: purposeFactors, total: purposeTotal } =
+        scorePurpose(enrichedProfile, hive, category || null);
+
+      // Load active members' profiles (excluding caller)
+      const { rows: memberProfiles } = await query(
+        `SELECT p.*
+         FROM hive_members hm
+         JOIN profiles p ON p.user_id = hm.user_id
+         WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2`,
+        [hive.hive_id, req.userId],
+      );
+
+      // Pairwise scores with 7-day cache
+      const pairResults = [];
+      for (const mp of memberProfiles) {
+        const [ua, ub] = [req.userId, mp.user_id].sort();
+
+        const { rows: [cached] } = await query(
+          `SELECT total_score FROM user_compatibility
+           WHERE user_a = $1 AND user_b = $2
+             AND calculated_at > NOW() - INTERVAL '7 days'`,
+          [ua, ub],
+        );
+
+        let pairTotal;
+        if (cached) {
+          pairTotal = Number(cached.total_score);
+        } else {
+          const { factors, total } = scorePair(enrichedProfile, mp);
+          pairTotal = total;
+          await query(
+            `INSERT INTO user_compatibility
+               (user_a, user_b, interests_score, goals_score, personality_score,
+                availability_score, age_score, total_score, calculated_at)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW())
+             ON CONFLICT (user_a, user_b) DO UPDATE SET
+               interests_score    = EXCLUDED.interests_score,
+               goals_score        = EXCLUDED.goals_score,
+               personality_score  = EXCLUDED.personality_score,
+               availability_score = EXCLUDED.availability_score,
+               age_score          = EXCLUDED.age_score,
+               total_score        = EXCLUDED.total_score,
+               calculated_at      = NOW()`,
+            [ua, ub,
+             factors.interests, factors.goals, factors.personality,
+             factors.availability, factors.age, pairTotal],
+          );
+        }
+
+        pairResults.push({
+          user_id:           mp.user_id,
+          full_name:         mp.full_name,
+          profile_photo_url: mp.profile_photo_url,
+          pair_score:        pairTotal,
+        });
+      }
+
+      const peopleFit  = aggregatePeopleFit(pairResults.map(p => p.pair_score));
+      const matchScore = blendScores(purposeTotal, peopleFit);
+
+      // Persist blended score to compatibility_scores
+      await query(
+        `INSERT INTO compatibility_scores
+           (user_id, hive_id, category_score, interest_score, skill_score, goal_score,
+            location_score, availability_score, personality_score, total_score, calculated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW())
+         ON CONFLICT (user_id, hive_id) DO UPDATE SET
+           category_score     = EXCLUDED.category_score,
+           interest_score     = EXCLUDED.interest_score,
+           skill_score        = EXCLUDED.skill_score,
+           goal_score         = EXCLUDED.goal_score,
+           location_score     = EXCLUDED.location_score,
+           availability_score = EXCLUDED.availability_score,
+           personality_score  = EXCLUDED.personality_score,
+           total_score        = EXCLUDED.total_score,
+           calculated_at      = NOW()`,
+        [
+          req.userId, hive.hive_id,
+          purposeFactors.category,    purposeFactors.interests,
+          purposeFactors.skills,      purposeFactors.goals,
+          purposeFactors.location,    purposeFactors.availability,
+          purposeFactors.personality, matchScore,
+        ],
+      );
+
+      const member_matches = pairResults.sort((a, b) => b.pair_score - a.pair_score);
+      const reasons        = buildReasons(purposeFactors, peopleFit, member_matches);
+
+      scored.push({
+        ...hive,
+        match_score:       matchScore,
+        purpose_score:     purposeTotal,
+        people_score:      peopleFit,
+        member_matches,
+        reasons,
+        _category_score:   purposeFactors.category,
+      });
+    }
+
+    // 5. Sort DESC, drop zero-category if category is selected, cap 20
+    let results = scored.sort((a, b) => b.match_score - a.match_score);
+    if (category) results = results.filter(h => h._category_score > 0);
+    results = results.map(({ _category_score, ...h }) => h).slice(0, 20);
+
+    // 6. waitingCount for the resolved category
+    let waitingCount = 0;
+    if (categoryId) {
+      const { rows: [wRow] } = await query(
+        `SELECT COUNT(*) FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
+        [categoryId],
+      );
+      waitingCount = Number(wRow.count);
+    }
+
+    res.json({ hives: results, waitingCount, needsProfile: false });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[hives/matchHives]', err);
+    res.status(500).json({ error: 'Failed to run matching.' });
+  }
+};
+
+export const joinWaitlist = async (req, res) => {
+  try {
+    const { category, location } = req.body;
+    if (!category) return res.status(400).json({ error: 'Category is required.' });
+
+    const catName = CATEGORY_NAME_MAP[category] ?? null;
+    if (!catName) return res.status(400).json({ error: 'Unknown category.' });
+
+    const { rows: [cat] } = await query(
+      'SELECT category_id FROM categories WHERE category_name = $1',
+      [catName],
+    );
+    const categoryId = cat?.category_id ?? null;
+
+    // Dedupe: only insert if not already waiting for this category
+    const { rows: [existing] } = await query(
+      `SELECT waitlist_id FROM waitlist
+       WHERE user_id = $1 AND category_id = $2 AND status = 'waiting'`,
+      [req.userId, categoryId],
+    );
+    if (!existing) {
+      await query(
+        `INSERT INTO waitlist (user_id, category_id, location, status)
+         VALUES ($1, $2, $3, 'waiting')`,
+        [req.userId, categoryId, location ?? null],
+      );
+    }
+
+    const { rows: [{ count }] } = await query(
+      `SELECT COUNT(*) FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
+      [categoryId],
+    );
+
+    res.json({ joined: true, waitingCount: Number(count) });
+  } catch (err) {
+    console.error('[hives/joinWaitlist]', err);
+    res.status(500).json({ error: 'Failed to join waitlist.' });
   }
 };
 
@@ -101,7 +331,11 @@ export const getHiveMembers = async (req, res) => {
     const { rows } = await query(
       `SELECT hm.role, hm.joined_at,
               u.user_id, u.member_id,
-              p.full_name, p.profile_photo_url, p.bio, p.location
+              p.full_name, p.profile_photo_url, p.bio, p.location,
+              CASE WHEN p.bio IS NOT NULL
+                    AND p.profile_photo_url IS NOT NULL
+                    AND p.interests IS NOT NULL
+                   THEN true ELSE false END AS profile_complete
        FROM hive_members hm
        JOIN  users    u ON u.user_id  = hm.user_id
        LEFT JOIN profiles p ON p.user_id = hm.user_id
@@ -264,19 +498,457 @@ export const createHive = async (req, res) => {
 
 export const updateHive = async (req, res) => {
   try {
-    // TODO: verify requester is admin, update hive record
-    res.json({ message: 'updateHive — not yet implemented' });
+    const hiveId = req.params.id;
+
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    const WHITELIST = [
+      'description', 'pinned_goal', 'ground_rules', 'icebreaker',
+      'cadence', 'location', 'location_type', 'max_members',
+      'join_policy', 'discoverable',
+    ];
+    const updates = {};
+    for (const key of WHITELIST) {
+      if (Object.prototype.hasOwnProperty.call(req.body, key)) {
+        updates[key] = req.body[key];
+      }
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update.' });
+    }
+
+    const keys = Object.keys(updates);
+    const vals = Object.values(updates);
+    const setClauses = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
+
+    await query(
+      `UPDATE hives SET ${setClauses}, updated_at = NOW() WHERE hive_id = $${keys.length + 1}`,
+      [...vals, hiveId],
+    );
+
+    const { rows: [updated] } = await query(
+      `SELECT h.*, c.category_name
+       FROM hives h
+       LEFT JOIN categories c ON c.category_id = h.category_id
+       WHERE h.hive_id = $1`,
+      [hiveId],
+    );
+
+    res.json({ hive: updated });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[hives/updateHive]', err);
+    res.status(500).json({ error: 'Failed to update Hive.' });
   }
 };
 
 export const joinHive = async (req, res) => {
   try {
-    // TODO: create join request or add directly if open hive
     res.json({ message: 'joinHive — not yet implemented' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// ── requestToJoin ─────────────────────────────────────────────────────────────
+export const requestToJoin = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const { message } = req.body;
+
+    // Load hive + member count in one query
+    const { rows: [hive] } = await query(
+      `SELECT h.*,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+       FROM hives h
+       LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
+       WHERE h.hive_id = $1
+       GROUP BY h.hive_id`,
+      [hiveId],
+    );
+    if (!hive) return res.status(404).json({ error: 'Hive not found.' });
+    if (hive.hive_status !== 'active')
+      return res.status(400).json({ error: 'This Hive is not currently active.' });
+
+    // Already a member?
+    const { rows: [existingMember] } = await query(
+      `SELECT 1 FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (existingMember) return res.status(400).json({ error: 'You are already a member of this Hive.' });
+
+    // Full?
+    if (hive.max_members && Number(hive.member_count) >= Number(hive.max_members)) {
+      return res.status(400).json({ error: 'This Hive is full.' });
+    }
+
+    // Open policy → join directly, no request needed
+    if (hive.join_policy === 'open') {
+      await query(
+        `INSERT INTO hive_members (hive_id, user_id, role, membership_status)
+         VALUES ($1, $2, 'member', 'active')
+         ON CONFLICT (hive_id, user_id) DO UPDATE SET membership_status = 'active'`,
+        [hiveId, req.userId],
+      );
+      return res.json({ joined: true });
+    }
+
+    // Check for an existing request row
+    const { rows: [existingReq] } = await query(
+      `SELECT request_id, status FROM join_requests WHERE hive_id = $1 AND user_id = $2`,
+      [hiveId, req.userId],
+    );
+
+    if (existingReq) {
+      if (existingReq.status === 'pending') {
+        return res.status(400).json({ error: 'Request already pending.' });
+      }
+      // Rejected or previously accepted → reset to pending (re-request)
+      await query(
+        `UPDATE join_requests
+         SET status = 'pending', request_message = $3,
+             requested_at = NOW(), reviewed_at = NULL, reviewed_by = NULL
+         WHERE hive_id = $1 AND user_id = $2`,
+        [hiveId, req.userId, message?.trim() || null],
+      );
+    } else {
+      await query(
+        `INSERT INTO join_requests (hive_id, user_id, request_message)
+         VALUES ($1, $2, $3)`,
+        [hiveId, req.userId, message?.trim() || null],
+      );
+    }
+
+    res.json({ requested: true });
+  } catch (err) {
+    console.error('[hives/requestToJoin]', err);
+    res.status(500).json({ error: 'Failed to submit request.' });
+  }
+};
+
+// ── getHiveRequests ───────────────────────────────────────────────────────────
+export const getHiveRequests = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    const { rows } = await query(
+      `SELECT jr.request_id, jr.user_id, jr.request_message, jr.status, jr.requested_at,
+              p.full_name, p.profile_photo_url, p.age, p.location, p.interests, p.skills,
+              u.member_id,
+              uc.total_score AS pair_score,
+              cs.total_score AS hive_fit_score
+       FROM join_requests jr
+       LEFT JOIN profiles p  ON p.user_id  = jr.user_id
+       LEFT JOIN users u     ON u.user_id  = jr.user_id
+       LEFT JOIN user_compatibility uc ON (
+         (uc.user_a = $2 AND uc.user_b = jr.user_id) OR
+         (uc.user_b = $2 AND uc.user_a = jr.user_id)
+       )
+       LEFT JOIN compatibility_scores cs ON (cs.user_id = jr.user_id AND cs.hive_id = $1)
+       WHERE jr.hive_id = $1 AND jr.status = 'pending'
+       ORDER BY cs.total_score DESC NULLS LAST, jr.requested_at ASC`,
+      [hiveId, req.userId],
+    );
+
+    const { rows: [cap] } = await query(
+      `SELECT h.max_members,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+       FROM hives h
+       LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
+       WHERE h.hive_id = $1
+       GROUP BY h.hive_id`,
+      [hiveId],
+    );
+
+    res.json({
+      requests:     rows,
+      member_count: cap?.member_count != null ? Number(cap.member_count) : 0,
+      max_members:  cap?.max_members  != null ? Number(cap.max_members)  : null,
+    });
+  } catch (err) {
+    console.error('[hives/getHiveRequests]', err);
+    res.status(500).json({ error: 'Failed to fetch requests.' });
+  }
+};
+
+// ── reviewRequest ─────────────────────────────────────────────────────────────
+export const reviewRequest = async (req, res) => {
+  try {
+    const { id: hiveId, requestId } = req.params;
+    const { action } = req.body;
+
+    if (!['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ error: 'Action must be "accept" or "reject".' });
+    }
+
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    const { rows: [request] } = await query(
+      `SELECT request_id, user_id FROM join_requests
+       WHERE request_id = $1 AND hive_id = $2 AND status = 'pending'`,
+      [requestId, hiveId],
+    );
+    if (!request) return res.status(404).json({ error: 'Request not found or already reviewed.' });
+
+    if (action === 'accept') {
+      // Re-check capacity before accepting
+      const { rows: [countRow] } = await query(
+        `SELECT h.max_members,
+                COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+         FROM hives h
+         LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
+         WHERE h.hive_id = $1
+         GROUP BY h.hive_id`,
+        [hiveId],
+      );
+      if (countRow.max_members &&
+          Number(countRow.member_count) >= Number(countRow.max_members)) {
+        return res.status(400).json({ error: 'Hive is full.' });
+      }
+
+      await query(
+        `UPDATE join_requests
+         SET status = 'accepted', reviewed_at = NOW(), reviewed_by = $1
+         WHERE request_id = $2`,
+        [req.userId, requestId],
+      );
+      await query(
+        `INSERT INTO hive_members (hive_id, user_id, role, membership_status)
+         VALUES ($1, $2, 'member', 'active')
+         ON CONFLICT (hive_id, user_id) DO UPDATE SET membership_status = 'active'`,
+        [hiveId, request.user_id],
+      );
+    } else {
+      await query(
+        `UPDATE join_requests
+         SET status = 'rejected', reviewed_at = NOW(), reviewed_by = $1
+         WHERE request_id = $2`,
+        [req.userId, requestId],
+      );
+    }
+
+    const { rows: [{ count }] } = await query(
+      `SELECT COUNT(*) FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
+      [hiveId],
+    );
+
+    res.json({ reviewed: true, action, member_count: Number(count) });
+  } catch (err) {
+    console.error('[hives/reviewRequest]', err);
+    res.status(500).json({ error: 'Failed to review request.' });
+  }
+};
+
+// ── getMyRequests ─────────────────────────────────────────────────────────────
+export const getMyRequests = async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT jr.request_id, jr.hive_id, jr.status, jr.request_message,
+              jr.requested_at, jr.reviewed_at,
+              h.hive_name, c.category_name
+       FROM join_requests jr
+       JOIN hives h ON h.hive_id = jr.hive_id
+       LEFT JOIN categories c ON c.category_id = h.category_id
+       WHERE jr.user_id = $1
+       ORDER BY jr.requested_at DESC`,
+      [req.userId],
+    );
+    res.json({ requests: rows });
+  } catch (err) {
+    console.error('[hives/getMyRequests]', err);
+    res.status(500).json({ error: 'Failed to fetch your requests.' });
+  }
+};
+
+// ── getHiveOverview ───────────────────────────────────────────────────────────
+export const getHiveOverview = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    // Core metrics
+    const { rows: [metrics] } = await query(
+      `SELECT h.max_members, h.hive_status,
+              COUNT(DISTINCT hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count,
+              COUNT(DISTINCT jr.request_id) FILTER (WHERE jr.status = 'pending')        AS pending_count
+       FROM hives h
+       LEFT JOIN hive_members  hm ON hm.hive_id = h.hive_id
+       LEFT JOIN join_requests jr ON jr.hive_id = h.hive_id
+       WHERE h.hive_id = $1
+       GROUP BY h.hive_id`,
+      [hiveId],
+    );
+
+    const pendingCount = Number(metrics?.pending_count ?? 0);
+
+    // Members without a completed profile (age not set — proxy for incomplete setup)
+    const { rows: [incRow] } = await query(
+      `SELECT COUNT(*) AS cnt
+       FROM hive_members hm
+       LEFT JOIN profiles p ON p.user_id = hm.user_id
+       WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND p.age IS NULL`,
+      [hiveId],
+    );
+    const incompleteCount = Number(incRow?.cnt ?? 0);
+
+    // Build action items
+    const action_items = [];
+    if (pendingCount > 0) {
+      action_items.push({ type: 'requests', count: pendingCount, label: 'membership request(s) need review' });
+    }
+    if (incompleteCount > 0) {
+      action_items.push({ type: 'profiles', count: incompleteCount, label: "member(s) haven't completed their profile" });
+    }
+
+    // Recent activity (member joins + posts, last 10)
+    const { rows: recent_activity } = await query(
+      `(
+         SELECT COALESCE(p.full_name, 'Someone') || ' joined' AS label, hm.joined_at AS timestamp
+         FROM hive_members hm
+         LEFT JOIN profiles p ON p.user_id = hm.user_id
+         WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
+         ORDER BY hm.joined_at DESC LIMIT 5
+       )
+       UNION ALL
+       (
+         SELECT COALESCE(p.full_name, 'Someone') || ' posted' AS label, hp.created_at AS timestamp
+         FROM hive_posts hp
+         LEFT JOIN profiles p ON p.user_id = hp.author_user_id
+         WHERE hp.hive_id = $1
+         ORDER BY hp.created_at DESC LIMIT 5
+       )
+       ORDER BY timestamp DESC LIMIT 10`,
+      [hiveId],
+    );
+
+    res.json({
+      member_count:    Number(metrics?.member_count ?? 0),
+      max_members:     metrics?.max_members ? Number(metrics.max_members) : null,
+      hive_status:     metrics?.hive_status ?? 'active',
+      pending_count:   pendingCount,
+      action_items,
+      recent_activity,
+    });
+  } catch (err) {
+    console.error('[hives/getHiveOverview]', err);
+    res.status(500).json({ error: 'Failed to load overview.' });
+  }
+};
+
+export const updateMemberRole = async (req, res) => {
+  try {
+    const { id: hiveId, userId: targetId } = req.params;
+    const callerId = req.userId;
+
+    const { role: newRole } = req.body ?? {};
+    if (!['admin', 'member'].includes(newRole)) {
+      return res.status(400).json({ error: "role must be 'admin' or 'member'." });
+    }
+
+    // Load caller + target roles in one query
+    const { rows } = await query(
+      `SELECT hm.user_id, hm.role
+       FROM hive_members hm
+       WHERE hm.hive_id = $1 AND hm.user_id = ANY($2::uuid[]) AND hm.membership_status = 'active'`,
+      [hiveId, [callerId, targetId]],
+    );
+    const callerRow = rows.find(r => r.user_id === callerId);
+    const targetRow = rows.find(r => r.user_id === targetId);
+
+    if (!callerRow || !['owner', 'admin'].includes(callerRow.role)) {
+      return res.status(403).json({ error: 'Not authorised.' });
+    }
+    if (!targetRow) return res.status(404).json({ error: 'Member not found.' });
+    if (targetRow.role === 'owner')  return res.status(403).json({ error: 'Cannot change the owner\'s role.' });
+    if (targetId === callerId)       return res.status(403).json({ error: 'Cannot change your own role.' });
+    // Admins may only act on plain members
+    if (callerRow.role === 'admin' && targetRow.role !== 'member') {
+      return res.status(403).json({ error: 'Admins can only modify members.' });
+    }
+
+    await query(
+      `UPDATE hive_members SET role = $1
+       WHERE hive_id = $2 AND user_id = $3 AND membership_status = 'active'`,
+      [newRole, hiveId, targetId],
+    );
+    res.json({ updated: true, user_id: targetId, role: newRole });
+  } catch (err) {
+    console.error('[hives/updateMemberRole]', err);
+    res.status(500).json({ error: 'Failed to update role.' });
+  }
+};
+
+export const removeMember = async (req, res) => {
+  try {
+    const { id: hiveId, userId: targetId } = req.params;
+    const callerId = req.userId;
+
+    const { rows } = await query(
+      `SELECT hm.user_id, hm.role
+       FROM hive_members hm
+       WHERE hm.hive_id = $1 AND hm.user_id = ANY($2::uuid[]) AND hm.membership_status = 'active'`,
+      [hiveId, [callerId, targetId]],
+    );
+    const callerRow = rows.find(r => r.user_id === callerId);
+    const targetRow = rows.find(r => r.user_id === targetId);
+
+    if (!callerRow || !['owner', 'admin'].includes(callerRow.role)) {
+      return res.status(403).json({ error: 'Not authorised.' });
+    }
+    if (!targetRow) return res.status(404).json({ error: 'Member not found.' });
+    if (targetRow.role === 'owner')  return res.status(403).json({ error: 'Cannot remove the owner.' });
+    if (targetId === callerId)       return res.status(403).json({ error: 'Cannot remove yourself here.' });
+    // Admins cannot remove other admins
+    if (callerRow.role === 'admin' && targetRow.role === 'admin') {
+      return res.status(403).json({ error: 'Admins cannot remove other admins.' });
+    }
+
+    await query(
+      `UPDATE hive_members SET membership_status = 'removed'
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, targetId],
+    );
+
+    const { rows: [{ member_count }] } = await query(
+      `SELECT COUNT(*) AS member_count FROM hive_members
+       WHERE hive_id = $1 AND membership_status = 'active'`,
+      [hiveId],
+    );
+    res.json({ removed: true, user_id: targetId, member_count: Number(member_count) });
+  } catch (err) {
+    console.error('[hives/removeMember]', err);
+    res.status(500).json({ error: 'Failed to remove member.' });
   }
 };
 

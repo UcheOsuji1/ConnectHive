@@ -191,12 +191,40 @@ CREATE TABLE IF NOT EXISTS post_reactions (
 
 -- ─── Post Comments ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS post_comments (
-  comment_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  post_id       UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
-  user_id       UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-  body          TEXT        NOT NULL,
-  commented_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  comment_id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id            UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  user_id            UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  parent_comment_id  UUID        REFERENCES post_comments(comment_id) ON DELETE CASCADE,
+  body               TEXT        NOT NULL,
+  commented_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS
+  parent_comment_id UUID REFERENCES post_comments(comment_id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_comments_parent ON post_comments(parent_comment_id);
+
+-- ─── Pairwise User Compatibility Cache ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_compatibility (
+  pair_id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_a             UUID         NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_b             UUID         NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  interests_score    NUMERIC(5,2) NOT NULL DEFAULT 0,
+  goals_score        NUMERIC(5,2) NOT NULL DEFAULT 0,
+  personality_score  NUMERIC(5,2) NOT NULL DEFAULT 0,
+  availability_score NUMERIC(5,2) NOT NULL DEFAULT 0,
+  age_score          NUMERIC(5,2) NOT NULL DEFAULT 0,
+  total_score        NUMERIC(5,2) NOT NULL DEFAULT 0,
+  calculated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  CHECK (user_a < user_b),
+  UNIQUE (user_a, user_b)
+);
+ALTER TABLE user_compatibility ADD COLUMN IF NOT EXISTS interests_score    NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE user_compatibility ADD COLUMN IF NOT EXISTS goals_score        NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE user_compatibility ADD COLUMN IF NOT EXISTS personality_score  NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE user_compatibility ADD COLUMN IF NOT EXISTS availability_score NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE user_compatibility ADD COLUMN IF NOT EXISTS age_score          NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE user_compatibility ADD COLUMN IF NOT EXISTS total_score        NUMERIC(5,2) NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_user_compat_a ON user_compatibility(user_a);
+CREATE INDEX IF NOT EXISTS idx_user_compat_b ON user_compatibility(user_b);
 
 -- ─── Indexes ──────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_profiles_user_id          ON profiles(user_id);

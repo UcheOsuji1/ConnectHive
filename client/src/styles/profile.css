@@ -339,6 +339,98 @@
   color: var(--text-muted, #6b6057);
 }
 
+/* ── ProfilePage MY HIVES section ────────────────────────────────────────────── */
+.prof-hives-loading {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: #8a8070;
+  padding: 4px 0;
+}
+
+.prof-hives-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prof-hive-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.prof-hive-row:hover {
+  border-color: #c49a28;
+  box-shadow: 0 2px 8px rgba(196, 154, 40, 0.1);
+}
+
+.prof-hive-row-muted {
+  opacity: 0.65;
+}
+
+.prof-hive-info { flex: 1; min-width: 0; }
+
+.prof-hive-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e1b18;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+
+.prof-hive-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  color: #8a8070;
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.prof-pending-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(196, 154, 40, 0.15);
+  color: #a07d18;
+  border: 1px solid rgba(196, 154, 40, 0.3);
+}
+
+.prof-rejected-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: rgba(160, 80, 96, 0.1);
+  color: #a05060;
+  border: 1px solid rgba(160, 80, 96, 0.2);
+}
+
+.prof-hives-pending-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  color: #8a8070;
+  font-style: italic;
+  margin-top: 4px;
+}
+
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .prof-inner { padding: 0 16px; gap: 16px; }

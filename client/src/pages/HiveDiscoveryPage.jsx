@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { api } from '../lib/api';
 import '../styles/hive-discovery.css';
 
 const CATEGORY_LABELS = {
@@ -58,24 +59,234 @@ function HexOutline({ size }) {
   );
 }
 
-// ── Matching stub ─────────────────────────────────────────────────────────────
-// Swap ONLY this function body when real formula / AI matching is ready.
-// Must return { hives: Array, waitingCount: number }.
+// ── Matching ──────────────────────────────────────────────────────────────────
+// Swap ONLY this function body when AI re-ranking is added (STAGE 2).
+// Must return { hives: Array, waitingCount: number, needsProfile?: boolean }.
 async function runMatching(category, prefillData) {
   try {
-    const res = await fetch('/api/hives/match', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ category, ...prefillData }),
-    });
-    if (!res.ok) return { hives: [], waitingCount: 0 };
-    return await res.json();
+    return await api.post('/api/hives/match', { category, ...prefillData });
   } catch {
-    // Endpoint not built yet — fall through to empty-state
     return { hives: [], waitingCount: 0 };
   }
 }
 // ──────────────────────────────────────────────────────────────────────────────
+
+// ── HiveMatchCard ─────────────────────────────────────────────────────────────
+function MemberAvatar({ member, size = 32 }) {
+  const initial = (member.full_name ?? '?')[0].toUpperCase();
+  return (
+    <div className="hmd-avatar" style={{ width: size, height: size, fontSize: size * 0.38 }}>
+      {member.profile_photo_url
+        ? <img src={member.profile_photo_url} alt={member.full_name} className="hmd-avatar-img" />
+        : <span>{initial}</span>}
+    </div>
+  );
+}
+
+function HiveMatchCard({ hive }) {
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [joinState,   setJoinState]   = useState(hive.request_pending ? 'pending' : 'idle');
+  const [joinError,   setJoinError]   = useState(null);
+  const tags = Array.isArray(hive.tags) ? hive.tags : [];
+
+  async function handleJoin() {
+    if (joinState !== 'idle') return;
+    setJoinState('loading');
+    setJoinError(null);
+    try {
+      const result = await api.post(`/api/hives/${hive.hive_id}/request`, {});
+      setJoinState(result.joined ? 'joined' : 'pending');
+    } catch (err) {
+      setJoinError(err.data?.error ?? 'Something went wrong. Try again.');
+      setJoinState('idle');
+    }
+  }
+
+  return (
+    <div className="hmd-card">
+
+      {/* ── Header ── */}
+      <div className="hmd-card-head">
+        <div className="hmd-card-title-row">
+          <span className="hmd-hive-name">{hive.hive_name}</span>
+          {hive.category_name && <span className="hmd-cat-badge">{hive.category_name}</span>}
+        </div>
+        <div className="hmd-score-pill">{Math.round(hive.match_score)}% Hive fit</div>
+      </div>
+
+      {/* ── Description ── */}
+      {hive.description && <p className="hmd-description">{hive.description}</p>}
+
+      {/* ── Tags ── */}
+      {tags.length > 0 && (
+        <div className="hmd-tags">
+          {tags.map((tag, i) => <span key={i} className="hmd-tag">{tag}</span>)}
+        </div>
+      )}
+
+      {/* ── Stats ── */}
+      <div className="hmd-stats">
+        <span className="hmd-stat">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="4" r="2.5" stroke="#8a6510" strokeWidth="1.2"/>
+            <path d="M1.5 10.5c0-2.485 2.015-4.5 4.5-4.5s4.5 2.015 4.5 4.5" stroke="#8a6510" strokeWidth="1.2" strokeLinecap="round"/>
+          </svg>
+          {Number(hive.member_count)}/{hive.max_members ?? '∞'} members
+        </span>
+        {hive.location && (
+          <span className="hmd-stat">
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
+              <path d="M5 0C2.79 0 1 1.79 1 4c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z" fill="#8a6510" opacity=".7"/>
+              <circle cx="5" cy="4" r="1.5" fill="#fff"/>
+            </svg>
+            {hive.location}
+          </span>
+        )}
+        {hive.location_type === 'online' && (
+          <span className="hmd-stat hmd-stat-online">Online</span>
+        )}
+      </div>
+
+      {/* ── Why you match ── */}
+      {hive.reasons?.length > 0 && (
+        <div className="hmd-reasons">
+          <span className="hmd-reasons-label">Why you match</span>
+          <div className="hmd-reasons-list">
+            {hive.reasons.map((r, i) => (
+              <span key={i} className="hmd-reason-chip">{r}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Member breakdown ── */}
+      {hive.people_score === null ? (
+        <p className="hmd-new-hive">✦ New Hive — be one of the first members</p>
+      ) : hive.member_matches?.length > 0 ? (
+        <div className="hmd-members-section">
+          <button
+            type="button"
+            className="hmd-members-toggle"
+            onClick={() => setMembersOpen(v => !v)}
+          >
+            <div className="hmd-avatar-strip">
+              {hive.member_matches.slice(0, 5).map(m => (
+                <MemberAvatar key={m.user_id} member={m} size={28} />
+              ))}
+              {hive.member_matches.length > 5 && (
+                <span className="hmd-avatar-more">+{hive.member_matches.length - 5}</span>
+              )}
+            </div>
+            <span className="hmd-members-toggle-label">
+              {membersOpen ? 'Hide' : `${hive.member_matches.length} member${hive.member_matches.length !== 1 ? 's' : ''}`}
+              <span className="hmd-members-chevron">{membersOpen ? '▲' : '▼'}</span>
+            </span>
+          </button>
+
+          {membersOpen && (
+            <div className="hmd-members-list">
+              {hive.member_matches.map(m => (
+                <div key={m.user_id} className="hmd-member-row">
+                  <MemberAvatar member={m} size={32} />
+                  <span className="hmd-member-name">{m.full_name ?? 'Member'}</span>
+                  <span className="hmd-member-score">{m.pair_score}% with you</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {/* ── CTA ── */}
+      <div className="hmd-cta">
+        {joinState === 'joined' ? (
+          <a href={`/hive/${hive.hive_id}`} className="hmd-btn hmd-btn-joined">
+            Joined — Open Hive →
+          </a>
+        ) : joinState === 'pending' ? (
+          <button className="hmd-btn hmd-btn-pending" disabled>Request pending</button>
+        ) : (
+          <button
+            className="hmd-btn hmd-btn-request"
+            disabled={joinState === 'loading'}
+            onClick={handleJoin}
+          >
+            {joinState === 'loading' ? 'Requesting…' : 'Request to Join'}
+          </button>
+        )}
+        {joinError && <span className="hmd-join-error">{joinError}</span>}
+        {hive.is_following && <span className="hmd-following-pill">Following</span>}
+      </div>
+
+    </div>
+  );
+}
+
+// ── MatchResults ──────────────────────────────────────────────────────────────
+function MatchResults({ hives, waitingCount, categoryLabel, city, category, onWaitlistJoined }) {
+  const navigate = useNavigate();
+  const [waitlistDone,    setWaitlistDone]    = useState(false);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [liveCount,       setLiveCount]       = useState(waitingCount);
+
+  async function handleJoinWaitlist() {
+    if (waitlistDone || waitlistLoading) return;
+    setWaitlistLoading(true);
+    try {
+      const result = await api.post('/api/hives/waitlist', { category, location: city || null });
+      setLiveCount(result.waitingCount);
+      if (onWaitlistJoined) onWaitlistJoined(result.waitingCount);
+    } catch { /* silent */ }
+    setWaitlistDone(true);
+    setWaitlistLoading(false);
+  }
+
+  return (
+    <div className="hmd-results">
+
+      {/* Header */}
+      <div className="hmd-results-head">
+        <div className="hd-eyebrow">
+          <div className="hd-eyebrow-line" />
+          <span className="hd-eyebrow-text">
+            {hives.length} Compatible Hive{hives.length !== 1 ? 's' : ''} Found
+          </span>
+        </div>
+        <h1 className="hd-headline">Your <em>matches</em> are ready</h1>
+      </div>
+
+      {/* Cards */}
+      <div className="hmd-cards">
+        {hives.map(hive => <HiveMatchCard key={hive.hive_id} hive={hive} />)}
+      </div>
+
+      {/* Waitlist nudge */}
+      {liveCount > 0 && (
+        <div className="hmd-waitlist-nudge">
+          <p className="hmd-waitlist-text">
+            <strong>{liveCount} others</strong> near {city || 'you'} are also waiting for a{' '}
+            {categoryLabel} Hive. Join the queue to be notified of new openings.
+          </p>
+          <button
+            className="hmd-waitlist-btn"
+            disabled={waitlistDone || waitlistLoading}
+            onClick={handleJoinWaitlist}
+          >
+            {waitlistDone ? 'You\'re in the queue ✓' : waitlistLoading ? 'Saving…' : 'Join the queue'}
+          </button>
+        </div>
+      )}
+
+      <p className="es-alt-link" style={{ marginTop: '12px' }}>
+        Not quite right?{' '}
+        <button className="es-alt-btn" onClick={() => navigate('/find-your-hive')}>
+          Browse other categories →
+        </button>
+      </p>
+
+    </div>
+  );
+}
 
 const ES_AVATARS = [
   { init: 'M', bg: '#c49a28',  color: '#fff'    },
@@ -84,14 +295,31 @@ const ES_AVATARS = [
   { init: '+', bg: '#e8d8a8',  color: '#8a6510' },
 ];
 
-function FounderEmptyState({ categoryLabel, city, category, waitingCount = 0, prefillData }) {
+function FounderEmptyState({ categoryLabel, city, category, waitingCount: initialCount = 0, prefillData, onWaitlistJoined }) {
   const navigate    = useNavigate();
-  const [queueJoined, setQueueJoined] = useState(false);
-  const [hovCard,     setHovCard]     = useState(null);
+  const [queueJoined,  setQueueJoined]  = useState(false);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [hovCard,      setHovCard]      = useState(null);
+  const [liveCount,    setLiveCount]    = useState(initialCount);
 
-  const displayCity    = city || 'your area';
-  const hasWaiting     = waitingCount >= 1;
-  const queuePosition  = waitingCount + 1;
+  const displayCity   = city || 'your area';
+  const hasWaiting    = liveCount >= 1;
+  const queuePosition = liveCount + 1;
+
+  async function handleHoldSpot() {
+    if (queueJoined || queueLoading) return;
+    setQueueLoading(true);
+    try {
+      const result = await api.post('/api/hives/waitlist', {
+        category,
+        location: city || null,
+      });
+      setLiveCount(result.waitingCount);
+      if (onWaitlistJoined) onWaitlistJoined(result.waitingCount);
+    } catch { /* silent — button still flips */ }
+    setQueueJoined(true);
+    setQueueLoading(false);
+  }
 
   return (
     <div className="hd-founder-stage">
@@ -159,7 +387,7 @@ function FounderEmptyState({ categoryLabel, city, category, waitingCount = 0, pr
             <p className="es-card-body">
               Start your {categoryLabel} Hive in under a minute.{' '}
               <strong className="es-waiting-strong">
-                The {waitingCount} people already waiting in your area
+                The {liveCount} people already waiting in your area
               </strong>{' '}
               get matched and invited automatically as soon as it&apos;s live.
             </p>
@@ -198,10 +426,10 @@ function FounderEmptyState({ categoryLabel, city, category, waitingCount = 0, pr
           </p>
           <button
             className="es-btn-outline"
-            disabled={queueJoined}
-            onClick={() => setQueueJoined(true)}
+            disabled={queueJoined || queueLoading}
+            onClick={handleHoldSpot}
           >
-            {queueJoined ? 'Spot Held ✓' : 'Hold My Spot'}
+            {queueJoined ? 'Spot Held ✓' : queueLoading ? 'Saving…' : 'Hold My Spot'}
           </button>
         </div>
 
@@ -222,7 +450,7 @@ function FounderEmptyState({ categoryLabel, city, category, waitingCount = 0, pr
             ))}
           </div>
           <p className="es-queue-text">
-            <strong>{waitingCount} people</strong> near {displayCity} are waiting
+            <strong>{liveCount} people</strong> near {displayCity} are waiting
             for a {categoryLabel} Hive. Founding one now puts you at the center of it.
           </p>
           <div className="es-queue-pos">
@@ -293,6 +521,7 @@ export default function HiveDiscoveryPage() {
     ]).then(([result]) => {
       if (cancelled) return;
       setMatchResult(result);
+      if (result.needsProfile) return setStatus('needs_profile');
       setStatus(result.hives.length > 0 ? 'results' : 'empty');
     });
 
@@ -382,6 +611,15 @@ export default function HiveDiscoveryPage() {
           ))}
         </div>
 
+        {status === 'needs_profile' && (
+          <div className="hmd-needs-profile">
+            <p className="hmd-needs-profile-text">
+              Complete your profile so we can find your best matches.
+            </p>
+            <a href="/profile" className="hmd-btn hmd-btn-profile">Set up profile →</a>
+          </div>
+        )}
+
         {status === 'empty' && (
           <FounderEmptyState
             categoryLabel={categoryLabel}
@@ -389,17 +627,23 @@ export default function HiveDiscoveryPage() {
             category={category}
             waitingCount={matchResult.waitingCount}
             prefillData={prefillData}
+            onWaitlistJoined={count =>
+              setMatchResult(prev => ({ ...prev, waitingCount: count }))
+            }
           />
         )}
 
         {status === 'results' && (
-          <div className="hd-results-placeholder">
-            <p className="hd-results-ph-label">Results screen coming soon</p>
-            <p className="hd-results-ph-count">
-              Found {matchResult.hives.length} compatible Hive
-              {matchResult.hives.length !== 1 ? 's' : ''}
-            </p>
-          </div>
+          <MatchResults
+            hives={matchResult.hives}
+            waitingCount={matchResult.waitingCount}
+            categoryLabel={categoryLabel}
+            city={city}
+            category={category}
+            onWaitlistJoined={count =>
+              setMatchResult(prev => ({ ...prev, waitingCount: count }))
+            }
+          />
         )}
 
         {status === 'loading' && (

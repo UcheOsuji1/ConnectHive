@@ -63,14 +63,18 @@ function SkeletonRows() {
 }
 
 export default function MyHivePage() {
-  const [hives,   setHives]   = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [hives,    setHives]    = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [requests, setRequests] = useState([]);
 
   useEffect(() => {
     api.get('/api/hives/mine')
       .then(data => setHives(data.hives ?? []))
       .catch(() => setHives([]))
       .finally(() => setLoading(false));
+    api.get('/api/hives/requests/mine')
+      .then(data => setRequests((data.requests ?? []).filter(r => r.status === 'pending')))
+      .catch(() => setRequests([]));
   }, []);
 
   return (
@@ -126,12 +130,45 @@ export default function MyHivePage() {
                 </Link>
               ))
             )}
+
+            {/* Pending requests section */}
+            {!loading && requests.length > 0 && (
+              <>
+                <div className="mh-section-label">Pending Requests</div>
+                {requests.map(req => (
+                  <Link key={req.request_id} to={`/hive/${req.hive_id}`} className="mh-row mh-row-pending">
+                    <div className="mh-row-left">
+                      <div style={{ opacity: 0.5 }}>
+                        <HexTile categoryName={req.category_name} size={40} />
+                      </div>
+                      <div className="mh-row-info">
+                        <div className="mh-hive-name">{req.hive_name}</div>
+                        <div className="mh-row-chips">
+                          {req.category_name && (
+                            <span className="mh-cat-chip">{req.category_name}</span>
+                          )}
+                          <span className="mh-pending-pill">Request pending</span>
+                        </div>
+                      </div>
+                    </div>
+                    <svg
+                      className="mh-chevron"
+                      width="18" height="18" viewBox="0 0 24 24"
+                      fill="none" stroke="currentColor"
+                      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                  </Link>
+                ))}
+              </>
+            )}
           </div>
 
           {/* Dashed "Room for more" card */}
           <div className="mh-dashed">
             <div className="mh-dashed-title">
-              {hives.length === 0 && !loading
+              {hives.length === 0 && requests.length === 0 && !loading
                 ? "You haven't joined a Hive yet."
                 : 'Room for more.'}
             </div>

@@ -4,7 +4,7 @@ import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
 import PostCard from '../components/PostCard.jsx';
 import FollowButton from '../components/FollowButton.jsx';
-import CreatePostModal from '../components/CreatePostModal.jsx';
+import HiveWorkspace from '../components/HiveWorkspace.jsx';
 import { api } from '../lib/api.js';
 import '../styles/hive.css';
 import '../styles/post.css';
@@ -26,11 +26,8 @@ function HexTile({ categoryName, size = 48 }) {
       <svg viewBox="0 0 36 36" width={size} height={size} style={{ position: 'absolute', inset: 0 }}>
         <polygon
           points="18,2 33,10 33,26 18,34 3,26 3,10"
-          fill={cfg.color}
-          fillOpacity="0.2"
-          stroke={cfg.color}
-          strokeWidth="1.5"
-          strokeLinejoin="round"
+          fill={cfg.color} fillOpacity="0.2" stroke={cfg.color}
+          strokeWidth="1.5" strokeLinejoin="round"
         />
       </svg>
       <div style={{
@@ -44,14 +41,6 @@ function HexTile({ categoryName, size = 48 }) {
   );
 }
 
-function RoleBadge({ role }) {
-  if (!role) return null;
-  const cls = role === 'owner' ? 'hive-badge-owner'
-            : role === 'admin' ? 'hive-badge-admin'
-            : 'hive-badge-member';
-  return <span className={`hive-badge ${cls}`}>{role}</span>;
-}
-
 function safeTags(val) {
   if (!val) return [];
   if (Array.isArray(val)) return val;
@@ -59,7 +48,7 @@ function safeTags(val) {
 }
 
 function buildMeta(hive) {
-  const parts = [
+  return [
     hive.category_name ?? null,
     hive.member_count != null
       ? `${hive.member_count}${hive.max_members ? ` / ${hive.max_members}` : ''} members`
@@ -67,11 +56,10 @@ function buildMeta(hive) {
     hive.location_type ?? null,
     hive.location      ?? null,
     hive.cadence       ?? null,
-  ].filter(Boolean);
-  return parts.join(' · ');
+  ].filter(Boolean).join(' · ');
 }
 
-// ── Skeleton for main column ──────────────────────────────────────────────────
+// ── Skeletons ─────────────────────────────────────────────────────────────────
 function PostSkeleton() {
   return (
     <>
@@ -86,7 +74,6 @@ function PostSkeleton() {
   );
 }
 
-// ── Header skeleton ───────────────────────────────────────────────────────────
 function HeaderSkeleton() {
   return (
     <div className="hive-dark-card dhp-header-card" style={{ marginBottom: 16 }}>
@@ -102,7 +89,7 @@ function HeaderSkeleton() {
   );
 }
 
-// ── Members tab ───────────────────────────────────────────────────────────────
+// ── Public view sub-components (non-member only) ──────────────────────────────
 function MembersTab({ members, loading }) {
   if (loading) {
     return (
@@ -116,44 +103,28 @@ function MembersTab({ members, loading }) {
       </div>
     );
   }
-  if (!members.length) {
-    return (
-      <div className="dhp-posts-empty">
-        <div className="dhp-posts-empty-title">No members found.</div>
-      </div>
-    );
-  }
+  if (!members.length) return <div className="dhp-posts-empty"><div className="dhp-posts-empty-title">No members found.</div></div>;
   return (
     <div className="dhp-members-grid">
       {members.map(m => (
         <div key={m.user_id} className="dhp-member-card">
           <Avatar name={m.full_name} size={48} />
           <div className="dhp-member-name">{m.full_name ?? 'Member'}</div>
-          <RoleBadge role={m.role} />
         </div>
       ))}
     </div>
   );
 }
 
-// ── About tab ─────────────────────────────────────────────────────────────────
 function AboutTab({ hive }) {
   const sections = [
-    { label: 'Pinned Goal',    value: hive.pinned_goal },
-    { label: 'Ground Rules',   value: hive.ground_rules },
-    { label: 'Icebreaker',     value: hive.icebreaker },
-    { label: 'Meets',          value: [hive.cadence, hive.location_type].filter(Boolean).join(' · ') || null },
-    { label: 'Activation',     value: hive.activation_threshold ? `Activates at ${hive.activation_threshold} members` : null },
+    { label: 'Pinned Goal',  value: hive.pinned_goal },
+    { label: 'Ground Rules', value: hive.ground_rules },
+    { label: 'Icebreaker',   value: hive.icebreaker },
+    { label: 'Meets',        value: [hive.cadence, hive.location_type].filter(Boolean).join(' · ') || null },
   ].filter(s => s.value);
 
-  if (!sections.length) {
-    return (
-      <div className="dhp-posts-empty">
-        <div className="dhp-posts-empty-title">No details added yet.</div>
-      </div>
-    );
-  }
-
+  if (!sections.length) return <div className="dhp-posts-empty"><div className="dhp-posts-empty-title">No details added yet.</div></div>;
   return (
     <div className="dhp-about-grid">
       {sections.map(s => (
@@ -166,37 +137,62 @@ function AboutTab({ hive }) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
-const TABS = ['Posts', 'Members', 'About', 'Chat'];
+function JoinButton({ hiveId, initialPending }) {
+  const [joinState, setJoinState] = useState(initialPending ? 'pending' : 'idle');
+  const [joinError, setJoinError] = useState(null);
 
+  async function handleJoin() {
+    if (joinState !== 'idle') return;
+    setJoinState('loading');
+    setJoinError(null);
+    try {
+      const result = await api.post(`/api/hives/${hiveId}/request`, {});
+      setJoinState(result.joined ? 'joined' : 'pending');
+    } catch (err) {
+      setJoinError(err.data?.error ?? 'Something went wrong.');
+      setJoinState('idle');
+    }
+  }
+
+  if (joinState === 'joined') return <div className="dhp-join-joined">Joined ✓</div>;
+  if (joinState === 'pending') return <div className="dhp-join-disabled">Request pending</div>;
+  return (
+    <div>
+      <button type="button" className="dhp-join-btn" disabled={joinState === 'loading'} onClick={handleJoin}>
+        {joinState === 'loading' ? 'Requesting…' : 'Request to Join'}
+      </button>
+      {joinError && <div className="dhp-join-error">{joinError}</div>}
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function DirectHivePage() {
   const { id } = useParams();
 
   const [hive,           setHive]           = useState(null);
   const [hiveLoading,    setHiveLoading]    = useState(true);
   const [hiveError,      setHiveError]      = useState(null);
+
+  // Only needed for the non-member public view:
   const [posts,          setPosts]          = useState([]);
   const [postsLoading,   setPostsLoading]   = useState(true);
   const [members,        setMembers]        = useState([]);
   const [membersLoading, setMembersLoading] = useState(true);
   const [activeTab,      setActiveTab]      = useState('Posts');
-  const [postModalOpen,  setPostModalOpen]  = useState(false);
 
   useEffect(() => {
     setHiveLoading(true);
-    setPostsLoading(true);
-    setMembersLoading(true);
-
     api.get(`/api/hives/${id}`)
       .then(data => {
         setHive(data.hive);
-        // Only fetch posts + members if hive is accessible
-        if (!data.hive?.private) {
+        const isMem = Boolean(data.hive?.my_role);
+        // Only prefetch posts+members for the non-member public view
+        if (!data.hive?.private && !isMem) {
           api.get(`/api/hives/${id}/posts`)
             .then(d => setPosts(d.posts ?? []))
             .catch(() => setPosts([]))
             .finally(() => setPostsLoading(false));
-
           api.get(`/api/hives/${id}/members`)
             .then(d => setMembers(d.members ?? []))
             .catch(() => setMembers([]))
@@ -217,7 +213,7 @@ export default function DirectHivePage() {
   const isOwner  = ['owner', 'admin'].includes(hive?.my_role);
   const isMember = Boolean(hive?.my_role);
 
-  // ── Loading state ───────────────────────────────────────────────────────────
+  // ── Loading ──────────────────────────────────────────────────────────────────
   if (hiveLoading) {
     return (
       <>
@@ -232,7 +228,7 @@ export default function DirectHivePage() {
     );
   }
 
-  // ── Not found ───────────────────────────────────────────────────────────────
+  // ── Not found ────────────────────────────────────────────────────────────────
   if (hiveError === 'not_found' || !hive) {
     return (
       <>
@@ -249,7 +245,7 @@ export default function DirectHivePage() {
     );
   }
 
-  // ── Private gate ────────────────────────────────────────────────────────────
+  // ── Private gate ─────────────────────────────────────────────────────────────
   if (hive.private) {
     return (
       <>
@@ -262,10 +258,7 @@ export default function DirectHivePage() {
               <div className="dhp-private-sub">
                 This Hive is private. Only members can see its posts and members.
               </div>
-              <FollowButton
-                hiveId={hive.hive_id}
-                initialFollowing={hive.is_following}
-              />
+              <FollowButton hiveId={hive.hive_id} initialFollowing={hive.is_following} />
               <Link to="/my-hive" className="dhp-private-back">← Back to My Hives</Link>
             </div>
           </div>
@@ -274,20 +267,28 @@ export default function DirectHivePage() {
     );
   }
 
-  // ── Tags ────────────────────────────────────────────────────────────────────
+  // ── Member view: full workspace ──────────────────────────────────────────────
+  if (isMember) {
+    return (
+      <>
+        <Navbar />
+        <HiveWorkspace
+          hive={hive}
+          hiveId={id}
+          isOwner={isOwner}
+          onHiveUpdated={updatedHive => setHive(prev => ({ ...prev, ...updatedHive }))}
+        />
+      </>
+    );
+  }
+
+  // ── Non-member public view ───────────────────────────────────────────────────
   const tags = safeTags(hive.tags);
-
-  // Modal hive list (only this hive, with my_role mapped to role)
-  const modalHives = isOwner
-    ? [{ hive_id: hive.hive_id, hive_name: hive.hive_name, role: hive.my_role }]
-    : [];
-
-  // Sidebar about items (condensed)
+  const PUB_TABS = ['Posts', 'Members', 'About'];
   const sidebarAbout = [
     { key: 'Pinned goal',  val: hive.pinned_goal },
-    { key: 'Ground rules', val: hive.ground_rules },
     { key: 'Meets',        val: [hive.cadence, hive.location_type].filter(Boolean).join(' · ') || null },
-    { key: 'Icebreaker',   val: hive.icebreaker },
+    { key: 'Ground rules', val: hive.ground_rules },
   ].filter(a => a.val);
 
   return (
@@ -296,170 +297,80 @@ export default function DirectHivePage() {
       <div className="hive-page">
         <div className="hive-inner">
 
-          {/* Breadcrumb */}
           <div className="dhp-breadcrumb">
             <Link to="/my-hive">My Hives</Link>
             <span className="dhp-breadcrumb-sep">›</span>
             <span className="dhp-breadcrumb-current">{hive.hive_name}</span>
           </div>
 
-          {/* Header card */}
           <div className="hive-dark-card dhp-header-card">
             <div className="dhp-header-top">
               <HexTile categoryName={hive.category_name} size={56} />
-
               <div className="dhp-header-content">
                 <div className="dhp-hive-name-row">
                   <span className="dhp-hive-name">{hive.hive_name}</span>
-                  {isMember && <RoleBadge role={hive.my_role} />}
                 </div>
                 <div className="dhp-meta">{buildMeta(hive)}</div>
-
-                {hive.description && (
-                  <div className="dhp-description">{hive.description}</div>
-                )}
-
+                {hive.description && <div className="dhp-description">{hive.description}</div>}
                 {(tags.length > 0 || hive.join_policy) && (
                   <div className="dhp-tags">
-                    {tags.map((tag, i) => (
-                      <span key={i} className="dhp-tag-chip">{tag}</span>
-                    ))}
-                    {hive.join_policy && (
-                      <span className="dhp-policy-chip">{hive.join_policy}</span>
-                    )}
+                    {tags.map((tag, i) => <span key={i} className="dhp-tag-chip">{tag}</span>)}
+                    {hive.join_policy && <span className="dhp-policy-chip">{hive.join_policy}</span>}
                   </div>
                 )}
               </div>
-
-              {/* Action area */}
               <div className="dhp-header-actions">
-                {isOwner && (
-                  <button
-                    type="button"
-                    className="dhp-action-primary"
-                    onClick={() => setPostModalOpen(true)}
-                  >
-                    + New Post
-                  </button>
-                )}
-                {!isMember && (
-                  <>
-                    <FollowButton
-                      hiveId={hive.hive_id}
-                      initialFollowing={hive.is_following}
-                    />
-                    <div className="dhp-join-disabled">
-                      Request to Join
-                      <span className="hive-soon-pill">Soon</span>
-                    </div>
-                  </>
-                )}
+                <FollowButton hiveId={hive.hive_id} initialFollowing={hive.is_following} />
+                <JoinButton hiveId={hive.hive_id} initialPending={Boolean(hive.request_pending)} />
               </div>
             </div>
           </div>
 
-          {/* Tabs */}
           <div className="dhp-tabs" role="tablist">
-            {TABS.map(tab => {
-              const isSoon = tab === 'Chat';
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeTab === tab}
-                  className={[
-                    'dhp-tab',
-                    activeTab === tab ? 'active' : '',
-                    isSoon ? 'dhp-tab-soon' : '',
-                  ].join(' ').trim()}
-                  onClick={() => !isSoon && setActiveTab(tab)}
-                  aria-disabled={isSoon}
-                >
-                  {tab}
-                  {isSoon && <span className="hive-soon-pill">Soon</span>}
-                </button>
-              );
-            })}
+            {PUB_TABS.map(tab => (
+              <button
+                key={tab}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab}
+                className={['dhp-tab', activeTab === tab ? 'active' : ''].join(' ').trim()}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
 
-          {/* Two-column body */}
           <div className="dhp-body">
-
-            {/* Main column */}
             <div>
               {activeTab === 'Posts' && (
                 <div className="hive-dark-card">
-                  {/* Composer strip */}
-                  {isOwner && (
-                    <button
-                      type="button"
-                      className="dhp-composer-strip"
-                      onClick={() => setPostModalOpen(true)}
-                    >
-                      <span className="dhp-composer-placeholder">
-                        Post an update as {hive.hive_name}…
-                      </span>
-                      <span className="dhp-composer-post-btn">Post</span>
-                    </button>
-                  )}
-
-                  {/* Posts */}
-                  {postsLoading ? (
-                    <PostSkeleton />
-                  ) : posts.length === 0 ? (
+                  {postsLoading ? <PostSkeleton /> : posts.length === 0 ? (
                     <div className="dhp-posts-empty">
                       <div className="dhp-posts-empty-title">No posts yet.</div>
-                      {isOwner && (
-                        <div className="dhp-posts-empty-sub">Share the first update.</div>
-                      )}
                     </div>
                   ) : (
                     <div className="post-feed">
-                      {posts.map(post => (
-                        <PostCard
-                          key={post.post_id}
-                          post={post}
-                        />
-                      ))}
+                      {posts.map(post => <PostCard key={post.post_id} post={post} />)}
                     </div>
                   )}
                 </div>
               )}
-
               {activeTab === 'Members' && (
                 <div className="hive-dark-card">
                   <MembersTab members={members} loading={membersLoading} />
                 </div>
               )}
-
               {activeTab === 'About' && (
                 <div className="hive-dark-card">
                   <AboutTab hive={hive} />
                 </div>
               )}
-
-              {activeTab === 'Chat' && (
-                <div className="hive-dark-card">
-                  <div className="dhp-chat-soon">
-                    <div style={{ fontSize: '2rem', marginBottom: 8 }}>💬</div>
-                    <div className="dhp-chat-soon-title">Real-time chat is coming to this Hive.</div>
-                    <div className="dhp-chat-soon-sub">
-                      Chat will let members talk in real time. Stay tuned.
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Right sidebar */}
             <div className="dhp-sidebar">
-
-              {/* Members minilist */}
               <div className="hive-dark-card dhp-sidebar-card">
-                <div className="dhp-sidebar-label">
-                  Members · {hive.member_count ?? 0}
-                </div>
+                <div className="dhp-sidebar-label">Members · {Number(hive.member_count ?? 0)}</div>
                 {membersLoading ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     {[1, 2, 3].map(i => (
@@ -481,36 +392,19 @@ export default function DirectHivePage() {
                       ))}
                     </div>
                     {members.length > 5 && (
-                      <button
-                        type="button"
-                        className="dhp-see-all"
-                        onClick={() => setActiveTab('Members')}
-                      >
+                      <button type="button" className="dhp-see-all" onClick={() => setActiveTab('Members')}>
                         See all {members.length} members
                       </button>
                     )}
                     {hive.max_members && (
                       <div className="dhp-sidebar-footer-meta">
                         {Number(hive.max_members) - Number(hive.member_count ?? 0)} spots left
-                        {hive.activation_threshold
-                          ? ` · Activates at ${hive.activation_threshold}`
-                          : ''}
                       </div>
                     )}
                   </>
                 )}
               </div>
 
-              {/* Requests (owner/admin only) */}
-              {isOwner && (
-                <div className="hive-dark-card dhp-sidebar-card">
-                  <div className="dhp-sidebar-label">Requests</div>
-                  {/* Week 4: wire to the join-request system */}
-                  <div className="dhp-sidebar-empty">No pending requests.</div>
-                </div>
-              )}
-
-              {/* About this Hive (condensed) */}
               {sidebarAbout.length > 0 && (
                 <div className="hive-dark-card dhp-sidebar-card">
                   <div className="dhp-sidebar-label">About this Hive</div>
@@ -522,25 +416,11 @@ export default function DirectHivePage() {
                   ))}
                 </div>
               )}
-
             </div>
           </div>
 
         </div>
       </div>
-
-      {/* Create Post modal */}
-      {postModalOpen && (
-        <CreatePostModal
-          hives={modalHives}
-          defaultHiveId={hive.hive_id}
-          onClose={() => setPostModalOpen(false)}
-          onCreated={newPost => {
-            setPosts(prev => [newPost, ...prev]);
-            setActiveTab('Posts');
-          }}
-        />
-      )}
     </>
   );
 }

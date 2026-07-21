@@ -74,6 +74,113 @@ function HexTile({ categoryName }) {
   );
 }
 
+// ── Requests sidebar panel ────────────────────────────────────────────────────
+function RequestsPanel({ hives, hivesLoading }) {
+  const [incoming,  setIncoming]  = useState([]);
+  const [outgoing,  setOutgoing]  = useState([]);
+  const [loading,   setLoading]   = useState(true);
+  const [reviewing, setReviewing] = useState(null);
+
+  useEffect(() => {
+    if (hivesLoading) return;
+    setLoading(true);
+
+    const adminHives = hives.filter(h => ['owner', 'admin'].includes(h.role));
+    const incomingPromises = adminHives.map(h =>
+      api.get(`/api/hives/${h.hive_id}/requests`)
+        .then(d => (d.requests ?? []).map(r => ({ ...r, hive_name: h.hive_name, hive_id: h.hive_id })))
+        .catch(() => []),
+    );
+
+    Promise.all([
+      Promise.all(incomingPromises).then(groups => groups.flat()),
+      api.get('/api/hives/requests/mine').then(d => d.requests ?? []).catch(() => []),
+    ]).then(([inc, out]) => {
+      setIncoming(inc);
+      setOutgoing(out);
+    }).finally(() => setLoading(false));
+  }, [hives, hivesLoading]);
+
+  async function handleReview(hiveId, requestId, action) {
+    setReviewing(requestId);
+    try {
+      await api.post(`/api/hives/${hiveId}/requests/${requestId}`, { action });
+      setIncoming(prev => prev.filter(r => r.request_id !== requestId));
+    } catch (err) {
+      console.error('[RequestsPanel]', err);
+    } finally {
+      setReviewing(null);
+    }
+  }
+
+  if (loading || hivesLoading) {
+    return (
+      <>
+        <div className="home-skeleton-line" style={{ width: '75%' }} />
+        <div className="home-skeleton-line" style={{ width: '55%' }} />
+      </>
+    );
+  }
+
+  if (!incoming.length && !outgoing.length) {
+    return <div className="home-sidebar-empty">No pending requests.</div>;
+  }
+
+  return (
+    <div className="home-requests-list">
+      {incoming.map(req => (
+        <div key={req.request_id} className="home-req-row">
+          <div className="home-req-identity">
+            <Avatar name={req.full_name} size={26} />
+            <div className="home-req-text">
+              <div className="home-req-name">{req.full_name ?? 'Someone'}</div>
+              <div className="home-req-meta">→ {req.hive_name}</div>
+              {(req.hive_fit_score != null || req.pair_score != null) && (
+                <div className="home-req-scores">
+                  {req.hive_fit_score != null && (
+                    <span className="home-req-score-fit">{Math.round(Number(req.hive_fit_score))}% Hive fit</span>
+                  )}
+                  {req.pair_score != null && (
+                    <span className="home-req-score-pair">{Math.round(Number(req.pair_score))}% with you</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="home-req-btns">
+            <button
+              type="button"
+              className="home-req-btn home-req-accept"
+              disabled={reviewing === req.request_id}
+              onClick={() => handleReview(req.hive_id, req.request_id, 'accept')}
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              className="home-req-btn home-req-decline"
+              disabled={reviewing === req.request_id}
+              onClick={() => handleReview(req.hive_id, req.request_id, 'reject')}
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      ))}
+      {outgoing.map(req => (
+        <div key={req.request_id} className="home-req-row home-req-outgoing">
+          <div className="home-req-text">
+            <div className="home-req-name">{req.hive_name}</div>
+            <div className={`home-req-meta home-req-status-${req.status}`}>
+              {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Post feed skeleton ────────────────────────────────────────────────────────
 
 function FeedSkeleton() {
@@ -359,7 +466,7 @@ export default function HomePage() {
               {/* Requests */}
               <div className="home-dark-card home-sidebar-card">
                 <div className="home-sidebar-label">Requests</div>
-                <div className="home-sidebar-empty">No pending requests.</div>
+                <RequestsPanel hives={hives} hivesLoading={hivesLoading} />
               </div>
 
               {/* Suggested for you */}

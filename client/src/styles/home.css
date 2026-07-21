@@ -344,6 +344,86 @@
 }
 .home-sidebar-empty-link:hover { text-decoration: underline; }
 
+/* ── Requests sidebar panel ───────────────────────────────────────────────────── */
+.home-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.home-req-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.home-req-identity {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+.home-req-text { min-width: 0; flex: 1; }
+.home-req-name {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2a1e0a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.home-req-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  color: #8a8070;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+.home-req-outgoing .home-req-name { font-weight: 400; color: #5a4e3c; }
+.home-req-status-pending  { color: #c49a28; font-weight: 500; }
+.home-req-status-accepted { color: #1a7a44; font-weight: 500; }
+.home-req-status-rejected { color: #a05060; font-weight: 500; }
+.home-req-btns { display: flex; gap: 5px; flex-shrink: 0; }
+.home-req-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 4px 9px;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.12s;
+}
+.home-req-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.home-req-accept { background: #c49a28; color: #fff; }
+.home-req-accept:hover:not(:disabled) { opacity: 0.88; }
+.home-req-decline { background: #f0ebe0; color: #6b6057; border: 0.5px solid #d8d0bc; }
+.home-req-decline:hover:not(:disabled) { background: #e8e0d0; }
+
+.home-req-scores {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.home-req-score-fit {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #c49a28;
+}
+
+.home-req-score-pair {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #8a8070;
+}
+
 /* ── Suggested CTA ────────────────────────────────────────────────────────────── */
 .home-suggest-sub {
   font-family: 'DM Sans', sans-serif;

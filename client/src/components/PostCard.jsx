@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { api } from '../lib/api';
+import { REACTIONS, reactionByKey } from '../lib/reactions';
+import ReactionPicker from './ReactionPicker';
+import EmojiPicker from './EmojiPicker';
 import FollowButton from './FollowButton';
 import '../styles/post.css';
 
+// ── Category config ───────────────────────────────────────────────────────────
 const CAT_CONFIG = {
   'Social Groups':           { color: '#5dcaa5', icon: '👥' },
   'Professional Networking': { color: '#c49a28', icon: '💼' },
@@ -17,33 +21,30 @@ function SmallHex({ categoryName }) {
   return (
     <div style={{ position: 'relative', width: 26, height: 26, flexShrink: 0 }}>
       <svg viewBox="0 0 36 36" width={26} height={26} style={{ position: 'absolute', inset: 0 }}>
-        <polygon
-          points="18,2 33,10 33,26 18,34 3,26 3,10"
-          fill={cfg.color}
-          fillOpacity="0.18"
-          stroke={cfg.color}
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
+        <polygon points="18,2 33,10 33,26 18,34 3,26 3,10"
+          fill={cfg.color} fillOpacity="0.18" stroke={cfg.color} strokeWidth="1.5" strokeLinejoin="round" />
       </svg>
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '0.64rem',
-      }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.64rem' }}>
         {cfg.icon}
       </div>
     </div>
   );
 }
 
-function AuthorAvatar({ name, src }) {
+function CommentAvatar({ name, src, size = 30 }) {
   const initials = name
     ? name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
     : '?';
   return (
-    <div className="post-author-avatar">
-      {src ? <img src={src} alt={name} /> : initials}
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: 'linear-gradient(135deg,#e8c84a 0%,#c49a28 55%,#8a6510 100%)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      overflow: 'hidden',
+    }}>
+      {src
+        ? <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        : <span style={{ color: '#1a1508', fontWeight: 600, fontSize: size * 0.4, fontFamily: "'DM Sans',sans-serif", lineHeight: 1 }}>{initials}</span>}
     </div>
   );
 }
@@ -69,25 +70,148 @@ function formatEventDate(iso) {
   });
 }
 
+// Insert emoji at textarea cursor position
+function insertAtCursor(inputEl, setText, emoji) {
+  if (!inputEl) { setText(prev => prev + emoji); return; }
+  const start = inputEl.selectionStart ?? 0;
+  const end   = inputEl.selectionEnd   ?? 0;
+  const val   = inputEl.value;
+  const next  = val.slice(0, start) + emoji + val.slice(end);
+  setText(next);
+  requestAnimationFrame(() => {
+    inputEl.selectionStart = inputEl.selectionEnd = start + emoji.length;
+    inputEl.focus();
+  });
+}
+
+// ── ReplyBox sub-component ────────────────────────────────────────────────────
+function ReplyBox({ onSubmit, onCancel, submitting }) {
+  const [text, setText] = useState('');
+  const inputRef        = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  return (
+    <div className="post-reply-box">
+      <textarea
+        ref={inputRef}
+        className="post-comment-input post-comment-input-sm"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Write a reply…"
+        rows={1}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (text.trim()) onSubmit(text); }
+          if (e.key === 'Escape') onCancel();
+        }}
+      />
+      <EmojiPicker onSelect={emoji => insertAtCursor(inputRef.current, setText, emoji)} />
+      <button
+        type="button"
+        className="post-comment-send-btn post-comment-send-btn-sm"
+        disabled={submitting || !text.trim()}
+        onClick={() => { if (text.trim()) onSubmit(text); }}
+      >
+        {submitting ? '…' : 'Post'}
+      </button>
+      <button type="button" className="post-reply-cancel" onClick={onCancel}>Cancel</button>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function PostCard({ post: initialPost }) {
   const [post, setPost] = useState(initialPost);
-  const [reacting, setReacting] = useState(false);
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState(null);
-  const [commentsLoading, setCommentsLoading] = useState(false);
-  const [commentText, setCommentText] = useState('');
-  const [submittingComment, setSubmittingComment] = useState(false);
 
-  async function handleReact() {
-    if (reacting) return;
-    setReacting(true);
-    try {
-      const data = await api.post(`/api/posts/${post.post_id}/react`, { reaction: 'like' });
-      setPost(p => ({ ...p, reacted: data.reacted, reaction_count: data.reaction_count }));
-    } catch { /* swallow */ }
-    finally { setReacting(false); }
+  // Reaction picker
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [reacting,      setReacting]      = useState(false);
+  const pickerWrapRef   = useRef(null);
+  const showPickerTimer = useRef(null);
+  const touchTimer      = useRef(null);
+  const touchDidFire    = useRef(false);
+
+  // Reactors modal
+  const [reactorsOpen,    setReactorsOpen]    = useState(false);
+  const [reactors,        setReactors]        = useState(null);
+  const [reactorsLoading, setReactorsLoading] = useState(false);
+
+  // Comments
+  const [showComments,     setShowComments]     = useState(false);
+  const [comments,         setComments]         = useState(null);
+  const [commentsLoading,  setCommentsLoading]  = useState(false);
+  const [commentText,      setCommentText]      = useState('');
+  const [submittingTop,    setSubmittingTop]    = useState(false);
+  const commentInputRef   = useRef(null);
+
+  // Replies
+  const [replyingTo,     setReplyingTo]     = useState(null);   // parent comment_id
+  const [submittingReply,setSubmittingReply] = useState(null);  // parent comment_id being replied to
+
+  // ── Reaction picker hover ───────────────────────────────────────────────────
+  function onWrapEnter() {
+    showPickerTimer.current = setTimeout(() => setPickerVisible(true), 250);
+  }
+  function onWrapLeave() {
+    clearTimeout(showPickerTimer.current);
+    setPickerVisible(false);
+  }
+  // Mobile long-press
+  function onTouchStart() {
+    touchDidFire.current = false;
+    touchTimer.current = setTimeout(() => { touchDidFire.current = true; setPickerVisible(true); }, 500);
+  }
+  function onTouchEnd(e) {
+    clearTimeout(touchTimer.current);
+    if (!touchDidFire.current) {
+      e.preventDefault();
+      handlePickReaction(post.my_reaction || 'like');
+    }
   }
 
+  // ── React handler ───────────────────────────────────────────────────────────
+  const handlePickReaction = useCallback(async (reactionKey) => {
+    if (reacting) return;
+    setReacting(true);
+    setPickerVisible(false);
+    const prev = { reacted: post.reacted, my_reaction: post.my_reaction,
+                   reaction_count: post.reaction_count, reaction_summary: post.reaction_summary };
+    try {
+      const data = await api.post(`/api/posts/${post.post_id}/react`, { reaction: reactionKey });
+      setPost(p => ({
+        ...p,
+        reacted:          data.reacted,
+        my_reaction:      data.reacted ? data.reaction : null,
+        reaction_count:   data.reaction_count,
+        reaction_summary: data.reaction_summary,
+      }));
+    } catch {
+      setPost(p => ({ ...p, ...prev }));
+    } finally {
+      setReacting(false);
+    }
+  }, [post, reacting]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Reactors modal ──────────────────────────────────────────────────────────
+  async function handleOpenReactors() {
+    setReactorsOpen(true);
+    if (reactors === null) {
+      setReactorsLoading(true);
+      try {
+        const data = await api.get(`/api/posts/${post.post_id}/reactors`);
+        setReactors(data.reactors ?? []);
+      } catch { setReactors([]); }
+      finally { setReactorsLoading(false); }
+    }
+  }
+  useEffect(() => {
+    if (!reactorsOpen) return;
+    const h = e => { if (e.key === 'Escape') setReactorsOpen(false); };
+    document.addEventListener('keydown', h);
+    return () => document.removeEventListener('keydown', h);
+  }, [reactorsOpen]);
+
+  // ── Comments toggle + fetch ─────────────────────────────────────────────────
   async function handleToggleComments() {
     if (!showComments && comments === null) {
       setCommentsLoading(true);
@@ -100,32 +224,76 @@ export default function PostCard({ post: initialPost }) {
     setShowComments(v => !v);
   }
 
+  // ── Submit top-level comment ────────────────────────────────────────────────
   async function handleSubmitComment(e) {
     e.preventDefault();
-    if (!commentText.trim() || submittingComment) return;
-    setSubmittingComment(true);
+    if (!commentText.trim() || submittingTop) return;
+    setSubmittingTop(true);
     try {
       const data = await api.post(`/api/posts/${post.post_id}/comments`, { body: commentText.trim() });
-      setComments(prev => [...(prev ?? []), data.comment]);
+      setComments(prev => [...(prev ?? []), { ...data.comment, replies: [] }]);
       setPost(p => ({ ...p, comment_count: Number(p.comment_count) + 1 }));
       setCommentText('');
     } catch { /* swallow */ }
-    finally { setSubmittingComment(false); }
+    finally { setSubmittingTop(false); }
   }
 
-  const reactionCount = Number(post.reaction_count ?? 0);
-  const commentCount  = Number(post.comment_count  ?? 0);
+  // ── Submit reply ────────────────────────────────────────────────────────────
+  async function handleSubmitReply(parentId, text) {
+    if (!text?.trim() || submittingReply) return;
+    setSubmittingReply(parentId);
+    try {
+      const data = await api.post(`/api/posts/${post.post_id}/comments`, {
+        body: text.trim(), parentCommentId: parentId,
+      });
+      setComments(prev => prev.map(c =>
+        c.comment_id === parentId
+          ? { ...c, replies: [...(c.replies ?? []), data.comment] }
+          : c,
+      ));
+      setPost(p => ({ ...p, comment_count: Number(p.comment_count) + 1 }));
+      setReplyingTo(null);
+    } catch { /* swallow */ }
+    finally { setSubmittingReply(null); }
+  }
+
+  // ── Delete comment / reply ──────────────────────────────────────────────────
+  async function handleDeleteComment(commentId, parentId) {
+    try {
+      await api.delete(`/api/posts/comments/${commentId}`);
+      if (parentId) {
+        setComments(prev => prev.map(c =>
+          c.comment_id === parentId
+            ? { ...c, replies: c.replies.filter(r => r.comment_id !== commentId) }
+            : c,
+        ));
+        setPost(p => ({ ...p, comment_count: Math.max(0, Number(p.comment_count) - 1) }));
+      } else {
+        const current = comments ?? [];
+        const removed = current.find(c => c.comment_id === commentId);
+        const diff    = 1 + (removed?.replies?.length ?? 0);
+        setComments(current.filter(c => c.comment_id !== commentId));
+        setPost(p => ({ ...p, comment_count: Math.max(0, Number(p.comment_count) - diff) }));
+      }
+    } catch { /* swallow */ }
+  }
+
+  // ── Derived values ──────────────────────────────────────────────────────────
+  const reactionCount  = Number(post.reaction_count ?? 0);
+  const commentCount   = Number(post.comment_count  ?? 0);
+  const summaryArr     = Array.isArray(post.reaction_summary) ? post.reaction_summary : [];
+  const topReactions   = summaryArr.slice(0, 3);
+  const myR            = post.my_reaction ? reactionByKey(post.my_reaction) : null;
 
   return (
     <div className="post-card">
-      {/* Hive header */}
+
+      {/* ── Hive header ── */}
       <div className="post-hive-row">
         <div className="post-hive-left">
           <SmallHex categoryName={post.category_name} />
           <span className="post-hive-name">{post.hive_name}</span>
-          {post.category_name && (
-            <span className="post-cat-badge">· {post.category_name}</span>
-          )}
+          {post.category_name && <span className="post-cat-badge">· {post.category_name}</span>}
         </div>
         {!post.is_member && (
           <FollowButton
@@ -136,31 +304,43 @@ export default function PostCard({ post: initialPost }) {
         )}
       </div>
 
-      {/* Author */}
+      {/* ── Author ── */}
       <div className="post-author-row">
-        <AuthorAvatar name={post.author_name} src={post.author_photo} />
+        <CommentAvatar name={post.author_name} src={post.author_photo} size={30} />
         <span className="post-author-name">{post.author_name ?? 'Hive Member'}</span>
         <span className="post-time">{relativeTime(post.created_at)}</span>
       </div>
 
-      {/* Event badge */}
-      {post.post_type === 'event' && (
-        <div className="post-event-badge">🗓 Event</div>
-      )}
+      {/* ── Event badge ── */}
+      {post.post_type === 'event' && <div className="post-event-badge">🗓 Event</div>}
 
-      {/* Content */}
+      {/* ── Content ── */}
       <div className="post-headline">{post.headline}</div>
       {post.body && <div className="post-body">{post.body}</div>}
 
-      {/* Event meta */}
+      {/* ── Event meta ── */}
       {post.post_type === 'event' && (post.event_at || post.event_location) && (
         <div className="post-event-meta">
-          {post.event_at && <span>📅 {formatEventDate(post.event_at)}</span>}
+          {post.event_at      && <span>📅 {formatEventDate(post.event_at)}</span>}
           {post.event_location && <span>📍 {post.event_location}</span>}
         </div>
       )}
 
-      {/* Top comment preview (when comments panel is closed) */}
+      {/* ── Reaction summary ── */}
+      {reactionCount > 0 && (
+        <div className="post-reaction-summary">
+          <div className="post-summary-faces">
+            {topReactions.map(r => (
+              <span key={r.reaction} className="post-summary-face">{reactionByKey(r.reaction).emoji}</span>
+            ))}
+          </div>
+          <button type="button" className="post-summary-count" onClick={handleOpenReactors}>
+            {reactionCount}
+          </button>
+        </div>
+      )}
+
+      {/* ── Top comment preview ── */}
       {!showComments && post.top_comment && (
         <div className="post-top-comment">
           <div className="post-top-comment-author">{post.top_comment.full_name ?? 'Member'}</div>
@@ -168,74 +348,182 @@ export default function PostCard({ post: initialPost }) {
         </div>
       )}
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <div className="post-footer">
-        <button
-          type="button"
-          className={`post-react-btn${post.reacted ? ' reacted' : ''}`}
-          onClick={handleReact}
-          disabled={reacting}
+        {/* Reaction button + hover picker */}
+        <div
+          className="post-reaction-wrap"
+          ref={pickerWrapRef}
+          onMouseEnter={onWrapEnter}
+          onMouseLeave={onWrapLeave}
         >
-          <span className="post-react-icon">{post.reacted ? '♥' : '♡'}</span>
-          {reactionCount > 0 && <span>{reactionCount}</span>}
-          <span>{post.reacted ? 'Liked' : 'Like'}</span>
-        </button>
+          <button
+            type="button"
+            className={`post-react-btn${post.reacted ? ' reacted' : ''}`}
+            onClick={() => handlePickReaction(post.my_reaction || 'like')}
+            disabled={reacting}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
+            <span className="post-react-icon">{myR ? myR.emoji : '👍'}</span>
+            <span>{myR ? myR.label : 'Like'}</span>
+          </button>
+          {pickerVisible && (
+            <ReactionPicker
+              current={post.my_reaction}
+              onPick={key => { handlePickReaction(key); setPickerVisible(false); }}
+            />
+          )}
+        </div>
 
-        <button
-          type="button"
-          className="post-comment-btn"
-          onClick={handleToggleComments}
-        >
+        <button type="button" className="post-comment-btn" onClick={handleToggleComments}>
           <span>💬</span>
-          <span>{commentCount > 0 ? commentCount : ''} {showComments ? 'Hide' : 'Comment'}{commentCount !== 1 && commentCount > 0 ? 's' : ''}</span>
+          <span>
+            {commentCount > 0
+              ? `${commentCount} Comment${commentCount !== 1 ? 's' : ''}`
+              : 'Comment'}
+            {showComments ? ' ▲' : ''}
+          </span>
         </button>
       </div>
 
-      {/* Comments panel */}
+      {/* ── Comments panel ── */}
       {showComments && (
         <div className="post-comments-panel">
           {commentsLoading ? (
-            <div style={{ color: '#6b6057', fontSize: '0.8rem', fontFamily: "'DM Sans', sans-serif", padding: '4px 0' }}>
+            <div style={{ color: '#6b6057', fontSize: '0.8rem', fontFamily: "'DM Sans',sans-serif", padding: '4px 0' }}>
               Loading…
             </div>
           ) : (
-            (comments ?? []).map(c => (
-              <div key={c.comment_id} className="post-comment-item">
-                <div className="post-comment-avatar">
-                  {c.profile_photo_url
-                    ? <img src={c.profile_photo_url} alt={c.full_name} />
-                    : (c.full_name ?? '?').charAt(0).toUpperCase()}
-                </div>
-                <div className="post-comment-bubble">
-                  <div className="post-comment-bubble-author">{c.full_name ?? 'Member'}</div>
-                  <div className="post-comment-bubble-body">{c.body}</div>
+            (comments ?? []).map(comment => (
+              <div key={comment.comment_id} className="post-comment-item">
+                <CommentAvatar name={comment.full_name} src={comment.profile_photo_url} size={30} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="post-comment-bubble">
+                    <div className="post-comment-bubble-author">
+                      {comment.full_name ?? 'Member'}
+                      {comment.is_mine && (
+                        <button
+                          type="button"
+                          className="post-comment-delete"
+                          onClick={() => handleDeleteComment(comment.comment_id, null)}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                    <div className="post-comment-bubble-body">{comment.body}</div>
+                    <div className="post-comment-meta">
+                      <span>{relativeTime(comment.commented_at)}</span>
+                      <button
+                        type="button"
+                        className="post-reply-trigger"
+                        onClick={() => setReplyingTo(
+                          replyingTo === comment.comment_id ? null : comment.comment_id,
+                        )}
+                      >
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Replies */}
+                  {(comment.replies ?? []).map(reply => (
+                    <div key={reply.comment_id} className="post-reply-indent">
+                      <div className="post-reply-thread-line" />
+                      <CommentAvatar name={reply.full_name} src={reply.profile_photo_url} size={24} />
+                      <div className="post-comment-bubble">
+                        <div className="post-comment-bubble-author">
+                          {reply.full_name ?? 'Member'}
+                          {reply.is_mine && (
+                            <button
+                              type="button"
+                              className="post-comment-delete"
+                              onClick={() => handleDeleteComment(reply.comment_id, comment.comment_id)}
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                        <div className="post-comment-bubble-body">{reply.body}</div>
+                        <div className="post-comment-meta">
+                          <span>{relativeTime(reply.commented_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Inline reply box */}
+                  {replyingTo === comment.comment_id && (
+                    <ReplyBox
+                      onSubmit={text => handleSubmitReply(comment.comment_id, text)}
+                      onCancel={() => setReplyingTo(null)}
+                      submitting={submittingReply === comment.comment_id}
+                    />
+                  )}
                 </div>
               </div>
             ))
           )}
 
+          {/* Top-level comment input */}
           <form className="post-add-comment" onSubmit={handleSubmitComment}>
             <textarea
+              ref={commentInputRef}
               className="post-comment-input"
               value={commentText}
               onChange={e => setCommentText(e.target.value)}
               placeholder="Add a comment…"
               rows={1}
               onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmitComment(e);
-                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitComment(e); }
               }}
             />
+            <EmojiPicker onSelect={emoji => insertAtCursor(commentInputRef.current, setCommentText, emoji)} />
             <button
               type="submit"
               className="post-comment-send-btn"
-              disabled={submittingComment || !commentText.trim()}
+              disabled={submittingTop || !commentText.trim()}
             >
-              Post
+              {submittingTop ? '…' : 'Post'}
             </button>
           </form>
+        </div>
+      )}
+
+      {/* ── Reactors modal ── */}
+      {reactorsOpen && (
+        <div
+          className="post-reactors-overlay"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setReactorsOpen(false)}
+        >
+          <div className="post-reactors-modal" onClick={e => e.stopPropagation()}>
+            <div className="post-reactors-header">
+              <span className="post-reactors-title">Reactions</span>
+              <button type="button" className="post-reactors-close" onClick={() => setReactorsOpen(false)}>×</button>
+            </div>
+            <div className="post-reactors-list">
+              {reactorsLoading ? (
+                <div style={{ color: '#6b6057', fontSize: '0.82rem', fontFamily: "'DM Sans',sans-serif", padding: '12px 0', textAlign: 'center' }}>
+                  Loading…
+                </div>
+              ) : (reactors ?? []).length === 0 ? (
+                <div style={{ color: '#6b6057', fontSize: '0.82rem', fontFamily: "'DM Sans',sans-serif", padding: '12px 0', textAlign: 'center' }}>
+                  No reactions yet.
+                </div>
+              ) : (
+                (reactors ?? []).map(r => (
+                  <div key={r.user_id} className="post-reactor-row">
+                    <CommentAvatar name={r.full_name} src={r.profile_photo_url} size={32} />
+                    <span className="post-reactor-name">{r.full_name ?? 'Member'}</span>
+                    <span className="post-reactor-emoji">{reactionByKey(r.reaction).emoji}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

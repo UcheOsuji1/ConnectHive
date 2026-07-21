@@ -1,5 +1,7 @@
 import { query } from '../db/index.js';
 
+export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad'];
+
 // ── Shared SELECT (userId always = $1; caller appends WHERE/ORDER/LIMIT) ─────
 const FEED_SELECT = `
   SELECT
@@ -8,11 +10,18 @@ const FEED_SELECT = `
     h.hive_name, h.creator_user_id,
     c.category_name,
     (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active') AS member_count,
-    (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.post_id) AS reaction_count,
-    (SELECT COUNT(*) FROM post_comments  WHERE post_id = p.post_id) AS comment_count,
-    EXISTS(SELECT 1 FROM post_reactions WHERE post_id = p.post_id AND user_id = $1)                         AS reacted,
-    EXISTS(SELECT 1 FROM hive_followers  WHERE hive_id = h.hive_id AND user_id = $1)                       AS is_following,
-    EXISTS(SELECT 1 FROM hive_members    WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active') AS is_member,
+    (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.post_id)                                  AS reaction_count,
+    (SELECT COUNT(*) FROM post_comments  WHERE post_id = p.post_id)                                  AS comment_count,
+    EXISTS(SELECT 1 FROM post_reactions WHERE post_id = p.post_id AND user_id = $1)                  AS reacted,
+    (SELECT reaction FROM post_reactions WHERE post_id = p.post_id AND user_id = $1)                 AS my_reaction,
+    (SELECT json_agg(x) FROM (
+      SELECT reaction, COUNT(*)::int AS count
+      FROM post_reactions WHERE post_id = p.post_id
+      GROUP BY reaction ORDER BY count DESC
+    ) x)                                                                                              AS reaction_summary,
+    EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)                  AS is_following,
+    EXISTS(SELECT 1 FROM hive_members   WHERE hive_id = h.hive_id AND user_id = $1
+           AND membership_status = 'active')                                                          AS is_member,
     prof.full_name AS author_name, prof.profile_photo_url AS author_photo
   FROM hive_posts p
   JOIN hives h ON h.hive_id = p.hive_id
@@ -20,7 +29,37 @@ const FEED_SELECT = `
   LEFT JOIN profiles  prof ON prof.user_id   = p.author_user_id
 `;
 
-// Attach most-recent comment per post (single query for the whole batch)
+// ── Nest flat comment rows into a top-level → replies tree (one level deep) ──
+function nestComments(rows) {
+  const map = {};
+  const roots = [];
+  for (const c of rows) map[c.comment_id] = { ...c, replies: [] };
+  for (const c of rows) {
+    if (!c.parent_comment_id) {
+      roots.push(map[c.comment_id]);
+    } else {
+      // Walk up to the top-level ancestor so deep replies flatten to one level
+      let pid = c.parent_comment_id;
+      while (map[pid]?.parent_comment_id) pid = map[pid].parent_comment_id;
+      if (map[pid]) map[pid].replies.push(map[c.comment_id]);
+      else roots.push(map[c.comment_id]);
+    }
+  }
+  return roots;
+}
+
+// ── Reaction summary helper ───────────────────────────────────────────────────
+async function fetchReactionSummary(postId) {
+  const { rows } = await query(
+    `SELECT reaction, COUNT(*)::int AS count
+     FROM post_reactions WHERE post_id = $1
+     GROUP BY reaction ORDER BY count DESC`,
+    [postId],
+  );
+  return rows;
+}
+
+// ── Attach most-recent TOP-LEVEL comment per post ────────────────────────────
 async function attachTopComments(posts) {
   if (!posts.length) return posts;
   const ids = posts.map(p => p.post_id);
@@ -30,7 +69,7 @@ async function attachTopComments(posts) {
        prof.full_name, prof.profile_photo_url
      FROM post_comments pc
      LEFT JOIN profiles prof ON prof.user_id = pc.user_id
-     WHERE pc.post_id = ANY($1)
+     WHERE pc.post_id = ANY($1) AND pc.parent_comment_id IS NULL
      ORDER BY pc.post_id, pc.commented_at DESC`,
     [ids],
   );
@@ -52,11 +91,11 @@ export const createPost = async (req, res) => {
     if (!member || !['owner', 'admin'].includes(member.role)) {
       return res.status(403).json({ error: 'Only Hive owners and admins can post.' });
     }
-    const { rows: [post] } = await query(
+    const { rows: [inserted] } = await query(
       `INSERT INTO hive_posts
          (hive_id, author_user_id, post_type, headline, body, media_url, event_at, event_location)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-       RETURNING *`,
+       RETURNING post_id`,
       [
         hiveId, req.userId,
         postType || 'update',
@@ -66,6 +105,10 @@ export const createPost = async (req, res) => {
         eventAt               || null,
         eventLocation?.trim() || null,
       ],
+    );
+    const { rows: [post] } = await query(
+      `${FEED_SELECT} WHERE p.post_id = $2`,
+      [req.userId, inserted.post_id],
     );
     res.status(201).json({ post });
   } catch (err) {
@@ -77,11 +120,8 @@ export const createPost = async (req, res) => {
 // ── getFeed ───────────────────────────────────────────────────────────────────
 export const getFeed = async (req, res) => {
   try {
-    // Phase 4: blend in recommended Hives via matching for 'for-you'.
-    // For now both tab values use the same follows+memberships query.
     const limit  = Math.min(Number(req.query.limit)  || 20, 50);
     const offset = Number(req.query.offset) || 0;
-
     const { rows: posts } = await query(
       `${FEED_SELECT}
        WHERE (
@@ -105,7 +145,6 @@ export const getHivePosts = async (req, res) => {
   try {
     const limit  = Math.min(Number(req.query.limit)  || 20, 50);
     const offset = Number(req.query.offset) || 0;
-
     const { rows: posts } = await query(
       `${FEED_SELECT}
        WHERE p.hive_id = $2
@@ -158,40 +197,80 @@ export const deletePost = async (req, res) => {
 export const toggleReaction = async (req, res) => {
   try {
     const postId   = req.params.id;
-    const reaction = req.body.reaction || 'like';
+    const reaction = REACTIONS.includes(req.body.reaction) ? req.body.reaction : 'like';
+
     const { rows: [existing] } = await query(
-      'SELECT reaction_id FROM post_reactions WHERE post_id=$1 AND user_id=$2',
+      'SELECT reaction_id, reaction FROM post_reactions WHERE post_id=$1 AND user_id=$2',
       [postId, req.userId],
     );
+
     let reacted;
-    if (existing) {
-      await query('DELETE FROM post_reactions WHERE post_id=$1 AND user_id=$2', [postId, req.userId]);
-      reacted = false;
-    } else {
+    if (!existing) {
       await query(
         'INSERT INTO post_reactions (post_id, user_id, reaction) VALUES ($1,$2,$3)',
         [postId, req.userId, reaction],
       );
       reacted = true;
+    } else if (existing.reaction === reaction) {
+      await query('DELETE FROM post_reactions WHERE post_id=$1 AND user_id=$2', [postId, req.userId]);
+      reacted = false;
+    } else {
+      await query(
+        'UPDATE post_reactions SET reaction=$3, reacted_at=NOW() WHERE post_id=$1 AND user_id=$2',
+        [postId, req.userId, reaction],
+      );
+      reacted = true;
     }
+
     const { rows: [{ count }] } = await query(
       'SELECT COUNT(*) FROM post_reactions WHERE post_id=$1', [postId],
     );
-    res.json({ reacted, reaction_count: Number(count) });
+    const reaction_summary = await fetchReactionSummary(postId);
+
+    res.json({ reacted, reaction, reaction_count: Number(count), reaction_summary });
   } catch (err) {
     console.error('[posts/toggleReaction]', err);
     res.status(500).json({ error: 'Failed to toggle reaction.' });
   }
 };
 
+// ── getReactors ───────────────────────────────────────────────────────────────
+export const getReactors = async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT u.user_id, p.full_name, p.profile_photo_url, pr.reaction
+       FROM post_reactions pr
+       JOIN  users    u ON u.user_id  = pr.user_id
+       LEFT JOIN profiles p ON p.user_id = pr.user_id
+       WHERE pr.post_id = $1
+       ORDER BY pr.reacted_at ASC`,
+      [req.params.id],
+    );
+    res.json({ reactors: rows });
+  } catch (err) {
+    console.error('[posts/getReactors]', err);
+    res.status(500).json({ error: 'Failed to fetch reactors.' });
+  }
+};
+
 // ── addComment ────────────────────────────────────────────────────────────────
 export const addComment = async (req, res) => {
   try {
-    const { body } = req.body;
+    const { body, parentCommentId } = req.body;
     if (!body?.trim()) return res.status(400).json({ error: 'Comment body is required.' });
+
+    if (parentCommentId) {
+      const { rows: [parent] } = await query(
+        'SELECT comment_id FROM post_comments WHERE comment_id=$1 AND post_id=$2',
+        [parentCommentId, req.params.id],
+      );
+      if (!parent) return res.status(400).json({ error: 'Parent comment not found for this post.' });
+    }
+
     const { rows: [comment] } = await query(
-      'INSERT INTO post_comments (post_id, user_id, body) VALUES ($1,$2,$3) RETURNING *',
-      [req.params.id, req.userId, body.trim()],
+      `INSERT INTO post_comments (post_id, user_id, parent_comment_id, body)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [req.params.id, req.userId, parentCommentId ?? null, body.trim()],
     );
     const { rows: [profile] } = await query(
       'SELECT full_name, profile_photo_url FROM profiles WHERE user_id=$1 LIMIT 1',
@@ -202,6 +281,8 @@ export const addComment = async (req, res) => {
         ...comment,
         full_name:         profile?.full_name         ?? null,
         profile_photo_url: profile?.profile_photo_url ?? null,
+        is_mine:           true,
+        replies:           [],
       },
     });
   } catch (err) {
@@ -214,16 +295,35 @@ export const addComment = async (req, res) => {
 export const getComments = async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT pc.*, prof.full_name, prof.profile_photo_url
+      `SELECT pc.*,
+              prof.full_name, prof.profile_photo_url,
+              (pc.user_id = $2) AS is_mine
        FROM post_comments pc
        LEFT JOIN profiles prof ON prof.user_id = pc.user_id
        WHERE pc.post_id = $1
        ORDER BY pc.commented_at ASC`,
-      [req.params.id],
+      [req.params.id, req.userId],
     );
-    res.json({ comments: rows });
+    res.json({ comments: nestComments(rows) });
   } catch (err) {
     console.error('[posts/getComments]', err);
     res.status(500).json({ error: 'Failed to fetch comments.' });
+  }
+};
+
+// ── deleteComment ─────────────────────────────────────────────────────────────
+export const deleteComment = async (req, res) => {
+  try {
+    const { rows: [comment] } = await query(
+      'SELECT user_id FROM post_comments WHERE comment_id=$1',
+      [req.params.commentId],
+    );
+    if (!comment) return res.status(404).json({ error: 'Comment not found.' });
+    if (comment.user_id !== req.userId) return res.status(403).json({ error: 'Not authorised.' });
+    await query('DELETE FROM post_comments WHERE comment_id=$1', [req.params.commentId]);
+    res.json({ deleted: true });
+  } catch (err) {
+    console.error('[posts/deleteComment]', err);
+    res.status(500).json({ error: 'Failed to delete comment.' });
   }
 };

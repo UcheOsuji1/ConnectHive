@@ -7,6 +7,42 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import '../styles/profile.css';
 
+// ── Category hex tile ────────────────────────────────────────────────────────
+
+const CAT_CONFIG = {
+  'Social Groups':           { color: '#5dcaa5', icon: '👥' },
+  'Professional Networking': { color: '#c49a28', icon: '💼' },
+  'Travel Buddies':          { color: '#4db6c4', icon: '✈️' },
+  'Project Collaboration':   { color: '#f08a4b', icon: '🚀' },
+  'Event Buddies':           { color: '#e86a7c', icon: '🎟️' },
+  'Specialized Groups':      { color: '#a59ae8', icon: '⭐' },
+};
+
+function HexTile({ categoryName, size = 32, muted = false }) {
+  const cfg = CAT_CONFIG[categoryName] ?? { color: '#8a8070', icon: '✦' };
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0, opacity: muted ? 0.5 : 1 }}>
+      <svg viewBox="0 0 36 36" width={size} height={size} style={{ position: 'absolute', inset: 0 }}>
+        <polygon
+          points="18,2 33,10 33,26 18,34 3,26 3,10"
+          fill={cfg.color}
+          fillOpacity="0.18"
+          stroke={cfg.color}
+          strokeWidth="1.5"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.33 + 'px',
+      }}>
+        {cfg.icon}
+      </div>
+    </div>
+  );
+}
+
 // ── Label maps ───────────────────────────────────────────────────────────────
 
 const PURPOSE_LABELS = {
@@ -91,14 +127,26 @@ function computeCompleteness(profile) {
 export default function ProfilePage() {
   const { id } = useParams();
   const { user } = useAuth();
-  const [profile, setProfile] = useState(undefined); // undefined = loading
-  const [error,   setError]   = useState(null);
+  const [profile,         setProfile]         = useState(undefined); // undefined = loading
+  const [error,           setError]           = useState(null);
+  const [hives,           setHives]           = useState([]);
+  const [hivesLoading,    setHivesLoading]    = useState(true);
+  const [requests,        setRequests]        = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
 
   useEffect(() => {
     if (id) return;
     api.get('/api/users/profile')
       .then(data => setProfile(data.profile))
       .catch(err  => setError(err.data?.error ?? 'Failed to load profile.'));
+    api.get('/api/hives/mine')
+      .then(data => setHives(data.hives ?? []))
+      .catch(() => setHives([]))
+      .finally(() => setHivesLoading(false));
+    api.get('/api/hives/requests/mine')
+      .then(data => setRequests(data.requests ?? []))
+      .catch(() => setRequests([]))
+      .finally(() => setRequestsLoading(false));
   }, [id]);
 
   // ── Member view (not yet built — keep placeholder) ─────────────────────────
@@ -139,6 +187,13 @@ export default function ProfilePage() {
   const skillArr      = arr(profile?.skills);
   const goalArr       = arr(profile?.goals);
   const locationLine  = [profile?.location, profile?.school_company].filter(Boolean).join(' · ');
+
+  const sevenDaysAgo    = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const pendingRequests = requests.filter(r => r.status === 'pending');
+  const rejectedRecent  = requests.filter(r =>
+    r.status === 'rejected' &&
+    new Date(r.reviewed_at || r.requested_at).getTime() > sevenDaysAgo,
+  );
 
   const styleParts = [
     sp.socialEnergy ? ENERGY_LABELS[sp.socialEnergy] : null,
@@ -302,21 +357,72 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* 7 ── MY HIVES — honest empty state */}
+              {/* 7 ── MY HIVES */}
               <div className="prof-card">
                 <div className="prof-section-label">My Hives</div>
-                <div className="prof-hives-empty">
-                  <span className="prof-hives-icon">
-                    <svg width="40" height="40" viewBox="0 0 120 110" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                      <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.35"/>
-                      <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.55"/>
-                      <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.55"/>
-                    </svg>
-                  </span>
-                  <p className="prof-hives-msg">No Hives yet</p>
-                  <p className="prof-hives-sub">Your Hives will show here once you join or found one.</p>
-                  <Link to="/find-your-hive" className="prof-hives-cta">Find Your Hive →</Link>
-                </div>
+
+                {(hivesLoading || requestsLoading) ? (
+                  <p className="prof-hives-loading">Loading…</p>
+                ) : hives.length === 0 && pendingRequests.length === 0 && rejectedRecent.length === 0 ? (
+                  <div className="prof-hives-empty">
+                    <span className="prof-hives-icon">
+                      <svg width="40" height="40" viewBox="0 0 120 110" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.35"/>
+                        <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.55"/>
+                        <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.55"/>
+                      </svg>
+                    </span>
+                    <p className="prof-hives-msg">No Hives yet</p>
+                    <p className="prof-hives-sub">Your Hives will show here once you join or found one.</p>
+                    <Link to="/find-your-hive" className="prof-hives-cta">Find Your Hive →</Link>
+                  </div>
+                ) : (
+                  <div className="prof-hives-list">
+                    {hives.map(hive => (
+                      <Link key={hive.hive_id} to={`/hive/${hive.hive_id}`} className="prof-hive-row">
+                        <HexTile categoryName={hive.category_name} size={32} />
+                        <div className="prof-hive-info">
+                          <div className="prof-hive-name">{hive.hive_name}</div>
+                          <div className="prof-hive-meta">
+                            {[hive.category_name, hive.role].filter(Boolean).join(' · ')}
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+
+                    {pendingRequests.map(req => (
+                      <Link key={req.request_id} to={`/hive/${req.hive_id}`} className="prof-hive-row prof-hive-row-muted">
+                        <HexTile categoryName={req.category_name} size={32} muted />
+                        <div className="prof-hive-info">
+                          <div className="prof-hive-name">{req.hive_name}</div>
+                          {req.category_name && (
+                            <div className="prof-hive-meta">{req.category_name}</div>
+                          )}
+                        </div>
+                        <span className="prof-pending-pill">Request pending</span>
+                      </Link>
+                    ))}
+
+                    {rejectedRecent.map(req => (
+                      <div key={req.request_id} className="prof-hive-row prof-hive-row-muted">
+                        <HexTile categoryName={req.category_name} size={32} muted />
+                        <div className="prof-hive-info">
+                          <div className="prof-hive-name">{req.hive_name}</div>
+                          {req.category_name && (
+                            <div className="prof-hive-meta">{req.category_name}</div>
+                          )}
+                        </div>
+                        <span className="prof-rejected-pill">Not accepted</span>
+                      </div>
+                    ))}
+
+                    {hives.length === 0 && pendingRequests.length > 0 && (
+                      <p className="prof-hives-pending-sub">
+                        Your Hives will appear here once you&apos;re accepted.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           )}

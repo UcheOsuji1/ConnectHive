@@ -523,6 +523,397 @@
   .hd-founder-logo { width: 72px; height: 72px; }
 }
 
+/* ── Needs-profile fallback ─────────────────────────────────── */
+.hmd-needs-profile {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 56px 24px;
+  text-align: center;
+}
+.hmd-needs-profile-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: #5a4e3c;
+  margin: 0;
+}
+
+/* ── Match results layout ───────────────────────────────────── */
+.hmd-results {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 760px;
+  padding: 0 4px;
+}
+.hmd-results-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.hmd-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* ── Match card ─────────────────────────────────────────────── */
+.hmd-card {
+  background: #fff;
+  border: 0.5px solid #d8d0bc;
+  border-radius: 16px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.hmd-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hmd-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.hmd-hive-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1508;
+  line-height: 1.1;
+}
+.hmd-cat-badge {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a6510;
+  background: #fdf3d6;
+  border: 0.5px solid #d8c080;
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+.hmd-score-pill {
+  flex-shrink: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1a7a44;
+  background: #eaf7ee;
+  border: 0.5px solid #7dd3a4;
+  border-radius: 20px;
+  padding: 4px 12px;
+  white-space: nowrap;
+}
+.hmd-description {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  color: #5a4e3c;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── Tags ───────────────────────────────────────────────────── */
+.hmd-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hmd-tag {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11.5px;
+  color: #7a6a4a;
+  background: #f7f2e8;
+  border: 0.5px solid #e0d8c8;
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+/* ── Stats row ──────────────────────────────────────────────── */
+.hmd-stats {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.hmd-stat {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #7a6a4a;
+}
+.hmd-stat-online {
+  color: #1a7a44;
+  font-weight: 500;
+}
+
+/* ── Why you match ──────────────────────────────────────────── */
+.hmd-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hmd-reasons-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a09060;
+}
+.hmd-reasons-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.hmd-reason-chip {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #5a4e3c;
+  background: #f5f0e2;
+  border: 0.5px solid #d8ceb0;
+  border-radius: 20px;
+  padding: 4px 12px;
+}
+
+/* ── New hive notice ────────────────────────────────────────── */
+.hmd-new-hive {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  color: #c49a28;
+  font-weight: 500;
+  margin: 0;
+}
+
+/* ── Member section ─────────────────────────────────────────── */
+.hmd-members-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hmd-members-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: fit-content;
+}
+.hmd-avatar-strip {
+  display: flex;
+  align-items: center;
+}
+.hmd-avatar-strip .hmd-avatar { margin-left: -6px; }
+.hmd-avatar-strip .hmd-avatar:first-child { margin-left: 0; }
+.hmd-avatar {
+  border-radius: 50%;
+  background: #d8c880;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  color: #5a4010;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.hmd-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.hmd-avatar-more {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  color: #8a6510;
+  margin-left: 4px;
+}
+.hmd-members-toggle-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #8a6510;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.hmd-members-chevron {
+  font-size: 9px;
+}
+.hmd-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #faf7f0;
+  border: 0.5px solid #e8e0cc;
+  border-radius: 10px;
+}
+.hmd-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hmd-member-name {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #2a2210;
+  flex: 1;
+}
+.hmd-member-score {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: #1a7a44;
+  white-space: nowrap;
+}
+
+/* ── CTA ────────────────────────────────────────────────────── */
+.hmd-cta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.hmd-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 8px 18px;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+.hmd-btn-join {
+  background: #1a1508;
+  color: #fff;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.hmd-btn-request {
+  background: #c49a28;
+  color: #1a1508;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.hmd-btn-request:hover:not(:disabled) { opacity: 0.88; }
+.hmd-btn-request:disabled { opacity: 0.55; cursor: not-allowed; }
+.hmd-btn-joined {
+  background: #eaf7ee;
+  color: #1a7a44;
+  font-weight: 600;
+  border: 0.5px solid #7dd3a4;
+  text-decoration: none;
+  cursor: pointer;
+}
+.hmd-join-error {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11.5px;
+  color: #c0392b;
+  align-self: center;
+}
+.hmd-btn-profile {
+  background: #c49a28;
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+.hmd-btn-profile:hover { background: #a87e1c; }
+.hmd-btn-pending {
+  background: #f5f0e2;
+  color: #8a6510;
+  border: 0.5px solid #d8c880;
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+.hmd-soon-tag {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: #c49a28;
+  color: #fff;
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.hmd-following-pill {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11px;
+  color: #8a6510;
+  background: #fdf3d6;
+  border: 0.5px solid #d8c080;
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+
+/* ── Waitlist nudge (on results page) ──────────────────────── */
+.hmd-waitlist-nudge {
+  margin-top: 28px;
+  background: #fff;
+  border: 0.5px solid #d8d0bc;
+  border-radius: 14px;
+  padding: 18px 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+.hmd-waitlist-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #5a4e3c;
+  margin: 0;
+  flex: 1;
+  line-height: 1.5;
+}
+.hmd-waitlist-btn {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #8a6510;
+  background: #fdf3d6;
+  border: 0.5px solid #c49a28;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.hmd-waitlist-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+.hmd-waitlist-btn:hover:not(:disabled) { background: #f7e8a8; }
+
+/* ── Results responsive ─────────────────────────────────────── */
+@media (max-width: 560px) {
+  .hmd-card { padding: 16px; }
+  .hmd-card-head { flex-direction: column; gap: 8px; }
+  .hmd-waitlist-nudge { flex-direction: column; }
+}
+
 /* ── Results placeholder (replaced when results screen ships) ── */
 .hd-results-placeholder {
   position: relative;
