@@ -343,10 +343,7 @@ export default function MyHivePage() {
             <span className="mh-grow-text">
               Find another community that fits your goals.
             </span>
-            <div className="mh-grow-actions">
-              <Link to="/find-your-hive" className="mh-grow-explore">Explore Hives</Link>
-              <Link to="/create-hive"    className="mh-grow-create">+ Create a Hive</Link>
-            </div>
+            <Link to="/find-your-hive" className="mh-grow-explore">Explore Hives</Link>
           </div>
 
         </div>
