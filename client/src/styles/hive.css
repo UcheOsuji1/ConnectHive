@@ -860,6 +860,87 @@
   .dhp-tab { padding: 10px 14px; font-size: 0.8rem; }
 }
 
+/* ── MyHivePage richer cards ─────────────────────────────────────────────────── */
+.mh-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+  background: #17120a;
+  border: 1px solid rgba(51, 41, 21, 0.5);
+  border-radius: 14px;
+  box-shadow: 0 3px 12px #1a15080e;
+  text-decoration: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.mh-card:hover {
+  border-color: rgba(196, 154, 40, 0.35);
+  box-shadow: 0 5px 20px #1a15081e;
+}
+.mh-card.mh-card-unread {
+  border-color: rgba(196, 154, 40, 0.4);
+}
+.mh-card.mh-card-unread:hover {
+  border-color: rgba(196, 154, 40, 0.65);
+}
+
+/* Tile wrapper for unread dot */
+.mh-tile-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.mh-unread-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #c49a28;
+  border: 2px solid #17120a;
+}
+
+/* Card content */
+.mh-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mh-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mh-unread-pill {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: rgba(196, 154, 40, 0.2);
+  color: #c49a28;
+  border: 1px solid rgba(196, 154, 40, 0.4);
+}
+
+.mh-activity-line {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.74rem;
+  color: #6b6057;
+  line-height: 1.4;
+}
+
+.mh-card.mh-card-unread .mh-activity-line {
+  color: rgba(196, 154, 40, 0.75);
+}
+
+.mh-card:hover .mh-chevron { color: #c49a28; }
+
 /* ── MyHivePage pending requests ─────────────────────────────────────────────── */
 .mh-section-label {
   font-family: 'DM Sans', sans-serif;

@@ -444,21 +444,32 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <div className="home-hive-list">
-                    {hives.map(hive => (
-                      <Link
-                        key={hive.hive_id}
-                        to={`/hive/${hive.hive_id}`}
-                        className="home-hive-row"
-                      >
-                        <HexTile categoryName={hive.category_name} />
-                        <div className="home-hive-info">
-                          <div className="home-hive-name">{hive.hive_name}</div>
-                          <div className="home-hive-meta">
-                            {hive.member_count ?? 1} member{Number(hive.member_count) !== 1 ? 's' : ''} · {hive.role}
+                    {hives.map(hive => {
+                      const unread = Number(hive.new_posts ?? 0) + Number(hive.new_members ?? 0);
+                      return (
+                        <Link
+                          key={hive.hive_id}
+                          to={`/hive/${hive.hive_id}`}
+                          className="home-hive-row"
+                        >
+                          <div className="home-hive-tile-wrap">
+                            <HexTile categoryName={hive.category_name} />
+                            {unread > 0 && <span className="home-hive-unread-dot" />}
                           </div>
-                        </div>
-                      </Link>
-                    ))}
+                          <div className="home-hive-info">
+                            <div className="home-hive-name-row">
+                              <span className="home-hive-name">{hive.hive_name}</span>
+                              {unread > 0 && (
+                                <span className="home-hive-unread-badge">{unread} new</span>
+                              )}
+                            </div>
+                            <div className="home-hive-meta">
+                              {hive.member_count ?? 1} member{Number(hive.member_count) !== 1 ? 's' : ''} · {hive.role}
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>

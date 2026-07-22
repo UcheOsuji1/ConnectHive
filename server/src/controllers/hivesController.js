@@ -6,6 +6,7 @@ import {
   blendScores,
   buildReasons,
 } from '../lib/compatibility.js';
+import { createNotification } from './notificationsController.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -355,21 +356,65 @@ export const getHiveMembers = async (req, res) => {
 export const getMyHive = async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT h.*, c.category_name, hm.role,
-              COUNT(hm2.user_id) FILTER (WHERE hm2.membership_status = 'active') AS member_count
-       FROM   hive_members hm
-       JOIN   hives h   ON h.hive_id    = hm.hive_id
-       LEFT JOIN categories c ON c.category_id = h.category_id
-       LEFT JOIN hive_members hm2 ON hm2.hive_id = h.hive_id
-       WHERE  hm.user_id = $1 AND hm.membership_status = 'active'
-       GROUP  BY h.hive_id, c.category_name, hm.role, hm.joined_at
-       ORDER  BY hm.joined_at DESC`,
+      `WITH my_hives_base AS (
+         SELECT h.*, c.category_name, hm.role,
+                COUNT(DISTINCT hm2.user_id) FILTER (WHERE hm2.membership_status = 'active') AS member_count,
+                COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz) AS last_seen_at
+         FROM   hive_members hm
+         JOIN   hives h   ON h.hive_id    = hm.hive_id
+         LEFT JOIN categories c   ON c.category_id  = h.category_id
+         LEFT JOIN hive_members hm2 ON hm2.hive_id  = h.hive_id
+         LEFT JOIN hive_last_seen hls ON hls.user_id = $1 AND hls.hive_id = h.hive_id
+         WHERE  hm.user_id = $1 AND hm.membership_status = 'active'
+         GROUP  BY h.hive_id, c.category_name, hm.role,
+                   COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz)
+       ),
+       enriched AS (
+         SELECT b.*,
+           (SELECT COUNT(*)::int FROM hive_posts hp
+            WHERE hp.hive_id = b.hive_id AND hp.author_user_id != $1
+              AND hp.created_at > b.last_seen_at
+           ) AS new_posts,
+           (SELECT COUNT(*)::int FROM hive_members hm3
+            WHERE hm3.hive_id = b.hive_id AND hm3.user_id != $1
+              AND hm3.membership_status = 'active' AND hm3.joined_at > b.last_seen_at
+           ) AS new_members,
+           (SELECT p.full_name FROM hive_members hm_new
+            LEFT JOIN profiles p ON p.user_id = hm_new.user_id
+            WHERE hm_new.hive_id = b.hive_id AND hm_new.user_id != $1
+              AND hm_new.membership_status = 'active' AND hm_new.joined_at > b.last_seen_at
+            ORDER BY hm_new.joined_at DESC LIMIT 1
+           ) AS newest_member_name,
+           GREATEST(
+             (SELECT MAX(hp2.created_at) FROM hive_posts hp2 WHERE hp2.hive_id = b.hive_id),
+             (SELECT MAX(hm5.joined_at)  FROM hive_members hm5
+              WHERE hm5.hive_id = b.hive_id AND hm5.membership_status = 'active')
+           ) AS last_activity_at
+         FROM my_hives_base b
+       )
+       SELECT * FROM enriched
+       ORDER BY (new_posts + new_members) DESC, last_activity_at DESC NULLS LAST`,
       [req.userId],
     );
     res.json({ hives: rows });
   } catch (err) {
     console.error('[hives/getMyHive]', err);
     res.status(500).json({ error: 'Failed to fetch your Hives.' });
+  }
+};
+
+export const markHiveSeen = async (req, res) => {
+  try {
+    await query(
+      `INSERT INTO hive_last_seen (user_id, hive_id, last_seen_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (user_id, hive_id) DO UPDATE SET last_seen_at = NOW()`,
+      [req.userId, req.params.id],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[hives/markHiveSeen]', err);
+    res.status(500).json({ error: 'Failed to mark seen.' });
   }
 };
 
@@ -626,6 +671,31 @@ export const requestToJoin = async (req, res) => {
       );
     }
 
+    // Notify hive owners/admins (best-effort)
+    try {
+      const [{ rows: [requester] }, { rows: ownerAdmins }] = await Promise.all([
+        query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
+        query(
+          `SELECT user_id FROM hive_members
+           WHERE hive_id = $1 AND role IN ('owner','admin') AND membership_status = 'active'`,
+          [hiveId],
+        ),
+      ]);
+      const name = requester?.full_name ?? 'Someone';
+      for (const m of ownerAdmins) {
+        await createNotification({
+          userId: m.user_id,
+          type: 'join_request',
+          title: `${name} requested to join ${hive.hive_name}`,
+          hiveId,
+          actorUserId: req.userId,
+          link: `/hive/${hiveId}`,
+        });
+      }
+    } catch (e) {
+      console.error('[hives/requestToJoin] notification failed (non-fatal):', e);
+    }
+
     res.json({ requested: true });
   } catch (err) {
     console.error('[hives/requestToJoin]', err);
@@ -755,7 +825,61 @@ export const reviewRequest = async (req, res) => {
       [hiveId],
     );
 
-    res.json({ reviewed: true, action, member_count: Number(count) });
+    // ── Join ceremony (best-effort — never rolls back the acceptance) ──────────
+    let newMember = null;
+    if (action === 'accept') {
+      try {
+        const [{ rows: [requester] }, { rows: [hiveRow] }, { rows: existingMembers }] = await Promise.all([
+          query(`SELECT full_name FROM profiles WHERE user_id = $1`, [request.user_id]),
+          query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]),
+          query(
+            `SELECT user_id FROM hive_members
+             WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
+            [hiveId, request.user_id],
+          ),
+        ]);
+
+        const requesterName = requester?.full_name ?? 'A new member';
+        const hiveName = hiveRow?.hive_name ?? 'the Hive';
+        newMember = { user_id: request.user_id, full_name: requesterName };
+
+        // 1. Welcome the new member — link to the certificate page
+        await createNotification({
+          userId: request.user_id,
+          type: 'request_accepted',
+          title: `You're in! Welcome to ${hiveName}`,
+          hiveId,
+          actorUserId: req.userId,
+          link: `/welcome/hive/${hiveId}`,
+        });
+
+        // 2. Notify all other active members (owner + existing)
+        for (const m of existingMembers) {
+          await createNotification({
+            userId: m.user_id,
+            type: 'member_joined',
+            title: `${requesterName} joined ${hiveName}`,
+            body: 'Say hello 👋',
+            hiveId,
+            actorUserId: request.user_id,
+            link: `/hive/${hiveId}`,
+          });
+        }
+
+        // 3. Auto milestone post authored by the new member
+        await query(
+          `INSERT INTO hive_posts (hive_id, author_user_id, post_type, headline, body)
+           VALUES ($1, $2, 'milestone', $3, $4)`,
+          [hiveId, request.user_id,
+           `🎉 ${requesterName} joined the Hive`,
+           `Give a warm welcome to your newest member.`],
+        );
+      } catch (ceremonyErr) {
+        console.error('[hives/reviewRequest] ceremony failed (non-fatal):', ceremonyErr);
+      }
+    }
+
+    res.json({ reviewed: true, action, member_count: Number(count), new_member: newMember });
   } catch (err) {
     console.error('[hives/reviewRequest]', err);
     res.status(500).json({ error: 'Failed to review request.' });

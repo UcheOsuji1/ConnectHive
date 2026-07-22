@@ -244,3 +244,32 @@ CREATE INDEX IF NOT EXISTS idx_posts_hive                ON hive_posts(hive_id, 
 CREATE INDEX IF NOT EXISTS idx_posts_author              ON hive_posts(author_user_id);
 CREATE INDEX IF NOT EXISTS idx_reactions_post            ON post_reactions(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post             ON post_comments(post_id, commented_at);
+
+-- ─── Allow milestone posts (idempotent — drop old constraint, add new) ────────
+ALTER TABLE hive_posts DROP CONSTRAINT IF EXISTS hive_posts_post_type_check;
+ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_post_type_check
+  CHECK (post_type IN ('update', 'event', 'milestone'));
+
+-- ─── Notifications ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS notifications (
+  notification_id  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  type             TEXT        NOT NULL,
+  title            TEXT        NOT NULL,
+  body             TEXT,
+  hive_id          UUID        REFERENCES hives(hive_id) ON DELETE SET NULL,
+  actor_user_id    UUID        REFERENCES users(user_id) ON DELETE SET NULL,
+  link             TEXT,
+  read             BOOLEAN     NOT NULL DEFAULT false,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+
+-- ─── Hive last-seen tracking ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_last_seen (
+  user_id      UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, hive_id)
+);
+CREATE INDEX IF NOT EXISTS idx_hive_last_seen_user ON hive_last_seen(user_id);

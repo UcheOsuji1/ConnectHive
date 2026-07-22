@@ -3,10 +3,11 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
-import authRoutes  from './routes/auth.js';
-import hiveRoutes  from './routes/hives.js';
-import userRoutes  from './routes/users.js';
-import postRoutes  from './routes/posts.js';
+import authRoutes         from './routes/auth.js';
+import hiveRoutes         from './routes/hives.js';
+import userRoutes         from './routes/users.js';
+import postRoutes         from './routes/posts.js';
+import notificationRoutes from './routes/notifications.js';
 import { testConnection } from './db/index.js';
 
 const app        = express();
@@ -24,10 +25,11 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ── API routes ────────────────────────────────────────────────────────────────
-app.use('/api/auth',  authRoutes);
-app.use('/api/hives', hiveRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/posts', postRoutes);
+app.use('/api/auth',          authRoutes);
+app.use('/api/hives',         hiveRoutes);
+app.use('/api/users',         userRoutes);
+app.use('/api/posts',         postRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

@@ -13,6 +13,7 @@ import MyHivePage from './pages/MyHivePage';
 import DirectHivePage from './pages/DirectHivePage';
 import ProfilePage from './pages/ProfilePage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
+import MemberWelcomePage from './pages/MemberWelcomePage';
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/profile/:id" element={<ProfilePage />} />
       <Route path="/settings" element={<AccountSettingsPage />} />
+      <Route path="/welcome/hive/:hiveId" element={<MemberWelcomePage />} />
     </Routes>
   );
 }

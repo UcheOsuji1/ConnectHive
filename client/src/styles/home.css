@@ -303,7 +303,40 @@
 }
 .home-hive-row:hover { opacity: 0.78; }
 
+/* Tile with unread dot */
+.home-hive-tile-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+.home-hive-unread-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #c49a28;
+  border: 2px solid #17120a;
+}
+
 .home-hive-info { flex: 1; min-width: 0; }
+
+.home-hive-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.home-hive-unread-badge {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: rgba(196, 154, 40, 0.2);
+  color: #c49a28;
+  border: 1px solid rgba(196, 154, 40, 0.35);
+}
 
 .home-hive-name {
   font-family: 'Cormorant Garamond', serif;

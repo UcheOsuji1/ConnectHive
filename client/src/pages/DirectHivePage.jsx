@@ -187,6 +187,8 @@ export default function DirectHivePage() {
       .then(data => {
         setHive(data.hive);
         const isMem = Boolean(data.hive?.my_role);
+        // Mark this hive seen for the member (clears unread indicators)
+        if (isMem) api.post(`/api/hives/${id}/seen`, {}).catch(() => {});
         // Only prefetch posts+members for the non-member public view
         if (!data.hive?.private && !isMem) {
           api.get(`/api/hives/${id}/posts`)

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import Avatar from './Avatar.jsx';
+import NotificationBell from './NotificationBell.jsx';
 
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
@@ -81,6 +82,7 @@ export default function Navbar() {
                 ))}
               </ul>
               <div className="nav-right">
+                <NotificationBell />
                 <div className="nav-user" ref={menuRef}>
                   <button
                     className="nav-user-btn"
