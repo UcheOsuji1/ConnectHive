@@ -853,3 +853,274 @@
   justify-content: center;
 }
 .ep-emoji:hover { background: rgba(255,255,255,0.07); transform: scale(1.2); }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   LIGHT VARIANT  (variant="light" — Home feed only)
+══════════════════════════════════════════════════════════════════════════════ */
+
+.post-card--light {
+  background: #fffdf9;
+  border: 1px solid #e4dccb;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+/* Restore bottom border that :last-child strips */
+.post-card--light:last-child {
+  border-bottom: 1px solid #e4dccb;
+}
+
+/* Hive / category labels */
+.post-card--light .post-cat-badge   { color: #8a7d5e; }
+
+/* Author row */
+.post-card--light .post-author-name { color: #2f2a1c; }
+.post-card--light .post-time        { color: #8a7d5e; }
+
+/* Content */
+.post-card--light .post-headline    { color: #17120a; }
+.post-card--light .post-body        { color: #2f2a1c; }
+.post-card--light .post-event-meta  { color: #8a7d5e; }
+
+/* Footer divider */
+.post-card--light .post-footer      { border-top-color: #efe8d8; }
+
+/* Reaction / comment buttons */
+.post-card--light .post-react-btn               { color: #8a7d5e; }
+.post-card--light .post-react-btn:hover,
+.post-card--light .post-react-btn.reacted       { color: #c49a28; }
+.post-card--light .post-comment-btn             { color: #8a7d5e; }
+.post-card--light .post-comment-btn:hover       { color: #17120a; }
+
+/* Reaction summary */
+.post-card--light .post-summary-count           { color: #8a7d5e; }
+
+/* Top-comment preview */
+.post-card--light .post-top-comment             { background: rgba(0, 0, 0, 0.03); }
+.post-card--light .post-top-comment-body        { color: #5a5244; }
+
+/* Comment bubbles */
+.post-card--light .post-comment-bubble          { background: #f0e8d8; }
+.post-card--light .post-comment-bubble-author   { color: #c49a28; }
+.post-card--light .post-comment-bubble-body     { color: #3a3428; }
+.post-card--light .post-comment-meta            { color: #8a7d5e; }
+
+/* Comment input */
+.post-card--light .post-comment-input {
+  background: #fff;
+  border-color: #e4dccb;
+  color: #17120a;
+}
+.post-card--light .post-comment-input::placeholder { color: #b0a88c; }
+.post-card--light .post-comment-input:focus        { border-color: rgba(196, 154, 40, 0.5); }
+
+/* Reply affordances */
+.post-card--light .post-reply-cancel           { color: #8a7d5e; }
+.post-card--light .post-reply-cancel:hover     { color: #17120a; }
+.post-card--light .post-reply-thread-line      { background: #e4dccb; }
+.post-card--light .post-comment-delete         { color: #a09070; }
+.post-card--light .post-comment-delete:hover   { color: #c06050; }
+
+/* Light feed: gaps between cards (no merged-border-list look) */
+.post-feed--light {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   MILESTONE CARD  (post_type === 'milestone')
+══════════════════════════════════════════════════════════════════════════════ */
+
+.post-card--milestone {
+  border-left: 3px solid #c49a28;
+}
+
+/* Light milestone: ivory bg, amber border, gold left accent */
+.post-card--milestone.post-card--light {
+  background: #fffdf9;
+  border: 1px solid #ecd9a0;
+  border-left: 3px solid #c49a28;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+.post-card--milestone.post-card--light:last-child {
+  border-bottom: 1px solid #ecd9a0;
+}
+
+.pc-ms-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pc-ms-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #faf3dd;
+  flex-shrink: 0;
+}
+
+/* Dark context: dim chip bg */
+.post-card--milestone:not(.post-card--light) .pc-ms-chip {
+  background: rgba(250, 243, 221, 0.1);
+}
+
+.pc-ms-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #c49a28;
+}
+
+.pc-ms-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.74rem;
+  color: #8a8070;
+  margin-left: auto;
+}
+.post-card--light .pc-ms-meta { color: #8a7d5e; }
+
+.pc-ms-headline {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.12rem;
+  font-weight: 600;
+  color: #f3ecdd;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+.post-card--light .pc-ms-headline { color: #17120a; }
+
+.pc-ms-count {
+  color: #c49a28;
+  font-weight: 700;
+}
+
+.pc-ms-body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  color: #b0a08a;
+  line-height: 1.6;
+}
+.post-card--light .pc-ms-body { color: #5a5244; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   NEW-MEMBER CARD  (post_type === 'member_joined')
+══════════════════════════════════════════════════════════════════════════════ */
+
+.pc-nm-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.pc-nm-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #eef2e6;
+  flex-shrink: 0;
+}
+
+.post-card--new-member:not(.post-card--light) .pc-nm-chip {
+  background: rgba(238, 242, 230, 0.12);
+}
+
+.pc-nm-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #639922;
+}
+
+.pc-nm-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.74rem;
+  color: #8a8070;
+  margin-left: auto;
+}
+.post-card--light .pc-nm-meta { color: #8a7d5e; }
+
+.pc-nm-body-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pc-nm-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8c84a 0%, #c49a28 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1a1508;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.pc-nm-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.86rem;
+  color: #b0a08a;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+.post-card--light .pc-nm-text { color: #2f2a1c; }
+
+.pc-nm-name { color: #c49a28; font-weight: 700; }
+.post-card--light .pc-nm-name { color: #17120a; }
+
+.pc-nm-hive { color: #c49a28; font-weight: 700; }
+
+.pc-nm-say-hi {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 13px;
+  border: 1.5px solid #639922;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #639922;
+  text-decoration: none;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.pc-nm-say-hi:hover { background: rgba(99, 153, 34, 0.1); }
+
+/* Light skeleton cards */
+.post-skeleton--light {
+  background: #fffdf9;
+  border: 1px solid #e4dccb;
+  border-radius: 12px;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.post-skel-line--light {
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0e8d8 25%, #e5d8c0 50%, #f0e8d8 75%);
+  background-size: 200% 100%;
+  animation: post-shimmer 1.4s infinite;
+}

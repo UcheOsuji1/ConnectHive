@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { REACTIONS, reactionByKey } from '../lib/reactions';
 import ReactionPicker from './ReactionPicker';
@@ -120,7 +121,7 @@ function ReplyBox({ onSubmit, onCancel, submitting }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function PostCard({ post: initialPost }) {
+export default function PostCard({ post: initialPost, variant }) {
   const [post, setPost] = useState(initialPost);
 
   // Reaction picker
@@ -285,8 +286,71 @@ export default function PostCard({ post: initialPost }) {
   const topReactions   = summaryArr.slice(0, 3);
   const myR            = post.my_reaction ? reactionByKey(post.my_reaction) : null;
 
+  // ── Special card types (after all hooks) ───────────────────────────────────
+  if (post.post_type === 'milestone') {
+    const count    = Number(post.member_count ?? 0);
+    const cardCls  = `post-card post-card--milestone${variant === 'light' ? ' post-card--light' : ''}`;
+    return (
+      <div className={cardCls}>
+        <div className="pc-ms-header">
+          <span className="pc-ms-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9H4a2 2 0 0 1-2-2V5h4" />
+              <path d="M18 9h2a2 2 0 0 0 2-2V5h-4" />
+              <path d="M8 21h8" /><path d="M12 17v4" />
+              <path d="M4 5h16v5a8 8 0 0 1-16 0V5z" />
+            </svg>
+          </span>
+          <span className="pc-ms-label">MILESTONE</span>
+          <span className="pc-ms-meta">{post.hive_name} · {relativeTime(post.created_at)}</span>
+        </div>
+        <div className="pc-ms-headline">
+          {post.hive_name} just reached{' '}
+          <span className="pc-ms-count">{count}</span>
+          {' '}member{count !== 1 ? 's' : ''}
+        </div>
+        {post.body && <div className="pc-ms-body">{post.body}</div>}
+      </div>
+    );
+  }
+
+  if (post.post_type === 'member_joined') {
+    const initials = (post.author_name ?? '?')
+      .trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const cardCls  = `post-card post-card--new-member${variant === 'light' ? ' post-card--light' : ''}`;
+    return (
+      <div className={cardCls}>
+        <div className="pc-nm-header">
+          <span className="pc-nm-chip">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#639922" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <line x1="19" y1="8" x2="19" y2="14" />
+              <line x1="22" y1="11" x2="16" y2="11" />
+            </svg>
+          </span>
+          <span className="pc-nm-label">NEW MEMBER</span>
+          <span className="pc-nm-meta">{post.hive_name} · {relativeTime(post.created_at)}</span>
+        </div>
+        <div className="pc-nm-body-row">
+          <div className="pc-nm-avatar">
+            {post.author_photo
+              ? <img src={post.author_photo} alt={post.author_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+              : initials}
+          </div>
+          <span className="pc-nm-text">
+            <strong className="pc-nm-name">{post.author_name ?? 'A new member'}</strong>
+            {' '}joined{' '}
+            <strong className="pc-nm-hive">{post.hive_name}</strong>
+          </span>
+          <Link to={`/profile/${post.author_user_id}`} className="pc-nm-say-hi">Say hi</Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="post-card">
+    <div className={`post-card${variant === 'light' ? ' post-card--light' : ''}`}>
 
       {/* ── Hive header ── */}
       <div className="post-hive-row">

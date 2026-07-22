@@ -74,109 +74,84 @@ function HexTile({ categoryName }) {
   );
 }
 
-// ── Requests sidebar panel ────────────────────────────────────────────────────
-function RequestsPanel({ hives, hivesLoading }) {
-  const [incoming,  setIncoming]  = useState([]);
-  const [outgoing,  setOutgoing]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [reviewing, setReviewing] = useState(null);
+// ── JoinRequestCard (Part 5) — dark, hides at 0 ───────────────────────────────
+function JoinRequestCard({ incoming, hives }) {
+  const n = incoming.length;
+  if (n === 0) return null;
 
-  useEffect(() => {
-    if (hivesLoading) return;
-    setLoading(true);
-
-    const adminHives = hives.filter(h => ['owner', 'admin'].includes(h.role));
-    const incomingPromises = adminHives.map(h =>
-      api.get(`/api/hives/${h.hive_id}/requests`)
-        .then(d => (d.requests ?? []).map(r => ({ ...r, hive_name: h.hive_name, hive_id: h.hive_id })))
-        .catch(() => []),
-    );
-
-    Promise.all([
-      Promise.all(incomingPromises).then(groups => groups.flat()),
-      api.get('/api/hives/requests/mine').then(d => d.requests ?? []).catch(() => []),
-    ]).then(([inc, out]) => {
-      setIncoming(inc);
-      setOutgoing(out);
-    }).finally(() => setLoading(false));
-  }, [hives, hivesLoading]);
-
-  async function handleReview(hiveId, requestId, action) {
-    setReviewing(requestId);
-    try {
-      await api.post(`/api/hives/${hiveId}/requests/${requestId}`, { action });
-      setIncoming(prev => prev.filter(r => r.request_id !== requestId));
-    } catch (err) {
-      console.error('[RequestsPanel]', err);
-    } finally {
-      setReviewing(null);
-    }
-  }
-
-  if (loading || hivesLoading) {
-    return (
-      <>
-        <div className="home-skeleton-line" style={{ width: '75%' }} />
-        <div className="home-skeleton-line" style={{ width: '55%' }} />
-      </>
-    );
-  }
-
-  if (!incoming.length && !outgoing.length) {
-    return <div className="home-sidebar-empty">No pending requests.</div>;
-  }
+  const topHiveId  = incoming[0]?.hive_id;
+  const topHive    = hives.find(h => h.hive_id === topHiveId) ?? incoming[0] ?? {};
+  const hiveName   = topHive.hive_name    ?? '';
+  const category   = topHive.category_name ?? '';
 
   return (
-    <div className="home-requests-list">
-      {incoming.map(req => (
-        <div key={req.request_id} className="home-req-row">
-          <div className="home-req-identity">
-            <Avatar name={req.full_name} size={26} />
-            <div className="home-req-text">
-              <div className="home-req-name">{req.full_name ?? 'Someone'}</div>
-              <div className="home-req-meta">→ {req.hive_name}</div>
-              {(req.hive_fit_score != null || req.pair_score != null) && (
-                <div className="home-req-scores">
-                  {req.hive_fit_score != null && (
-                    <span className="home-req-score-fit">{Math.round(Number(req.hive_fit_score))}% Hive fit</span>
-                  )}
-                  {req.pair_score != null && (
-                    <span className="home-req-score-pair">{Math.round(Number(req.pair_score))}% with you</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="home-req-btns">
-            <button
-              type="button"
-              className="home-req-btn home-req-accept"
-              disabled={reviewing === req.request_id}
-              onClick={() => handleReview(req.hive_id, req.request_id, 'accept')}
-            >
-              Accept
-            </button>
-            <button
-              type="button"
-              className="home-req-btn home-req-decline"
-              disabled={reviewing === req.request_id}
-              onClick={() => handleReview(req.hive_id, req.request_id, 'reject')}
-            >
-              Decline
-            </button>
-          </div>
+    <div className="home-jrc">
+      <div className="home-jrc-header">
+        <span className="home-jrc-chip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <line x1="19" y1="8" x2="19" y2="14" />
+            <line x1="22" y1="11" x2="16" y2="11" />
+          </svg>
+        </span>
+        <span className="home-jrc-label">JOIN REQUEST</span>
+      </div>
+      <div className="home-jrc-count">
+        {n} {n === 1 ? 'person wants' : 'people want'} to join
+      </div>
+      {(hiveName || category) && (
+        <div className="home-jrc-sub">
+          {hiveName}{category ? ` · ${category}` : ''}
         </div>
-      ))}
-      {outgoing.map(req => (
-        <div key={req.request_id} className="home-req-row home-req-outgoing">
-          <div className="home-req-text">
-            <div className="home-req-name">{req.hive_name}</div>
-            <div className={`home-req-meta home-req-status-${req.status}`}>
-              {req.status.charAt(0).toUpperCase() + req.status.slice(1)}
-            </div>
-          </div>
+      )}
+      <Link to={`/hive/${topHiveId}`} className="home-jrc-btn">Review →</Link>
+    </div>
+  );
+}
+
+// ── WelcomeCard (Part 6) ────────────────────────────────────────────────────
+function WelcomeCard({ firstName, hives, pendingCount }) {
+  const today = new Date().toLocaleDateString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+  });
+  const hiveCount     = hives.length;
+  const totalNewPosts = hives.reduce((sum, h) => sum + Number(h.new_posts ?? 0), 0);
+
+  return (
+    <div className="home-wc">
+      <div className="home-wc-name">Welcome back, {firstName}</div>
+      <div className="home-wc-date">{today}</div>
+      <div className="home-wc-stats">
+        <div className="home-wc-stat">
+          <span className="home-wc-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" />
+            </svg>
+          </span>
+          <span className="home-wc-val">{hiveCount}</span>
+          <span className="home-wc-lbl">Hive{hiveCount !== 1 ? 's' : ''}</span>
         </div>
-      ))}
+        <div className="home-wc-stat">
+          <span className="home-wc-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </span>
+          <span className="home-wc-val">{totalNewPosts}</span>
+          <span className="home-wc-lbl">new post{totalNewPosts !== 1 ? 's' : ''}</span>
+        </div>
+        <div className="home-wc-stat">
+          <span className="home-wc-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+          </span>
+          <span className="home-wc-val">{pendingCount}</span>
+          <span className="home-wc-lbl">request{pendingCount !== 1 ? 's' : ''} waiting</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -185,15 +160,15 @@ function RequestsPanel({ hives, hivesLoading }) {
 
 function FeedSkeleton() {
   return (
-    <>
+    <div className="post-feed--light">
       {[1, 2, 3].map(i => (
-        <div key={i} className="post-skeleton">
-          <div className="post-skel-line" style={{ width: '40%' }} />
-          <div className="post-skel-line" style={{ width: '70%' }} />
-          <div className="post-skel-line" style={{ width: '55%' }} />
+        <div key={i} className="post-skeleton--light">
+          <div className="post-skel-line--light" style={{ width: '40%' }} />
+          <div className="post-skel-line--light" style={{ width: '70%' }} />
+          <div className="post-skel-line--light" style={{ width: '55%' }} />
         </div>
       ))}
-    </>
+    </div>
   );
 }
 
@@ -212,6 +187,10 @@ export default function HomePage() {
   const [hivesLoading,   setHivesLoading]   = useState(true);
   const [nudgeDismissed, setNudgeDismissed] = useState(false);
   const [activeTab,      setActiveTab]      = useState('For You');
+
+  // Incoming join requests (lifted from old RequestsPanel)
+  const [incomingReqs, setIncomingReqs] = useState([]);
+  const [reqsLoading,  setReqsLoading]  = useState(true);
 
   // Feed state
   const [posts,        setPosts]        = useState([]);
@@ -245,6 +224,26 @@ export default function HomePage() {
       .catch(() => setHives([]))
       .finally(() => setHivesLoading(false));
   }, []);
+
+  // Fetch incoming join requests for owned/admin hives after hives load
+  useEffect(() => {
+    if (hivesLoading) return;
+    const adminHives = hives.filter(h => ['owner', 'admin'].includes(h.role));
+    if (!adminHives.length) { setReqsLoading(false); setIncomingReqs([]); return; }
+    setReqsLoading(true);
+    Promise.all(
+      adminHives.map(h =>
+        api.get(`/api/hives/${h.hive_id}/requests`)
+          .then(d => (d.requests ?? []).map(r => ({
+            ...r, hive_id: h.hive_id, hive_name: h.hive_name, category_name: h.category_name,
+          })))
+          .catch(() => []),
+      ),
+    )
+      .then(groups => setIncomingReqs(groups.flat()))
+      .catch(() => setIncomingReqs([]))
+      .finally(() => setReqsLoading(false));
+  }, [hives, hivesLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch feed whenever tab changes
   useEffect(() => {
@@ -283,14 +282,6 @@ export default function HomePage() {
                 readOnly
               />
             </div>
-
-            <button className="home-bell-btn" type="button" aria-label="Notifications">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#6b6057" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className="home-bell-badge" />
-            </button>
 
             {/* Create dropdown */}
             <div className="home-create-wrap" ref={dropdownRef}>
@@ -385,17 +376,17 @@ export default function HomePage() {
           <div className="home-body">
 
             {/* ── Feed column ── */}
-            <div className="home-dark-card">
+            <div className="home-feed-col">
               {postsLoading ? (
                 <FeedSkeleton />
               ) : posts.length === 0 ? (
-                <div className="home-feed-empty">
+                <div className="home-feed-empty" style={{ background: '#fffdf9', border: '1px solid #e4dccb', borderRadius: 16 }}>
                   <div className="home-feed-empty-icon">
                     <svg viewBox="0 0 56 56" width={52} height={52} xmlns="http://www.w3.org/2000/svg">
                       <polygon
                         points="28,4 50,16 50,40 28,52 6,40 6,16"
                         fill="none"
-                        stroke="rgba(51,41,21,0.5)"
+                        stroke="#d8cdb4"
                         strokeWidth="2"
                         strokeLinejoin="round"
                       />
@@ -408,8 +399,8 @@ export default function HomePage() {
                       />
                     </svg>
                   </div>
-                  <div className="home-feed-empty-title">Your feed is quiet — for now.</div>
-                  <div className="home-feed-empty-sub">
+                  <div className="home-feed-empty-title" style={{ color: '#17120a' }}>Your feed is quiet — for now.</div>
+                  <div className="home-feed-empty-sub" style={{ color: '#8a7d5e' }}>
                     Follow Hives and their updates, events, and milestones will show up here.
                   </div>
                   <Link to="/find-your-hive" className="home-feed-discover-btn">
@@ -417,9 +408,9 @@ export default function HomePage() {
                   </Link>
                 </div>
               ) : (
-                <div className="post-feed">
+                <div className="post-feed post-feed--light">
                   {posts.map(post => (
-                    <PostCard key={post.post_id} post={post} />
+                    <PostCard key={post.post_id} post={post} variant="light" />
                   ))}
                 </div>
               )}
@@ -428,13 +419,27 @@ export default function HomePage() {
             {/* ── Right sidebar ── */}
             <div className="home-sidebar">
 
+              {/* Welcome card (Part 6) */}
+              {!hivesLoading && (
+                <WelcomeCard
+                  firstName={firstName}
+                  hives={hives}
+                  pendingCount={reqsLoading ? 0 : incomingReqs.length}
+                />
+              )}
+
+              {/* Join request card (Part 5) — dark, hidden at 0 pending */}
+              {!reqsLoading && (
+                <JoinRequestCard incoming={incomingReqs} hives={hives} />
+              )}
+
               {/* Your Hives */}
-              <div className="home-dark-card home-sidebar-card">
+              <div className="home-light-card home-sidebar-card">
                 <div className="home-sidebar-label">Your Hives</div>
                 {hivesLoading ? (
                   <>
-                    <div className="home-skeleton-line" style={{ width: '75%' }} />
-                    <div className="home-skeleton-line" style={{ width: '55%' }} />
+                    <div className="post-skel-line--light" style={{ width: '75%', marginBottom: 8 }} />
+                    <div className="post-skel-line--light" style={{ width: '55%' }} />
                   </>
                 ) : hives.length === 0 ? (
                   <div className="home-sidebar-empty">
@@ -474,14 +479,8 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* Requests */}
-              <div className="home-dark-card home-sidebar-card">
-                <div className="home-sidebar-label">Requests</div>
-                <RequestsPanel hives={hives} hivesLoading={hivesLoading} />
-              </div>
-
               {/* Suggested for you */}
-              <div className="home-dark-card home-sidebar-card">
+              <div className="home-light-card home-sidebar-card">
                 <div className="home-sidebar-label">Suggested for you</div>
                 <div className="home-suggest-sub">Explore Hives that fit your profile.</div>
                 <Link to="/find-your-hive" className="home-suggest-link">Discover Hives →</Link>
