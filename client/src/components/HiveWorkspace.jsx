@@ -132,7 +132,7 @@ function AboutView({ hive }) {
 }
 
 // ── Workspace shell ───────────────────────────────────────────────────────────
-export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHiveUpdated }) {
+export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHiveUpdated, initialNewPosts = 0 }) {
   const { user } = useAuth();
   const [hive,          setHive]          = useState(initialHive);
   const [activeView,    setActiveView]    = useState(isOwner ? 'overview' : 'feed');
@@ -140,6 +140,7 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
   const [postsLoading,  setPostsLoading]  = useState(true);
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [requestCount,  setRequestCount]  = useState(null);
+  const [feedUnread,    setFeedUnread]    = useState(initialNewPosts);
   // membersKey forces HiveMembersView to remount/refetch when overview needs refreshing
   const [membersKey,    setMembersKey]    = useState(0);
 
@@ -149,6 +150,11 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
       .catch(() => setPosts([]))
       .finally(() => setPostsLoading(false));
   }, [hiveId]);
+
+  function handleNavTo(view) {
+    setActiveView(view);
+    if (view === 'feed') setFeedUnread(0);
+  }
 
   function handleMembersChanged() {
     // Bump key so HiveMembersView refetches; also signal overview to refresh
@@ -203,11 +209,11 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
         {/* Left nav sidebar */}
         <nav className="hw-sidebar" aria-label="Hive navigation">
           <div className="hw-nav-group">
-            <NavItem label="Overview" active={activeView === 'overview'} onClick={() => setActiveView('overview')} />
-            <NavItem label="Feed"     active={activeView === 'feed'}     onClick={() => setActiveView('feed')} />
-            <NavItem label="Members"  active={activeView === 'members'}  onClick={() => setActiveView('members')} />
+            <NavItem label="Overview" active={activeView === 'overview'} onClick={() => handleNavTo('overview')} />
+            <NavItem label="Feed"     active={activeView === 'feed'}     onClick={() => handleNavTo('feed')} badge={feedUnread || null} />
+            <NavItem label="Members"  active={activeView === 'members'}  onClick={() => handleNavTo('members')} />
             <NavItem label="Events"   soon />
-            <NavItem label="About"    active={activeView === 'about'}    onClick={() => setActiveView('about')} />
+            <NavItem label="About"    active={activeView === 'about'}    onClick={() => handleNavTo('about')} />
           </div>
 
           {isOwner && (
@@ -235,8 +241,10 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
               hiveId={hiveId}
               hive={hive}
               isOwner={isOwner}
+              posts={posts}
+              postsLoading={postsLoading}
               onRequestCount={setRequestCount}
-              onNavigate={setActiveView}
+              onNavigate={view => handleNavTo(view)}
               onSaved={handleHiveSaved}
             />
           )}

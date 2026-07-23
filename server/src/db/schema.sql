@@ -245,10 +245,10 @@ CREATE INDEX IF NOT EXISTS idx_posts_author              ON hive_posts(author_us
 CREATE INDEX IF NOT EXISTS idx_reactions_post            ON post_reactions(post_id);
 CREATE INDEX IF NOT EXISTS idx_comments_post             ON post_comments(post_id, commented_at);
 
--- ─── Allow milestone posts (idempotent — drop old constraint, add new) ────────
+-- ─── Allow milestone + welcome posts (idempotent — drop old constraint, add new) ─
 ALTER TABLE hive_posts DROP CONSTRAINT IF EXISTS hive_posts_post_type_check;
 ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_post_type_check
-  CHECK (post_type IN ('update', 'event', 'milestone'));
+  CHECK (post_type IN ('update', 'event', 'milestone', 'welcome'));
 
 -- ─── Notifications ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS notifications (
@@ -264,6 +264,13 @@ CREATE TABLE IF NOT EXISTS notifications (
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+
+-- ─── Join ceremony — first-open welcome flag ────────────────────────────────
+ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS welcome_seen_at TIMESTAMPTZ NULL;
+-- Backfill all pre-existing members so they do not see the takeover unexpectedly.
+-- New members accepted after this migration will have welcome_seen_at = NULL until
+-- they click "Enter Hive" on the takeover.
+UPDATE hive_members SET welcome_seen_at = NOW() WHERE welcome_seen_at IS NULL;
 
 -- ─── Hive last-seen tracking ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS hive_last_seen (

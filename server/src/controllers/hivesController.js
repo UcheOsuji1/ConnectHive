@@ -275,9 +275,16 @@ export const getHive = async (req, res) => {
          h.*,
          c.category_name,
          COUNT(DISTINCT hm_all.user_id) FILTER (WHERE hm_all.membership_status = 'active') AS member_count,
-         COUNT(DISTINCT hf.user_id)                                                         AS follower_count,
-         my_mem.role                                                                         AS my_role,
-         EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)   AS is_following
+         COUNT(DISTINCT hf.user_id)                                                          AS follower_count,
+         my_mem.role                                                                          AS my_role,
+         my_mem.welcome_seen_at,
+         EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)    AS is_following,
+         COALESCE((
+           SELECT COUNT(*)::int FROM hive_posts hp
+           WHERE hp.hive_id = h.hive_id
+             AND hp.author_user_id != $1
+             AND hp.created_at > COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz)
+         ), 0) AS new_posts
        FROM hives h
        LEFT JOIN categories    c       ON c.category_id  = h.category_id
        LEFT JOIN hive_members  hm_all  ON hm_all.hive_id = h.hive_id
@@ -285,8 +292,9 @@ export const getHive = async (req, res) => {
        LEFT JOIN hive_members  my_mem  ON my_mem.hive_id = h.hive_id
                                       AND my_mem.user_id = $1
                                       AND my_mem.membership_status = 'active'
+       LEFT JOIN hive_last_seen hls    ON hls.user_id = $1 AND hls.hive_id = h.hive_id
        WHERE h.hive_id = $2
-       GROUP BY h.hive_id, c.category_name, my_mem.role`,
+       GROUP BY h.hive_id, c.category_name, my_mem.role, my_mem.welcome_seen_at, hls.last_seen_at`,
       [req.userId, req.params.id],
     );
     if (!row) return res.status(404).json({ error: 'Hive not found.' });
@@ -418,6 +426,21 @@ export const markHiveSeen = async (req, res) => {
   }
 };
 
+export const markWelcomeSeen = async (req, res) => {
+  try {
+    const { rowCount } = await query(
+      `UPDATE hive_members SET welcome_seen_at = NOW()
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [req.params.id, req.userId],
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Membership not found.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[hives/markWelcomeSeen]', err);
+    res.status(500).json({ error: 'Failed to mark welcome seen.' });
+  }
+};
+
 export const followHive = async (req, res) => {
   try {
     const { id: hiveId } = req.params;
@@ -522,11 +545,11 @@ export const createHive = async (req, res) => {
       ],
     );
 
-    // Add creator as owner; on failure, roll back the hive row
+    // Add creator as owner; stamp welcome_seen_at so they skip the takeover
     try {
       await query(
-        `INSERT INTO hive_members (hive_id, user_id, role, membership_status)
-         VALUES ($1, $2, 'owner', 'active')`,
+        `INSERT INTO hive_members (hive_id, user_id, role, membership_status, welcome_seen_at)
+         VALUES ($1, $2, 'owner', 'active', NOW())`,
         [hive.hive_id, userId],
       );
     } catch (memberErr) {
@@ -806,9 +829,10 @@ export const reviewRequest = async (req, res) => {
         [req.userId, requestId],
       );
       await query(
-        `INSERT INTO hive_members (hive_id, user_id, role, membership_status)
-         VALUES ($1, $2, 'member', 'active')
-         ON CONFLICT (hive_id, user_id) DO UPDATE SET membership_status = 'active'`,
+        `INSERT INTO hive_members (hive_id, user_id, role, membership_status, welcome_seen_at)
+         VALUES ($1, $2, 'member', 'active', NULL)
+         ON CONFLICT (hive_id, user_id) DO UPDATE
+           SET membership_status = 'active', welcome_seen_at = NULL`,
         [hiveId, request.user_id],
       );
     } else {
@@ -843,14 +867,15 @@ export const reviewRequest = async (req, res) => {
         const hiveName = hiveRow?.hive_name ?? 'the Hive';
         newMember = { user_id: request.user_id, full_name: requesterName };
 
-        // 1. Welcome the new member — link to the certificate page
+        // 1. Welcome the new member — notification links to the Hive (takeover shows there)
         await createNotification({
           userId: request.user_id,
           type: 'request_accepted',
           title: `You're in! Welcome to ${hiveName}`,
+          body: `Open your Hive to see your welcome.`,
           hiveId,
           actorUserId: req.userId,
-          link: `/welcome/hive/${hiveId}`,
+          link: `/hive/${hiveId}`,
         });
 
         // 2. Notify all other active members (owner + existing)
@@ -859,20 +884,29 @@ export const reviewRequest = async (req, res) => {
             userId: m.user_id,
             type: 'member_joined',
             title: `${requesterName} joined ${hiveName}`,
-            body: 'Say hello 👋',
+            body: 'Give them a warm welcome 👋',
             hiveId,
             actorUserId: request.user_id,
             link: `/hive/${hiveId}`,
           });
         }
 
-        // 3. Auto milestone post authored by the new member
+        // 3. Milestone post — shows in home feed as a member-count event
         await query(
           `INSERT INTO hive_posts (hive_id, author_user_id, post_type, headline, body)
            VALUES ($1, $2, 'milestone', $3, $4)`,
           [hiveId, request.user_id,
            `🎉 ${requesterName} joined the Hive`,
            `Give a warm welcome to your newest member.`],
+        );
+
+        // 4. Welcome post — lives inside the Hive feed; existing members react with a wave
+        await query(
+          `INSERT INTO hive_posts (hive_id, author_user_id, post_type, headline, body)
+           VALUES ($1, $2, 'welcome', $3, $4)`,
+          [hiveId, request.user_id,
+           `Welcome ${requesterName} to ${hiveName}!`,
+           `Introduce yourself and give them a warm hello! 👋`],
         );
       } catch (ceremonyErr) {
         console.error('[hives/reviewRequest] ceremony failed (non-fatal):', ceremonyErr);

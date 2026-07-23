@@ -314,6 +314,51 @@ export default function PostCard({ post: initialPost, variant }) {
     );
   }
 
+  if (post.post_type === 'welcome') {
+    const authorInitials = (post.author_name ?? '?')
+      .trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    const waveR = post.reacted && post.my_reaction === 'wave';
+    const waveCount = Number(post.reaction_count ?? 0);
+    return (
+      <div className={`post-card post-card--welcome${variant === 'light' ? ' post-card--light' : ''}`}>
+        <div className="pc-wl-header">
+          <span className="pc-wl-chip">👋</span>
+          <span className="pc-wl-label">WELCOME</span>
+          <span className="pc-wl-meta">{post.hive_name} · {relativeTime(post.created_at)}</span>
+        </div>
+        <div className="pc-wl-body-row">
+          <div className="pc-wl-avatar">
+            {post.author_photo
+              ? <img src={post.author_photo} alt={post.author_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+              : authorInitials}
+          </div>
+          <div className="pc-wl-text">
+            <span className="pc-wl-name">{post.author_name ?? 'A new member'}</span>
+            {' '}joined{' '}
+            <span className="pc-wl-hive">{post.hive_name}</span>
+            {post.body && <div className="pc-wl-caption">{post.body}</div>}
+          </div>
+        </div>
+        <div className="pc-wl-actions">
+          <button
+            type="button"
+            className={['pc-wl-wave-btn', waveR ? 'pc-wl-wave-btn--done' : ''].filter(Boolean).join(' ')}
+            onClick={() => !waveR && handlePickReaction('wave')}
+            disabled={waveR || reacting}
+          >
+            {waveR ? '👋 Waved!' : '👋 Wave'}
+          </button>
+          {waveCount > 0 && (
+            <span className="pc-wl-wave-count">{waveCount} wave{waveCount !== 1 ? 's' : ''}</span>
+          )}
+          <Link to={`/profile/${post.author_user_id}`} className="pc-wl-profile-link">
+            View profile →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (post.post_type === 'member_joined') {
     const initials = (post.author_name ?? '?')
       .trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();

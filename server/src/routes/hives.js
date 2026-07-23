@@ -16,6 +16,7 @@ import {
   getMyRequests,
   getMyHive,
   markHiveSeen,
+  markWelcomeSeen,
   getHiveMessages,
   followHive,
   unfollowHive,
@@ -48,6 +49,7 @@ router.patch('/:id',           requireAuth, updateHive);
 
 // ── Member & follower actions ──────────────────────────────────────────────────
 router.post('/:id/seen',                 requireAuth, markHiveSeen);
+router.post('/:id/welcome-seen',         requireAuth, markWelcomeSeen);
 router.get('/:id/overview',              requireAuth, getHiveOverview);
 router.get('/:id/members',                requireAuth, getHiveMembers);
 router.patch('/:id/members/:userId/role', requireAuth, updateMemberRole);

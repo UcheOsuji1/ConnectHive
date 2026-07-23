@@ -1,6 +1,7 @@
 import { query } from '../db/index.js';
+import { createNotification } from './notificationsController.js';
 
-export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad'];
+export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad', 'wave'];
 
 // ── Shared SELECT (userId always = $1; caller appends WHERE/ORDER/LIMIT) ─────
 const FEED_SELECT = `
@@ -226,8 +227,49 @@ export const toggleReaction = async (req, res) => {
       'SELECT COUNT(*) FROM post_reactions WHERE post_id=$1', [postId],
     );
     const reaction_summary = await fetchReactionSummary(postId);
+    const reaction_count = Number(count);
 
-    res.json({ reacted, reaction, reaction_count: Number(count), reaction_summary });
+    // Aggregated "welcomed" notification for wave reactions on welcome posts
+    if (reacted) {
+      try {
+        const { rows: [postMeta] } = await query(
+          `SELECT hp.post_type, hp.author_user_id, hp.hive_id, h.hive_name
+           FROM hive_posts hp JOIN hives h ON h.hive_id = hp.hive_id
+           WHERE hp.post_id = $1`,
+          [postId],
+        );
+        if (postMeta?.post_type === 'welcome' && postMeta.author_user_id !== req.userId) {
+          const { rows: [existing] } = await query(
+            `SELECT notification_id FROM notifications
+             WHERE user_id = $1 AND type = 'welcomed' AND hive_id = $2`,
+            [postMeta.author_user_id, postMeta.hive_id],
+          );
+          const n = reaction_count;
+          const title = `${n} member${n !== 1 ? 's' : ''} welcomed you to ${postMeta.hive_name}`;
+          if (existing) {
+            await query(
+              `UPDATE notifications SET title = $1, read = false, created_at = NOW()
+               WHERE notification_id = $2`,
+              [title, existing.notification_id],
+            );
+          } else {
+            await createNotification({
+              userId:      postMeta.author_user_id,
+              type:        'welcomed',
+              title,
+              body:        'Open the Hive to see who greeted you.',
+              hiveId:      postMeta.hive_id,
+              actorUserId: req.userId,
+              link:        `/hive/${postMeta.hive_id}`,
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.error('[posts/toggleReaction] welcome notification failed (non-fatal):', notifErr);
+      }
+    }
+
+    res.json({ reacted, reaction, reaction_count, reaction_summary });
   } catch (err) {
     console.error('[posts/toggleReaction]', err);
     res.status(500).json({ error: 'Failed to toggle reaction.' });

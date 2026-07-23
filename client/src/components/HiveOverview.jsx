@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 
 function timeAgo(dateStr) {
@@ -14,6 +16,53 @@ function timeAgo(dateStr) {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function initials(name) {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+// ── Welcome banner (Part 3) ───────────────────────────────────────────────────
+function WelcomeBanner({ post, hiveName, onWave, waved, waving, waveCount, firstName }) {
+  return (
+    <div className="hw-welcome-banner">
+      <div className="hw-wb-header">
+        <div className="hw-wb-avatar">
+          {post.author_photo
+            ? <img src={post.author_photo} alt="" />
+            : <span>{initials(post.author_name)}</span>}
+        </div>
+        <div className="hw-wb-text">
+          <div className="hw-wb-headline">
+            <span className="hw-wb-name">{post.author_name ?? 'A new member'}</span>
+            {' '}just joined {hiveName}
+          </div>
+          <div className="hw-wb-sub">Give them a warm welcome.</div>
+        </div>
+      </div>
+      <div className="hw-wb-actions">
+        <button
+          type="button"
+          className={['hw-wb-wave-btn', waved ? 'hw-wb-wave-btn--done' : ''].filter(Boolean).join(' ')}
+          onClick={onWave}
+          disabled={waved || waving}
+        >
+          {waved ? '👋 Waved!' : waving ? 'Waving…' : `Welcome ${firstName} 👋`}
+        </button>
+        <Link to={`/profile/${post.author_user_id}`} className="hw-wb-profile-btn">
+          View profile →
+        </Link>
+      </div>
+      {waveCount > 0 && (
+        <div className="hw-wb-count">
+          {waveCount} member{waveCount !== 1 ? 's' : ''} welcomed {firstName}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MetricCard({ label, value, highlight }) {
   return (
     <div className={['hw-metric-card', highlight ? 'hw-metric-highlight' : ''].filter(Boolean).join(' ')}>
@@ -23,9 +72,41 @@ function MetricCard({ label, value, highlight }) {
   );
 }
 
-export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, onNavigate, onSaved }) {
+export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, onNavigate, onSaved, posts = [], postsLoading = false }) {
+  const { user } = useAuth();
   const [overview,    setOverview]    = useState(null);
   const [loading,     setLoading]     = useState(isOwner);
+
+  // ── Welcome post detection (Part 3) ──────────────────────────────────────────
+  const [waved,      setWaved]      = useState(false);
+  const [waveCount,  setWaveCount]  = useState(0);
+  const [waving,     setWaving]     = useState(false);
+  const waveInitRef = useRef(null);
+
+  const welcomePost = postsLoading ? null :
+    (posts.find(p => p.post_type === 'welcome' && Date.now() - new Date(p.created_at).getTime() < WEEK_MS) ?? null);
+
+  // Sync wave state when the welcome post first appears (one-time initialisation)
+  useEffect(() => {
+    if (welcomePost && waveInitRef.current !== welcomePost.post_id) {
+      waveInitRef.current = welcomePost.post_id;
+      setWaved(Boolean(welcomePost.reacted));
+      setWaveCount(Number(welcomePost.reaction_count ?? 0));
+    }
+  }, [welcomePost]);
+
+  async function handleWave() {
+    if (!welcomePost || waved || waving) return;
+    setWaving(true);
+    try {
+      const result = await api.post(`/api/posts/${welcomePost.post_id}/react`, { reaction: 'wave' });
+      setWaved(result.reacted);
+      setWaveCount(result.reaction_count);
+    } catch {}
+    setWaving(false);
+  }
+
+  const showBanner = !postsLoading && welcomePost && welcomePost.author_user_id !== user?.userId;
   const [editMode,    setEditMode]    = useState(false);
   const [editValues,  setEditValues]  = useState({
     pinned_goal:   hive.pinned_goal   ?? '',
@@ -87,6 +168,19 @@ export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, on
 
   return (
     <div className="hw-overview">
+
+      {/* New-member celebration banner (Part 3) */}
+      {showBanner && (
+        <WelcomeBanner
+          post={welcomePost}
+          hiveName={hive.hive_name}
+          onWave={handleWave}
+          waved={waved}
+          waving={waving}
+          waveCount={waveCount}
+          firstName={welcomePost.author_name?.split(' ')[0] ?? 'them'}
+        />
+      )}
 
       {/* Page title */}
       <div className="hw-overview-header">

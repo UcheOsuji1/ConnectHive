@@ -5,6 +5,7 @@ import Avatar from '../components/Avatar.jsx';
 import PostCard from '../components/PostCard.jsx';
 import FollowButton from '../components/FollowButton.jsx';
 import HiveWorkspace from '../components/HiveWorkspace.jsx';
+import WelcomeTakeover from '../components/WelcomeTakeover.jsx';
 import { api } from '../lib/api.js';
 import '../styles/hive.css';
 import '../styles/post.css';
@@ -271,13 +272,22 @@ export default function DirectHivePage() {
 
   // ── Member view: full workspace ──────────────────────────────────────────────
   if (isMember) {
+    const showWelcome = hive.my_role === 'member' && !hive.welcome_seen_at;
     return (
       <>
         <Navbar />
+        {showWelcome && (
+          <WelcomeTakeover
+            hive={hive}
+            hiveId={id}
+            onEnter={() => setHive(prev => ({ ...prev, welcome_seen_at: new Date().toISOString() }))}
+          />
+        )}
         <HiveWorkspace
           hive={hive}
           hiveId={id}
           isOwner={isOwner}
+          initialNewPosts={Number(hive.new_posts ?? 0)}
           onHiveUpdated={updatedHive => setHive(prev => ({ ...prev, ...updatedHive }))}
         />
       </>
