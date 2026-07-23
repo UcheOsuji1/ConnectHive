@@ -28,7 +28,7 @@ function flattenTags(v) {
   return [String(v)].filter(Boolean);
 }
 
-function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
+function CandidateCard({ req, hiveId, onAccepted, onDeclined }) { // onAccepted(newCount, memberData)
   const [action, setAction] = useState(null);
 
   const allInterests = flattenTags(req.interests);
@@ -48,8 +48,16 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
         `/api/hives/${hiveId}/requests/${req.request_id}`,
         { action: act === 'accepting' ? 'accept' : 'reject' },
       );
-      if (act === 'accepting') onAccepted(result.member_count);
-      else onDeclined();
+      if (act === 'accepting') {
+        // Merge server member data with request data (server may lack photo if profile incomplete)
+        const memberData = {
+          ...(result.new_member ?? {}),
+          profile_photo_url: result.new_member?.profile_photo_url ?? req.profile_photo_url ?? null,
+        };
+        onAccepted(result.member_count, memberData);
+      } else {
+        onDeclined();
+      }
     } catch (err) {
       console.error('[CandidateCard]', err);
       setAction(null);
@@ -158,7 +166,7 @@ function CollapsedRow({ req, onExpand }) {
   );
 }
 
-export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange }) {
+export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onMemberAccepted }) {
   const [requests,    setRequests]    = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [memberCount, setMemberCount] = useState(null);
@@ -265,10 +273,11 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange }) {
               key={req.request_id}
               req={req}
               hiveId={hiveId}
-              onAccepted={newCount => {
+              onAccepted={(newCount, memberData) => {
                 setMemberCount(newCount);
                 removeRequest(req.request_id);
                 if (onReviewed) onReviewed();
+                if (onMemberAccepted && memberData?.user_id) onMemberAccepted(memberData);
               }}
               onDeclined={() => removeRequest(req.request_id)}
             />

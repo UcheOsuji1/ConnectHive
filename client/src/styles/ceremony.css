@@ -489,6 +489,101 @@
 }
 .wt-btn-secondary:hover { border-color: #c49a28; color: #c49a28; }
 
+/* ── Owner celebration takeover — quick setup actions (oct-) ────────────────── */
+.oct-action-card {
+  align-items: flex-start;
+  gap: 10px;
+}
+.oct-action-card .wt-step-icon {
+  margin-top: 2px;
+}
+
+.oct-select {
+  margin-top: 6px;
+  width: 100%;
+  max-width: 160px;
+  padding: 5px 8px;
+  border-radius: 7px;
+  border: 1.5px solid #e4dccb;
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: #2a2016;
+  cursor: pointer;
+  appearance: auto;
+}
+.oct-select:disabled { opacity: 0.5; cursor: default; }
+
+.oct-status {
+  flex-shrink: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  white-space: nowrap;
+  padding-top: 2px;
+}
+.oct-status-saving { color: #8a7d5e; }
+.oct-status-saved  { color: #639922; font-weight: 600; }
+.oct-status-error  { color: #c0392b; }
+
+.oct-msg-card { flex-wrap: wrap; }
+
+.oct-msg-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+
+.oct-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border-radius: 7px;
+  border: 1.5px solid #e4dccb;
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: #2a2016;
+}
+.oct-input:focus { outline: none; border-color: #c49a28; }
+.oct-input::placeholder { color: #b0a08a; }
+
+.oct-send-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: 7px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  border: none;
+  color: #17120a;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.oct-send-btn:hover:not(:disabled) { opacity: 0.85; }
+.oct-send-btn:disabled { opacity: 0.45; cursor: default; }
+
+.oct-sent-confirm {
+  margin-top: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: #639922;
+  font-weight: 600;
+}
+
+.oct-open-link {
+  flex-shrink: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #c49a28;
+  text-decoration: none;
+  padding: 4px 0;
+  transition: opacity 0.15s;
+}
+.oct-open-link:hover { opacity: 0.75; }
+
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .wt-panel   { padding: 32px 20px 28px; gap: 20px; }

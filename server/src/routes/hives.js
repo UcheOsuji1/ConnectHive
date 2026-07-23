@@ -23,6 +23,7 @@ import {
   getFollowedHives,
   updateMemberRole,
   removeMember,
+  notifyMember,
 } from '../controllers/hivesController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getHivePosts } from '../controllers/postsController.js';
@@ -52,8 +53,9 @@ router.post('/:id/seen',                 requireAuth, markHiveSeen);
 router.post('/:id/welcome-seen',         requireAuth, markWelcomeSeen);
 router.get('/:id/overview',              requireAuth, getHiveOverview);
 router.get('/:id/members',                requireAuth, getHiveMembers);
-router.patch('/:id/members/:userId/role', requireAuth, updateMemberRole);
-router.delete('/:id/members/:userId',     requireAuth, removeMember);
+router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
+router.post('/:id/members/:userId/notify', requireAuth, notifyMember);
+router.delete('/:id/members/:userId',      requireAuth, removeMember);
 router.post('/:id/join',                  requireAuth, joinHive);
 router.post('/:id/request',              requireAuth, requestToJoin);
 router.get('/:id/requests',              requireAuth, getHiveRequests);

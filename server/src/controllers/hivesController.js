@@ -853,19 +853,34 @@ export const reviewRequest = async (req, res) => {
     let newMember = null;
     if (action === 'accept') {
       try {
-        const [{ rows: [requester] }, { rows: [hiveRow] }, { rows: existingMembers }] = await Promise.all([
-          query(`SELECT full_name FROM profiles WHERE user_id = $1`, [request.user_id]),
+        const [{ rows: [requester] }, { rows: [hiveRow] }, { rows: existingMembers }, { rows: [memberRow] }] = await Promise.all([
+          query(
+            `SELECT p.full_name, p.profile_photo_url, u.member_id
+             FROM profiles p JOIN users u ON u.user_id = p.user_id
+             WHERE p.user_id = $1`,
+            [request.user_id],
+          ),
           query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]),
           query(
             `SELECT user_id FROM hive_members
              WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
             [hiveId, request.user_id],
           ),
+          query(
+            `SELECT joined_at FROM hive_members WHERE hive_id = $1 AND user_id = $2`,
+            [hiveId, request.user_id],
+          ),
         ]);
 
         const requesterName = requester?.full_name ?? 'A new member';
         const hiveName = hiveRow?.hive_name ?? 'the Hive';
-        newMember = { user_id: request.user_id, full_name: requesterName };
+        newMember = {
+          user_id:           request.user_id,
+          full_name:         requesterName,
+          profile_photo_url: requester?.profile_photo_url ?? null,
+          member_id:         requester?.member_id ?? null,
+          joined_at:         memberRow?.joined_at ?? null,
+        };
 
         // 1. Welcome the new member — notification links to the Hive (takeover shows there)
         await createNotification({
@@ -1116,5 +1131,49 @@ export const getHiveMessages = async (req, res) => {
     res.json({ messages: [], message: 'getHiveMessages — not yet implemented' });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// ── notifyMember ──────────────────────────────────────────────────────────────
+export const notifyMember = async (req, res) => {
+  try {
+    const { id: hiveId, userId: targetId } = req.params;
+    const { message } = req.body ?? {};
+    if (!message?.trim()) return res.status(400).json({ error: 'Message is required.' });
+
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    const { rows: [target] } = await query(
+      `SELECT user_id FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, targetId],
+    );
+    if (!target) return res.status(404).json({ error: 'Member not found.' });
+
+    const { rows: [hiveRow] } = await query(
+      `SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId],
+    );
+
+    await createNotification({
+      userId:      targetId,
+      type:        'owner_message',
+      title:       `Message from ${hiveRow?.hive_name ?? 'your Hive'}`,
+      body:        message.trim(),
+      hiveId,
+      actorUserId: req.userId,
+      link:        `/hive/${hiveId}`,
+    });
+
+    res.json({ sent: true });
+  } catch (err) {
+    console.error('[hives/notifyMember]', err);
+    res.status(500).json({ error: 'Failed to send message.' });
   }
 };

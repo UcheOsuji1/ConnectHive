@@ -6,6 +6,7 @@ import HiveRequestsTab from './HiveRequestsTab.jsx';
 import HiveOverview from './HiveOverview.jsx';
 import HiveSettings from './HiveSettings.jsx';
 import HiveMembersView from './HiveMembersView.jsx';
+import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import '../styles/hive-workspace.css';
@@ -140,7 +141,8 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
   const [postsLoading,  setPostsLoading]  = useState(true);
   const [postModalOpen, setPostModalOpen] = useState(false);
   const [requestCount,  setRequestCount]  = useState(null);
-  const [feedUnread,    setFeedUnread]    = useState(initialNewPosts);
+  const [feedUnread,         setFeedUnread]         = useState(initialNewPosts);
+  const [celebrationMember, setCelebrationMember]   = useState(null);
   // membersKey forces HiveMembersView to remount/refetch when overview needs refreshing
   const [membersKey,    setMembersKey]    = useState(0);
 
@@ -157,7 +159,11 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
   }
 
   function handleMembersChanged() {
-    // Bump key so HiveMembersView refetches; also signal overview to refresh
+    setMembersKey(k => k + 1);
+  }
+
+  function handleMemberAccepted(memberData) {
+    setCelebrationMember(memberData);
     setMembersKey(k => k + 1);
   }
 
@@ -172,6 +178,14 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
 
   return (
     <div className="hw-shell">
+      {celebrationMember && (
+        <OwnerCelebrationTakeover
+          hive={hive}
+          hiveId={hiveId}
+          member={celebrationMember}
+          onDone={() => setCelebrationMember(null)}
+        />
+      )}
 
       {/* Breadcrumb */}
       <div className="hw-crumb">
@@ -279,6 +293,7 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
               hiveId={hiveId}
               onReviewed={handleMembersChanged}
               onCountChange={setRequestCount}
+              onMemberAccepted={handleMemberAccepted}
             />
           )}
 
