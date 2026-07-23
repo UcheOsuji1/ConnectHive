@@ -2,7 +2,6 @@
    JOIN CEREMONY — first-open welcome takeover (wt-)
 ══════════════════════════════════════════════════════════════════════════════ */
 
-/* Full-screen fixed overlay — sits above everything including the workspace */
 .wt-overlay {
   position: fixed;
   inset: 0;
@@ -10,72 +9,131 @@
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding: calc(var(--nav-h, 72px) + 24px) 16px 48px;
+  padding: calc(var(--nav-h, 72px) + 20px) 20px 48px;
   overflow-y: auto;
 }
 
-/* Dimmed backdrop — workspace is visible but unreachable */
 .wt-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(23, 18, 10, 0.82);
+  background: rgba(23, 18, 10, 0.86);
   z-index: -1;
 }
 
-/* Scrollable panel */
+/* ── Main panel ─────────────────────────────────────────────────────────────── */
 .wt-panel {
+  position: relative;
   width: 100%;
-  max-width: 520px;
-  background: #fffdf9;
-  border: 1px solid #e4dccb;
+  max-width: 900px;
+  background-color: #fffdf9;
+  background-image:
+    radial-gradient(ellipse 80% 28% at 50% 0%,  rgba(232,200,74,0.12) 0%, transparent 65%),
+    radial-gradient(ellipse 70% 20% at 50% 100%, rgba(196,154,40,0.07) 0%, transparent 55%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='37'%3E%3Cpath d='M16 2 L30 10 L30 26 L16 34 L2 26 L2 10 Z' fill='none' stroke='%23c49a28' stroke-width='0.65' stroke-opacity='0.06'/%3E%3C/svg%3E");
+  border: 1px solid rgba(196, 154, 40, 0.3);
   border-radius: 20px;
-  padding: 40px 36px 36px;
+  padding: 40px 44px 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-  box-shadow: 0 24px 64px rgba(23, 18, 10, 0.35);
+  gap: 26px;
+  box-shadow:
+    0 0 0 1px rgba(196, 154, 40, 0.1),
+    0 0 48px rgba(196, 154, 40, 0.1),
+    0 28px 72px rgba(23, 18, 10, 0.48);
+  overflow: hidden;
 }
 
-/* ── Hex crest ──────────────────────────────────────────────────────────────── */
-.wt-crest-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: -4px;
-}
-
-.wt-crest-icon {
+/* ── Confetti ───────────────────────────────────────────────────────────────── */
+.wt-confetti {
   position: absolute;
-  font-size: 26px;
-  color: #c49a28;
-  line-height: 1;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  pointer-events: none;
+  border-radius: 20px;
+  overflow: hidden;
 }
 
-/* ── Headline area ───────────────────────────────────────────────────────────── */
+.wt-ribbon {
+  position: absolute;
+  width: 5px;
+  height: 18px;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+
+.wt-r1 { background: #e8c84a; left:  6%;  top: 10%; transform: rotate(-28deg); }
+.wt-r2 { background: #c49a28; left: 14%;  top:  5%; transform: rotate(17deg); height: 14px; opacity: 0.6; }
+.wt-r3 { background: #f0d060; left:  3%;  top: 28%; transform: rotate(-13deg); width: 4px; height: 13px; opacity: 0.5; }
+.wt-r4 { background: #e8c84a; right: 6%;  top: 10%; transform: rotate(28deg); }
+.wt-r5 { background: #c49a28; right: 14%; top:  5%; transform: rotate(-17deg); height: 14px; opacity: 0.6; }
+.wt-r6 { background: #f0d060; right: 3%;  top: 28%; transform: rotate(13deg);  width: 4px; height: 13px; opacity: 0.5; }
+
+.wt-hf  { position: absolute; }
+.wt-hfl { left:  21%; top: 3%; }
+.wt-hfr { right: 21%; top: 3%; }
+.wt-hfc { left: calc(50% - 6px); top: 1%; }
+
+@keyframes wt-sway-l {
+  0%, 100% { opacity: 0.7;  transform: rotate(-28deg) translateY(0); }
+  50%       { opacity: 0.38; transform: rotate(-28deg) translateY(-7px); }
+}
+@keyframes wt-sway-r {
+  0%, 100% { opacity: 0.7;  transform: rotate(28deg) translateY(0); }
+  50%       { opacity: 0.38; transform: rotate(28deg) translateY(-7px); }
+}
+@keyframes wt-sway-l2 {
+  0%, 100% { opacity: 0.6;  transform: rotate(17deg) translateY(0); }
+  50%       { opacity: 0.32; transform: rotate(17deg) translateY(-5px); }
+}
+@keyframes wt-sway-r2 {
+  0%, 100% { opacity: 0.6;  transform: rotate(-17deg) translateY(0); }
+  50%       { opacity: 0.32; transform: rotate(-17deg) translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wt-r1 { animation: wt-sway-l  3.8s ease-in-out infinite; }
+  .wt-r4 { animation: wt-sway-r  3.8s ease-in-out infinite 0.3s; }
+  .wt-r2 { animation: wt-sway-l2 4.2s ease-in-out infinite 0.6s; }
+  .wt-r5 { animation: wt-sway-r2 4.2s ease-in-out infinite 0.9s; }
+}
+
+/* ── Hero: crest + headline ─────────────────────────────────────────────────── */
+.wt-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.wt-crest-svg {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  display: block;
+}
+
 .wt-eyebrow {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   color: #c49a28;
-  text-align: center;
+  margin-top: 6px;
 }
 
 .wt-headline {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 2rem;
+  font-size: 2.1rem;
   font-weight: 600;
   color: #17120a;
   line-height: 1.2;
   text-align: center;
   margin: 0;
 }
+
+.wt-hn-gold { color: #c49a28; }
 
 .wt-sub {
   font-family: 'DM Sans', sans-serif;
@@ -86,33 +144,70 @@
   line-height: 1.5;
 }
 
-/* ── Membership card (the one dark block) ────────────────────────────────────── */
-.wt-mem-card {
+/* ── Two-column body ────────────────────────────────────────────────────────── */
+.wt-body {
+  display: flex;
+  gap: 20px;
   width: 100%;
+  align-items: flex-start;
+}
+
+.wt-col-left {
+  flex: 0 0 44%;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wt-col-right {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Membership card ────────────────────────────────────────────────────────── */
+.wt-mem-card {
+  position: relative;
   background: #17120a;
   border-radius: 14px;
   overflow: hidden;
 }
 
+.wt-mc-pill {
+  position: absolute;
+  top: 13px;
+  right: 13px;
+  z-index: 1;
+  padding: 2px 9px;
+  background: rgba(196, 154, 40, 0.16);
+  border: 1px solid rgba(196, 154, 40, 0.3);
+  border-radius: 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #c49a28;
+}
+
 .wt-mc-top {
-  position: relative;
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 18px 20px 14px;
-  border-bottom: 1px solid rgba(196, 154, 40, 0.18);
+  gap: 13px;
+  padding: 16px 16px 13px;
+  border-bottom: 1px solid rgba(196, 154, 40, 0.15);
 }
 
 .wt-mc-avatar {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: linear-gradient(135deg, #e8c84a 0%, #c49a28 100%);
+  border: 2px solid rgba(196, 154, 40, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #1a1508;
   flex-shrink: 0;
@@ -120,11 +215,15 @@
 }
 .wt-mc-avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-.wt-mc-info { flex: 1; min-width: 0; }
+.wt-mc-info {
+  flex: 1;
+  min-width: 0;
+  padding-right: 44px;
+}
 
 .wt-mc-name {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 1.1rem;
+  font-size: 1.08rem;
   font-weight: 600;
   color: #f3ecdd;
   line-height: 1.2;
@@ -135,57 +234,35 @@
 
 .wt-mc-hive {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.76rem;
-  color: #8a7d5e;
-  margin-top: 2px;
-}
-
-.wt-mc-badge {
-  display: inline-block;
-  margin-top: 5px;
-  padding: 2px 8px;
-  background: rgba(196, 154, 40, 0.18);
-  border: 1px solid rgba(196, 154, 40, 0.3);
-  border-radius: 4px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.73rem;
   color: #c49a28;
-}
-
-.wt-mc-seal {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .wt-mc-cols {
   display: flex;
   align-items: stretch;
-  padding: 14px 20px;
+  padding: 12px 16px;
 }
 
-.wt-mc-col {
-  flex: 1;
-  min-width: 0;
-}
+.wt-mc-col { flex: 1; min-width: 0; }
 
 .wt-mc-col-label {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(196, 154, 40, 0.6);
+  color: rgba(196, 154, 40, 0.55);
   margin-bottom: 4px;
 }
 
 .wt-mc-col-val {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.74rem;
   font-weight: 600;
   color: #e8dcc8;
   white-space: nowrap;
@@ -195,44 +272,66 @@
 
 .wt-mc-mono {
   font-family: 'SF Mono', 'Fira Code', monospace;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   letter-spacing: 0.04em;
 }
 
 .wt-mc-divider {
   width: 1px;
-  background: rgba(196, 154, 40, 0.15);
-  margin: 0 16px;
+  background: rgba(196, 154, 40, 0.13);
+  margin: 0 12px;
   align-self: stretch;
 }
 
-/* ── Owner welcome note ──────────────────────────────────────────────────────── */
+.wt-mc-seal {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  pointer-events: none;
+}
+
+/* ── Owner note ─────────────────────────────────────────────────────────────── */
 .wt-owner-note {
-  width: 100%;
+  position: relative;
   background: #f5f0e8;
   border: 1px solid #e4dccb;
   border-radius: 12px;
-  padding: 16px 18px;
+  padding: 18px 16px 15px;
+}
+
+.wt-quote-mark {
+  position: absolute;
+  top: 6px;
+  left: 12px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 4.5rem;
+  line-height: 0.65;
+  color: #c49a28;
+  opacity: 0.3;
+  pointer-events: none;
+  font-style: normal;
+  user-select: none;
 }
 
 .wt-owner-quote {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-style: italic;
   color: #3a3228;
-  line-height: 1.55;
-  margin: 0 0 12px;
+  line-height: 1.6;
+  margin: 0 0 13px;
+  padding-left: 18px;
 }
 
 .wt-owner-sig {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
 
 .wt-owner-avatar {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
   flex-shrink: 0;
@@ -244,45 +343,44 @@
   align-items: center;
   justify-content: center;
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
   color: #1a1508;
 }
 
 .wt-owner-name {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.78rem;
+  font-size: 0.77rem;
   color: #5a5244;
 }
 
-/* ── Get started steps ───────────────────────────────────────────────────────── */
+/* ── Steps panel ────────────────────────────────────────────────────────────── */
 .wt-steps-panel {
-  width: 100%;
   background: #fffdf9;
   border: 1px solid #e4dccb;
-  border-radius: 12px;
-  padding: 16px 18px;
+  border-radius: 14px;
+  padding: 18px 16px 14px;
 }
 
 .wt-steps-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .wt-steps-label {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.65rem;
+  font-size: 0.61rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #8a7d5e;
 }
 
 .wt-steps-progress {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   color: #c49a28;
   font-weight: 600;
 }
@@ -290,55 +388,82 @@
 .wt-steps-list {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
 }
 
-.wt-step-row {
+.wt-step-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  background: #f5f0e8;
+  border: 1px solid #e4dccb;
+  border-radius: 10px;
+  padding: 12px 13px;
+}
+
+.wt-step-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.wt-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.wt-step-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #2a2016;
+  line-height: 1.3;
+}
+
+.wt-step-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  color: #8a7d5e;
+  margin-top: 2px;
+  line-height: 1.3;
 }
 
 .wt-step-num {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
-  background: #f0e8d8;
+  background: #fff;
   border: 1.5px solid #e4dccb;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.7rem;
   font-weight: 700;
   color: #8a7d5e;
   flex-shrink: 0;
 }
 
-.wt-step-text {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.82rem;
-  color: #3a3228;
-}
-
-/* ── Actions ─────────────────────────────────────────────────────────────────── */
+/* ── Actions ────────────────────────────────────────────────────────────────── */
 .wt-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
   width: 100%;
+  max-width: 420px;
 }
 
 .wt-btn-primary {
   display: block;
   width: 100%;
-  padding: 13px;
+  padding: 14px;
   text-align: center;
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   font-weight: 700;
   border-radius: 10px;
-  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 60%, #8a6510 100%);
   color: #17120a;
   border: none;
   cursor: pointer;
@@ -364,10 +489,14 @@
 }
 .wt-btn-secondary:hover { border-color: #c49a28; color: #c49a28; }
 
-/* ── Responsive ──────────────────────────────────────────────────────────────── */
-@media (max-width: 560px) {
-  .wt-panel { padding: 32px 20px 28px; }
-  .wt-headline { font-size: 1.7rem; }
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .wt-panel   { padding: 32px 20px 28px; gap: 20px; }
+  .wt-headline { font-size: 1.75rem; }
+  .wt-crest-svg { max-width: 260px; }
+  .wt-body    { flex-direction: column; }
+  .wt-col-left { flex: none; width: 100%; }
   .wt-mc-cols { flex-wrap: wrap; gap: 10px; }
   .wt-mc-divider { display: none; }
+  .wt-actions { max-width: 100%; }
 }
