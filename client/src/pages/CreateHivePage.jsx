@@ -71,6 +71,27 @@ const JOIN_OPTIONS = [
   },
 ];
 
+const ONBOARDING_EXP = [
+  {
+    key:  'simple',
+    icon: '⚡',
+    label: 'Simple',
+    sub:  'Just the welcome ceremony. No checklist.',
+  },
+  {
+    key:  'standard',
+    icon: '✅',
+    label: 'Standard',
+    sub:  'Optional onboarding checklist. Nothing blocked.',
+  },
+  {
+    key:  'guided',
+    icon: '🗺️',
+    label: 'Guided',
+    sub:  'Required steps before members access the Hive.',
+  },
+];
+
 const MEET_CHIPS    = ['Online', 'Hybrid', 'In-person'];
 const CADENCE_CHIPS = ['Daily', 'Weekly', 'Biweekly', 'Monthly', 'Flexible'];
 
@@ -213,6 +234,13 @@ export default function CreateHivePage() {
   const [groundRules, setGroundRules] = useState('');
   const [icebreaker,  setIcebreaker]  = useState('');
 
+  // ── Section 6: Onboarding ──────────────────────────────────────
+  const [obJoinExp,    setObJoinExp]    = useState('standard');
+  const [obWelcome,    setObWelcome]    = useState(true);
+  const [obOwnerNote,  setObOwnerNote]  = useState(true);
+  const [obNotif,      setObNotif]      = useState(true);
+  const [obTemplate,   setObTemplate]   = useState('default'); // 'default' | 'blank'
+
   // ── Submit & draft state ───────────────────────────────────────
   const [errors,      setErrors]      = useState({});
   const [submitState, setSubmitState] = useState('idle');   // 'idle' | 'submitting' | 'error'
@@ -258,6 +286,14 @@ export default function CreateHivePage() {
     groundRules:         groundRules.trim(),
     icebreaker:          icebreaker.trim(),
     creatorUserId:       null, // wired in when auth is live
+    onboarding: {
+      join_experience:    obJoinExp,
+      show_welcome_banner: obWelcome,
+      show_owner_note:    obOwnerNote,
+      send_welcome_notif: obNotif,
+      // 'blank' means skip default steps; otherwise lazy-seed on first load
+      skip_default_steps: obTemplate === 'blank',
+    },
   });
 
   const validate = () => {
@@ -699,9 +735,92 @@ export default function CreateHivePage() {
         </SectionCard>
 
         {/* ══════════════════════════════════════════════════════════
-            Section 6 — Membership cost (Coming Soon)
+            Section 6 — Member onboarding
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="6" title="Membership cost" desc="How members will pay to join" disabled>
+        <SectionCard number="6" title="Member onboarding" desc="How new members get started in your Hive">
+
+          {/* Join experience */}
+          <div className="ch-field">
+            <div className="ch-field-label">Join experience</div>
+            <div className="ch-join-cards">
+              {ONBOARDING_EXP.map(opt => (
+                <div
+                  key={opt.key}
+                  className={`ch-join-card${obJoinExp === opt.key ? ' selected' : ''}`}
+                  onClick={() => setObJoinExp(opt.key)}
+                >
+                  <div className="ch-join-card-radio">
+                    {obJoinExp === opt.key && <div className="ch-join-card-radio-dot" />}
+                  </div>
+                  <div>
+                    <div className="ch-join-card-label">{opt.icon} {opt.label}</div>
+                    <div className="ch-join-card-sub">{opt.sub}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Welcome toggles */}
+          <div className="ch-field">
+            <div className="ch-field-label">Welcome ceremony</div>
+            {[
+              { key: 'obWelcome',   val: obWelcome,   set: setObWelcome,   label: 'Show welcome ceremony', sub: 'Full-screen welcome when members first open the Hive' },
+              { key: 'obOwnerNote', val: obOwnerNote,  set: setObOwnerNote,  label: 'Show owner note',        sub: 'Display your personal message to new members' },
+              { key: 'obNotif',     val: obNotif,      set: setObNotif,      label: 'Send welcome notification', sub: 'Notify the member when they\'re accepted' },
+            ].map(({ key, val, set, label, sub }) => (
+              <div key={key} className="ch-toggle-row">
+                <div>
+                  <div className="ch-toggle-row-label">{label}</div>
+                  <div className="ch-toggle-row-sub">{sub}</div>
+                </div>
+                <label className="ch-toggle-label">
+                  <input type="checkbox" className="ch-toggle-input" checked={val} onChange={e => set(e.target.checked)} />
+                  <span className="ch-toggle-track"><span className="ch-toggle-thumb" /></span>
+                </label>
+              </div>
+            ))}
+          </div>
+
+          {/* Step template — only relevant for standard/guided */}
+          {obJoinExp !== 'simple' && (
+            <div className="ch-field">
+              <div className="ch-field-label">Step template</div>
+              <div className="ch-join-cards">
+                <div
+                  className={`ch-join-card${obTemplate === 'default' ? ' selected' : ''}`}
+                  onClick={() => setObTemplate('default')}
+                >
+                  <div className="ch-join-card-radio">
+                    {obTemplate === 'default' && <div className="ch-join-card-radio-dot" />}
+                  </div>
+                  <div>
+                    <div className="ch-join-card-label">Default template</div>
+                    <div className="ch-join-card-sub">6 curated steps to get members up to speed quickly</div>
+                  </div>
+                </div>
+                <div
+                  className={`ch-join-card${obTemplate === 'blank' ? ' selected' : ''}`}
+                  onClick={() => setObTemplate('blank')}
+                >
+                  <div className="ch-join-card-radio">
+                    {obTemplate === 'blank' && <div className="ch-join-card-radio-dot" />}
+                  </div>
+                  <div>
+                    <div className="ch-join-card-label">Start blank</div>
+                    <div className="ch-join-card-sub">Add your own custom steps after launch</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </SectionCard>
+
+        {/* ══════════════════════════════════════════════════════════
+            Section 7 — Membership cost (Coming Soon)
+        ════════════════════════════════════════════════════════════ */}
+        <SectionCard number="7" title="Membership cost" desc="How members will pay to join" disabled>
 
           <div className="ch-field">
             <div className="ch-field-label">Pricing model</div>

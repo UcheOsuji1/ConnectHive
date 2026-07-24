@@ -1000,6 +1000,43 @@
   color: rgba(196, 154, 40, 0.7);
 }
 
+/* ─── Onboarding gate banner ─────────────────────────────────────────────── */
+.hw-ob-gate {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(120deg, #fdf6dc 0%, #fdf9ee 100%);
+  border: 1.5px solid rgba(196,154,40,0.4);
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.hw-ob-gate-icon { font-size: 1.5rem; flex-shrink: 0; }
+.hw-ob-gate-text { flex: 1; min-width: 0; }
+.hw-ob-gate-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #17120a;
+}
+.hw-ob-gate-sub {
+  font-size: 0.8rem;
+  color: #6b5c3e;
+  margin-top: 2px;
+}
+.hw-ob-gate-btn {
+  display: inline-block;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #17120a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.hw-ob-gate-btn:hover { filter: brightness(1.07); }
+
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   .hw-body { flex-direction: column; }

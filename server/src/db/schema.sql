@@ -280,3 +280,62 @@ CREATE TABLE IF NOT EXISTS hive_last_seen (
   PRIMARY KEY (user_id, hive_id)
 );
 CREATE INDEX IF NOT EXISTS idx_hive_last_seen_user ON hive_last_seen(user_id);
+
+-- ─── Phase 2: Member Onboarding Engine ───────────────────────────────────────
+
+-- One row per hive; created lazily on first settings access
+CREATE TABLE IF NOT EXISTS hive_onboarding_settings (
+  hive_id              UUID        PRIMARY KEY REFERENCES hives(hive_id) ON DELETE CASCADE,
+  join_experience      TEXT        NOT NULL DEFAULT 'standard'
+                         CHECK (join_experience IN ('simple', 'standard', 'guided')),
+  welcome_message      TEXT,
+  show_welcome_banner  BOOLEAN     NOT NULL DEFAULT TRUE,
+  show_owner_note      BOOLEAN     NOT NULL DEFAULT TRUE,
+  require_photo        BOOLEAN     NOT NULL DEFAULT FALSE,
+  send_welcome_notif   BOOLEAN     NOT NULL DEFAULT TRUE,
+  completion_unlocks   BOOLEAN     NOT NULL DEFAULT FALSE,
+  steps_seeded         BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Ordered checklist steps per hive; seeded lazily with 6 defaults on first GET
+CREATE TABLE IF NOT EXISTS hive_onboarding_steps (
+  step_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title        TEXT        NOT NULL,
+  description  TEXT,
+  is_required  BOOLEAN     NOT NULL DEFAULT TRUE,
+  step_order   INT         NOT NULL DEFAULT 0,
+  step_type    TEXT        NOT NULL DEFAULT 'task'
+                 CHECK (step_type IN ('task', 'link', 'read')),
+  link_url     TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_onboarding_steps_hive
+  ON hive_onboarding_steps(hive_id, step_order);
+
+-- One row per (hive, user, step) when the member marks a step done
+CREATE TABLE IF NOT EXISTS member_onboarding_progress (
+  progress_id   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id       UUID        NOT NULL REFERENCES hives(hive_id)             ON DELETE CASCADE,
+  user_id       UUID        NOT NULL REFERENCES users(user_id)              ON DELETE CASCADE,
+  step_id       UUID        NOT NULL REFERENCES hive_onboarding_steps(step_id) ON DELETE CASCADE,
+  completed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (hive_id, user_id, step_id)
+);
+CREATE INDEX IF NOT EXISTS idx_onboarding_progress_member
+  ON member_onboarding_progress(hive_id, user_id);
+
+-- Onboarding lifecycle columns on hive_members
+-- Default 'completed' so all pre-existing members are treated as done
+ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS onboarding_status
+  TEXT NOT NULL DEFAULT 'completed';
+ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS onboarding_started_at   TIMESTAMPTZ;
+ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMESTAMPTZ;
+
+-- Allow completion-celebration posts
+ALTER TABLE hive_posts DROP CONSTRAINT IF EXISTS hive_posts_post_type_check;
+ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_post_type_check
+  CHECK (post_type IN ('update', 'event', 'milestone', 'welcome', 'completion'));

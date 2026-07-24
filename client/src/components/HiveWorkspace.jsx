@@ -7,6 +7,7 @@ import HiveOverview from './HiveOverview.jsx';
 import HiveSettings from './HiveSettings.jsx';
 import HiveMembersView from './HiveMembersView.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
+import HiveOnboardingSettings from './HiveOnboardingSettings.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import '../styles/hive-workspace.css';
@@ -240,6 +241,11 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
                 badge={requestCount}
               />
               <NavItem
+                label="Onboarding"
+                active={activeView === 'onboarding'}
+                onClick={() => setActiveView('onboarding')}
+              />
+              <NavItem
                 label="Settings"
                 active={activeView === 'settings'}
                 onClick={() => setActiveView('settings')}
@@ -250,6 +256,22 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
 
         {/* Main content */}
         <main className="hw-main">
+          {/* Guided onboarding gate — show for non-owners with pending/in_progress status */}
+          {!isOwner && hive.onboarding_status === 'pending' && (
+            <div className="hw-ob-gate">
+              <div className="hw-ob-gate-icon">🗺️</div>
+              <div className="hw-ob-gate-text">
+                <div className="hw-ob-gate-title">Complete your onboarding</div>
+                <div className="hw-ob-gate-sub">
+                  Finish the required steps to unlock full access to {hive.hive_name}.
+                </div>
+              </div>
+              <a href={`/welcome/hive/${hiveId}`} className="hw-ob-gate-btn">
+                View steps →
+              </a>
+            </div>
+          )}
+
           {activeView === 'overview' && (
             <HiveOverview
               hiveId={hiveId}
@@ -295,6 +317,10 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
               onCountChange={setRequestCount}
               onMemberAccepted={handleMemberAccepted}
             />
+          )}
+
+          {activeView === 'onboarding' && isOwner && (
+            <HiveOnboardingSettings hiveId={hiveId} />
           )}
 
           {activeView === 'settings' && isOwner && (

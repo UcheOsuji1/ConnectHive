@@ -1,0 +1,158 @@
+/* ── Member Onboarding Progress Page ─────────────────────────────────────── */
+.obp-card {
+  max-width: 500px;
+}
+.obp-card--simple {
+  max-width: 440px;
+}
+
+/* ── Progress bar ─────────────────────────────────────────────────────────── */
+.obp-steps-section {
+  width: 100%;
+  margin-top: 4px;
+}
+.obp-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.obp-progress-label {
+  font-size: 0.78rem;
+  color: #8a8070;
+  font-weight: 600;
+}
+.obp-progress-pct {
+  font-size: 0.78rem;
+  color: #c49a28;
+  font-weight: 700;
+}
+.obp-progress-bar {
+  height: 6px;
+  background: rgba(196,154,40,0.15);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.obp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e8c84a 0%, #c49a28 100%);
+  border-radius: 99px;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Gate notice ──────────────────────────────────────────────────────────── */
+.obp-gate-notice {
+  background: rgba(196,154,40,0.1);
+  border: 1px solid rgba(196,154,40,0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  color: #8a6510;
+  font-weight: 600;
+  margin-bottom: 14px;
+  text-align: center;
+}
+
+/* ── Steps groups ─────────────────────────────────────────────────────────── */
+.obp-steps-group {
+  margin-bottom: 16px;
+}
+.obp-steps-group-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8070;
+  margin-bottom: 8px;
+}
+
+/* ── Step item ─────────────────────────────────────────────────────────────── */
+.obp-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 11px 14px;
+  background: rgba(245,240,232,0.6);
+  border: 1px solid #e4dccb;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  transition: background 0.15s;
+}
+.obp-step--done {
+  background: rgba(196,154,40,0.07);
+  border-color: rgba(196,154,40,0.3);
+}
+.obp-step-check {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid #c4b896;
+  background: #fffdf9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  color: #8a8070;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+  padding: 0;
+  line-height: 1;
+}
+.obp-step--done .obp-step-check {
+  background: linear-gradient(135deg, #e8c84a, #c49a28);
+  border-color: #c49a28;
+  color: #17120a;
+  font-weight: 700;
+}
+.obp-step-check:hover:not(:disabled) {
+  border-color: #c49a28;
+  background: rgba(196,154,40,0.1);
+}
+.obp-step-check:disabled { cursor: default; opacity: 0.7; }
+.obp-step-body { flex: 1; min-width: 0; }
+.obp-step-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #17120a;
+  line-height: 1.35;
+}
+.obp-step--done .obp-step-title {
+  color: #6b5c3e;
+  text-decoration: line-through;
+  text-decoration-color: rgba(196,154,40,0.5);
+}
+.obp-step-desc {
+  font-size: 0.78rem;
+  color: #8a8070;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.obp-step-link {
+  display: inline-block;
+  font-size: 0.76rem;
+  color: #c49a28;
+  text-decoration: none;
+  margin-top: 4px;
+  font-weight: 600;
+}
+.obp-step-link:hover { text-decoration: underline; }
+.obp-step-opt {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #8a8070;
+  background: rgba(138,128,112,0.12);
+  padding: 2px 7px;
+  border-radius: 99px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* ── Locked enter button ─────────────────────────────────────────────────── */
+.obp-btn-locked {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

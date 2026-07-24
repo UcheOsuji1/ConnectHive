@@ -25,6 +25,17 @@ import {
   removeMember,
   notifyMember,
 } from '../controllers/hivesController.js';
+import {
+  getOnboarding,
+  updateOnboarding,
+  createStep,
+  updateStep,
+  deleteStep,
+  reorderSteps,
+  getMyProgress,
+  completeStep,
+  uncompleteStep,
+} from '../controllers/onboardingController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getHivePosts } from '../controllers/postsController.js';
 
@@ -64,5 +75,16 @@ router.get('/:id/messages',              requireAuth, getHiveMessages);
 router.post('/:id/follow',               requireAuth, followHive);
 router.delete('/:id/follow',             requireAuth, unfollowHive);
 router.get('/:id/posts',                 requireAuth, getHivePosts);
+
+// ── Onboarding ────────────────────────────────────────────────────────────────
+router.get('/:id/onboarding',                                requireAuth, getOnboarding);
+router.put('/:id/onboarding',                                requireAuth, updateOnboarding);
+router.get('/:id/onboarding/me',                             requireAuth, getMyProgress);
+router.post('/:id/onboarding/steps/reorder',                 requireAuth, reorderSteps);
+router.post('/:id/onboarding/steps',                         requireAuth, createStep);
+router.put('/:id/onboarding/steps/:stepId',                  requireAuth, updateStep);
+router.delete('/:id/onboarding/steps/:stepId/complete',      requireAuth, uncompleteStep);
+router.post('/:id/onboarding/steps/:stepId/complete',        requireAuth, completeStep);
+router.delete('/:id/onboarding/steps/:stepId',               requireAuth, deleteStep);
 
 export default router;

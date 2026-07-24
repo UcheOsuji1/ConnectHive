@@ -278,6 +278,7 @@ export const getHive = async (req, res) => {
          COUNT(DISTINCT hf.user_id)                                                          AS follower_count,
          my_mem.role                                                                          AS my_role,
          my_mem.welcome_seen_at,
+         my_mem.onboarding_status,
          EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)    AS is_following,
          COALESCE((
            SELECT COUNT(*)::int FROM hive_posts hp
@@ -294,7 +295,8 @@ export const getHive = async (req, res) => {
                                       AND my_mem.membership_status = 'active'
        LEFT JOIN hive_last_seen hls    ON hls.user_id = $1 AND hls.hive_id = h.hive_id
        WHERE h.hive_id = $2
-       GROUP BY h.hive_id, c.category_name, my_mem.role, my_mem.welcome_seen_at, hls.last_seen_at`,
+       GROUP BY h.hive_id, c.category_name, my_mem.role, my_mem.welcome_seen_at,
+                my_mem.onboarding_status, hls.last_seen_at`,
       [req.userId, req.params.id],
     );
     if (!row) return res.status(404).json({ error: 'Hive not found.' });
@@ -499,6 +501,7 @@ export const createHive = async (req, res) => {
       name, category, description, tags, idealMembers,
       joinPolicy, discoverable, maxMembers, activationThreshold,
       meetingType, location, cadence, pinnedGoal, groundRules, icebreaker,
+      onboarding,
     } = req.body;
 
     if (!name || !name.trim() || !category) {
@@ -555,6 +558,38 @@ export const createHive = async (req, res) => {
     } catch (memberErr) {
       await query('DELETE FROM hives WHERE hive_id = $1', [hive.hive_id]);
       throw memberErr;
+    }
+
+    // Create onboarding settings if provided (otherwise lazy-created on first access)
+    if (onboarding) {
+      const joinExp = ['simple', 'standard', 'guided'].includes(onboarding.join_experience)
+        ? onboarding.join_experience : 'standard';
+      // steps_seeded = true when owner chose "blank" — suppresses default step seeding on first GET
+      const stepsSeeded = !!onboarding.skip_default_steps;
+      await query(
+        `INSERT INTO hive_onboarding_settings
+           (hive_id, join_experience, show_welcome_banner, show_owner_note,
+            send_welcome_notif, require_photo, completion_unlocks, steps_seeded)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         ON CONFLICT (hive_id) DO UPDATE SET
+           join_experience     = EXCLUDED.join_experience,
+           show_welcome_banner = EXCLUDED.show_welcome_banner,
+           show_owner_note     = EXCLUDED.show_owner_note,
+           send_welcome_notif  = EXCLUDED.send_welcome_notif,
+           require_photo       = EXCLUDED.require_photo,
+           completion_unlocks  = EXCLUDED.completion_unlocks,
+           steps_seeded        = EXCLUDED.steps_seeded,
+           updated_at          = NOW()`,
+        [
+          hive.hive_id, joinExp,
+          onboarding.show_welcome_banner ?? true,
+          onboarding.show_owner_note ?? true,
+          onboarding.send_welcome_notif ?? true,
+          onboarding.require_photo ?? false,
+          onboarding.completion_unlocks ?? false,
+          stepsSeeded,
+        ],
+      );
     }
 
     res.status(201).json({ id: hive.hive_id, hive });
@@ -806,6 +841,7 @@ export const reviewRequest = async (req, res) => {
     );
     if (!request) return res.status(404).json({ error: 'Request not found or already reviewed.' });
 
+    let joinExp = null;
     if (action === 'accept') {
       // Re-check capacity before accepting
       const { rows: [countRow] } = await query(
@@ -822,6 +858,16 @@ export const reviewRequest = async (req, res) => {
         return res.status(400).json({ error: 'Hive is full.' });
       }
 
+      // Determine onboarding status from hive settings
+      const { rows: [obSettings] } = await query(
+        `SELECT join_experience FROM hive_onboarding_settings WHERE hive_id = $1`,
+        [hiveId],
+      );
+      joinExp = obSettings?.join_experience ?? 'standard';
+      const onboardingStatus =
+        joinExp === 'simple'  ? 'completed' :
+        joinExp === 'guided'  ? 'pending'   : 'in_progress';
+
       await query(
         `UPDATE join_requests
          SET status = 'accepted', reviewed_at = NOW(), reviewed_by = $1
@@ -829,11 +875,16 @@ export const reviewRequest = async (req, res) => {
         [req.userId, requestId],
       );
       await query(
-        `INSERT INTO hive_members (hive_id, user_id, role, membership_status, welcome_seen_at)
-         VALUES ($1, $2, 'member', 'active', NULL)
+        `INSERT INTO hive_members
+           (hive_id, user_id, role, membership_status, welcome_seen_at, onboarding_status)
+         VALUES ($1, $2, 'member', 'active', NULL, $3)
          ON CONFLICT (hive_id, user_id) DO UPDATE
-           SET membership_status = 'active', welcome_seen_at = NULL`,
-        [hiveId, request.user_id],
+           SET membership_status    = 'active',
+               welcome_seen_at      = NULL,
+               onboarding_status    = $3,
+               onboarding_started_at   = NULL,
+               onboarding_completed_at = NULL`,
+        [hiveId, request.user_id, onboardingStatus],
       );
     } else {
       await query(
@@ -928,7 +979,13 @@ export const reviewRequest = async (req, res) => {
       }
     }
 
-    res.json({ reviewed: true, action, member_count: Number(count), new_member: newMember });
+    res.json({
+      reviewed:     true,
+      action,
+      member_count: Number(count),
+      new_member:   newMember,
+      join_experience: action === 'accept' ? (obSettings?.join_experience ?? 'standard') : undefined,
+    });
   } catch (err) {
     console.error('[hives/reviewRequest]', err);
     res.status(500).json({ error: 'Failed to review request.' });
