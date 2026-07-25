@@ -21,209 +21,11 @@
   --hop-r-sm:     10px;
 }
 
-/* ── Root layout ────────────────────────────────────────────────────────── */
-.hop-root {
-  display: flex;
-  min-height: 100vh;
-  background: var(--hop-bg);
+/* ── Page wrapper (inside shared HiveDashboardLayout content area) ─────── */
+.hop-page {
   font-family: 'DM Sans', system-ui, sans-serif;
   color: var(--hop-charcoal);
 }
-
-/* ── Sidebar ────────────────────────────────────────────────────────────── */
-.hop-sidebar {
-  width: 228px;
-  min-width: 228px;
-  background: var(--hop-surface);
-  border-right: 1.5px solid var(--hop-border);
-  padding: 24px 16px 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-  flex-shrink: 0;
-}
-.hop-sidebar--loading {
-  background: var(--hop-surface);
-}
-
-.hop-back-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--hop-muted);
-  font-size: 0.78rem;
-  font-weight: 500;
-  text-decoration: none;
-  padding: 5px 10px;
-  border-radius: 20px;
-  border: 1.2px solid var(--hop-border2);
-  background: var(--hop-ivory);
-  margin-bottom: 10px;
-  transition: border-color 0.15s, color 0.15s;
-  width: fit-content;
-}
-.hop-back-chip:hover {
-  color: var(--hop-gold-dk);
-  border-color: var(--hop-gold-lt);
-}
-
-.hop-sb-identity {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 4px 10px;
-  border-bottom: 1px solid var(--hop-border);
-  margin-bottom: 6px;
-}
-.hop-sb-hive-name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--hop-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.hop-sb-group {
-  margin-top: 10px;
-}
-.hop-sb-group-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--hop-muted2);
-  padding: 0 8px;
-  margin-bottom: 3px;
-}
-.hop-sb-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-size: 0.83rem;
-  font-weight: 500;
-  color: var(--hop-muted);
-  text-decoration: none;
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-}
-.hop-sb-item:hover { background: var(--hop-ivory); color: var(--hop-ink); }
-.hop-sb-item--active {
-  background: var(--hop-gold-bg) !important;
-  color: var(--hop-gold-dk) !important;
-  font-weight: 700;
-}
-.hop-sb-item--soon {
-  cursor: default;
-  opacity: 0.6;
-}
-.hop-sb-soon-pill {
-  font-size: 0.6rem;
-  font-weight: 700;
-  padding: 1px 6px;
-  border-radius: 6px;
-  background: var(--hop-border2);
-  color: var(--hop-muted);
-  letter-spacing: 0.04em;
-}
-.hop-sb-badge {
-  min-width: 18px;
-  height: 18px;
-  border-radius: 9px;
-  background: var(--hop-gold);
-  color: #fff;
-  font-size: 0.68rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 5px;
-}
-
-.hop-pro-tip {
-  margin-top: auto;
-  background: var(--hop-gold-bg2);
-  border: 1.2px solid var(--hop-gold-bg);
-  border-radius: var(--hop-r-sm);
-  padding: 12px 14px;
-}
-.hop-pro-tip-header {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--hop-gold-dk);
-  margin-bottom: 5px;
-}
-.hop-pro-tip-body {
-  font-size: 0.75rem;
-  color: var(--hop-muted);
-  line-height: 1.55;
-  margin: 0;
-}
-
-/* ── Main area ───────────────────────────────────────────────────────────── */
-.hop-main {
-  flex: 1;
-  padding: 28px 32px 120px;
-  max-width: 1200px;
-  overflow-x: hidden;
-}
-
-/* ── Hive identity header card ──────────────────────────────────────────── */
-.hop-hive-header {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--hop-surface);
-  border: 1.5px solid var(--hop-border);
-  border-radius: var(--hop-r);
-  padding: 16px 20px;
-  box-shadow: var(--hop-shadow);
-  margin-bottom: 20px;
-}
-.hop-hive-header-meta { flex: 1; min-width: 0; }
-.hop-hive-header-name-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.hop-hive-header-name {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--hop-charcoal);
-  line-height: 1.2;
-}
-.hop-owner-badge {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--hop-gold-dk);
-  background: var(--hop-gold-bg);
-  border: 1px solid var(--hop-gold-bg);
-  border-radius: 5px;
-  padding: 2px 7px;
-}
-.hop-hive-header-sub {
-  font-size: 0.8rem;
-  color: var(--hop-muted);
-  margin-top: 3px;
-}
-.hop-view-hive-link {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--hop-gold);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color 0.13s;
-}
-.hop-view-hive-link:hover { color: var(--hop-gold-dk); }
 
 /* ── Page heading ─────────────────────────────────────────────────────── */
 .hop-page-heading { margin-bottom: 20px; }
@@ -242,7 +44,7 @@
 /* ── Three-column grid ───────────────────────────────────────────────── */
 .hop-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr 0.9fr;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 0.9fr);
   gap: 20px;
   align-items: start;
 }
@@ -822,7 +624,7 @@
 .hop-save-bar {
   position: fixed;
   bottom: 0;
-  left: 228px; /* align with sidebar width */
+  left: var(--hdl-sidebar-w, 220px);
   right: 0;
   z-index: 200;
   background: var(--hop-charcoal);
@@ -999,17 +801,15 @@
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .hop-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   .hop-col-right {
     grid-column: 1 / -1;
   }
 }
 @media (max-width: 760px) {
-  .hop-sidebar { display: none; }
   .hop-save-bar { left: 0; }
   .hop-grid { grid-template-columns: 1fr; }
-  .hop-main { padding: 16px 16px 120px; }
   .hop-toggles-grid { grid-template-columns: 1fr; }
   .hop-join-exp-grid { grid-template-columns: 1fr 1fr; }
 }
