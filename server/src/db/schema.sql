@@ -287,7 +287,7 @@ CREATE INDEX IF NOT EXISTS idx_hive_last_seen_user ON hive_last_seen(user_id);
 CREATE TABLE IF NOT EXISTS hive_onboarding_settings (
   hive_id              UUID        PRIMARY KEY REFERENCES hives(hive_id) ON DELETE CASCADE,
   join_experience      TEXT        NOT NULL DEFAULT 'standard'
-                         CHECK (join_experience IN ('simple', 'standard', 'guided')),
+                         CHECK (join_experience IN ('simple', 'standard', 'guided', 'application')),
   welcome_message      TEXT,
   show_welcome_banner  BOOLEAN     NOT NULL DEFAULT TRUE,
   show_owner_note      BOOLEAN     NOT NULL DEFAULT TRUE,
@@ -339,3 +339,24 @@ ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS onboarding_completed_at TIMEST
 ALTER TABLE hive_posts DROP CONSTRAINT IF EXISTS hive_posts_post_type_check;
 ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_post_type_check
   CHECK (post_type IN ('update', 'event', 'milestone', 'welcome', 'completion'));
+
+-- ─── Onboarding settings v2: expand join_experience + new toggle/rules columns ─
+-- Drop old 3-value constraint and replace with 4-value (idempotent)
+ALTER TABLE hive_onboarding_settings DROP CONSTRAINT IF EXISTS hive_onboarding_settings_join_experience_check;
+ALTER TABLE hive_onboarding_settings ADD CONSTRAINT hive_onboarding_settings_join_experience_check
+  CHECK (join_experience IN ('simple', 'standard', 'guided', 'application'));
+
+-- Welcome & Celebration toggles
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS notify_hive_on_join  BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS generate_certificate  BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS auto_welcome_post     BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS notify_owner_start    BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS show_activity_badge   BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Rules & Completion fields
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS deadline_days         INT;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS access_mode           TEXT NOT NULL DEFAULT 'full';
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_welcome_msg   BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_assign_role   BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_default_role  TEXT;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_unlock_access BOOLEAN NOT NULL DEFAULT FALSE;

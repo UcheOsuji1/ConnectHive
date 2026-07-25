@@ -14,6 +14,7 @@ import DirectHivePage from './pages/DirectHivePage';
 import ProfilePage from './pages/ProfilePage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import MemberWelcomePage from './pages/MemberWelcomePage';
+import HiveOnboardingPage from './pages/HiveOnboardingPage';
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
       <Route path="/create-hive" element={<CreateHivePage />} />
       <Route path="/my-hive" element={<MyHivePage />} />
       <Route path="/hive/:id" element={<DirectHivePage />} />
+      <Route path="/hive/:id/onboarding" element={<HiveOnboardingPage />} />
       <Route path="/profile" element={<ProfilePage />} />
       <Route path="/profile/:id" element={<ProfilePage />} />
       <Route path="/settings" element={<AccountSettingsPage />} />

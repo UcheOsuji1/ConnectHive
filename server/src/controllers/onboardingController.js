@@ -101,8 +101,15 @@ export const updateOnboarding = async (req, res) => {
     await assertOwnerOrAdmin(hiveId, req.userId);
 
     const {
-      join_experience, welcome_message, show_welcome_banner,
-      show_owner_note, require_photo, send_welcome_notif, completion_unlocks,
+      join_experience, welcome_message,
+      show_welcome_banner, show_owner_note, require_photo,
+      send_welcome_notif, completion_unlocks,
+      // Welcome & Celebration (v2)
+      notify_hive_on_join, generate_certificate, auto_welcome_post,
+      notify_owner_start, show_activity_badge,
+      // Rules & Completion (v2)
+      deadline_days, access_mode,
+      trigger_welcome_msg, trigger_assign_role, trigger_default_role, trigger_unlock_access,
     } = req.body;
 
     // Ensure row exists first
@@ -110,20 +117,41 @@ export const updateOnboarding = async (req, res) => {
 
     const { rows: [settings] } = await query(
       `UPDATE hive_onboarding_settings SET
-         join_experience     = COALESCE($2, join_experience),
-         welcome_message     = COALESCE($3, welcome_message),
-         show_welcome_banner = COALESCE($4, show_welcome_banner),
-         show_owner_note     = COALESCE($5, show_owner_note),
-         require_photo       = COALESCE($6, require_photo),
-         send_welcome_notif  = COALESCE($7, send_welcome_notif),
-         completion_unlocks  = COALESCE($8, completion_unlocks),
-         updated_at          = NOW()
+         join_experience       = COALESCE($2,  join_experience),
+         welcome_message       = COALESCE($3,  welcome_message),
+         show_welcome_banner   = COALESCE($4,  show_welcome_banner),
+         show_owner_note       = COALESCE($5,  show_owner_note),
+         require_photo         = COALESCE($6,  require_photo),
+         send_welcome_notif    = COALESCE($7,  send_welcome_notif),
+         completion_unlocks    = COALESCE($8,  completion_unlocks),
+         notify_hive_on_join   = COALESCE($9,  notify_hive_on_join),
+         generate_certificate  = COALESCE($10, generate_certificate),
+         auto_welcome_post     = COALESCE($11, auto_welcome_post),
+         notify_owner_start    = COALESCE($12, notify_owner_start),
+         show_activity_badge   = COALESCE($13, show_activity_badge),
+         deadline_days         = COALESCE($14, deadline_days),
+         access_mode           = COALESCE($15, access_mode),
+         trigger_welcome_msg   = COALESCE($16, trigger_welcome_msg),
+         trigger_assign_role   = COALESCE($17, trigger_assign_role),
+         trigger_default_role  = COALESCE($18, trigger_default_role),
+         trigger_unlock_access = COALESCE($19, trigger_unlock_access),
+         updated_at            = NOW()
        WHERE hive_id = $1
        RETURNING *`,
-      [hiveId, join_experience ?? null, welcome_message ?? null,
-       show_welcome_banner ?? null, show_owner_note ?? null,
-       require_photo ?? null, send_welcome_notif ?? null,
-       completion_unlocks ?? null],
+      [
+        hiveId,
+        join_experience       ?? null, welcome_message        ?? null,
+        show_welcome_banner   ?? null, show_owner_note        ?? null,
+        require_photo         ?? null, send_welcome_notif     ?? null,
+        completion_unlocks    ?? null,
+        notify_hive_on_join   ?? null, generate_certificate   ?? null,
+        auto_welcome_post     ?? null, notify_owner_start     ?? null,
+        show_activity_badge   ?? null,
+        deadline_days         !== undefined ? (deadline_days ?? null) : null,
+        access_mode           ?? null,
+        trigger_welcome_msg   ?? null, trigger_assign_role    ?? null,
+        trigger_default_role  ?? null, trigger_unlock_access  ?? null,
+      ],
     );
 
     const steps = await fetchSteps(hiveId);

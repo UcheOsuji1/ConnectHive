@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import PostCard from './PostCard.jsx';
 import CreatePostModal from './CreatePostModal.jsx';
 import HiveRequestsTab from './HiveRequestsTab.jsx';
@@ -7,7 +7,6 @@ import HiveOverview from './HiveOverview.jsx';
 import HiveSettings from './HiveSettings.jsx';
 import HiveMembersView from './HiveMembersView.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
-import HiveOnboardingSettings from './HiveOnboardingSettings.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import '../styles/hive-workspace.css';
@@ -136,6 +135,7 @@ function AboutView({ hive }) {
 // ── Workspace shell ───────────────────────────────────────────────────────────
 export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHiveUpdated, initialNewPosts = 0 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [hive,          setHive]          = useState(initialHive);
   const [activeView,    setActiveView]    = useState(isOwner ? 'overview' : 'feed');
   const [posts,         setPosts]         = useState([]);
@@ -242,8 +242,8 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
               />
               <NavItem
                 label="Onboarding"
-                active={activeView === 'onboarding'}
-                onClick={() => setActiveView('onboarding')}
+                active={false}
+                onClick={() => navigate(`/hive/${hiveId}/onboarding`)}
               />
               <NavItem
                 label="Settings"
@@ -317,10 +317,6 @@ export default function HiveWorkspace({ hive: initialHive, hiveId, isOwner, onHi
               onCountChange={setRequestCount}
               onMemberAccepted={handleMemberAccepted}
             />
-          )}
-
-          {activeView === 'onboarding' && isOwner && (
-            <HiveOnboardingSettings hiveId={hiveId} />
           )}
 
           {activeView === 'settings' && isOwner && (
