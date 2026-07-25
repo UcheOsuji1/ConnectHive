@@ -346,6 +346,10 @@ ALTER TABLE hive_onboarding_settings DROP CONSTRAINT IF EXISTS hive_onboarding_s
 ALTER TABLE hive_onboarding_settings ADD CONSTRAINT hive_onboarding_settings_join_experience_check
   CHECK (join_experience IN ('simple', 'standard', 'guided', 'application'));
 
+-- steps_seeded was added to the CREATE TABLE definition but the table pre-existed;
+-- this ALTER TABLE ensures the column exists on all live databases
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS steps_seeded BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- Welcome & Celebration toggles
 ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS notify_hive_on_join  BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS generate_certificate  BOOLEAN NOT NULL DEFAULT FALSE;
