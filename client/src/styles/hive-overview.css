@@ -1,0 +1,387 @@
+/* ── Premium Overview styles ─────────────────────────────────────────────── */
+
+/* Remove the 720px constraint so the overview fills the content area */
+.hw-overview {
+  max-width: none;
+  width: 100%;
+  gap: 24px;
+}
+
+/* ── Page heading ──────────────────────────────────────────────────────── */
+.hw-ov2-heading { display: flex; flex-direction: column; gap: 5px; }
+.hw-ov2-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #17120a;
+  margin: 0;
+  line-height: 1.1;
+}
+.hw-ov2-sub {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: #8a8070;
+  margin: 0;
+}
+
+/* ── Metrics row ───────────────────────────────────────────────────────── */
+.hw-ov2-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.hw-ov2-metric {
+  background: #fffdf8;
+  border: 1.5px solid #e9dfcf;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(54,42,25,0.05);
+  padding: 20px 22px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.hw-ov2-metric-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.hw-ov2-metric-label {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a8070;
+}
+
+.hw-ov2-metric-icon {
+  font-size: 1rem;
+  color: #c49a28;
+  opacity: 0.75;
+  line-height: 1;
+}
+
+.hw-ov2-metric-value {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: #17120a;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+/* Status card — success green */
+.hw-ov2-metric--status .hw-ov2-metric-value {
+  font-size: 1.65rem;
+  color: #347a61;
+}
+.hw-ov2-metric--status .hw-ov2-metric-icon {
+  color: #347a61;
+}
+
+/* Pending with alert state */
+.hw-ov2-metric--alert {
+  border-color: #c49a28;
+  background: #fdf5e2;
+}
+.hw-ov2-metric--alert .hw-ov2-metric-value {
+  color: #c49a28;
+}
+
+/* ── Two-column body ───────────────────────────────────────────────────── */
+.hw-ov2-body {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.hw-ov2-left,
+.hw-ov2-right {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── Shared card ───────────────────────────────────────────────────────── */
+.hw-ov2-card {
+  background: #fffdf8;
+  border: 1.5px solid #e9dfcf;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(54,42,25,0.05);
+  overflow: hidden;
+}
+
+.hw-ov2-card-header {
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid #e9dfcf;
+}
+
+.hw-ov2-card-label {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a8070;
+}
+
+.hw-ov2-card-body {
+  padding: 14px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── Action Center rows ────────────────────────────────────────────────── */
+.hw-ov2-action-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #f5f0e8;
+  border: 1.2px solid #e9dfcf;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+  text-align: left;
+  font-family: inherit;
+  width: 100%;
+}
+.hw-ov2-action-row:hover {
+  background: #f6ecd1;
+  border-color: #d9b654;
+}
+
+.hw-ov2-action-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e9dfcf;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+  flex-shrink: 0;
+}
+
+.hw-ov2-action-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.84rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #2d2416;
+  font-weight: 500;
+}
+
+.hw-ov2-action-arrow {
+  font-size: 0.82rem;
+  color: #c49a28;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.hw-ov2-empty {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: #8a8070;
+  padding: 4px 0;
+}
+
+/* ── Recent Activity ───────────────────────────────────────────────────── */
+.hw-ov2-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f0ebe0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.hw-ov2-activity-row:last-child { border-bottom: none; }
+
+.hw-ov2-activity-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f5f0e8;
+  border: 1px solid #e9dfcf;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.hw-ov2-activity-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.84rem;
+  color: #2d2416;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hw-ov2-activity-time {
+  font-size: 0.73rem;
+  color: #8a8070;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── New Members ───────────────────────────────────────────────────────── */
+.hw-ov2-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f0ebe0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.hw-ov2-member-row:last-child { border-bottom: none; }
+
+.hw-ov2-member-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8c84a 0%, #c49a28 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #17120a;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.hw-ov2-member-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hw-ov2-member-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hw-ov2-member-name {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #17120a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hw-ov2-member-time {
+  font-size: 0.72rem;
+  color: #8a8070;
+}
+
+.hw-ov2-wave-btn {
+  font-size: 0.75rem;
+  font-family: inherit;
+  background: #f5f0e8;
+  border: 1.2px solid #e9dfcf;
+  border-radius: 7px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: #8a8070;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.hw-ov2-wave-btn:hover:not(:disabled) {
+  background: #f6ecd1;
+  border-color: #c49a28;
+  color: #c49a28;
+}
+.hw-ov2-wave-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ── Milestone card ────────────────────────────────────────────────────── */
+.hw-ov2-milestone {
+  background: #17120a;
+  border: 1.5px solid #2e2416;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(54,42,25,0.15);
+  padding: 20px 20px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  overflow: hidden;
+  position: relative;
+}
+
+.hw-ov2-ms-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.hw-ov2-ms-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.hw-ov2-ms-label {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #c49a28;
+}
+
+.hw-ov2-ms-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #f3ecdd;
+  line-height: 1.2;
+}
+
+.hw-ov2-ms-sub {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.78rem;
+  color: #7a6e50;
+}
+
+/* ── Org Details card (below main body) ────────────────────────────────── */
+.hw-ov2-org-card {
+  background: #fffdf8;
+  border: 1.5px solid #e9dfcf;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(54,42,25,0.05);
+  overflow: hidden;
+}
+.hw-ov2-org-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 12px;
+  border-bottom: 1px solid #e9dfcf;
+}
+.hw-ov2-org-body {
+  padding: 16px 20px;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────── */
+@media (max-width: 1000px) {
+  .hw-ov2-metrics { grid-template-columns: repeat(2, 1fr); }
+  .hw-ov2-body { grid-template-columns: 1fr; }
+}
+@media (max-width: 540px) {
+  .hw-ov2-metrics { grid-template-columns: 1fr 1fr; }
+  .hw-ov2-metric-value { font-size: 1.9rem; }
+}

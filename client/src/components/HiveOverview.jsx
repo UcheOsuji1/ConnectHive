@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
+import '../styles/hive-overview.css';
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -16,14 +18,18 @@ function timeAgo(dateStr) {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
 function initials(name) {
   if (!name) return '?';
   return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
-// ── Welcome banner (Part 3) ───────────────────────────────────────────────────
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+const MILESTONE_THRESHOLDS = [2, 5, 10, 25, 50, 100, 250, 500, 1000];
+
+const ACTION_NAV   = { requests: 'requests', profiles: 'members', description: 'settings', onboarding: 'onboarding' };
+const ACTION_ICONS = { requests: '📋', profiles: '👤', description: '✏️', onboarding: '🗺️' };
+
+// ── Welcome banner ────────────────────────────────────────────────────────────
 function WelcomeBanner({ post, hiveName, onWave, waved, waving, waveCount, firstName }) {
   return (
     <div className="hw-welcome-banner">
@@ -63,50 +69,26 @@ function WelcomeBanner({ post, hiveName, onWave, waved, waving, waveCount, first
   );
 }
 
-function MetricCard({ label, value, highlight }) {
-  return (
-    <div className={['hw-metric-card', highlight ? 'hw-metric-highlight' : ''].filter(Boolean).join(' ')}>
-      <div className="hw-metric-value">{value}</div>
-      <div className="hw-metric-label">{label}</div>
-    </div>
-  );
-}
-
-export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, onNavigate, onSaved, posts = [], postsLoading = false }) {
+// ── Main component ────────────────────────────────────────────────────────────
+export default function HiveOverview({
+  hiveId, hive, isOwner,
+  onRequestCount, onNavigate, onSaved,
+  posts = [], postsLoading = false,
+}) {
   const { user } = useAuth();
-  const [overview,    setOverview]    = useState(null);
-  const [loading,     setLoading]     = useState(isOwner);
+  const [overview, setOverview] = useState(null);
+  const [loading,  setLoading]  = useState(isOwner);
 
-  // ── Welcome post detection (Part 3) ──────────────────────────────────────────
-  const [waved,      setWaved]      = useState(false);
-  const [waveCount,  setWaveCount]  = useState(0);
-  const [waving,     setWaving]     = useState(false);
+  // Banner wave state
+  const [waved,     setWaved]     = useState(false);
+  const [waveCount, setWaveCount] = useState(0);
+  const [waving,    setWaving]    = useState(false);
   const waveInitRef = useRef(null);
 
-  const welcomePost = postsLoading ? null :
-    (posts.find(p => p.post_type === 'welcome' && Date.now() - new Date(p.created_at).getTime() < WEEK_MS) ?? null);
+  // Per-post wave state (New Members card)
+  const [userWaved, setUserWaved] = useState(new Set());
 
-  // Sync wave state when the welcome post first appears (one-time initialisation)
-  useEffect(() => {
-    if (welcomePost && waveInitRef.current !== welcomePost.post_id) {
-      waveInitRef.current = welcomePost.post_id;
-      setWaved(Boolean(welcomePost.reacted));
-      setWaveCount(Number(welcomePost.reaction_count ?? 0));
-    }
-  }, [welcomePost]);
-
-  async function handleWave() {
-    if (!welcomePost || waved || waving) return;
-    setWaving(true);
-    try {
-      const result = await api.post(`/api/posts/${welcomePost.post_id}/react`, { reaction: 'wave' });
-      setWaved(result.reacted);
-      setWaveCount(result.reaction_count);
-    } catch {}
-    setWaving(false);
-  }
-
-  const showBanner = !postsLoading && welcomePost && welcomePost.author_user_id !== user?.userId;
+  // Org info edit state
   const [editMode,    setEditMode]    = useState(false);
   const [editValues,  setEditValues]  = useState({
     pinned_goal:   hive.pinned_goal   ?? '',
@@ -119,6 +101,19 @@ export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, on
   const [saveError,   setSaveError]   = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Welcome post detection
+  const welcomePost = postsLoading ? null :
+    (posts.find(p => p.post_type === 'welcome' && Date.now() - new Date(p.created_at).getTime() < WEEK_MS) ?? null);
+
+  useEffect(() => {
+    if (welcomePost && waveInitRef.current !== welcomePost.post_id) {
+      waveInitRef.current = welcomePost.post_id;
+      setWaved(Boolean(welcomePost.reacted));
+      setWaveCount(Number(welcomePost.reaction_count ?? 0));
+    }
+  }, [welcomePost]);
+
+  // Fetch overview data (owner only)
   useEffect(() => {
     if (!isOwner) return;
     setLoading(true);
@@ -131,16 +126,83 @@ export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, on
       .finally(() => setLoading(false));
   }, [hiveId, isOwner]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Derived metrics — use overview data for owners, hive prop for members
-  const memberCount = overview?.member_count  ?? Number(hive.member_count ?? 0);
-  const maxMembers  = overview?.max_members   ?? (hive.max_members ? Number(hive.max_members) : null);
-  const hiveStatus  = overview?.hive_status   ?? hive.hive_status ?? 'active';
-  const spotsLeft   = maxMembers != null ? maxMembers - memberCount : null;
+  // Derived metrics
+  const memberCount  = overview?.member_count  ?? Number(hive.member_count ?? 0);
+  const maxMembers   = overview?.max_members   ?? (hive.max_members ? Number(hive.max_members) : null);
+  const hiveStatus   = overview?.hive_status   ?? hive.hive_status ?? 'active';
+  const spotsLeft    = maxMembers != null ? maxMembers - memberCount : null;
+  const pendingCount = overview?.pending_count ?? 0;
+
+  const showBanner = !postsLoading && welcomePost && welcomePost.author_user_id !== user?.userId;
+
+  // Recent members: prefer welcome posts (have photos), fall back to join events
+  const recentMemberPosts = useMemo(() => posts
+    .filter(p => p.post_type === 'welcome')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 5),
+  [posts]);
+
+  const recentJoins = useMemo(() => {
+    if (!overview?.recent_activity) return [];
+    return overview.recent_activity
+      .filter(a => /\s+joined\s*$/i.test(a.label))
+      .slice(0, 5)
+      .map(a => ({
+        name: a.label.replace(/\s+joined\s*$/i, '').trim(),
+        timestamp: a.timestamp,
+        photo: null,
+        post_id: null,
+        reacted: false,
+      }));
+  }, [overview]);
+
+  const recentMembersList = recentMemberPosts.length > 0
+    ? recentMemberPosts.map(p => ({
+        name:      p.author_name,
+        photo:     p.author_photo,
+        userId:    p.author_user_id,
+        timestamp: p.created_at,
+        post_id:   p.post_id,
+        reacted:   Boolean(p.reacted),
+      }))
+    : recentJoins;
+
+  // Milestone: highest threshold reached
+  const milestone = [...MILESTONE_THRESHOLDS].reverse().find(t => memberCount >= t) ?? null;
+
+  // Action items: API items + synthetic 'description' if hive has no info at all
+  const allActionItems = useMemo(() => {
+    if (!overview) return [];
+    const items = [...overview.action_items];
+    const hasDesc = hive.pinned_goal || hive.ground_rules || hive.icebreaker || hive.description;
+    if (!hasDesc) {
+      items.push({ type: 'description', count: null, label: 'Add a description to your Hive' });
+    }
+    return items;
+  }, [overview, hive]);
+
+  // Handlers
+  async function handleWave() {
+    if (!welcomePost || waved || waving) return;
+    setWaving(true);
+    try {
+      const result = await api.post(`/api/posts/${welcomePost.post_id}/react`, { reaction: 'wave' });
+      setWaved(result.reacted);
+      setWaveCount(result.reaction_count);
+    } catch {}
+    setWaving(false);
+  }
+
+  async function handleWaveMember(postId) {
+    if (!postId || userWaved.has(postId)) return;
+    try {
+      await api.post(`/api/posts/${postId}/react`, { reaction: 'wave' });
+      setUserWaved(prev => new Set([...prev, postId]));
+    } catch {}
+  }
 
   async function handleSave() {
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
+    setSaving(true); setSaveError(null); setSaveSuccess(false);
     try {
       const result = await api.patch(`/api/hives/${hiveId}`, editValues);
       setEditMode(false);
@@ -166,10 +228,12 @@ export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, on
     setSaveError(null);
   }
 
+  const statusLabel = hiveStatus.charAt(0).toUpperCase() + hiveStatus.slice(1);
+
   return (
     <div className="hw-overview">
 
-      {/* New-member celebration banner (Part 3) */}
+      {/* ── Welcome banner ── */}
       {showBanner && (
         <WelcomeBanner
           post={welcomePost}
@@ -182,149 +246,239 @@ export default function HiveOverview({ hiveId, hive, isOwner, onRequestCount, on
         />
       )}
 
-      {/* Page title */}
-      <div className="hw-overview-header">
-        <h2 className="hw-overview-title">Overview</h2>
-        <p className="hw-overview-sub">
+      {/* ── Heading ── */}
+      <div className="hw-ov2-heading">
+        <h2 className="hw-ov2-title">Overview</h2>
+        <p className="hw-ov2-sub">
           {isOwner ? "Here's what needs your attention." : "Here's what's happening."}
         </p>
       </div>
 
-      {/* Metric cards */}
-      <div className="hw-metric-grid">
-        <MetricCard
-          label="Members"
-          value={maxMembers != null ? `${memberCount} / ${maxMembers}` : String(memberCount)}
-        />
-        {isOwner && overview && (
-          <MetricCard
-            label="Pending Requests"
-            value={String(overview.pending_count ?? 0)}
-            highlight={(overview.pending_count ?? 0) > 0}
-          />
+      {/* ── Metrics row ── */}
+      <div className="hw-ov2-metrics">
+
+        <div className="hw-ov2-metric">
+          <div className="hw-ov2-metric-top">
+            <span className="hw-ov2-metric-label">Members</span>
+            <span className="hw-ov2-metric-icon">👥</span>
+          </div>
+          <div className="hw-ov2-metric-value">
+            {maxMembers != null ? `${memberCount}/${maxMembers}` : memberCount}
+          </div>
+        </div>
+
+        {isOwner && (
+          <div className={['hw-ov2-metric hw-ov2-metric--pending', pendingCount > 0 ? 'hw-ov2-metric--alert' : ''].filter(Boolean).join(' ')}>
+            <div className="hw-ov2-metric-top">
+              <span className="hw-ov2-metric-label">Pending</span>
+              <span className="hw-ov2-metric-icon">🕐</span>
+            </div>
+            <div className="hw-ov2-metric-value">{pendingCount}</div>
+          </div>
         )}
+
         {spotsLeft != null && (
-          <MetricCard label="Spots Left" value={String(spotsLeft)} />
+          <div className="hw-ov2-metric">
+            <div className="hw-ov2-metric-top">
+              <span className="hw-ov2-metric-label">Spots Left</span>
+              <span className="hw-ov2-metric-icon">🎫</span>
+            </div>
+            <div className="hw-ov2-metric-value">{spotsLeft}</div>
+          </div>
         )}
-        <MetricCard
-          label="Status"
-          value={hiveStatus.charAt(0).toUpperCase() + hiveStatus.slice(1)}
-        />
+
+        <div className="hw-ov2-metric hw-ov2-metric--status">
+          <div className="hw-ov2-metric-top">
+            <span className="hw-ov2-metric-label">Status</span>
+            <span className="hw-ov2-metric-icon">●</span>
+          </div>
+          <div className="hw-ov2-metric-value">{statusLabel}</div>
+        </div>
+
       </div>
 
-      {/* Action Center (owner only) */}
+      {/* ── Two-column body (owner + data loaded) ── */}
       {isOwner && !loading && overview && (
-        <div className="hw-action-center">
-          <div className="hw-action-title">Action Center</div>
-          {overview.action_items?.length > 0 ? (
-            overview.action_items.map(item => (
-              <div key={item.type} className="hw-action-row">
-                <span className="hw-action-text">
-                  <strong>{item.count}</strong> {item.label}
-                </span>
-                {item.type === 'requests' && (
-                  <button
-                    type="button"
-                    className="hw-action-link"
-                    onClick={() => onNavigate('requests')}
-                  >
-                    Review →
-                  </button>
-                )}
-                {item.type === 'profiles' && (
-                  <button
-                    type="button"
-                    className="hw-action-link"
-                    onClick={() => onNavigate('members')}
-                  >
-                    View →
-                  </button>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="hw-action-empty">You're all caught up.</div>
-          )}
-        </div>
-      )}
+        <div className="hw-ov2-body">
 
-      {/* Recent Activity (owner only) */}
-      {isOwner && overview?.recent_activity?.length > 0 && (
-        <div className="hw-overview-card">
-          <div className="hw-card-label">Recent Activity</div>
-          <div className="hw-activity-list">
-            {overview.recent_activity.map((item, i) => (
-              <div key={i} className="hw-activity-row">
-                <span className="hw-activity-label">{item.label}</span>
-                <span className="hw-activity-time">{timeAgo(item.timestamp)}</span>
+          {/* Left: Action Center + Recent Activity */}
+          <div className="hw-ov2-left">
+
+            {/* Action Center */}
+            <div className="hw-ov2-card">
+              <div className="hw-ov2-card-header">
+                <div className="hw-ov2-card-label">Action Center</div>
               </div>
-            ))}
+              <div className="hw-ov2-card-body">
+                {allActionItems.length > 0 ? (
+                  allActionItems.map(item => {
+                    const dest = ACTION_NAV[item.type];
+                    return (
+                      <button
+                        key={item.type}
+                        type="button"
+                        className="hw-ov2-action-row"
+                        onClick={() => dest && onNavigate(dest)}
+                        style={{ cursor: dest ? 'pointer' : 'default' }}
+                      >
+                        <span className="hw-ov2-action-icon">
+                          {ACTION_ICONS[item.type] ?? '→'}
+                        </span>
+                        <span className="hw-ov2-action-text">
+                          {item.count != null ? `${item.count} ` : ''}{item.label}
+                        </span>
+                        {dest && <span className="hw-ov2-action-arrow">→</span>}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="hw-ov2-empty">You're all caught up.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Recent Activity */}
+            {overview.recent_activity?.length > 0 && (
+              <div className="hw-ov2-card">
+                <div className="hw-ov2-card-header">
+                  <div className="hw-ov2-card-label">Recent Activity</div>
+                </div>
+                <div className="hw-ov2-card-body" style={{ gap: 0, padding: '8px 20px 14px' }}>
+                  {overview.recent_activity.map((item, i) => (
+                    <div key={i} className="hw-ov2-activity-row">
+                      <span className="hw-ov2-activity-icon">
+                        {/posted/i.test(item.label) ? '📝' : '👤'}
+                      </span>
+                      <span className="hw-ov2-activity-label">{item.label}</span>
+                      <span className="hw-ov2-activity-time">{timeAgo(item.timestamp)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Right: New Members + Milestone */}
+          <div className="hw-ov2-right">
+
+            {/* New Members */}
+            {recentMembersList.length > 0 && (
+              <div className="hw-ov2-card">
+                <div className="hw-ov2-card-header">
+                  <div className="hw-ov2-card-label">New Members</div>
+                </div>
+                <div className="hw-ov2-card-body" style={{ gap: 0, padding: '8px 20px 14px' }}>
+                  {recentMembersList.map((m, i) => {
+                    const hasWaved = m.reacted || userWaved.has(m.post_id);
+                    return (
+                      <div key={i} className="hw-ov2-member-row">
+                        <div className="hw-ov2-member-avatar">
+                          {m.photo
+                            ? <img src={m.photo} alt="" />
+                            : initials(m.name)}
+                        </div>
+                        <div className="hw-ov2-member-info">
+                          <div className="hw-ov2-member-name">{m.name}</div>
+                          <div className="hw-ov2-member-time">Joined {timeAgo(m.timestamp)}</div>
+                        </div>
+                        {m.post_id && (
+                          <button
+                            type="button"
+                            className="hw-ov2-wave-btn"
+                            disabled={hasWaved}
+                            onClick={() => handleWaveMember(m.post_id)}
+                            title={hasWaved ? 'Already waved!' : 'Send a wave'}
+                          >
+                            {hasWaved ? '👋' : '👋 Wave'}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Milestone */}
+            {milestone != null && (
+              <div className="hw-ov2-milestone">
+                <div className="hw-ov2-ms-icon">🏆</div>
+                <div className="hw-ov2-ms-body">
+                  <div className="hw-ov2-ms-label">Milestone</div>
+                  <div className="hw-ov2-ms-title">
+                    Reached {milestone} member{milestone !== 1 ? 's' : ''}
+                  </div>
+                  <div className="hw-ov2-ms-sub">Your Hive is growing.</div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       )}
 
-      {/* Org Info */}
-      <div className="hw-overview-card hw-org-card">
-        <div className="hw-org-header">
-          <div className="hw-card-label">Org Info</div>
+      {/* ── Hive Details (org info) — below main body ── */}
+      <div className="hw-ov2-org-card">
+        <div className="hw-ov2-org-header">
+          <div className="hw-ov2-card-label">Hive Details</div>
           {isOwner && !editMode && (
             <button type="button" className="hw-org-edit-btn" onClick={() => setEditMode(true)}>
               Edit
             </button>
           )}
         </div>
-
-        {editMode ? (
-          <div className="hw-org-edit-form">
-            {[
-              { key: 'pinned_goal',   label: 'Pinned Goal',   placeholder: 'What is this Hive working toward?' },
-              { key: 'ground_rules',  label: 'Ground Rules',  placeholder: 'How members should interact…' },
-              { key: 'icebreaker',    label: 'Icebreaker',    placeholder: 'A question to get members talking…' },
-              { key: 'cadence',       label: 'Meets',         placeholder: 'e.g. Weekly, Monthly…' },
-              { key: 'location_type', label: 'Location type', placeholder: 'online / in-person / hybrid' },
-            ].map(field => (
-              <div key={field.key} className="hw-org-field">
-                <label className="hw-org-field-label">{field.label}</label>
-                <input
-                  type="text"
-                  className="hw-org-input"
-                  value={editValues[field.key]}
-                  placeholder={field.placeholder}
-                  onChange={e => setEditValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                />
+        <div className="hw-ov2-org-body">
+          {editMode ? (
+            <div className="hw-org-edit-form">
+              {[
+                { key: 'pinned_goal',   label: 'Pinned Goal',   placeholder: 'What is this Hive working toward?' },
+                { key: 'ground_rules',  label: 'Ground Rules',  placeholder: 'How members should interact…' },
+                { key: 'icebreaker',    label: 'Icebreaker',    placeholder: 'A question to get members talking…' },
+                { key: 'cadence',       label: 'Meets',         placeholder: 'e.g. Weekly, Monthly…' },
+                { key: 'location_type', label: 'Location type', placeholder: 'online / in-person / hybrid' },
+              ].map(field => (
+                <div key={field.key} className="hw-org-field">
+                  <label className="hw-org-field-label">{field.label}</label>
+                  <input
+                    type="text"
+                    className="hw-org-input"
+                    value={editValues[field.key]}
+                    placeholder={field.placeholder}
+                    onChange={e => setEditValues(prev => ({ ...prev, [field.key]: e.target.value }))}
+                  />
+                </div>
+              ))}
+              {saveError && <div className="hw-org-save-error">{saveError}</div>}
+              <div className="hw-org-form-actions">
+                <button type="button" className="hw-org-cancel-btn" onClick={handleCancel} disabled={saving}>Cancel</button>
+                <button type="button" className="hw-org-save-btn"   onClick={handleSave}   disabled={saving}>
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
               </div>
-            ))}
-            {saveError && <div className="hw-org-save-error">{saveError}</div>}
-            <div className="hw-org-form-actions">
-              <button type="button" className="hw-org-cancel-btn" onClick={handleCancel} disabled={saving}>
-                Cancel
-              </button>
-              <button type="button" className="hw-org-save-btn" onClick={handleSave} disabled={saving}>
-                {saving ? 'Saving…' : 'Save'}
-              </button>
             </div>
-          </div>
-        ) : (
-          <div className="hw-org-fields-read">
-            {[
-              { label: 'Pinned Goal',   value: hive.pinned_goal   },
-              { label: 'Ground Rules',  value: hive.ground_rules  },
-              { label: 'Icebreaker',    value: hive.icebreaker    },
-              { label: 'Meets',         value: [hive.cadence, hive.location_type].filter(Boolean).join(' · ') || null },
-            ].filter(f => f.value).map(f => (
-              <div key={f.label} className="hw-org-field-read">
-                <div className="hw-org-field-label">{f.label}</div>
-                <div className="hw-org-field-value">{f.value}</div>
-              </div>
-            ))}
-            {!hive.pinned_goal && !hive.ground_rules && !hive.icebreaker && !hive.cadence && (
-              <div className="hw-org-empty">
-                {isOwner ? 'No org info yet — click Edit to add details.' : 'No details added yet.'}
-              </div>
-            )}
-            {saveSuccess && <div className="hw-org-save-success">Saved!</div>}
-          </div>
-        )}
+          ) : (
+            <div className="hw-org-fields-read">
+              {[
+                { label: 'Pinned Goal',  value: hive.pinned_goal },
+                { label: 'Ground Rules', value: hive.ground_rules },
+                { label: 'Icebreaker',   value: hive.icebreaker },
+                { label: 'Meets',        value: [hive.cadence, hive.location_type].filter(Boolean).join(' · ') || null },
+              ].filter(f => f.value).map(f => (
+                <div key={f.label} className="hw-org-field-read">
+                  <div className="hw-org-field-label">{f.label}</div>
+                  <div className="hw-org-field-value">{f.value}</div>
+                </div>
+              ))}
+              {!hive.pinned_goal && !hive.ground_rules && !hive.icebreaker && !hive.cadence && (
+                <div className="hw-org-empty">
+                  {isOwner ? 'No details yet — click Edit to add.' : 'No details added yet.'}
+                </div>
+              )}
+              {saveSuccess && <div className="hw-org-save-success">Saved!</div>}
+            </div>
+          )}
+        </div>
       </div>
 
     </div>
