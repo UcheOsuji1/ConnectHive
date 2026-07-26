@@ -11,6 +11,7 @@ import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import '../styles/hive-dashboard-layout.css';
+import '../styles/hive-workspace.css';
 
 // ── Category hex icon ────────────────────────────────────────────────────────
 const CAT_CFG = {
