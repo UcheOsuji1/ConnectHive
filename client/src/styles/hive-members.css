@@ -368,7 +368,7 @@
   flex-direction: column;
   transform: translateX(100%);
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y: auto;
+  overflow: hidden;
 }
 .hmv2-drawer--open { transform: translateX(0); }
 
@@ -444,6 +444,19 @@
   flex-direction: column;
   gap: 20px;
   flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Sticky action footer — always visible regardless of body scroll */
+.hmv2-drawer-footer {
+  flex-shrink: 0;
+  padding: 16px 24px 24px;
+  border-top: 1px solid #e9dfcf;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #fffdf8;
 }
 
 /* Bio */
@@ -468,6 +481,15 @@
   font-weight: 500;
   color: #6b5c3e;
 }
+.hmv2-drawer-tag--more {
+  background: transparent;
+  border-color: #d9b654;
+  color: #ad7f16;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+}
+.hmv2-drawer-tag--more:hover { background: #f6ecd1; }
 
 /* Details block */
 .hmv2-drawer-details {

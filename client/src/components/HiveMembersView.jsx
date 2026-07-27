@@ -125,16 +125,20 @@ function DotsMenu({ member, myRole, myUserId, onAction }) {
 }
 
 // ── Profile drawer ────────────────────────────────────────────────────────────
+const TAG_CAP = 8;
+
 function ProfileDrawer({ member, myRole, myUserId, hiveId, onClose, onRoleChange, onRemove }) {
-  const [pickerOpen,   setPickerOpen]   = useState(false);
-  const [pickerRole,   setPickerRole]   = useState(member?.role ?? 'member');
-  const [applying,     setApplying]     = useState(false);
-  const [confirmRm,    setConfirmRm]    = useState(false);
+  const [pickerOpen,    setPickerOpen]    = useState(false);
+  const [pickerRole,    setPickerRole]    = useState(member?.role ?? 'member');
+  const [applying,      setApplying]      = useState(false);
+  const [confirmRm,     setConfirmRm]     = useState(false);
+  const [tagsExpanded,  setTagsExpanded]  = useState(false);
 
   useEffect(() => {
     setPickerOpen(false);
     setPickerRole(member?.role ?? 'member');
     setConfirmRm(false);
+    setTagsExpanded(false);
   }, [member?.user_id]);
 
   if (!member) return null;
@@ -144,8 +148,12 @@ function ProfileDrawer({ member, myRole, myUserId, hiveId, onClose, onRoleChange
   const canChangeRole = myRole === 'owner' && !isMe && !isOwnerMember;
   const canRemove     = (myRole === 'owner' || (myRole === 'admin' && member.role === 'member')) && !isMe && !isOwnerMember;
 
-  const interests = Array.isArray(member.interests) ? member.interests
+  const rawInterests = Array.isArray(member.interests) ? member.interests
     : (member.interests ? JSON.parse(member.interests) : []);
+  // Deduplicate by normalised lowercase name
+  const interests = [...new Map(rawInterests.map(t => [String(t).toLowerCase().trim(), t])).values()];
+  const visibleTags = tagsExpanded ? interests : interests.slice(0, TAG_CAP);
+  const hiddenCount = interests.length - TAG_CAP;
 
   const showOnboarding = !isActive(member) && member.total_steps > 0;
 
@@ -177,18 +185,30 @@ function ProfileDrawer({ member, myRole, myUserId, hiveId, onClose, onRoleChange
           </div>
         </div>
 
-        {/* Body */}
+        {/* Scrollable body — bio, tags, details */}
         <div className="hmv2-drawer-body">
 
           {/* Bio */}
           {member.bio && <p className="hmv2-drawer-bio">{member.bio}</p>}
 
-          {/* Interest tags */}
+          {/* Interest tags — deduped, capped */}
           {interests.length > 0 && (
             <div className="hmv2-drawer-tags">
-              {interests.map(tag => (
-                <span key={tag} className="hmv2-drawer-tag">{tag}</span>
+              {visibleTags.map(tag => (
+                <span key={String(tag).toLowerCase().trim()} className="hmv2-drawer-tag">{tag}</span>
               ))}
+              {!tagsExpanded && hiddenCount > 0 && (
+                <button type="button" className="hmv2-drawer-tag hmv2-drawer-tag--more"
+                  onClick={() => setTagsExpanded(true)}>
+                  +{hiddenCount} more
+                </button>
+              )}
+              {tagsExpanded && interests.length > TAG_CAP && (
+                <button type="button" className="hmv2-drawer-tag hmv2-drawer-tag--more"
+                  onClick={() => setTagsExpanded(false)}>
+                  Show less
+                </button>
+              )}
             </div>
           )}
 
@@ -211,6 +231,11 @@ function ProfileDrawer({ member, myRole, myUserId, hiveId, onClose, onRoleChange
               <span className="hmv2-detail-value">{timeAgo(lastActiveSrc(member))}</span>
             </div>
           </div>
+
+        </div>
+
+        {/* Sticky footer — actions always visible */}
+        <div className="hmv2-drawer-footer">
 
           {/* Role picker */}
           {canChangeRole && (
