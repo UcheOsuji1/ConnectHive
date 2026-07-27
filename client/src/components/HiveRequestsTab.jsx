@@ -2,17 +2,20 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from './Avatar.jsx';
 import { api } from '../lib/api.js';
+import '../styles/hive-requests.css';
+
+const TAG_CAP = 6;
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 2)   return 'just now';
-  if (mins < 60)  return `${mins}m ago`;
+  if (mins < 2)  return 'just now';
+  if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24)   return `${hrs}h ago`;
+  if (hrs < 24)  return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
-  if (days < 30)  return `${days}d ago`;
+  if (days < 30) return `${days}d ago`;
   return `${Math.floor(days / 30)}mo ago`;
 }
 
@@ -28,16 +31,35 @@ function flattenTags(v) {
   return [String(v)].filter(Boolean);
 }
 
-function CandidateCard({ req, hiveId, onAccepted, onDeclined }) { // onAccepted(newCount, memberData)
-  const [action, setAction] = useState(null);
+function dedupe(tags) {
+  return [...new Map(tags.map(t => [String(t).toLowerCase().trim(), t])).values()];
+}
 
-  const allInterests = flattenTags(req.interests);
-  const shownInterests = allInterests.slice(0, 6);
-  const overflow = allInterests.length - 6;
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+function SkeletonCards() {
+  return [1, 2, 3].map(i => (
+    <div key={i} className="hrt-skel-row">
+      <div className="hw-skel hw-skel-circle" style={{ width: 48, height: 48, flexShrink: 0, borderRadius: '50%' }} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="hw-skel" style={{ height: 14, width: '42%', borderRadius: 6 }} />
+        <div className="hw-skel" style={{ height: 10, width: '68%', borderRadius: 6 }} />
+      </div>
+    </div>
+  ));
+}
+
+// ── Candidate card ────────────────────────────────────────────────────────────
+function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
+  const [action,       setAction]       = useState(null);
+  const [tagsExpanded, setTagsExpanded] = useState(false);
+
+  const allInterests  = dedupe(flattenTags(req.interests));
+  const visibleTags   = tagsExpanded ? allInterests : allInterests.slice(0, TAG_CAP);
+  const hiddenCount   = allInterests.length - TAG_CAP;
 
   const identityParts = [
-    req.age      ? `${req.age}`  : null,
-    req.location ?? null,
+    req.age       ? `${req.age}`  : null,
+    req.location  ?? null,
     req.member_id ?? null,
   ].filter(Boolean);
 
@@ -49,7 +71,6 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) { // onAccepted(
         { action: act === 'accepting' ? 'accept' : 'reject' },
       );
       if (act === 'accepting') {
-        // Merge server member data with request data (server may lack photo if profile incomplete)
         const memberData = {
           ...(result.new_member ?? {}),
           profile_photo_url: result.new_member?.profile_photo_url ?? req.profile_photo_url ?? null,
@@ -66,6 +87,7 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) { // onAccepted(
 
   return (
     <div className="hrt-card">
+
       {/* Identity + scores */}
       <div className="hrt-card-top">
         <div className="hrt-identity">
@@ -94,17 +116,28 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) { // onAccepted(
           : <span className="hrt-no-message">No message included.</span>}
       </div>
 
-      {/* Interests */}
-      {shownInterests.length > 0 && (
+      {/* Interest tags — deduped, capped */}
+      {allInterests.length > 0 && (
         <div className="hrt-chips">
-          {shownInterests.map((tag, i) => (
-            <span key={i} className="hrt-chip">{tag}</span>
+          {visibleTags.map(tag => (
+            <span key={String(tag).toLowerCase().trim()} className="hrt-chip">{tag}</span>
           ))}
-          {overflow > 0 && <span className="hrt-chip hrt-chip-more">+{overflow}</span>}
+          {!tagsExpanded && hiddenCount > 0 && (
+            <button type="button" className="hrt-chip hrt-chip-more"
+              onClick={() => setTagsExpanded(true)}>
+              +{hiddenCount} more
+            </button>
+          )}
+          {tagsExpanded && allInterests.length > TAG_CAP && (
+            <button type="button" className="hrt-chip hrt-chip-more"
+              onClick={() => setTagsExpanded(false)}>
+              Show less
+            </button>
+          )}
         </div>
       )}
 
-      {/* Stage 2: replace with the LLM-generated explanation for this candidate↔hive. */}
+      {/* AI Fit Analysis — reserved SOON slot */}
       <div className="hrt-ai-slot">
         <span className="hrt-ai-icon">✨</span>
         <div className="hrt-ai-body">
@@ -146,10 +179,12 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) { // onAccepted(
           </button>
         </div>
       </div>
+
     </div>
   );
 }
 
+// ── Collapsed summary row ─────────────────────────────────────────────────────
 function CollapsedRow({ req, onExpand }) {
   return (
     <button type="button" className="hrt-collapsed-row" onClick={onExpand}>
@@ -166,6 +201,7 @@ function CollapsedRow({ req, onExpand }) {
   );
 }
 
+// ── Main export ───────────────────────────────────────────────────────────────
 export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onMemberAccepted }) {
   const [requests,    setRequests]    = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -197,33 +233,23 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
   }
 
   const sorted = [...requests].sort((a, b) => {
-    if (sortBy === 'newest') {
-      return new Date(b.requested_at) - new Date(a.requested_at);
-    }
+    if (sortBy === 'newest') return new Date(b.requested_at) - new Date(a.requested_at);
     return (b.hive_fit_score ?? -1) - (a.hive_fit_score ?? -1);
   });
 
   if (loading) {
-    return (
-      <div className="hrt-wrap">
-        {[1, 2, 3].map(i => (
-          <div key={i} className="hrt-skel-row">
-            <div className="hive-skel-dark" style={{ width: 48, height: 48, borderRadius: '50%', flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
-              <div className="hive-skel-dark" style={{ height: 14, width: '40%', borderRadius: 6, marginBottom: 8 }} />
-              <div className="hive-skel-dark" style={{ height: 10, width: '65%', borderRadius: 6 }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <div className="hrt-wrap"><SkeletonCards /></div>;
   }
 
   if (!requests.length) {
     return (
-      <div className="hive-dark-card">
-        <div className="dhp-posts-empty">
-          <div className="dhp-posts-empty-title">No pending requests.</div>
+      <div className="hrt-wrap">
+        <div className="hrt-empty">
+          <div className="hrt-empty-icon">📭</div>
+          <div className="hrt-empty-title">No pending requests</div>
+          <div className="hrt-empty-sub">
+            When someone requests to join your Hive, they'll appear here.
+          </div>
         </div>
       </div>
     );
@@ -234,16 +260,17 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
 
   return (
     <div className="hrt-wrap">
+
       {/* Header */}
       <div className="hrt-header">
         <div className="hrt-header-left">
-          <span className="hrt-headline">
+          <h2 className="hrt-headline">
             {requests.length} {requests.length === 1 ? 'person wants' : 'people want'} to join
-          </span>
+          </h2>
           {spotsLeft != null && (
-            <span className="hrt-capacity">
+            <div className="hrt-capacity">
               {memberCount} / {maxMembers} · {spotsLeft} spot{spotsLeft !== 1 ? 's' : ''} left
-            </span>
+            </div>
           )}
         </div>
         <div className="hrt-sort">
@@ -291,6 +318,7 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
           />
         );
       })}
+
     </div>
   );
 }
