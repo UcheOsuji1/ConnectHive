@@ -359,7 +359,7 @@ export const getHiveMembers = async (req, res) => {
        LEFT JOIN member_onboarding_progress mop
               ON mop.user_id = hm.user_id AND mop.hive_id = hm.hive_id
        WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
-       GROUP BY hm.role, hm.joined_at, hm.onboarding_status,
+       GROUP BY hm.hive_id, hm.role, hm.joined_at, hm.onboarding_status,
                 u.user_id, u.member_id,
                 p.full_name, p.profile_photo_url, p.bio, p.location, p.interests,
                 hls.last_seen_at
