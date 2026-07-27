@@ -340,17 +340,29 @@ export const getHiveMembers = async (req, res) => {
     }
 
     const { rows } = await query(
-      `SELECT hm.role, hm.joined_at,
+      `SELECT hm.role, hm.joined_at, hm.onboarding_status,
               u.user_id, u.member_id,
-              p.full_name, p.profile_photo_url, p.bio, p.location,
+              p.full_name, p.profile_photo_url, p.bio, p.location, p.interests,
               CASE WHEN p.bio IS NOT NULL
                     AND p.profile_photo_url IS NOT NULL
                     AND p.interests IS NOT NULL
-                   THEN true ELSE false END AS profile_complete
+                   THEN true ELSE false END AS profile_complete,
+              hls.last_seen_at,
+              COUNT(mop.step_id)::int AS completed_steps,
+              (SELECT COUNT(*)::int FROM hive_onboarding_steps hos
+               WHERE hos.hive_id = hm.hive_id) AS total_steps
        FROM hive_members hm
        JOIN  users    u ON u.user_id  = hm.user_id
        LEFT JOIN profiles p ON p.user_id = hm.user_id
+       LEFT JOIN hive_last_seen hls
+              ON hls.user_id = hm.user_id AND hls.hive_id = hm.hive_id
+       LEFT JOIN member_onboarding_progress mop
+              ON mop.user_id = hm.user_id AND mop.hive_id = hm.hive_id
        WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
+       GROUP BY hm.role, hm.joined_at, hm.onboarding_status,
+                u.user_id, u.member_id,
+                p.full_name, p.profile_photo_url, p.bio, p.location, p.interests,
+                hls.last_seen_at
        ORDER BY
          CASE hm.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
          hm.joined_at ASC NULLS LAST`,

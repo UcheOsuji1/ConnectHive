@@ -10,8 +10,9 @@ export default function HiveMembersPage() {
     <HiveMembersView
       hiveId={hiveId}
       isOwner={isOwner}
-      myRole={hive.my_role}
+      myRole={hive?.my_role}
       myUserId={user?.user_id}
+      maxMembers={hive?.max_members ?? null}
       onMembersChanged={() => {}}
     />
   );

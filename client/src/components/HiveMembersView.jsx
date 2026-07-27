@@ -1,124 +1,312 @@
 import { useState, useEffect, useRef } from 'react';
-import Avatar from './Avatar.jsx';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import '../styles/hive-members.css';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function timeAgo(dateStr) {
+  if (!dateStr) return '—';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2)  return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
 
 function formatDate(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function initials(name) {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+function memberSort(a, b) {
+  const rank = r => r === 'owner' ? 1 : r === 'admin' ? 2 : 3;
+  if (rank(a.role) !== rank(b.role)) return rank(a.role) - rank(b.role);
+  return new Date(a.joined_at) - new Date(b.joined_at);
+}
+
+function isActive(m) {
+  return !m.onboarding_status || m.onboarding_status === 'completed';
+}
+
+function lastActiveSrc(m) {
+  return m.last_seen_at ?? m.joined_at;
+}
+
+// ── Avatar ────────────────────────────────────────────────────────────────────
+function Av({ name, photo, size = 38, className = 'hmv2-avatar' }) {
+  return (
+    <div className={className} style={size !== 38 ? { width: size, height: size, fontSize: size * 0.185 + 'rem' } : undefined}>
+      {photo ? <img src={photo} alt="" /> : initials(name)}
+    </div>
+  );
+}
+
+// ── Role badge ────────────────────────────────────────────────────────────────
 function RoleBadge({ role }) {
-  return <span className={`hmv-role hmv-role-${role}`}>{role.toUpperCase()}</span>;
+  return (
+    <span className={`hmv2-role-badge hmv2-badge-${role}`}>
+      {role.toUpperCase()}
+    </span>
+  );
 }
 
-function ActionMenu({ member, callerRole, callerId, onAction }) {
+// ── Status cell ───────────────────────────────────────────────────────────────
+function StatusCell({ member }) {
+  const active = isActive(member);
+  return (
+    <div className={`hmv2-status hmv2-status--${active ? 'active' : 'boarding'}`}>
+      <span className="hmv2-status-dot" />
+      <span className="hmv2-status-label">{active ? 'Active' : 'Onboarding'}</span>
+    </div>
+  );
+}
+
+// ── Dots menu (on table row) ──────────────────────────────────────────────────
+function DotsMenu({ member, myRole, myUserId, onAction }) {
   const [open,    setOpen]    = useState(false);
   const [openUp,  setOpenUp]  = useState(false);
   const [confirm, setConfirm] = useState(false);
-  const ref        = useRef(null);
+  const wrapRef    = useRef(null);
   const triggerRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
-    function handler(e) {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    function h(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
   }, [open]);
 
-  function handleToggle() {
+  const canRemove = myRole === 'owner' || (myRole === 'admin' && member.role === 'member');
+  if (!canRemove) return null;
+
+  function toggle(e) {
+    e.stopPropagation();
     if (!open && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      setOpenUp(window.innerHeight - rect.bottom < 160);
+      setOpenUp(window.innerHeight - rect.bottom < 100);
     }
     setOpen(o => !o);
   }
 
-  // Determine available actions based on guard rules
-  const canPromote = callerRole === 'owner' && member.role === 'member';
-  const canDemote  = callerRole === 'owner' && member.role === 'admin';
-  const canRemove  = callerRole === 'owner' ||
-                     (callerRole === 'admin' && member.role === 'member');
-
-  if (!canPromote && !canDemote && !canRemove) return null;
-
   if (confirm) {
     return (
-      <div className="hmv-inline-confirm">
-        <span className="hmv-confirm-text">Remove {member.full_name?.split(' ')[0]}?</span>
-        <button
-          type="button"
-          className="hmv-confirm-cancel"
-          onClick={() => setConfirm(false)}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="hmv-confirm-remove"
-          onClick={() => { setConfirm(false); onAction('remove', member); }}
-        >
-          Remove
-        </button>
+      <div className="hmv2-confirm-row" onClick={e => e.stopPropagation()}>
+        <span className="hmv2-confirm-text">Remove {member.full_name?.split(' ')[0]}?</span>
+        <button type="button" className="hmv2-confirm-cancel" onClick={() => setConfirm(false)}>Cancel</button>
+        <button type="button" className="hmv2-confirm-remove"
+          onClick={() => { setConfirm(false); onAction('remove', member); }}>Remove</button>
       </div>
     );
   }
 
   return (
-    <div className="hmv-menu-wrap" ref={ref}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="hmv-menu-trigger"
-        onClick={handleToggle}
-        aria-label="Member actions"
-      >
-        ···
-      </button>
+    <div className="hmv2-dots-wrap" ref={wrapRef}>
+      <button ref={triggerRef} type="button" className="hmv2-dots-btn"
+        onClick={toggle} aria-label="Member actions">···</button>
       {open && (
-        <div className={`hmv-dropdown${openUp ? ' hmv-dropdown-up' : ''}`}>
-          {canPromote && (
-            <button
-              type="button"
-              className="hmv-dropdown-item"
-              onClick={() => { setOpen(false); onAction('promote', member); }}
-            >
-              Promote to Admin
-            </button>
-          )}
-          {canDemote && (
-            <button
-              type="button"
-              className="hmv-dropdown-item"
-              onClick={() => { setOpen(false); onAction('demote', member); }}
-            >
-              Remove from Admin
-            </button>
-          )}
-          {canRemove && (
-            <button
-              type="button"
-              className="hmv-dropdown-item hmv-dropdown-danger"
-              onClick={() => { setOpen(false); setConfirm(true); }}
-            >
-              Remove from Hive
-            </button>
-          )}
+        <div className={`hmv2-dropdown${openUp ? ' hmv2-dropdown--up' : ''}`}>
+          <button type="button" className="hmv2-dropdown-item hmv2-dropdown-danger"
+            onClick={e => { e.stopPropagation(); setOpen(false); setConfirm(true); }}>
+            Remove from Hive
+          </button>
         </div>
       )}
     </div>
   );
 }
 
-export default function HiveMembersView({ hiveId, isOwner, myRole, myUserId, onMembersChanged }) {
-  const [members, setMembers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search,  setSearch]  = useState('');
-  const [error,   setError]   = useState(null);
+// ── Profile drawer ────────────────────────────────────────────────────────────
+function ProfileDrawer({ member, myRole, myUserId, hiveId, onClose, onRoleChange, onRemove }) {
+  const [pickerOpen,   setPickerOpen]   = useState(false);
+  const [pickerRole,   setPickerRole]   = useState(member?.role ?? 'member');
+  const [applying,     setApplying]     = useState(false);
+  const [confirmRm,    setConfirmRm]    = useState(false);
 
-  const canManage = ['owner', 'admin'].includes(myRole);
+  useEffect(() => {
+    setPickerOpen(false);
+    setPickerRole(member?.role ?? 'member');
+    setConfirmRm(false);
+  }, [member?.user_id]);
+
+  if (!member) return null;
+
+  const isMe          = member.user_id === myUserId;
+  const isOwnerMember = member.role === 'owner';
+  const canChangeRole = myRole === 'owner' && !isMe && !isOwnerMember;
+  const canRemove     = (myRole === 'owner' || (myRole === 'admin' && member.role === 'member')) && !isMe && !isOwnerMember;
+
+  const interests = Array.isArray(member.interests) ? member.interests
+    : (member.interests ? JSON.parse(member.interests) : []);
+
+  const showOnboarding = !isActive(member) && member.total_steps > 0;
+
+  async function applyRole() {
+    if (pickerRole === member.role) { setPickerOpen(false); return; }
+    setApplying(true);
+    await onRoleChange(member.user_id, pickerRole);
+    setApplying(false);
+    setPickerOpen(false);
+  }
+
+  return (
+    <>
+      <div className="hmv2-backdrop" onClick={onClose} />
+      <div className={`hmv2-drawer hmv2-drawer--open`}>
+
+        {/* Top: close button */}
+        <div className="hmv2-drawer-top">
+          <button type="button" className="hmv2-drawer-close" onClick={onClose}>✕</button>
+        </div>
+
+        {/* Identity */}
+        <div className="hmv2-drawer-identity">
+          <Av name={member.full_name} photo={member.profile_photo_url} size={64} className="hmv2-drawer-avatar" />
+          <div className="hmv2-drawer-name">{member.full_name ?? 'Member'}</div>
+          <div className="hmv2-drawer-id-row">
+            <RoleBadge role={member.role} />
+            {member.member_id && <span className="hmv2-drawer-chvid">{member.member_id}</span>}
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="hmv2-drawer-body">
+
+          {/* Bio */}
+          {member.bio && <p className="hmv2-drawer-bio">{member.bio}</p>}
+
+          {/* Interest tags */}
+          {interests.length > 0 && (
+            <div className="hmv2-drawer-tags">
+              {interests.map(tag => (
+                <span key={tag} className="hmv2-drawer-tag">{tag}</span>
+              ))}
+            </div>
+          )}
+
+          {/* Details */}
+          <div className="hmv2-drawer-details">
+            <div className="hmv2-detail-row">
+              <span className="hmv2-detail-label">Joined</span>
+              <span className="hmv2-detail-value">{formatDate(member.joined_at)}</span>
+            </div>
+            {showOnboarding && (
+              <div className="hmv2-detail-row">
+                <span className="hmv2-detail-label">Onboarding</span>
+                <span className="hmv2-detail-value hmv2-detail-value--ob">
+                  {member.completed_steps} of {member.total_steps} step{member.total_steps !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+            <div className="hmv2-detail-row">
+              <span className="hmv2-detail-label">Last active</span>
+              <span className="hmv2-detail-value">{timeAgo(lastActiveSrc(member))}</span>
+            </div>
+          </div>
+
+          {/* Role picker */}
+          {canChangeRole && (
+            pickerOpen ? (
+              <div className="hmv2-role-picker">
+                <select
+                  className="hmv2-role-picker-select"
+                  value={pickerRole}
+                  onChange={e => setPickerRole(e.target.value)}
+                >
+                  <option value="member">Member</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <div className="hmv2-role-picker-btns">
+                  <button type="button" className="hmv2-role-cancel-btn"
+                    onClick={() => setPickerOpen(false)}>Cancel</button>
+                  <button type="button" className="hmv2-role-apply-btn"
+                    disabled={applying || pickerRole === member.role}
+                    onClick={applyRole}>
+                    {applying ? 'Saving…' : 'Apply'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button type="button" className="hmv2-drawer-change-role"
+                onClick={() => { setPickerRole(member.role); setPickerOpen(true); }}>
+                Change role
+              </button>
+            )
+          )}
+
+          {/* View full profile */}
+          <Link
+            to={`/profile/${member.user_id}`}
+            className="hmv2-drawer-profile-link"
+            onClick={onClose}
+          >
+            View full profile
+          </Link>
+
+          {/* Remove */}
+          {canRemove && !confirmRm && (
+            <button type="button" className="hmv2-drawer-remove-btn"
+              onClick={() => setConfirmRm(true)}>
+              Remove from Hive
+            </button>
+          )}
+          {canRemove && confirmRm && (
+            <div className="hmv2-drawer-confirm-remove">
+              <div className="hmv2-drawer-confirm-text">
+                Remove {member.full_name?.split(' ')[0]} from this Hive?
+              </div>
+              <div className="hmv2-drawer-confirm-btns">
+                <button type="button" className="hmv2-drawer-confirm-cancel"
+                  onClick={() => setConfirmRm(false)}>Cancel</button>
+                <button type="button" className="hmv2-drawer-confirm-do"
+                  onClick={() => { setConfirmRm(false); onRemove(member); onClose(); }}>Remove</button>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Skeleton rows ─────────────────────────────────────────────────────────────
+function SkeletonRows() {
+  return [1, 2, 3].map(i => (
+    <tr key={i} className="hmv2-skel-row">
+      <td>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="hw-skel hw-skel-circle" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <div className="hw-skel" style={{ width: 120, height: 12, borderRadius: 6 }} />
+            <div className="hw-skel" style={{ width: 80, height: 10, borderRadius: 6 }} />
+          </div>
+        </div>
+      </td>
+      <td><div className="hw-skel" style={{ width: 60, height: 20, borderRadius: 6 }} /></td>
+      <td><div className="hw-skel" style={{ width: 70, height: 12, borderRadius: 6 }} /></td>
+      <td><div className="hw-skel" style={{ width: 55, height: 12, borderRadius: 6 }} /></td>
+      <td />
+    </tr>
+  ));
+}
+
+// ── Main export ───────────────────────────────────────────────────────────────
+export default function HiveMembersView({ hiveId, isOwner, myRole, myUserId, maxMembers, onMembersChanged }) {
+  const [members,  setMembers]  = useState([]);
+  const [loading,  setLoading]  = useState(true);
+  const [error,    setError]    = useState(null);
+  const [search,   setSearch]   = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [selected, setSelected] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -130,130 +318,178 @@ export default function HiveMembersView({ hiveId, isOwner, myRole, myUserId, onM
 
   async function handleAction(action, member) {
     try {
-      if (action === 'promote') {
-        const result = await api.patch(`/api/hives/${hiveId}/members/${member.user_id}/role`, { role: 'admin' });
-        setMembers(prev => prev.map(m =>
-          m.user_id === result.user_id ? { ...m, role: result.role } : m
-        ).sort(memberSort));
-      } else if (action === 'demote') {
-        const result = await api.patch(`/api/hives/${hiveId}/members/${member.user_id}/role`, { role: 'member' });
-        setMembers(prev => prev.map(m =>
-          m.user_id === result.user_id ? { ...m, role: result.role } : m
-        ).sort(memberSort));
-      } else if (action === 'remove') {
+      if (action === 'remove') {
         const result = await api.delete(`/api/hives/${hiveId}/members/${member.user_id}`);
         setMembers(prev => prev.filter(m => m.user_id !== result.user_id));
         if (onMembersChanged) onMembersChanged(result.member_count);
       }
     } catch (err) {
-      // Surface the server's guard message if present
       setError(err.data?.error ?? 'Action failed. Try again.');
       setTimeout(() => setError(null), 4000);
     }
   }
 
-  const filtered = search.trim()
-    ? members.filter(m => m.full_name?.toLowerCase().includes(search.toLowerCase()))
-    : members;
-
-  const maxMembers   = null; // not returned by /members — shown from hive prop in workspace
-  const memberCount  = members.length;
-
-  if (loading) {
-    return (
-      <div className="hmv-wrap">
-        <div className="hmv-header-row">
-          <h2 className="hmv-title">Members</h2>
-        </div>
-        <div className="hmv-list">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="hmv-row hmv-skel-row">
-              <div className="hw-skel hw-skel-circle" style={{ width: 40, height: 40, flexShrink: 0 }} />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div className="hw-skel" style={{ height: 12, width: '45%', borderRadius: 6 }} />
-                <div className="hw-skel" style={{ height: 10, width: '28%', borderRadius: 6 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+  async function handleRoleChange(userId, newRole) {
+    try {
+      const result = await api.patch(`/api/hives/${hiveId}/members/${userId}/role`, { role: newRole });
+      setMembers(prev => prev.map(m =>
+        m.user_id === result.user_id ? { ...m, role: result.role } : m
+      ).sort(memberSort));
+      setSelected(prev => prev?.user_id === result.user_id ? { ...prev, role: result.role } : prev);
+    } catch (err) {
+      setError(err.data?.error ?? 'Role change failed.');
+      setTimeout(() => setError(null), 4000);
+    }
   }
 
+  const filtered = members
+    .filter(m => roleFilter === 'all' || m.role === roleFilter)
+    .filter(m => !search.trim() || m.full_name?.toLowerCase().includes(search.toLowerCase()));
+
+  const memberCount = members.length;
+  const spotsLeft   = maxMembers != null ? maxMembers - memberCount : null;
+
   return (
-    <div className="hmv-wrap">
+    <div className="hmv2-page">
 
-      <div className="hmv-header-row">
-        <h2 className="hmv-title">Members</h2>
-        <span className="hmv-count">{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
-      </div>
-
-      {memberCount > 8 && (
-        <div className="hmv-search-wrap">
-          <input
-            type="text"
-            className="hmv-search"
-            placeholder="Search members…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-        </div>
-      )}
-
-      {error && <div className="hmv-error">{error}</div>}
-
-      {filtered.length === 0 ? (
-        <div className="hw-empty-state">
-          <div className="hw-empty-title">
-            {search ? 'No members match that search.' : 'No members yet.'}
+      {/* ── Header ── */}
+      <div className="hmv2-header">
+        <div className="hmv2-header-left">
+          <h2 className="hmv2-title">Members</h2>
+          <div className="hmv2-count-sub">
+            {memberCount} member{memberCount !== 1 ? 's' : ''}
+            {spotsLeft != null && ` · ${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left`}
           </div>
         </div>
-      ) : (
-        <div className="hmv-list">
-          {filtered.map(member => {
-            const isMe    = member.user_id === myUserId;
-            const isOwnerRow = member.role === 'owner';
-            const showMenu = canManage && !isMe && !isOwnerRow;
-
-            return (
-              <div key={member.user_id} className="hmv-row">
-                <Avatar name={member.full_name} size={40} photoUrl={member.profile_photo_url} />
-
-                <div className="hmv-identity">
-                  <div className="hmv-name-row">
-                    <span className="hmv-name">{member.full_name ?? 'Member'}</span>
-                    <RoleBadge role={member.role} />
-                    {!member.profile_complete && (
-                      <span className="hmv-incomplete-chip">Profile incomplete</span>
-                    )}
-                  </div>
-                  {member.member_id && (
-                    <span className="hmv-member-id">{member.member_id}</span>
-                  )}
-                </div>
-
-                <div className="hmv-right">
-                  <span className="hmv-joined">Joined {formatDate(member.joined_at)}</span>
-                  {showMenu && (
-                    <ActionMenu
-                      member={member}
-                      callerRole={myRole}
-                      callerId={myUserId}
-                      onAction={handleAction}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <div className="hmv2-header-right">
+          <div className="hmv2-search-wrap">
+            <span className="hmv2-search-icon">🔍</span>
+            <input
+              type="text"
+              className="hmv2-search"
+              placeholder="Search members"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="hmv2-role-select"
+            value={roleFilter}
+            onChange={e => setRoleFilter(e.target.value)}
+          >
+            <option value="all">All roles</option>
+            <option value="owner">Owner</option>
+            <option value="admin">Admin</option>
+            <option value="member">Member</option>
+          </select>
+          {isOwner && (
+            <button type="button" className="hmv2-invite-btn" title="Coming soon">
+              👤 Invite
+            </button>
+          )}
         </div>
+      </div>
+
+      {error && <div className="hmv2-error">{error}</div>}
+
+      {/* ── Table ── */}
+      <div className="hmv2-table-card">
+        <table className="hmv2-table">
+          <thead className="hmv2-thead">
+            <tr>
+              <th className="hmv2-th">Member</th>
+              <th className="hmv2-th">Role</th>
+              <th className="hmv2-th">Status</th>
+              <th className="hmv2-th">Last Active</th>
+              <th className="hmv2-th" />
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <SkeletonRows />
+            ) : filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5}>
+                  <div className="hmv2-empty">
+                    {search || roleFilter !== 'all'
+                      ? 'No members match that filter.'
+                      : 'No members yet.'}
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              filtered.map(member => {
+                const isMe       = member.user_id === myUserId;
+                const isOwnerRow = member.role === 'owner';
+                const showDots   = (myRole === 'owner' || myRole === 'admin') && !isMe && !isOwnerRow;
+
+                return (
+                  <tr
+                    key={member.user_id}
+                    className={[
+                      'hmv2-tr',
+                      isOwnerRow ? 'hmv2-tr--owner' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => setSelected(member)}
+                  >
+                    {/* Member */}
+                    <td className="hmv2-td">
+                      <div className="hmv2-avatar-wrap">
+                        <Av name={member.full_name} photo={member.profile_photo_url} />
+                        <div className="hmv2-member-info">
+                          <span className="hmv2-member-name">
+                            {member.full_name ?? 'Member'}
+                          </span>
+                          {member.member_id && (
+                            <span className="hmv2-member-id">{member.member_id}</span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    {/* Role */}
+                    <td className="hmv2-td">
+                      <RoleBadge role={member.role} />
+                    </td>
+                    {/* Status */}
+                    <td className="hmv2-td">
+                      <StatusCell member={member} />
+                    </td>
+                    {/* Last Active */}
+                    <td className="hmv2-td">
+                      <span className="hmv2-last-active">{timeAgo(lastActiveSrc(member))}</span>
+                    </td>
+                    {/* Actions */}
+                    <td className="hmv2-td" style={{ width: 48 }}>
+                      {showDots && (
+                        <DotsMenu
+                          member={member}
+                          myRole={myRole}
+                          myUserId={myUserId}
+                          onAction={handleAction}
+                        />
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Profile drawer ── */}
+      {selected && (
+        <ProfileDrawer
+          member={selected}
+          myRole={myRole}
+          myUserId={myUserId}
+          hiveId={hiveId}
+          onClose={() => setSelected(null)}
+          onRoleChange={handleRoleChange}
+          onRemove={m => handleAction('remove', m)}
+        />
       )}
+
     </div>
   );
-}
-
-function memberSort(a, b) {
-  const rank = r => r === 'owner' ? 1 : r === 'admin' ? 2 : 3;
-  if (rank(a.role) !== rank(b.role)) return rank(a.role) - rank(b.role);
-  return new Date(a.joined_at) - new Date(b.joined_at);
 }
