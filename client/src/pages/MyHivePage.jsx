@@ -123,10 +123,26 @@ function HiveCard({ hive, pendingForHive }) {
 
   return (
     <div className="mh-card2">
+      {/* Banner strip */}
+      <div
+        className="mh-card2-banner"
+        style={hive.banner_url
+          ? { backgroundImage: `url(${hive.banner_url})` }
+          : undefined}
+      >
+        {hive.logo_url ? (
+          <img src={hive.logo_url} className="mh-card2-banner-logo" alt={hive.hive_name} />
+        ) : (
+          <div className="mh-card2-banner-hex">
+            <HexTile categoryName={hive.category_name} size={34} />
+          </div>
+        )}
+      </div>
+
       {/* Header */}
       <div className="mh-card2-header">
-        <HexTile categoryName={hive.category_name} size={40} />
-        <div className="mh-card2-title-area">
+        {!hive.logo_url && <HexTile categoryName={hive.category_name} size={40} />}
+        <div className={`mh-card2-title-area${hive.logo_url ? ' mh-card2-title-area--no-hex' : ''}`}>
           <div className="mh-card2-name">{hive.hive_name}</div>
           <div className="mh-card2-badges">
             {isOwner

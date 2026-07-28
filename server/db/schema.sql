@@ -116,3 +116,7 @@ CREATE INDEX idx_hive_members_user_id   ON hive_members(user_id);
 CREATE INDEX idx_join_requests_hive_id  ON join_requests(hive_id);
 CREATE INDEX idx_compatibility_user_id  ON compatibility_scores(user_id);
 CREATE INDEX idx_compatibility_hive_id  ON compatibility_scores(hive_id);
+
+-- ── Hive media (idempotent — safe to re-run) ──────────────────────────────
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS banner_url TEXT NULL;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS logo_url   TEXT NULL;

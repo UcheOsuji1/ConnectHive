@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Outlet, useParams, useNavigate, useLocation, Link, NavLink,
 } from 'react-router-dom';
@@ -297,6 +297,64 @@ export default function HiveDashboardLayout() {
   const [celebrationMember, setCelebrationMember] = useState(null);
   const [postModalOpen,     setPostModalOpen]     = useState(false);
   const [newPost,           setNewPost]           = useState(null);
+  const [uploading,         setUploading]         = useState(null); // 'banner' | 'logo' | null
+  const [uploadError,       setUploadError]       = useState(null);
+
+  const bannerInputRef = useRef(null);
+  const logoInputRef   = useRef(null);
+
+  const handleFileSelected = useCallback(async (e, type) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!ALLOWED.includes(file.type)) {
+      setUploadError('Only JPEG, PNG, WebP, or GIF images are allowed.');
+      setTimeout(() => setUploadError(null), 5000);
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError('Image must be under 10 MB.');
+      setTimeout(() => setUploadError(null), 5000);
+      return;
+    }
+
+    setUploading(type);
+    setUploadError(null);
+    try {
+      const sigData = await api.post(`/api/hives/${hiveId}/upload-signature`, { type });
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key',   sigData.api_key);
+      formData.append('timestamp', String(sigData.timestamp));
+      formData.append('signature', sigData.signature);
+      formData.append('folder',    sigData.folder);
+
+      const cloudRes  = await fetch(
+        `https://api.cloudinary.com/v1_1/${sigData.cloud_name}/image/upload`,
+        { method: 'POST', body: formData },
+      );
+      const cloudData = await cloudRes.json();
+      if (!cloudData.secure_url) {
+        throw new Error(cloudData.error?.message ?? 'Cloudinary upload failed.');
+      }
+
+      const update = type === 'banner'
+        ? { banner_url: cloudData.secure_url }
+        : { logo_url:   cloudData.secure_url };
+
+      await api.patch(`/api/hives/${hiveId}/media`, update);
+      refreshHive(update);
+    } catch (err) {
+      setUploadError(err.message ?? 'Upload failed — please try again.');
+      setTimeout(() => setUploadError(null), 6000);
+    } finally {
+      setUploading(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiveId]);
 
   useEffect(() => {
     setLoading(true);
@@ -407,24 +465,78 @@ export default function HiveDashboardLayout() {
           <span className="hdl-crumb-current">{hive.hive_name}</span>
         </div>
 
-        {/* Dark identity header */}
-        <div className="hdl-header">
-          <HexTile categoryName={hive.category_name} size={36} />
-          <div className="hdl-header-identity">
-            <span className="hdl-hive-name">{hive.hive_name}</span>
-            <RoleBadge role={hive.my_role} />
-          </div>
-          {meta && <span className="hdl-header-meta">{meta}</span>}
-          <div className="hdl-header-spacer" />
-          <div className="hdl-header-actions">
-            <button type="button" className="hdl-btn-invite" disabled title="Coming soon">
-              Invite
+        {/* Cover banner */}
+        <div
+          className="hdl-banner"
+          style={hive.banner_url ? { backgroundImage: `url(${hive.banner_url})` } : undefined}
+        >
+          <div className="hdl-banner-scrim" />
+
+          {/* Hidden file inputs */}
+          {isOwner && (
+            <>
+              <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+                style={{ display: 'none' }} onChange={e => handleFileSelected(e, 'banner')} />
+              <input ref={logoInputRef}   type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+                style={{ display: 'none' }} onChange={e => handleFileSelected(e, 'logo')} />
+            </>
+          )}
+
+          {/* Edit cover button — owner/admin only */}
+          {isOwner && (
+            <button type="button" className="hdl-banner-edit-btn"
+              disabled={uploading !== null}
+              onClick={() => bannerInputRef.current?.click()}>
+              {uploading === 'banner' ? '⏳ Uploading…' : '📷 Edit cover image'}
             </button>
-            {isOwner && (
-              <button type="button" className="hdl-btn-create" onClick={() => setPostModalOpen(true)}>
-                + Create
+          )}
+
+          {/* Upload error */}
+          {uploadError && (
+            <div className="hdl-banner-upload-error">{uploadError}</div>
+          )}
+
+          {/* Bottom row: logo + identity + actions */}
+          <div className="hdl-banner-bottom">
+            {/* Logo */}
+            <div
+              className={`hdl-banner-logo${isOwner ? ' hdl-banner-logo--editable' : ''}`}
+              onClick={isOwner ? () => logoInputRef.current?.click() : undefined}
+              title={isOwner ? 'Change logo' : undefined}
+            >
+              {hive.logo_url ? (
+                <img src={hive.logo_url} className="hdl-banner-logo-img" alt={hive.hive_name} />
+              ) : (
+                <HexTile categoryName={hive.category_name} size={44} />
+              )}
+              {isOwner && (
+                <span className="hdl-banner-logo-cam">
+                  {uploading === 'logo' ? '⏳' : '📷'}
+                </span>
+              )}
+            </div>
+
+            {/* Name + role + meta */}
+            <div className="hdl-banner-identity">
+              <div className="hdl-banner-name-row">
+                <span className="hdl-hive-name">{hive.hive_name}</span>
+                <RoleBadge role={hive.my_role} />
+              </div>
+              {meta && <span className="hdl-header-meta">{meta}</span>}
+            </div>
+
+            <div className="hdl-header-spacer" />
+
+            <div className="hdl-header-actions">
+              <button type="button" className="hdl-btn-invite" disabled title="Coming soon">
+                Invite
               </button>
-            )}
+              {isOwner && (
+                <button type="button" className="hdl-btn-create" onClick={() => setPostModalOpen(true)}>
+                  + Create
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

@@ -42,7 +42,138 @@
 .hdl-crumb-sep   { opacity: 0.5; }
 .hdl-crumb-current { color: var(--hdl-ink); font-weight: 500; }
 
-/* ── Dark identity header ────────────────────────────────────────────────── */
+/* ── Cover banner ────────────────────────────────────────────────────────── */
+.hdl-banner {
+  position: relative;
+  height: 180px;
+  background-color: #17120a;
+  background-image: linear-gradient(135deg, #17120a 0%, #2d200a 55%, #c49a28 160%);
+  background-size: cover;
+  background-position: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.hdl-banner-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(23,18,10,0.88) 0%,
+    rgba(23,18,10,0.25) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+/* Edit cover button */
+.hdl-banner-edit-btn {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1.5px solid rgba(255,255,255,0.22);
+  background: rgba(23,18,10,0.55);
+  color: rgba(243,236,221,0.92);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.77rem;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: background 0.15s, border-color 0.15s;
+  z-index: 2;
+}
+.hdl-banner-edit-btn:hover:not(:disabled) {
+  background: rgba(23,18,10,0.75);
+  border-color: rgba(196,154,40,0.5);
+}
+.hdl-banner-edit-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Upload error toast */
+.hdl-banner-upload-error {
+  position: absolute;
+  top: 44px;
+  right: 16px;
+  padding: 6px 14px;
+  background: rgba(180,40,40,0.85);
+  color: #fff;
+  font-size: 0.78rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+  z-index: 2;
+  max-width: 260px;
+}
+
+/* Bottom strip: logo + identity + actions */
+.hdl-banner-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 0 24px 12px;
+  z-index: 1;
+}
+
+/* Logo area */
+.hdl-banner-logo {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hdl-banner-logo--editable { cursor: pointer; }
+
+.hdl-banner-logo-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.18);
+  display: block;
+}
+
+.hdl-banner-logo-cam {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #c49a28;
+  border: 2px solid #17120a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.58rem;
+  pointer-events: none;
+}
+
+/* Identity block */
+.hdl-banner-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding-bottom: 2px;
+}
+
+.hdl-banner-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Keep existing name + badge + meta + action styles */
 .hdl-header {
   display: flex;
   align-items: center;

@@ -250,6 +250,50 @@
   margin-bottom: 14px;
 }
 
+/* Banner strip on Hive card */
+.mh-card2-banner {
+  width: calc(100% + 30px);
+  margin: -15px -15px 0;
+  height: 72px;
+  border-radius: 14px 14px 0 0;
+  background-color: #17120a;
+  background-image: linear-gradient(135deg, #17120a 0%, #2d200a 55%, #c49a28 160%);
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 12px 10px;
+  overflow: hidden;
+}
+
+.mh-card2-banner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(23,18,10,0.6) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.mh-card2-banner-hex,
+.mh-card2-banner-logo {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.mh-card2-banner-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+  object-fit: cover;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  display: block;
+}
+
+/* When logo exists, collapse the redundant HexTile in the header row */
+.mh-card2-title-area--no-hex { margin-left: 0; }
+
 /* Light hive card */
 .mh-card2 {
   background: #fffdf9;

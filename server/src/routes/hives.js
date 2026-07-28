@@ -24,6 +24,8 @@ import {
   updateMemberRole,
   removeMember,
   notifyMember,
+  getUploadSignature,
+  updateHiveMedia,
 } from '../controllers/hivesController.js';
 import {
   getOnboarding,
@@ -75,6 +77,10 @@ router.get('/:id/messages',              requireAuth, getHiveMessages);
 router.post('/:id/follow',               requireAuth, followHive);
 router.delete('/:id/follow',             requireAuth, unfollowHive);
 router.get('/:id/posts',                 requireAuth, getHivePosts);
+
+// ── Media (banner / logo) ─────────────────────────────────────────────────────
+router.post('/:id/upload-signature', requireAuth, getUploadSignature);
+router.patch('/:id/media',           requireAuth, updateHiveMedia);
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 router.get('/:id/onboarding',                                requireAuth, getOnboarding);

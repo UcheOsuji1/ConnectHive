@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { query } from '../db/index.js';
 import {
   scorePurpose,
@@ -1244,5 +1245,83 @@ export const notifyMember = async (req, res) => {
   } catch (err) {
     console.error('[hives/notifyMember]', err);
     res.status(500).json({ error: 'Failed to send message.' });
+  }
+};
+
+// ── Cloudinary signed upload ──────────────────────────────────────────────────
+
+export const getUploadSignature = async (req, res) => {
+  try {
+    const { rows: [member] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [req.params.id, req.userId],
+    );
+    if (!['owner', 'admin'].includes(member?.role)) {
+      return res.status(403).json({ error: 'Only owners and admins can upload images.' });
+    }
+
+    const cloudName  = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey     = process.env.CLOUDINARY_API_KEY;
+    const apiSecret  = process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return res.status(503).json({ error: 'Image uploads are not configured yet.' });
+    }
+
+    const type      = req.body.type === 'logo' ? 'logos' : 'banners';
+    const folder    = `hives/${req.params.id}/${type}`;
+    const timestamp = Math.round(Date.now() / 1000);
+
+    // Cloudinary signature: SHA-1( sorted_params + api_secret )
+    const paramsStr = `folder=${folder}&timestamp=${timestamp}`;
+    const signature = crypto.createHash('sha1')
+      .update(paramsStr + apiSecret)
+      .digest('hex');
+
+    res.json({ signature, timestamp, api_key: apiKey, cloud_name: cloudName, folder });
+  } catch (err) {
+    console.error('[hives/getUploadSignature]', err);
+    res.status(500).json({ error: 'Failed to generate upload signature.' });
+  }
+};
+
+// ── Save banner/logo URL after Cloudinary upload ──────────────────────────────
+
+export const updateHiveMedia = async (req, res) => {
+  try {
+    const { rows: [member] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [req.params.id, req.userId],
+    );
+    if (!['owner', 'admin'].includes(member?.role)) {
+      return res.status(403).json({ error: 'Only owners and admins can update Hive images.' });
+    }
+
+    const { banner_url, logo_url } = req.body;
+    const updates = [];
+    const values  = [];
+    let   idx     = 1;
+
+    if (banner_url !== undefined) { updates.push(`banner_url = $${idx++}`); values.push(banner_url || null); }
+    if (logo_url   !== undefined) { updates.push(`logo_url   = $${idx++}`); values.push(logo_url   || null); }
+
+    if (!updates.length) return res.status(400).json({ error: 'Nothing to update.' });
+
+    values.push(req.params.id);
+    await query(
+      `UPDATE hives SET ${updates.join(', ')}, updated_at = NOW() WHERE hive_id = $${idx}`,
+      values,
+    );
+
+    const payload = {};
+    if (banner_url !== undefined) payload.banner_url = banner_url || null;
+    if (logo_url   !== undefined) payload.logo_url   = logo_url   || null;
+
+    res.json({ hive: payload });
+  } catch (err) {
+    console.error('[hives/updateHiveMedia]', err);
+    res.status(500).json({ error: 'Failed to save image URL.' });
   }
 };
