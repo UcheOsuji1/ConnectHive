@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import './env.js'; // loads server/.env with explicit path — must be first
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -13,6 +13,12 @@ import { testConnection } from './db/index.js';
 const app        = express();
 const PORT       = process.env.PORT       || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+
+console.log('[startup] Cloudinary configured:', {
+  hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
+  hasApiKey:    !!process.env.CLOUDINARY_API_KEY,
+  hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
+});
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
