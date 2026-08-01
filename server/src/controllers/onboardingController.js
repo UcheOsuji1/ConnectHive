@@ -398,18 +398,32 @@ export const completeStep = async (req, res) => {
       [hiveId, req.userId, stepId],
     );
 
-    // Check if all required steps are now done → mark completed
-    const { rows: [{ all_req_done }] } = await query(
-      `SELECT NOT EXISTS (
-         SELECT 1 FROM hive_onboarding_steps s
-         WHERE s.hive_id = $1 AND s.is_required = true
-           AND NOT EXISTS (
-             SELECT 1 FROM member_onboarding_progress p
-             WHERE p.hive_id = $1 AND p.user_id = $2 AND p.step_id = s.step_id
-           )
-       ) AS all_req_done`,
-      [hiveId, req.userId],
+    // completion_unlocks: true = all required steps must be done (strict)
+    //                    false = any step completion is sufficient (can skip)
+    const { rows: [obMode] } = await query(
+      `SELECT completion_unlocks FROM hive_onboarding_settings WHERE hive_id = $1`,
+      [hiveId],
     );
+    const strictMode = obMode?.completion_unlocks !== false; // default: strict
+
+    let all_req_done;
+    if (!strictMode) {
+      // 'can skip' — first completed step triggers completion
+      all_req_done = true;
+    } else {
+      const { rows: [result] } = await query(
+        `SELECT NOT EXISTS (
+           SELECT 1 FROM hive_onboarding_steps s
+           WHERE s.hive_id = $1 AND s.is_required = true
+             AND NOT EXISTS (
+               SELECT 1 FROM member_onboarding_progress p
+               WHERE p.hive_id = $1 AND p.user_id = $2 AND p.step_id = s.step_id
+             )
+         ) AS all_req_done`,
+        [hiveId, req.userId],
+      );
+      all_req_done = result.all_req_done;
+    }
 
     if (all_req_done) {
       await query(

@@ -124,9 +124,11 @@ export default function MemberWelcomePage() {
     );
   }
 
-  const isGuided   = settings?.join_experience === 'guided';
   const isSimple   = settings?.join_experience === 'simple';
-  const canEnter   = !isGuided || allReqDone || obStatus === 'completed';
+  const accessMode = settings?.access_mode ?? 'full';
+  // Blocked only when access_mode is 'none' and onboarding isn't complete.
+  // 'limited' and 'full' experiences always allow entry (with reduced perms enforced in the layout).
+  const canEnter   = accessMode !== 'none' || allReqDone || obStatus === 'completed';
   const doneCount  = steps.filter(s => s.completed).length;
   const totalSteps = steps.length;
   const pct        = totalSteps > 0 ? Math.round((doneCount / totalSteps) * 100) : 100;
@@ -187,7 +189,7 @@ export default function MemberWelcomePage() {
               <div className="obp-progress-fill" style={{ width: `${pct}%` }} />
             </div>
 
-            {isGuided && !canEnter && (
+            {!canEnter && (
               <div className="obp-gate-notice">
                 🔒 Complete all required steps to access the Hive
               </div>
