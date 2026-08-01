@@ -423,6 +423,12 @@ export default function HiveDashboardLayout() {
   const meta = [hive.category_name, hive.location, hive.location_type]
     .filter(Boolean).join(' · ');
 
+  // Access gating: owners/admins always have full access
+  const isInOnboarding = !isOwner && hive.onboarding_status && hive.onboarding_status !== 'completed';
+  const accessMode     = isInOnboarding ? (hive.onboarding_access_mode ?? 'full') : 'full';
+  // canPost: owners always can; members blocked by 'limited' or 'none' access during onboarding
+  const canPost = isOwner || accessMode === 'full';
+
   const outletCtx = {
     hive,
     hiveId,
@@ -431,8 +437,10 @@ export default function HiveDashboardLayout() {
     setRequestCount,
     refreshHive,
     onMemberAccepted: setCelebrationMember,
-    openPostModal: () => setPostModalOpen(true),
-    newPost,       // feed page watches this to prepend without refetch
+    openPostModal: canPost ? () => setPostModalOpen(true) : null,
+    newPost,
+    accessMode,
+    canPost,
   };
 
   return (
@@ -531,7 +539,7 @@ export default function HiveDashboardLayout() {
               <button type="button" className="hdl-btn-invite" disabled title="Coming soon">
                 Invite
               </button>
-              {isOwner && (
+              {canPost && (
                 <button type="button" className="hdl-btn-create" onClick={() => setPostModalOpen(true)}>
                   + Create
                 </button>
@@ -545,22 +553,45 @@ export default function HiveDashboardLayout() {
           <HiveSidebar hiveId={hiveId} isOwner={isOwner} requestCount={requestCount} />
 
           <main className="hdl-content">
-            {/* Onboarding gate for pending members */}
-            {!isOwner && hive.onboarding_status === 'pending' && (
-              <div className="hdl-ob-gate">
-                <div className="hdl-ob-gate-icon">🗺️</div>
-                <div className="hdl-ob-gate-body">
-                  <div className="hdl-ob-gate-title">Complete your onboarding</div>
-                  <div className="hdl-ob-gate-sub">
-                    Finish the required steps to unlock full access to {hive.hive_name}.
-                  </div>
+            {/* Full block: 'none' access mode — replace outlet entirely */}
+            {accessMode === 'none' ? (
+              <div className="hdl-ob-block">
+                <div className="hdl-ob-block-icon">🔒</div>
+                <div className="hdl-ob-block-title">Complete onboarding to unlock access</div>
+                <div className="hdl-ob-block-sub">
+                  You must finish all required steps before you can access{' '}
+                  <strong>{hive.hive_name}</strong>.
                 </div>
                 <Link to={`/welcome/hive/${hiveId}`} className="hdl-ob-gate-btn">
-                  View steps →
+                  View onboarding steps →
                 </Link>
               </div>
+            ) : (
+              <>
+                {/* Onboarding gate banner */}
+                {isInOnboarding && (
+                  <div className="hdl-ob-gate">
+                    <div className="hdl-ob-gate-icon">🗺️</div>
+                    <div className="hdl-ob-gate-body">
+                      <div className="hdl-ob-gate-title">
+                        {accessMode === 'limited'
+                          ? 'Limited access — complete onboarding to post'
+                          : 'Complete your onboarding'}
+                      </div>
+                      <div className="hdl-ob-gate-sub">
+                        {accessMode === 'limited'
+                          ? `You can view content but cannot post until onboarding is complete.`
+                          : `Finish the required steps to unlock full access to ${hive.hive_name}.`}
+                      </div>
+                    </div>
+                    <Link to={`/welcome/hive/${hiveId}`} className="hdl-ob-gate-btn">
+                      View steps →
+                    </Link>
+                  </div>
+                )}
+                <Outlet context={outletCtx} />
+              </>
             )}
-            <Outlet context={outletCtx} />
           </main>
         </div>
       </div>

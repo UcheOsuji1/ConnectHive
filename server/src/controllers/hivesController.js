@@ -280,6 +280,7 @@ export const getHive = async (req, res) => {
          my_mem.role                                                                          AS my_role,
          my_mem.welcome_seen_at,
          my_mem.onboarding_status,
+         COALESCE(obs.access_mode, 'full')                                                   AS onboarding_access_mode,
          EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)    AS is_following,
          COALESCE((
            SELECT COUNT(*)::int FROM hive_posts hp
@@ -288,16 +289,17 @@ export const getHive = async (req, res) => {
              AND hp.created_at > COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz)
          ), 0) AS new_posts
        FROM hives h
-       LEFT JOIN categories    c       ON c.category_id  = h.category_id
-       LEFT JOIN hive_members  hm_all  ON hm_all.hive_id = h.hive_id
-       LEFT JOIN hive_followers hf     ON hf.hive_id     = h.hive_id
-       LEFT JOIN hive_members  my_mem  ON my_mem.hive_id = h.hive_id
-                                      AND my_mem.user_id = $1
-                                      AND my_mem.membership_status = 'active'
-       LEFT JOIN hive_last_seen hls    ON hls.user_id = $1 AND hls.hive_id = h.hive_id
+       LEFT JOIN categories               c       ON c.category_id  = h.category_id
+       LEFT JOIN hive_members             hm_all  ON hm_all.hive_id = h.hive_id
+       LEFT JOIN hive_followers           hf      ON hf.hive_id     = h.hive_id
+       LEFT JOIN hive_members             my_mem  ON my_mem.hive_id = h.hive_id
+                                                 AND my_mem.user_id = $1
+                                                 AND my_mem.membership_status = 'active'
+       LEFT JOIN hive_last_seen           hls     ON hls.user_id = $1 AND hls.hive_id = h.hive_id
+       LEFT JOIN hive_onboarding_settings obs     ON obs.hive_id = h.hive_id
        WHERE h.hive_id = $2
        GROUP BY h.hive_id, c.category_name, my_mem.role, my_mem.welcome_seen_at,
-                my_mem.onboarding_status, hls.last_seen_at`,
+                my_mem.onboarding_status, obs.access_mode, hls.last_seen_at`,
       [req.userId, req.params.id],
     );
     if (!row) return res.status(404).json({ error: 'Hive not found.' });
@@ -705,13 +707,65 @@ export const requestToJoin = async (req, res) => {
       return res.status(400).json({ error: 'This Hive is full.' });
     }
 
+    // Check onboarding settings before anything else
+    const { rows: [obSettings] } = await query(
+      `SELECT join_experience FROM hive_onboarding_settings WHERE hive_id = $1`,
+      [hiveId],
+    );
+    const joinExp = obSettings?.join_experience ?? 'standard';
+
+    // 'simple' join_experience → instant-join, no request needed
+    if (joinExp === 'simple') {
+      await query(
+        `INSERT INTO hive_members
+           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
+         VALUES ($1, $2, 'member', 'active', 'completed', NULL)
+         ON CONFLICT (hive_id, user_id) DO UPDATE SET
+           membership_status = 'active', onboarding_status = 'completed', welcome_seen_at = NULL,
+           onboarding_started_at = NULL, onboarding_completed_at = NULL`,
+        [hiveId, req.userId],
+      );
+      // Best-effort: welcome notification + notify existing members
+      try {
+        const [{ rows: [profile] }, { rows: existingMembers }] = await Promise.all([
+          query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
+          query(
+            `SELECT user_id FROM hive_members
+             WHERE hive_id = $1 AND user_id != $2 AND membership_status = 'active'`,
+            [hiveId, req.userId],
+          ),
+        ]);
+        const memberName = profile?.full_name ?? 'A new member';
+        await createNotification({
+          userId: req.userId, type: 'request_accepted',
+          title: `You're in! Welcome to ${hive.hive_name}`,
+          body: 'Open your Hive to see your welcome.',
+          hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
+        });
+        for (const m of existingMembers) {
+          await createNotification({
+            userId: m.user_id, type: 'member_joined',
+            title: `${memberName} joined ${hive.hive_name}`,
+            body: 'Give them a warm welcome 👋',
+            hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
+          });
+        }
+      } catch (e) {
+        console.error('[hives/requestToJoin] simple-join notification failed (non-fatal):', e);
+      }
+      return res.json({ joined: true });
+    }
+
     // Open policy → join directly, no request needed
     if (hive.join_policy === 'open') {
+      const obStatus = joinExp === 'guided' || joinExp === 'application' ? 'pending' : 'completed';
       await query(
-        `INSERT INTO hive_members (hive_id, user_id, role, membership_status)
-         VALUES ($1, $2, 'member', 'active')
-         ON CONFLICT (hive_id, user_id) DO UPDATE SET membership_status = 'active'`,
-        [hiveId, req.userId],
+        `INSERT INTO hive_members
+           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
+         VALUES ($1, $2, 'member', 'active', $3, NULL)
+         ON CONFLICT (hive_id, user_id) DO UPDATE SET
+           membership_status = 'active', onboarding_status = $3, welcome_seen_at = NULL`,
+        [hiveId, req.userId, obStatus],
       );
       return res.json({ joined: true });
     }
@@ -877,9 +931,11 @@ export const reviewRequest = async (req, res) => {
         [hiveId],
       );
       joinExp = obSettings?.join_experience ?? 'standard';
+      // simple/standard → no onboarding steps, immediately active
+      // guided/application → member must work through steps before full access
       const onboardingStatus =
-        joinExp === 'simple'  ? 'completed' :
-        joinExp === 'guided'  ? 'pending'   : 'in_progress';
+        joinExp === 'simple'   ? 'completed' :
+        joinExp === 'standard' ? 'completed' : 'pending';
 
       await query(
         `UPDATE join_requests

@@ -1,4 +1,5 @@
 import { query } from '../db/index.js';
+import { createNotification } from './notificationsController.js';
 
 // ── Default step templates (lazy-seeded per hive on first GET) ────────────────
 const DEFAULT_STEPS = [
@@ -109,7 +110,8 @@ export const updateOnboarding = async (req, res) => {
       notify_owner_start, show_activity_badge,
       // Rules & Completion (v2)
       deadline_days, access_mode,
-      trigger_welcome_msg, trigger_assign_role, trigger_default_role, trigger_unlock_access,
+      trigger_welcome_msg, trigger_welcome_text, trigger_assign_role,
+      trigger_default_role, trigger_unlock_access,
     } = req.body;
 
     // Ensure row exists first
@@ -132,9 +134,10 @@ export const updateOnboarding = async (req, res) => {
          deadline_days         = COALESCE($14, deadline_days),
          access_mode           = COALESCE($15, access_mode),
          trigger_welcome_msg   = COALESCE($16, trigger_welcome_msg),
-         trigger_assign_role   = COALESCE($17, trigger_assign_role),
-         trigger_default_role  = COALESCE($18, trigger_default_role),
-         trigger_unlock_access = COALESCE($19, trigger_unlock_access),
+         trigger_welcome_text  = COALESCE($17, trigger_welcome_text),
+         trigger_assign_role   = COALESCE($18, trigger_assign_role),
+         trigger_default_role  = COALESCE($19, trigger_default_role),
+         trigger_unlock_access = COALESCE($20, trigger_unlock_access),
          updated_at            = NOW()
        WHERE hive_id = $1
        RETURNING *`,
@@ -149,8 +152,9 @@ export const updateOnboarding = async (req, res) => {
         show_activity_badge   ?? null,
         deadline_days         !== undefined ? (deadline_days ?? null) : null,
         access_mode           ?? null,
-        trigger_welcome_msg   ?? null, trigger_assign_role    ?? null,
-        trigger_default_role  ?? null, trigger_unlock_access  ?? null,
+        trigger_welcome_msg   ?? null, trigger_welcome_text   ?? null,
+        trigger_assign_role   ?? null, trigger_default_role   ?? null,
+        trigger_unlock_access ?? null,
       ],
     );
 
@@ -353,6 +357,39 @@ export const completeStep = async (req, res) => {
          WHERE hive_id = $1 AND user_id = $2`,
         [hiveId, req.userId],
       );
+      // Notify owner if configured
+      try {
+        const { rows: [obs] } = await query(
+          `SELECT notify_owner_start FROM hive_onboarding_settings WHERE hive_id = $1`,
+          [hiveId],
+        );
+        if (obs?.notify_owner_start) {
+          const [{ rows: [memberProfile] }, { rows: ownerAdmins }] = await Promise.all([
+            query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
+            query(
+              `SELECT user_id FROM hive_members
+               WHERE hive_id = $1 AND role IN ('owner','admin') AND membership_status = 'active'`,
+              [hiveId],
+            ),
+          ]);
+          const { rows: [hiveRow] } = await query(
+            `SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId],
+          );
+          const memberName = memberProfile?.full_name ?? 'A member';
+          for (const m of ownerAdmins) {
+            await createNotification({
+              userId: m.user_id,
+              type: 'onboarding_started',
+              title: `${memberName} started onboarding in ${hiveRow?.hive_name ?? 'your Hive'}`,
+              hiveId,
+              actorUserId: req.userId,
+              link: `/hive/${hiveId}/members`,
+            });
+          }
+        }
+      } catch (notifErr) {
+        console.error('[onboarding/completeStep] notify_owner_start failed (non-fatal):', notifErr);
+      }
     }
 
     await query(
@@ -381,6 +418,62 @@ export const completeStep = async (req, res) => {
          WHERE hive_id = $1 AND user_id = $2 AND onboarding_status != 'completed'`,
         [hiveId, req.userId],
       );
+
+      // Fire completion triggers (best-effort)
+      try {
+        const { rows: [obs] } = await query(
+          `SELECT trigger_welcome_msg, trigger_welcome_text,
+                  trigger_assign_role, trigger_default_role,
+                  trigger_unlock_access, generate_certificate,
+                  hive_id
+           FROM hive_onboarding_settings WHERE hive_id = $1`,
+          [hiveId],
+        );
+        if (obs) {
+          const [{ rows: [memberProfile] }, { rows: [hiveRow] }] = await Promise.all([
+            query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
+            query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]),
+          ]);
+          const memberName = memberProfile?.full_name ?? 'You';
+          const hiveName   = hiveRow?.hive_name ?? 'the Hive';
+
+          // 1. Welcome message notification
+          if (obs.trigger_welcome_msg) {
+            await createNotification({
+              userId: req.userId,
+              type: 'onboarding_complete',
+              title: obs.trigger_welcome_text?.trim() || `Welcome! You've completed onboarding in ${hiveName} 🎉`,
+              hiveId,
+              link: `/hive/${hiveId}`,
+            });
+          }
+
+          // 2. Assign role
+          if (obs.trigger_assign_role && obs.trigger_default_role) {
+            await query(
+              `UPDATE hive_members SET role = $3
+               WHERE hive_id = $1 AND user_id = $2`,
+              [hiveId, req.userId, obs.trigger_default_role],
+            );
+          }
+
+          // 3. Certificate post in the hive feed
+          if (obs.generate_certificate) {
+            await query(
+              `INSERT INTO hive_posts (hive_id, author_user_id, post_type, headline, body)
+               VALUES ($1, $2, 'completion', $3, $4)`,
+              [
+                hiveId,
+                req.userId,
+                `${memberName} completed onboarding in ${hiveName}!`,
+                `${memberName} has finished all required onboarding steps. Give them a warm welcome! 🎉`,
+              ],
+            );
+          }
+        }
+      } catch (triggerErr) {
+        console.error('[onboarding/completeStep] trigger firing failed (non-fatal):', triggerErr);
+      }
     }
 
     res.json({ completed: true, all_required_done: all_req_done });

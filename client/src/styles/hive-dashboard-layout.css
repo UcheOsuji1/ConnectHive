@@ -357,6 +357,21 @@
   /* extra bottom padding so sticky save bar (onboarding) never covers content */
 }
 
+/* ── Onboarding full block (access_mode: none) ───────────────────────────── */
+.hdl-ob-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 80px 40px;
+  min-height: 50vh;
+  gap: 12px;
+}
+.hdl-ob-block-icon  { font-size: 2.5rem; }
+.hdl-ob-block-title { font-size: 1.2rem; font-weight: 700; color: var(--hdl-ink); font-family: 'Cormorant Garamond', Georgia, serif; }
+.hdl-ob-block-sub   { font-size: 0.88rem; color: var(--hdl-muted); max-width: 380px; line-height: 1.55; margin-bottom: 8px; }
+
 /* ── Onboarding gate banner ──────────────────────────────────────────────── */
 .hdl-ob-gate {
   display: flex;

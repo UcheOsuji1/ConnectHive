@@ -364,6 +364,7 @@ ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_welcome_ms
 ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_assign_role   BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_default_role  TEXT;
 ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_unlock_access BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_welcome_text  TEXT;
 
 -- ── Hive media (idempotent — safe to re-run) ──────────────────────────────
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS banner_url TEXT NULL;
