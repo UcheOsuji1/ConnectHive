@@ -52,7 +52,7 @@ function RoleBadge({ role }) {
 }
 
 // ── Management sidebar (role-aware) ──────────────────────────────────────────
-function HiveSidebar({ hiveId, isOwner, requestCount }) {
+function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
   const { pathname } = useLocation();
 
   const base = `/hive/${hiveId}`;
@@ -92,7 +92,7 @@ function HiveSidebar({ hiveId, isOwner, requestCount }) {
         <div className="hdl-nav-section-label">Hive</div>
         <NavItem label="Overview"  sub="" />
         <NavItem label="Feed"      sub="feed" />
-        <NavItem label="Chat"      sub="chat"    soon />
+        <NavItem label="Chat"      sub="chat"    badge={chatUnread > 0 ? (chatUnread > 99 ? '99+' : chatUnread) : null} />
         <NavItem label="Events"    sub="events"  soon />
         <NavItem label="Members"   sub="members" />
         {isOwner && <NavItem label="Requests" sub="requests" badge={requestCount} />}
@@ -299,6 +299,7 @@ export default function HiveDashboardLayout() {
   const [newPost,           setNewPost]           = useState(null);
   const [uploading,         setUploading]         = useState(null); // 'banner' | 'logo' | null
   const [uploadError,       setUploadError]       = useState(null);
+  const [chatUnread,        setChatUnread]        = useState(0);
 
   const bannerInputRef = useRef(null);
   const logoInputRef   = useRef(null);
@@ -364,6 +365,10 @@ export default function HiveDashboardLayout() {
         setHive(data.hive);
         if (data.hive?.my_role) {
           api.post(`/api/hives/${hiveId}/seen`, {}).catch(() => {});
+          // Fetch chat unread count for badge
+          api.get(`/api/hives/${hiveId}/messages/unread-count`)
+            .then(d => setChatUnread(d.count ?? 0))
+            .catch(() => {});
         }
       })
       .catch(err => setHiveError(err.status === 404 ? 'not_found' : 'error'))
@@ -441,6 +446,7 @@ export default function HiveDashboardLayout() {
     newPost,
     accessMode,
     canPost,
+    setChatUnread,
   };
 
   return (
@@ -550,7 +556,7 @@ export default function HiveDashboardLayout() {
 
         {/* Body */}
         <div className="hdl-body">
-          <HiveSidebar hiveId={hiveId} isOwner={isOwner} requestCount={requestCount} />
+          <HiveSidebar hiveId={hiveId} isOwner={isOwner} requestCount={requestCount} chatUnread={chatUnread} />
 
           <main className="hdl-content">
             {/* Full block: 'none' access mode — replace outlet entirely */}

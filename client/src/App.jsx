@@ -22,6 +22,7 @@ import HiveRequestsPage from './pages/hive/HiveRequestsPage';
 import HiveSettingsPage from './pages/hive/HiveSettingsPage';
 import HiveAboutPage from './pages/hive/HiveAboutPage';
 import HiveSoonPage from './pages/hive/HiveSoonPage';
+import HiveChatPage from './pages/hive/HiveChatPage';
 import HiveOnboardingPage from './pages/HiveOnboardingPage';
 
 export default function App() {
@@ -48,7 +49,7 @@ export default function App() {
         <Route path="onboarding" element={<HiveOnboardingPage />} />
         <Route path="settings" element={<HiveSettingsPage />} />
         <Route path="about" element={<HiveAboutPage />} />
-        <Route path="chat" element={<HiveSoonPage feature="Chat" />} />
+        <Route path="chat" element={<HiveChatPage />} />
         <Route path="events" element={<HiveSoonPage feature="Events" />} />
         <Route path="analytics" element={<HiveSoonPage feature="Analytics" />} />
         <Route path="roles" element={<HiveSoonPage feature="Roles & Permissions" />} />
