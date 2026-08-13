@@ -1,4 +1,5 @@
 import './env.js'; // loads server/.env with explicit path — must be first
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -9,7 +10,9 @@ import userRoutes         from './routes/users.js';
 import postRoutes         from './routes/posts.js';
 import notificationRoutes from './routes/notifications.js';
 import eventRoutes        from './routes/events.js';
+import messageRoutes      from './routes/messages.js';
 import { testConnection } from './db/index.js';
+import { initSocket }     from './realtime/socket.js';
 
 const app        = express();
 const PORT       = process.env.PORT       || 5000;
@@ -38,6 +41,7 @@ app.use('/api/users',         userRoutes);
 app.use('/api/posts',         postRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/events',        eventRoutes);
+app.use('/api/messages',      messageRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -52,7 +56,10 @@ app.use((err, _req, res, _next) => {
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
-app.listen(PORT, async () => {
+const server = http.createServer(app);
+initSocket(server, CLIENT_URL);
+
+server.listen(PORT, async () => {
   console.log(`\n  ConnectHive API  →  http://localhost:${PORT}`);
   console.log(`  Health check     →  http://localhost:${PORT}/api/health\n`);
   await testConnection();

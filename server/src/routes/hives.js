@@ -17,7 +17,7 @@ import {
   getMyHive,
   markHiveSeen,
   markWelcomeSeen,
-  getHiveMessages,
+
   followHive,
   unfollowHive,
   getFollowedHives,
@@ -27,6 +27,11 @@ import {
   getUploadSignature,
   updateHiveMedia,
 } from '../controllers/hivesController.js';
+import {
+  listMessages,
+  createMessage,
+  getUnreadCount,
+} from '../controllers/messagesController.js';
 import {
   getOnboarding,
   updateOnboarding,
@@ -73,7 +78,9 @@ router.post('/:id/join',                  requireAuth, joinHive);
 router.post('/:id/request',              requireAuth, requestToJoin);
 router.get('/:id/requests',              requireAuth, getHiveRequests);
 router.post('/:id/requests/:requestId',  requireAuth, reviewRequest);
-router.get('/:id/messages',              requireAuth, getHiveMessages);
+router.get('/:id/messages/unread-count', requireAuth, getUnreadCount);
+router.get('/:id/messages',              requireAuth, listMessages);
+router.post('/:id/messages',             requireAuth, createMessage);
 router.post('/:id/follow',               requireAuth, followHive);
 router.delete('/:id/follow',             requireAuth, unfollowHive);
 router.get('/:id/posts',                 requireAuth, getHivePosts);

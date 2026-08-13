@@ -380,3 +380,18 @@ CREATE TABLE IF NOT EXISTS event_rsvps (
   UNIQUE (post_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_event_rsvps_post ON event_rsvps(post_id);
+
+-- ─── Chat schema additions ────────────────────────────────────────────────────
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at             TIMESTAMPTZ;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at            TIMESTAMPTZ;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_message_id   UUID REFERENCES messages(message_id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS message_reactions (
+  reaction_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id  UUID        NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+  user_id     UUID        NOT NULL REFERENCES users(user_id)       ON DELETE CASCADE,
+  emoji       TEXT        NOT NULL,
+  reacted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (message_id, user_id, emoji)
+);
+CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id);
