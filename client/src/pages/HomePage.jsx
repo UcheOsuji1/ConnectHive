@@ -4,6 +4,9 @@ import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
 import PostCard from '../components/PostCard.jsx';
 import CreatePostModal from '../components/CreatePostModal.jsx';
+import UpcomingEventsCard from '../components/UpcomingEventsCard.jsx';
+import SuggestedHivesCard from '../components/SuggestedHivesCard.jsx';
+import TrendingCategoriesCard from '../components/TrendingCategoriesCard.jsx';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import '../styles/home.css';
@@ -110,47 +113,68 @@ function JoinRequestCard({ incoming, hives }) {
   );
 }
 
-// ── WelcomeCard (Part 6) ────────────────────────────────────────────────────
-function WelcomeCard({ firstName, hives, pendingCount }) {
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  });
+// ── HiveSummaryCard ────────────────────────────────────────────────────────
+function SummaryTile({ icon, value, label }) {
+  return (
+    <div className="hsum-tile">
+      <span className="hsum-tile-icon">{icon}</span>
+      <span className="hsum-tile-value">{value}</span>
+      <span className="hsum-tile-label">{label}</span>
+    </div>
+  );
+}
+
+function HiveSummaryCard({ hives, pendingCount, eventsTotal }) {
   const hiveCount     = hives.length;
   const totalNewPosts = hives.reduce((sum, h) => sum + Number(h.new_posts ?? 0), 0);
 
   return (
-    <div className="home-wc">
-      <div className="home-wc-name">Welcome back, {firstName}</div>
-      <div className="home-wc-date">{today}</div>
-      <div className="home-wc-stats">
-        <div className="home-wc-stat">
-          <span className="home-wc-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <div className="home-card-shell">
+      <div className="hsum-header-row">
+        <div className="home-card-label" style={{ marginBottom: 0 }}>Your Hive Summary</div>
+        <Link to="/my-hive" className="hsum-link">View all →</Link>
+      </div>
+      <div className="hsum-grid">
+        <SummaryTile
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" />
             </svg>
-          </span>
-          <span className="home-wc-val">{hiveCount}</span>
-          <span className="home-wc-lbl">Hive{hiveCount !== 1 ? 's' : ''}</span>
-        </div>
-        <div className="home-wc-stat">
-          <span className="home-wc-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          }
+          value={hiveCount}
+          label={`Hive${hiveCount !== 1 ? 's' : ''}`}
+        />
+        <SummaryTile
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
-          </span>
-          <span className="home-wc-val">{totalNewPosts}</span>
-          <span className="home-wc-lbl">new post{totalNewPosts !== 1 ? 's' : ''}</span>
-        </div>
-        <div className="home-wc-stat">
-          <span className="home-wc-icon">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          }
+          value={totalNewPosts}
+          label={`New Post${totalNewPosts !== 1 ? 's' : ''}`}
+        />
+        <SummaryTile
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10" />
               <polyline points="12 6 12 12 16 14" />
             </svg>
-          </span>
-          <span className="home-wc-val">{pendingCount}</span>
-          <span className="home-wc-lbl">request{pendingCount !== 1 ? 's' : ''} waiting</span>
-        </div>
+          }
+          value={pendingCount}
+          label={`Request${pendingCount !== 1 ? 's' : ''}`}
+        />
+        <SummaryTile
+          icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+          }
+          value={eventsTotal}
+          label={`Upcoming Event${eventsTotal !== 1 ? 's' : ''}`}
+        />
       </div>
     </div>
   );
@@ -196,6 +220,9 @@ export default function HomePage() {
   const [posts,        setPosts]        = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
 
+  // Upcoming events (shared between HiveSummaryCard and UpcomingEventsCard)
+  const [eventsData, setEventsData] = useState(null);
+
   // Create dropdown + modal
   const [dropdownOpen,  setDropdownOpen]  = useState(false);
   const [postModalOpen, setPostModalOpen] = useState(false);
@@ -223,6 +250,14 @@ export default function HomePage() {
       .then(data => setHives(data.hives ?? []))
       .catch(() => setHives([]))
       .finally(() => setHivesLoading(false));
+
+    api.get('/api/events/upcoming')
+      .then(d => setEventsData({
+        myEvents:        d.myEvents ?? [],
+        suggestedEvents: d.suggestedEvents ?? [],
+        myEventsTotal:   Number(d.myEventsTotal ?? 0),
+      }))
+      .catch(() => setEventsData({ myEvents: [], suggestedEvents: [], myEventsTotal: 0 }));
   }, []);
 
   // Fetch incoming join requests for owned/admin hives after hives load
@@ -419,12 +454,12 @@ export default function HomePage() {
             {/* ── Right sidebar ── */}
             <div className="home-sidebar">
 
-              {/* Welcome card (Part 6) */}
+              {/* Your Hive Summary */}
               {!hivesLoading && (
-                <WelcomeCard
-                  firstName={firstName}
+                <HiveSummaryCard
                   hives={hives}
                   pendingCount={reqsLoading ? 0 : incomingReqs.length}
+                  eventsTotal={eventsData ? eventsData.myEventsTotal : 0}
                 />
               )}
 
@@ -479,12 +514,14 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* Suggested for you */}
-              <div className="home-light-card home-sidebar-card">
-                <div className="home-sidebar-label">Suggested for you</div>
-                <div className="home-suggest-sub">Explore Hives that fit your profile.</div>
-                <Link to="/find-your-hive" className="home-suggest-link">Discover Hives →</Link>
-              </div>
+              {/* Upcoming Events */}
+              <UpcomingEventsCard data={eventsData} setData={setEventsData} />
+
+              {/* You May Like */}
+              <SuggestedHivesCard />
+
+              {/* Trending Categories */}
+              <TrendingCategoriesCard />
 
             </div>
           </div>

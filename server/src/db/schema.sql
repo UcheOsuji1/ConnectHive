@@ -369,3 +369,14 @@ ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS trigger_welcome_te
 -- ── Hive media (idempotent — safe to re-run) ──────────────────────────────
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS banner_url TEXT NULL;
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS logo_url   TEXT NULL;
+
+-- ─── Event RSVPs (post_type='event' posts) ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS event_rsvps (
+  rsvp_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id     UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  user_id     UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  rsvp_status TEXT        NOT NULL DEFAULT 'going' CHECK (rsvp_status IN ('going')),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (post_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_event_rsvps_post ON event_rsvps(post_id);

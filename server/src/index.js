@@ -8,6 +8,7 @@ import hiveRoutes         from './routes/hives.js';
 import userRoutes         from './routes/users.js';
 import postRoutes         from './routes/posts.js';
 import notificationRoutes from './routes/notifications.js';
+import eventRoutes        from './routes/events.js';
 import { testConnection } from './db/index.js';
 
 const app        = express();
@@ -36,6 +37,7 @@ app.use('/api/hives',         hiveRoutes);
 app.use('/api/users',         userRoutes);
 app.use('/api/posts',         postRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/events',        eventRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
