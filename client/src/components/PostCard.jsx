@@ -5,6 +5,7 @@ import { REACTIONS, reactionByKey } from '../lib/reactions';
 import ReactionPicker from './ReactionPicker';
 import EmojiPicker from './EmojiPicker';
 import FollowButton from './FollowButton';
+import Avatar from './Avatar.jsx';
 import '../styles/post.css';
 
 // ── Category config ───────────────────────────────────────────────────────────
@@ -17,35 +18,54 @@ const CAT_CONFIG = {
   'Specialized Groups':      { color: '#a59ae8', icon: '⭐' },
 };
 
-function SmallHex({ categoryName }) {
+function SmallHex({ categoryName, size = 26 }) {
   const cfg = CAT_CONFIG[categoryName] ?? { color: '#8a8070', icon: '✦' };
   return (
-    <div style={{ position: 'relative', width: 26, height: 26, flexShrink: 0 }}>
-      <svg viewBox="0 0 36 36" width={26} height={26} style={{ position: 'absolute', inset: 0 }}>
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg viewBox="0 0 36 36" width={size} height={size} style={{ position: 'absolute', inset: 0 }}>
         <polygon points="18,2 33,10 33,26 18,34 3,26 3,10"
           fill={cfg.color} fillOpacity="0.18" stroke={cfg.color} strokeWidth="1.5" strokeLinejoin="round" />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.64rem' }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${size * 0.4}px` }}>
         {cfg.icon}
       </div>
     </div>
   );
 }
 
-function CommentAvatar({ name, src, size = 30 }) {
-  const initials = name
-    ? name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
-    : '?';
+// Fallback icon for the plain (no-banner) hive row when there's no logo_url
+function HiveMiniIcon({ logoUrl, categoryName }) {
+  if (logoUrl) {
+    return <img src={logoUrl} alt="" className="post-hive-mini-logo" />;
+  }
+  return <SmallHex categoryName={categoryName} />;
+}
+
+// 52px ringed logo used in the banner identity row
+function HiveIdentityLogo({ logoUrl, categoryName, hiveName }) {
   return (
-    <div style={{
-      width: size, height: size, borderRadius: '50%', flexShrink: 0,
-      background: 'linear-gradient(135deg,#e8c84a 0%,#c49a28 55%,#8a6510 100%)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      overflow: 'hidden',
-    }}>
-      {src
-        ? <img src={src} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        : <span style={{ color: '#1a1508', fontWeight: 600, fontSize: size * 0.4, fontFamily: "'DM Sans',sans-serif", lineHeight: 1 }}>{initials}</span>}
+    <div className="post-hive-identity-logo">
+      {logoUrl
+        ? <img src={logoUrl} alt={hiveName} className="post-hive-identity-logo-img" />
+        : <SmallHex categoryName={categoryName} size={40} />}
+    </div>
+  );
+}
+
+// Fixed-height banner strip — flat color fallback if the image fails to load
+function BannerStrip({ url }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [url]);
+  return (
+    <div className="post-banner-strip">
+      {url && !failed && (
+        <img
+          src={url}
+          alt=""
+          className="post-banner-img"
+          onError={() => setFailed(true)}
+        />
+      )}
     </div>
   );
 }
@@ -315,8 +335,6 @@ export default function PostCard({ post: initialPost, variant }) {
   }
 
   if (post.post_type === 'welcome') {
-    const authorInitials = (post.author_name ?? '?')
-      .trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
     const waveR = post.reacted && post.my_reaction === 'wave';
     const waveCount = Number(post.reaction_count ?? 0);
     return (
@@ -327,11 +345,7 @@ export default function PostCard({ post: initialPost, variant }) {
           <span className="pc-wl-meta">{post.hive_name} · {relativeTime(post.created_at)}</span>
         </div>
         <div className="pc-wl-body-row">
-          <div className="pc-wl-avatar">
-            {post.author_photo
-              ? <img src={post.author_photo} alt={post.author_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-              : authorInitials}
-          </div>
+          <Avatar name={post.author_name} src={post.author_photo} size={38} />
           <div className="pc-wl-text">
             <span className="pc-wl-name">{post.author_name ?? 'A new member'}</span>
             {' '}joined{' '}
@@ -360,8 +374,6 @@ export default function PostCard({ post: initialPost, variant }) {
   }
 
   if (post.post_type === 'member_joined') {
-    const initials = (post.author_name ?? '?')
-      .trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
     const cardCls  = `post-card post-card--new-member${variant === 'light' ? ' post-card--light' : ''}`;
     return (
       <div className={cardCls}>
@@ -378,11 +390,7 @@ export default function PostCard({ post: initialPost, variant }) {
           <span className="pc-nm-meta">{post.hive_name} · {relativeTime(post.created_at)}</span>
         </div>
         <div className="pc-nm-body-row">
-          <div className="pc-nm-avatar">
-            {post.author_photo
-              ? <img src={post.author_photo} alt={post.author_name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
-              : initials}
-          </div>
+          <Avatar name={post.author_name} src={post.author_photo} size={32} />
           <span className="pc-nm-text">
             <strong className="pc-nm-name">{post.author_name ?? 'A new member'}</strong>
             {' '}joined{' '}
@@ -394,28 +402,50 @@ export default function PostCard({ post: initialPost, variant }) {
     );
   }
 
-  return (
-    <div className={`post-card${variant === 'light' ? ' post-card--light' : ''}`}>
+  const hasBanner = Boolean(post.banner_url);
+  const followBtn = !post.is_member && (
+    <FollowButton
+      hiveId={post.hive_id}
+      initialFollowing={post.is_following}
+      onChange={following => setPost(p => ({ ...p, is_following: following }))}
+    />
+  );
 
-      {/* ── Hive header ── */}
-      <div className="post-hive-row">
-        <div className="post-hive-left">
-          <SmallHex categoryName={post.category_name} />
-          <span className="post-hive-name">{post.hive_name}</span>
-          {post.category_name && <span className="post-cat-badge">· {post.category_name}</span>}
+  return (
+    <div className={`post-card${variant === 'light' ? ' post-card--light' : ''}${hasBanner ? ' post-card--banner' : ''}`}>
+
+      {hasBanner ? (
+        <>
+          {/* ── Hive banner ── */}
+          <BannerStrip url={post.banner_url} />
+
+          {/* ── Hive identity row (overlaps banner) ── */}
+          <div className="post-hive-identity-row">
+            <Link to={`/hive/${post.hive_id}`} className="post-hive-identity-logo-link">
+              <HiveIdentityLogo logoUrl={post.logo_url} categoryName={post.category_name} hiveName={post.hive_name} />
+            </Link>
+            <Link to={`/hive/${post.hive_id}`} className="post-hive-identity-text">
+              <span className="post-hive-identity-name">{post.hive_name}</span>
+              {post.category_name && <span className="post-hive-identity-cat"> · {post.category_name}</span>}
+            </Link>
+            {followBtn && <div className="post-hive-identity-follow">{followBtn}</div>}
+          </div>
+        </>
+      ) : (
+        /* ── Hive header (no banner) ── */
+        <div className="post-hive-row">
+          <div className="post-hive-left">
+            <HiveMiniIcon logoUrl={post.logo_url} categoryName={post.category_name} />
+            <span className="post-hive-name">{post.hive_name}</span>
+            {post.category_name && <span className="post-cat-badge">· {post.category_name}</span>}
+          </div>
+          {followBtn}
         </div>
-        {!post.is_member && (
-          <FollowButton
-            hiveId={post.hive_id}
-            initialFollowing={post.is_following}
-            onChange={following => setPost(p => ({ ...p, is_following: following }))}
-          />
-        )}
-      </div>
+      )}
 
       {/* ── Author ── */}
       <div className="post-author-row">
-        <CommentAvatar name={post.author_name} src={post.author_photo} size={30} />
+        <Avatar name={post.author_name} src={post.author_photo} size={30} />
         <span className="post-author-name">{post.author_name ?? 'Hive Member'}</span>
         <span className="post-time">{relativeTime(post.created_at)}</span>
       </div>
@@ -506,7 +536,7 @@ export default function PostCard({ post: initialPost, variant }) {
           ) : (
             (comments ?? []).map(comment => (
               <div key={comment.comment_id} className="post-comment-item">
-                <CommentAvatar name={comment.full_name} src={comment.profile_photo_url} size={30} />
+                <Avatar name={comment.full_name} src={comment.profile_photo_url} size={30} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="post-comment-bubble">
                     <div className="post-comment-bubble-author">
@@ -540,7 +570,7 @@ export default function PostCard({ post: initialPost, variant }) {
                   {(comment.replies ?? []).map(reply => (
                     <div key={reply.comment_id} className="post-reply-indent">
                       <div className="post-reply-thread-line" />
-                      <CommentAvatar name={reply.full_name} src={reply.profile_photo_url} size={24} />
+                      <Avatar name={reply.full_name} src={reply.profile_photo_url} size={24} />
                       <div className="post-comment-bubble">
                         <div className="post-comment-bubble-author">
                           {reply.full_name ?? 'Member'}
@@ -625,7 +655,7 @@ export default function PostCard({ post: initialPost, variant }) {
               ) : (
                 (reactors ?? []).map(r => (
                   <div key={r.user_id} className="post-reactor-row">
-                    <CommentAvatar name={r.full_name} src={r.profile_photo_url} size={32} />
+                    <Avatar name={r.full_name} src={r.profile_photo_url} size={32} />
                     <span className="post-reactor-name">{r.full_name ?? 'Member'}</span>
                     <span className="post-reactor-emoji">{reactionByKey(r.reaction).emoji}</span>
                   </div>

@@ -1,18 +1,25 @@
+import { useState, useEffect } from 'react';
 import { getInitials } from '../lib/initials.js';
 
 export default function Avatar({ name, email, src, size = 44, className }) {
-  if (src) {
+  const [imgFailed, setImgFailed] = useState(false);
+
+  useEffect(() => { setImgFailed(false); }, [src]);
+
+  if (src && !imgFailed) {
     return (
       <img
         src={src}
         alt={name}
         className={className}
+        onError={() => setImgFailed(true)}
         style={{
           width: size,
           height: size,
           borderRadius: '50%',
           objectFit: 'cover',
           display: 'block',
+          flexShrink: 0,
         }}
       />
     );

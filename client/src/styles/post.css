@@ -1060,22 +1060,6 @@
   min-width: 0;
 }
 
-.pc-nm-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e8c84a 0%, #c49a28 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #1a1508;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
 .pc-nm-text {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.86rem;
@@ -1146,22 +1130,6 @@
   align-items: flex-start;
   gap: 12px;
   margin-bottom: 14px;
-}
-
-.pc-wl-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e8c84a 0%, #c49a28 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: #1a1508;
-  flex-shrink: 0;
-  overflow: hidden;
 }
 
 .pc-wl-text {
@@ -1241,4 +1209,103 @@
   background: linear-gradient(90deg, #f0e8d8 25%, #e5d8c0 50%, #f0e8d8 75%);
   background-size: 200% 100%;
   animation: post-shimmer 1.4s infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   HIVE BANNER + LOGO  (feed posts)
+══════════════════════════════════════════════════════════════════════════════ */
+
+/* Card gets clipped corners so the bled banner respects the border-radius */
+.post-card--banner {
+  overflow: hidden;
+}
+
+/* Fixed-height strip, bled to the card edges via negative margin (undoes padding) */
+.post-banner-strip {
+  height: 64px;
+  margin: -20px -22px 0 -22px;
+  background: #e8dfc9;
+  overflow: hidden;
+}
+
+.post-banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+}
+
+/* Identity row overlapping the banner */
+.post-hive-identity-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.post-hive-identity-logo-link {
+  display: block;
+  flex-shrink: 0;
+}
+
+.post-hive-identity-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  border: 3px solid #fffdf8;
+  margin-top: -22px;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #f3e3ae;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.post-hive-identity-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.post-hive-identity-text {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  text-decoration: none;
+}
+
+.post-hive-identity-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #2b2418;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.post-hive-identity-cat {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  color: #8a7d5f;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.post-hive-identity-follow {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Logo swap in the plain (no-banner) hive row */
+.post-hive-mini-logo {
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
 }

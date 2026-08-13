@@ -8,7 +8,7 @@ const FEED_SELECT = `
   SELECT
     p.post_id, p.hive_id, p.author_user_id, p.post_type,
     p.headline, p.body, p.media_url, p.event_at, p.event_location, p.created_at,
-    h.hive_name, h.creator_user_id,
+    h.hive_name, h.creator_user_id, h.banner_url, h.logo_url,
     c.category_name,
     (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active') AS member_count,
     (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.post_id)                                  AS reaction_count,
