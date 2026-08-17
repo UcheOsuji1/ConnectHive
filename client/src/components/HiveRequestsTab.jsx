@@ -52,6 +52,15 @@ function SkeletonCards() {
 function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
   const [action,       setAction]       = useState(null);
   const [tagsExpanded, setTagsExpanded] = useState(false);
+  const [aiStatus,     setAiStatus]     = useState('loading'); // 'loading' | 'done'
+  const [aiData,       setAiData]       = useState(null);
+
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/ai-fit/${req.user_id}`)
+      .then(result => setAiData(result))
+      .catch(() => {})
+      .finally(() => setAiStatus('done'));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const allInterests  = dedupe(flattenTags(req.interests));
   const visibleTags   = tagsExpanded ? allInterests : allInterests.slice(0, TAG_CAP);
@@ -137,17 +146,47 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
         </div>
       )}
 
-      {/* AI Fit Analysis — reserved SOON slot */}
+      {/* AI Fit Analysis */}
       <div className="hrt-ai-slot">
         <span className="hrt-ai-icon">✨</span>
         <div className="hrt-ai-body">
           <div className="hrt-ai-title-row">
             <span className="hrt-ai-label">AI Fit Analysis</span>
-            <span className="hrt-ai-soon">SOON</span>
+            {aiStatus === 'done' && aiData && (
+              <span className={`hrt-ai-badge${aiData.source === 'ai' ? '' : ' hrt-ai-badge-rules'}`}>
+                {aiData.source === 'ai' ? 'AI powered' : 'Smart match'}
+              </span>
+            )}
           </div>
-          <div className="hrt-ai-desc">
-            A written breakdown of why this candidate fits will appear here.
-          </div>
+
+          {aiStatus === 'loading' && (
+            <div className="hrt-ai-shimmer-wrap">
+              <div className="hrt-ai-shimmer" />
+              <div className="hrt-ai-shimmer" style={{ width: '78%' }} />
+            </div>
+          )}
+
+          {aiStatus === 'done' && aiData?.analysis && (
+            <>
+              {aiData.analysis.summary && (
+                <p className="hrt-ai-summary">{aiData.analysis.summary}</p>
+              )}
+              {aiData.analysis.strengths?.length > 0 && (
+                <ul className="hrt-ai-strengths">
+                  {aiData.analysis.strengths.map((s, i) => (
+                    <li key={i} className="hrt-ai-strength">{s}</li>
+                  ))}
+                </ul>
+              )}
+              {aiData.analysis.consideration && (
+                <p className="hrt-ai-consideration">{aiData.analysis.consideration}</p>
+              )}
+            </>
+          )}
+
+          {aiStatus === 'done' && !aiData && (
+            <div className="hrt-ai-desc">Analysis unavailable.</div>
+          )}
         </div>
       </div>
 

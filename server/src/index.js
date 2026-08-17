@@ -23,6 +23,7 @@ console.log('[startup] Cloudinary configured:', {
   hasApiKey:    !!process.env.CLOUDINARY_API_KEY,
   hasApiSecret: !!process.env.CLOUDINARY_API_SECRET,
 });
+console.log(`[startup] AI explanations: ${process.env.ANTHROPIC_API_KEY ? 'enabled' : 'disabled (no ANTHROPIC_API_KEY)'}`);
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({ origin: CLIENT_URL, credentials: true }));

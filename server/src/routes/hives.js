@@ -45,6 +45,7 @@ import {
 } from '../controllers/onboardingController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getHivePosts } from '../controllers/postsController.js';
+import { getAiFit, getAiMatch } from '../controllers/aiController.js';
 
 const router = Router();
 
@@ -84,6 +85,10 @@ router.post('/:id/messages',             requireAuth, createMessage);
 router.post('/:id/follow',               requireAuth, followHive);
 router.delete('/:id/follow',             requireAuth, unfollowHive);
 router.get('/:id/posts',                 requireAuth, getHivePosts);
+
+// ── AI endpoints ─────────────────────────────────────────────────────────────
+router.get('/:id/ai-fit/:userId', requireAuth, getAiFit);
+router.get('/:id/ai-match',       requireAuth, getAiMatch);
 
 // ── Media (banner / logo) ─────────────────────────────────────────────────────
 router.post('/:id/upload-signature', requireAuth, getUploadSignature);

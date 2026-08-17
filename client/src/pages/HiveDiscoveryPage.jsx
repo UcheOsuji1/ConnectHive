@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
@@ -83,11 +83,29 @@ function MemberAvatar({ member, size = 32 }) {
   );
 }
 
-function HiveMatchCard({ hive }) {
+function HiveMatchCard({ hive, autoFetch = false }) {
   const [membersOpen, setMembersOpen] = useState(false);
   const [joinState,   setJoinState]   = useState(hive.request_pending ? 'pending' : 'idle');
   const [joinError,   setJoinError]   = useState(null);
+  const [aiStatus,    setAiStatus]    = useState('idle'); // 'idle' | 'loading' | 'done'
+  const [aiData,      setAiData]      = useState(null);
+  const fetchedRef = useRef(false);
   const tags = Array.isArray(hive.tags) ? hive.tags : [];
+
+  async function fetchAiMatch() {
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    setAiStatus('loading');
+    try {
+      const result = await api.get(`/api/hives/${hive.hive_id}/ai-match`);
+      setAiData(result);
+    } catch { /* silent — fall back to rules chips */ }
+    setAiStatus('done');
+  }
+
+  useEffect(() => {
+    if (autoFetch) fetchAiMatch();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleJoin() {
     if (joinState !== 'idle') return;
@@ -148,14 +166,47 @@ function HiveMatchCard({ hive }) {
       </div>
 
       {/* ── Why you match ── */}
-      {hive.reasons?.length > 0 && (
+      {(hive.reasons?.length > 0 || aiStatus !== 'idle') && (
         <div className="hmd-reasons">
-          <span className="hmd-reasons-label">Why you match</span>
-          <div className="hmd-reasons-list">
-            {hive.reasons.map((r, i) => (
-              <span key={i} className="hmd-reason-chip">{r}</span>
-            ))}
+          <div className="hmd-reasons-header">
+            <span className="hmd-reasons-label">Why you match</span>
+            {aiStatus === 'done' && aiData?.source === 'ai' && (
+              <span className="hmd-ai-badge">✨ AI</span>
+            )}
           </div>
+
+          {aiStatus === 'loading' && (
+            <div className="hmd-ai-shimmer-wrap">
+              <div className="hmd-ai-shimmer" />
+              <div className="hmd-ai-shimmer" style={{ width: '72%' }} />
+            </div>
+          )}
+
+          {aiStatus === 'done' && aiData?.match?.summary && (
+            <p className="hmd-ai-summary">{aiData.match.summary}</p>
+          )}
+
+          {aiStatus !== 'loading' && (
+            <div className="hmd-reasons-list">
+              {(aiStatus === 'done' && aiData?.match?.highlights?.length > 0
+                ? aiData.match.highlights
+                : hive.reasons ?? []
+              ).map((r, i) => (
+                <span
+                  key={i}
+                  className={`hmd-reason-chip${aiStatus === 'done' && aiData?.source === 'ai' ? ' hmd-reason-chip-ai' : ''}`}
+                >
+                  {r}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {aiStatus === 'idle' && !autoFetch && (
+            <button className="hmd-ai-fetch-btn" onClick={fetchAiMatch}>
+              ✨ Get AI analysis
+            </button>
+          )}
         </div>
       )}
 
@@ -257,7 +308,9 @@ function MatchResults({ hives, waitingCount, categoryLabel, city, category, onWa
 
       {/* Cards */}
       <div className="hmd-cards">
-        {hives.map(hive => <HiveMatchCard key={hive.hive_id} hive={hive} />)}
+        {hives.map((hive, idx) => (
+          <HiveMatchCard key={hive.hive_id} hive={hive} autoFetch={idx < 3} />
+        ))}
       </div>
 
       {/* Waitlist nudge */}

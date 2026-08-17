@@ -9,6 +9,7 @@
     "db:migrate": "node src/db/migrate.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
     "bcryptjs": "^2.4.3",
     "cookie": "^2.0.1",
     "cookie-parser": "^1.4.6",

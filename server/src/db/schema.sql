@@ -395,3 +395,16 @@ CREATE TABLE IF NOT EXISTS message_reactions (
   UNIQUE (message_id, user_id, emoji)
 );
 CREATE INDEX IF NOT EXISTS idx_message_reactions_message ON message_reactions(message_id);
+
+-- ─── AI explanation cache ──────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS ai_explanations (
+  explanation_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  scope          TEXT        NOT NULL CHECK (scope IN ('hive_fit', 'discovery')),
+  hive_id        UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  user_id        UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  content        JSONB       NOT NULL,
+  model          TEXT,
+  generated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (scope, hive_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ai_explanations_lookup ON ai_explanations(scope, hive_id, user_id);
