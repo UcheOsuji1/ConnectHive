@@ -408,3 +408,69 @@ CREATE TABLE IF NOT EXISTS ai_explanations (
   UNIQUE (scope, hive_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_ai_explanations_lookup ON ai_explanations(scope, hive_id, user_id);
+
+-- ─── Message attachments ───────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS message_attachments (
+  attachment_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  message_id    UUID        NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+  url           TEXT        NOT NULL,
+  resource_type TEXT        CHECK (resource_type IN ('image','video','raw')),
+  file_name     TEXT,
+  mime_type     TEXT,
+  bytes         BIGINT,
+  width         INT,
+  height        INT,
+  position      INT         NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_message_attachments_msg ON message_attachments(message_id, position);
+
+-- ─── Presence status ───────────────────────────────────────────────────────────
+ALTER TABLE users ADD COLUMN IF NOT EXISTS presence_status TEXT NOT NULL DEFAULT 'online';
+-- Drop-then-add so re-running the schema does not error on the CHECK constraint
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_presence_status_check;
+ALTER TABLE users ADD CONSTRAINT users_presence_status_check
+  CHECK (presence_status IN ('online','away','busy','invisible'));
+
+-- ─── Hive channels ────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_channels (
+  channel_id   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  name         TEXT        NOT NULL,
+  description  TEXT,
+  icon         TEXT,
+  channel_type TEXT        NOT NULL DEFAULT 'text'
+                           CHECK (channel_type IN ('text','announcement','resource','planning','voice','video')),
+  is_default   BOOLEAN     NOT NULL DEFAULT FALSE,
+  position     INT         NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+-- Exactly one default channel per hive
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hive_channels_one_default
+  ON hive_channels (hive_id) WHERE is_default;
+-- Case-insensitive unique name per hive
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hive_channels_name_ci
+  ON hive_channels (hive_id, LOWER(name));
+
+-- Backfill: seed a default #general channel for every hive that does not have one
+INSERT INTO hive_channels (hive_id, name, channel_type, is_default, position)
+SELECT h.hive_id, 'general', 'text', TRUE, 0
+FROM hives h
+WHERE NOT EXISTS (
+  SELECT 1 FROM hive_channels c WHERE c.hive_id = h.hive_id AND c.is_default
+);
+
+-- ─── messages.channel_id ──────────────────────────────────────────────────────
+-- Nullable by design: messages written by an older build are never orphaned.
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS
+  channel_id UUID REFERENCES hive_channels(channel_id) ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
+
+-- Backfill existing messages to their hive's default channel
+UPDATE messages m
+SET    channel_id = c.channel_id
+FROM   hive_channels c
+WHERE  c.hive_id   = m.hive_id
+  AND  c.is_default
+  AND  m.channel_id IS NULL;

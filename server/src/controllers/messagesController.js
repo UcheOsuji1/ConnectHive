@@ -1,5 +1,7 @@
+import crypto from 'crypto';
 import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
+import { getDefaultChannelId } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
 
 // ── Rate limiting (8 messages per 10 s per user, in-memory) ──────────────────
@@ -14,6 +16,30 @@ function _checkRate(userId) {
   return true;
 }
 
+// ── Attachment URL validation ─────────────────────────────────────────────────
+const ALLOWED_RESOURCE_TYPES = new Set(['image', 'video', 'raw']);
+const MAX_ATTACHMENT_BYTES   = 25 * 1024 * 1024; // 25 MB
+const MAX_ATTACHMENTS        = 6;
+
+function _validateAttachment(att) {
+  if (!ALLOWED_RESOURCE_TYPES.has(att.resource_type)) {
+    return `Invalid resource_type "${att.resource_type}".`;
+  }
+  if (att.bytes != null && Number(att.bytes) > MAX_ATTACHMENT_BYTES) {
+    return 'Each attachment must be 25 MB or less.';
+  }
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  try {
+    const u = new URL(att.url);
+    if (u.protocol !== 'https:')                         throw new Error();
+    if (u.hostname !== 'res.cloudinary.com')             throw new Error();
+    if (!u.pathname.startsWith(`/${cloudName}/`))        throw new Error();
+  } catch {
+    return 'Invalid attachment URL — must be hosted on your Cloudinary account.';
+  }
+  return null; // OK
+}
+
 // ── Enriched message query ────────────────────────────────────────────────────
 // Runs the full enrichment join for any WHERE/ORDER/LIMIT clause you append.
 async function _runEnriched(extraSQL, params) {
@@ -21,6 +47,7 @@ async function _runEnriched(extraSQL, params) {
     `SELECT
        m.message_id,
        m.hive_id,
+       m.channel_id,
        m.sender_user_id,
        CASE WHEN m.deleted_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
        m.sent_at,
@@ -36,7 +63,11 @@ async function _runEnriched(extraSQL, params) {
          WHEN rm.deleted_at IS NOT NULL      THEN '[deleted]'
          ELSE LEFT(rm.message_text, 90)
        END                                AS reply_snippet,
-       COALESCE(rxn.reactions, '[]'::json) AS reactions
+       COALESCE(rxn.reactions, '[]'::json) AS reactions,
+       CASE WHEN m.deleted_at IS NOT NULL
+            THEN '[]'::json
+            ELSE COALESCE(att.attachments, '[]'::json)
+       END AS attachments
      FROM messages m
      LEFT JOIN profiles      p  ON p.user_id    = m.sender_user_id
      LEFT JOIN hive_members  hm ON hm.hive_id   = m.hive_id
@@ -59,6 +90,22 @@ async function _runEnriched(extraSQL, params) {
          GROUP BY emoji
        ) r
      ) rxn ON true
+     LEFT JOIN LATERAL (
+       SELECT json_agg(
+         json_build_object(
+           'attachment_id', a.attachment_id,
+           'url',           a.url,
+           'resource_type', a.resource_type,
+           'file_name',     a.file_name,
+           'mime_type',     a.mime_type,
+           'bytes',         a.bytes,
+           'width',         a.width,
+           'height',        a.height
+         ) ORDER BY a.position
+       ) AS attachments
+       FROM message_attachments a
+       WHERE a.message_id = m.message_id
+     ) att ON true
      ${extraSQL}`,
     params,
   );
@@ -69,6 +116,7 @@ function _shape(row) {
   return {
     message_id:     row.message_id,
     hive_id:        row.hive_id,
+    channel_id:     row.channel_id ?? null,
     sender_user_id: row.sender_user_id,
     message_text:   row.message_text ?? null,
     sent_at:        row.sent_at,
@@ -87,7 +135,8 @@ function _shape(row) {
           snippet:     row.reply_snippet ?? '',
         }
       : null,
-    reactions: Array.isArray(row.reactions) ? row.reactions : [],
+    reactions:   Array.isArray(row.reactions)   ? row.reactions   : [],
+    attachments: Array.isArray(row.attachments) ? row.attachments : [],
   };
 }
 
@@ -98,12 +147,17 @@ export const listMessages = async (req, res) => {
     const hiveId = req.params.id;
     await requireMembership(hiveId, req.userId);
 
-    const before = req.query.before ? new Date(req.query.before).toISOString() : new Date().toISOString();
-    const limit  = Math.min(Math.max(parseInt(req.query.limit ?? '50', 10), 1), 100);
+    const before    = req.query.before ? new Date(req.query.before).toISOString() : new Date().toISOString();
+    const limit     = Math.min(Math.max(parseInt(req.query.limit ?? '50', 10), 1), 100);
+    const channelId = await getDefaultChannelId(hiveId);
 
     const msgs = await _runEnriched(
-      `WHERE m.hive_id = $1 AND m.sent_at < $2 ORDER BY m.sent_at DESC LIMIT $3`,
-      [hiveId, before, limit + 1],
+      // NULL arm: drop the OR clause when the channel picker ships and every message has a channel_id
+      `WHERE m.hive_id = $1
+         AND (m.channel_id = $2 OR m.channel_id IS NULL)
+         AND m.sent_at < $3
+       ORDER BY m.sent_at DESC LIMIT $4`,
+      [hiveId, channelId, before, limit + 1],
     );
 
     const has_more = msgs.length > limit;
@@ -120,10 +174,25 @@ export const createMessage = async (req, res) => {
     const hiveId = req.params.id;
     await requireMembership(hiveId, req.userId);
 
-    const { message_text, reply_to_message_id } = req.body ?? {};
-    const text = (message_text ?? '').trim();
-    if (!text || text.length > 2000) {
-      return res.status(400).json({ error: 'Message must be 1–2000 characters.' });
+    const { message_text, reply_to_message_id, attachments: rawAtts } = req.body ?? {};
+    const text        = (message_text ?? '').trim();
+    const attachments = Array.isArray(rawAtts) ? rawAtts : [];
+
+    // Need text, attachments, or both — but not neither
+    if (!text && attachments.length === 0) {
+      return res.status(400).json({ error: 'Message must have text or at least one attachment.' });
+    }
+    if (text.length > 2000) {
+      return res.status(400).json({ error: 'Message text must be 2000 characters or fewer.' });
+    }
+    if (attachments.length > MAX_ATTACHMENTS) {
+      return res.status(400).json({ error: `At most ${MAX_ATTACHMENTS} attachments per message.` });
+    }
+
+    // Validate every attachment before touching the DB
+    for (const att of attachments) {
+      const err = _validateAttachment(att);
+      if (err) return res.status(400).json({ error: err });
     }
 
     if (!_checkRate(req.userId)) {
@@ -139,17 +208,45 @@ export const createMessage = async (req, res) => {
       }
     }
 
+    const channelId = await getDefaultChannelId(hiveId);
+
     const { rows: [ins] } = await query(
-      `INSERT INTO messages (hive_id, sender_user_id, message_text, reply_to_message_id)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO messages (hive_id, sender_user_id, message_text, reply_to_message_id, channel_id)
+       VALUES ($1, $2, $3, $4, $5)
        RETURNING message_id`,
-      [hiveId, req.userId, text, reply_to_message_id ?? null],
+      [hiveId, req.userId, text, reply_to_message_id ?? null, channelId],
     );
 
+    // Insert all attachments in a single multi-row INSERT so a partial set can never persist
+    if (attachments.length > 0) {
+      const placeholders = [];
+      const values       = [];
+      let   p            = 1;
+      for (let i = 0; i < attachments.length; i++) {
+        const a = attachments[i];
+        placeholders.push(`($${p++},$${p++},$${p++},$${p++},$${p++},$${p++},$${p++},$${p++},$${p++})`);
+        values.push(
+          ins.message_id,
+          a.url,
+          a.resource_type,
+          a.file_name  ?? null,
+          a.mime_type  ?? null,
+          a.bytes      != null ? Number(a.bytes)  : null,
+          a.width      != null ? Number(a.width)  : null,
+          a.height     != null ? Number(a.height) : null,
+          i,
+        );
+      }
+      await query(
+        `INSERT INTO message_attachments
+           (message_id, url, resource_type, file_name, mime_type, bytes, width, height, position)
+         VALUES ${placeholders.join(',')}`,
+        values,
+      );
+    }
+
     const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [ins.message_id]);
-
     try { getIO().to(`hive:${hiveId}`).emit('receive_message', msg); } catch { /* no socket in tests */ }
-
     res.status(201).json(msg);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -182,9 +279,7 @@ export const updateMessage = async (req, res) => {
     );
 
     const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [messageId]);
-
     try { getIO().to(`hive:${existing.hive_id}`).emit('message_updated', msg); } catch {}
-
     res.json(msg);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -316,5 +411,36 @@ export const getUnreadCount = async (req, res) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error('[messages/unread]', err);
     res.status(500).json({ error: 'Failed to get unread count.' });
+  }
+};
+
+// ── Chat upload signature ─────────────────────────────────────────────────────
+// Open to any active member (not owner/admin-only like the banner endpoint).
+export const getChatUploadSignature = async (req, res) => {
+  try {
+    await requireMembership(req.params.id, req.userId);
+
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey    = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return res.status(503).json({ error: 'File uploads are not configured yet.' });
+    }
+
+    const folder    = `hives/${req.params.id}/chat`;
+    const timestamp = Math.round(Date.now() / 1000);
+
+    // Cloudinary signature: SHA-1( sorted_params + api_secret )
+    const paramsStr = `folder=${folder}&timestamp=${timestamp}`;
+    const signature = crypto.createHash('sha1')
+      .update(paramsStr + apiSecret)
+      .digest('hex');
+
+    res.json({ signature, timestamp, api_key: apiKey, cloud_name: cloudName, folder });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('[messages/getChatUploadSignature]', err);
+    res.status(500).json({ error: 'Failed to generate upload signature.' });
   }
 };

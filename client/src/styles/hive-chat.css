@@ -858,3 +858,261 @@
   .hc-typing-dots span  { animation: none; opacity: 0.5; }
   .hc-messages          { scroll-behavior: auto; }
 }
+
+/* ── Attachment grid ─────────────────────────────────────────────────────── */
+.hc-att-grid {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  max-width: 360px;
+}
+.hc-att-grid--1 { grid-template-columns: 1fr; }
+.hc-att-grid--2 { grid-template-columns: 1fr 1fr; }
+.hc-att-grid--3 { grid-template-columns: 1fr 1fr; }
+.hc-att-grid--3 .hc-att-img-wrap:first-child { grid-column: 1 / -1; }
+.hc-att-grid--4 { grid-template-columns: 1fr 1fr; }
+
+.hc-att-img-wrap {
+  display: block;
+  border-radius: 6px;
+  overflow: hidden;
+  max-height: 260px;
+  background: #e9dfcf;
+}
+.hc-att-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.hc-att-video {
+  width: 100%;
+  max-height: 260px;
+  border-radius: 6px;
+  display: block;
+  background: #000;
+}
+.hc-att-file-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(140,127,108,0.2);
+  transition: background 0.15s;
+}
+.hc-att-file-card:hover { background: rgba(0,0,0,0.1); }
+.hc-att-file-icon { font-size: 1.1rem; flex-shrink: 0; }
+.hc-att-file-info { min-width: 0; }
+.hc-att-file-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #2d2416;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+  display: block;
+}
+.hc-att-file-size { font-size: 0.68rem; color: #a09080; }
+
+/* Transparent bubble for attachment-only messages */
+.hc-bubble--transparent {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  color: inherit;
+}
+
+/* ── Attach button & hidden file input ───────────────────────────────────── */
+.hc-attach-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 0 4px;
+  opacity: 0.65;
+  transition: opacity 0.15s;
+  color: inherit;
+}
+.hc-attach-btn:hover:not(:disabled) { opacity: 1; }
+.hc-attach-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.hc-file-input { display: none; }
+
+/* ── Staged file chips tray ──────────────────────────────────────────────── */
+.hc-staged-tray {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px 0;
+}
+.hc-staged-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 8px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  max-width: 200px;
+  border: 1px solid transparent;
+}
+.hc-staged-chip--uploading {
+  background: #f5f0e8;
+  border-color: #e9dfcf;
+  color: #a09080;
+}
+.hc-staged-chip--done {
+  background: #eafaf4;
+  border-color: #bce9d8;
+  color: #2d7a5a;
+}
+.hc-staged-chip--error {
+  background: #fdf0ef;
+  border-color: #f5c3bf;
+  color: #9a3028;
+}
+.hc-staged-name {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hc-staged-check { font-weight: 700; }
+.hc-staged-err   { font-weight: 700; }
+.hc-staged-remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.7rem;
+  padding: 0 2px;
+  opacity: 0.6;
+  color: inherit;
+  line-height: 1;
+}
+.hc-staged-remove:hover { opacity: 1; }
+
+/* Spinner for uploading chip */
+@keyframes hc-spin { to { transform: rotate(360deg); } }
+.hc-staged-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: hc-spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+/* ── Status picker ───────────────────────────────────────────────────────── */
+.hc-status-picker {
+  position: relative;
+  margin: 0 8px 12px;
+}
+.hc-status-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 8px;
+  background: #f5f0e8;
+  border: 1px solid rgba(140,127,108,0.3);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #2d2416;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.15s;
+}
+.hc-status-btn:hover { background: #ede6d8; }
+.hc-status-label { flex: 1; }
+.hc-status-chevron { font-size: 0.6rem; opacity: 0.6; }
+
+.hc-status-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fffdf8;
+  border: 1px solid #e9dfcf;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  overflow: hidden;
+  z-index: 10;
+}
+.hc-status-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #2d2416;
+  font-family: inherit;
+  text-align: left;
+  transition: background 0.12s;
+}
+.hc-status-option:hover          { background: #f5f0e8; }
+.hc-status-option--active        { background: #fdf5e2; }
+.hc-status-hint { color: #a09080; font-size: 0.68rem; }
+
+/* Smaller presence dot for status picker */
+.hc-presence-dot-sm {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* ── Dark mode overrides ─────────────────────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hc-att-file-card {
+    background: rgba(255,255,255,0.07);
+    border-color: rgba(255,255,255,0.12);
+    color: #e8e0d4;
+  }
+  :root:not([data-theme="light"]) .hc-att-file-card:hover {
+    background: rgba(255,255,255,0.12);
+  }
+  :root:not([data-theme="light"]) .hc-staged-chip--uploading {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.15);
+    color: #b4b2a9;
+  }
+  :root:not([data-theme="light"]) .hc-status-btn {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.12);
+    color: #e8e0d4;
+  }
+  :root:not([data-theme="light"]) .hc-status-menu {
+    background: #1e180f;
+    border-color: rgba(255,255,255,0.12);
+  }
+  :root:not([data-theme="light"]) .hc-status-option:hover { background: rgba(255,255,255,0.06); }
+  :root:not([data-theme="light"]) .hc-status-option--active { background: rgba(196,154,40,0.12); }
+}
+:root[data-theme="dark"] .hc-att-file-card {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.12);
+  color: #e8e0d4;
+}
+:root[data-theme="dark"] .hc-status-btn {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.12);
+  color: #e8e0d4;
+}
+:root[data-theme="dark"] .hc-status-menu {
+  background: #1e180f;
+  border-color: rgba(255,255,255,0.12);
+}

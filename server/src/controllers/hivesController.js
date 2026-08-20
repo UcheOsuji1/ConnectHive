@@ -8,6 +8,7 @@ import {
   buildReasons,
 } from '../lib/compatibility.js';
 import { createNotification } from './notificationsController.js';
+import { evictUserFromHive } from '../realtime/socket.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -1238,6 +1239,9 @@ export const removeMember = async (req, res) => {
        WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
       [hiveId, targetId],
     );
+
+    // Kick the evicted user's socket from the hive room immediately
+    try { evictUserFromHive(hiveId, targetId); } catch { /* socket not yet initialized in tests */ }
 
     const { rows: [{ member_count }] } = await query(
       `SELECT COUNT(*) AS member_count FROM hive_members

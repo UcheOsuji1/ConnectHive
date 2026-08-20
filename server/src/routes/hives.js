@@ -30,7 +30,11 @@ import {
 import {
   listMessages,
   createMessage,
+  updateMessage,
+  deleteMessage,
+  toggleReaction,
   getUnreadCount,
+  getChatUploadSignature,
 } from '../controllers/messagesController.js';
 import {
   getOnboarding,
@@ -79,9 +83,13 @@ router.post('/:id/join',                  requireAuth, joinHive);
 router.post('/:id/request',              requireAuth, requestToJoin);
 router.get('/:id/requests',              requireAuth, getHiveRequests);
 router.post('/:id/requests/:requestId',  requireAuth, reviewRequest);
-router.get('/:id/messages/unread-count', requireAuth, getUnreadCount);
-router.get('/:id/messages',              requireAuth, listMessages);
-router.post('/:id/messages',             requireAuth, createMessage);
+router.get('/:id/messages/unread-count',             requireAuth, getUnreadCount);
+router.post('/:id/messages/upload-signature',        requireAuth, getChatUploadSignature);
+router.get('/:id/messages',                          requireAuth, listMessages);
+router.post('/:id/messages',                         requireAuth, createMessage);
+router.patch('/:id/messages/:messageId',             requireAuth, updateMessage);
+router.delete('/:id/messages/:messageId',            requireAuth, deleteMessage);
+router.post('/:id/messages/:messageId/reactions',    requireAuth, toggleReaction);
 router.post('/:id/follow',               requireAuth, followHive);
 router.delete('/:id/follow',             requireAuth, unfollowHive);
 router.get('/:id/posts',                 requireAuth, getHivePosts);
