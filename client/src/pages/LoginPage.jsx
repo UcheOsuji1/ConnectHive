@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/signin.css';
 
@@ -10,8 +10,9 @@ export default function LoginPage() {
   const [error,      setError]      = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { login } = useAuth();
-  const navigate  = useNavigate();
+  const { login }       = useAuth();
+  const navigate        = useNavigate();
+  const [searchParams]  = useSearchParams();
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -19,8 +20,10 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await login(email, password);
-      // Route based on where the user is in the onboarding journey
-      if (!user.hasProfile) {
+      const next = searchParams.get('next');
+      if (next) {
+        navigate(next, { replace: true });
+      } else if (!user.hasProfile) {
         navigate('/profile-setup');
       } else if (!user.hasActiveHive) {
         navigate('/find-your-hive');

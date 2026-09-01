@@ -16,7 +16,7 @@ import { initSocket }     from './realtime/socket.js';
 
 const app        = express();
 const PORT       = process.env.PORT       || 5000;
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const CLIENT_URL = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 console.log('[startup] Cloudinary configured:', {
   hasCloudName: !!process.env.CLOUDINARY_CLOUD_NAME,
@@ -26,6 +26,7 @@ console.log('[startup] Cloudinary configured:', {
 console.log(`[startup] AI explanations: ${process.env.ANTHROPIC_API_KEY ? 'enabled' : 'disabled (no ANTHROPIC_API_KEY)'}`);
 
 // ── Middleware ────────────────────────────────────────────────────────────────
+app.set('trust proxy', 1);  // required for secure cookies behind Render/Heroku/Fly
 app.use(cors({ origin: CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());

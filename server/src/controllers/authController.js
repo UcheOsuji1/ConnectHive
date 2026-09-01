@@ -8,11 +8,14 @@ const SALT_ROUNDS  = 10;
 const JWT_EXPIRY   = '7d';
 const COOKIE_TTL   = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 
+const isProd = process.env.NODE_ENV === 'production';
+
 const COOKIE_OPTS = {
   httpOnly: true,
-  sameSite: 'lax',
-  secure:   false,   // set to true behind HTTPS in production
+  sameSite: isProd ? 'none' : 'lax',
+  secure:   isProd,
   maxAge:   COOKIE_TTL,
+  path:     '/',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -125,7 +128,12 @@ export async function login(req, res) {
 // ── logout ────────────────────────────────────────────────────────────────────
 
 export async function logout(_req, res) {
-  res.clearCookie('token', { httpOnly: true, sameSite: 'lax' });
+  res.clearCookie('token', {
+    httpOnly: true,
+    sameSite: isProd ? 'none' : 'lax',
+    secure:   isProd,
+    path:     '/',
+  });
   return res.json({ message: 'Logged out.' });
 }
 

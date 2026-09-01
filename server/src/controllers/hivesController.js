@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { query } from '../db/index.js';
+import { query, getClient } from '../db/index.js';
 import {
   scorePurpose,
   scorePair,
@@ -1383,5 +1383,94 @@ export const updateHiveMedia = async (req, res) => {
   } catch (err) {
     console.error('[hives/updateHiveMedia]', err);
     res.status(500).json({ error: 'Failed to save image URL.' });
+  }
+};
+
+// ── leaveHive ──────────────────────────────────────────────────────────────────
+export const leaveHive = async (req, res) => {
+  const hiveId = req.params.id;
+  const userId = req.userId;
+  const { transfer_to_user_id } = req.body ?? {};
+
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+
+    // Must be an active member
+    const { rows: [caller] } = await client.query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, userId],
+    );
+    if (!caller) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'You are not an active member of this Hive.' });
+    }
+
+    if (caller.role !== 'owner') {
+      // Non-owner: leave immediately
+      await client.query(
+        `UPDATE hive_members SET membership_status = 'left'
+         WHERE hive_id = $1 AND user_id = $2`,
+        [hiveId, userId],
+      );
+    } else {
+      // Owner path: check for other active members
+      const { rows: others } = await client.query(
+        `SELECT user_id FROM hive_members
+         WHERE hive_id = $1 AND user_id != $2 AND membership_status = 'active'`,
+        [hiveId, userId],
+      );
+
+      if (others.length === 0) {
+        // Sole owner: archive and leave
+        await client.query(
+          `UPDATE hives SET hive_status = 'archived', updated_at = NOW() WHERE hive_id = $1`,
+          [hiveId],
+        );
+        await client.query(
+          `UPDATE hive_members SET membership_status = 'left'
+           WHERE hive_id = $1 AND user_id = $2`,
+          [hiveId, userId],
+        );
+      } else {
+        // Owner with others: require a successor
+        if (!transfer_to_user_id) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({
+            error: 'You are the owner — supply transfer_to_user_id to hand off ownership before leaving.',
+          });
+        }
+        const { rows: [successor] } = await client.query(
+          `SELECT user_id FROM hive_members
+           WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+          [hiveId, transfer_to_user_id],
+        );
+        if (!successor) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'transfer_to_user_id must be an active member of this Hive.' });
+        }
+        await client.query(
+          `UPDATE hive_members SET role = 'owner'
+           WHERE hive_id = $1 AND user_id = $2`,
+          [hiveId, transfer_to_user_id],
+        );
+        await client.query(
+          `UPDATE hive_members SET membership_status = 'left'
+           WHERE hive_id = $1 AND user_id = $2`,
+          [hiveId, userId],
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    try { evictUserFromHive(hiveId, userId); } catch { /* socket not yet up in tests */ }
+    res.json({ left: true, hive_id: hiveId });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[hives/leaveHive]', err);
+    res.status(500).json({ error: 'Failed to leave Hive.' });
+  } finally {
+    client.release();
   }
 };

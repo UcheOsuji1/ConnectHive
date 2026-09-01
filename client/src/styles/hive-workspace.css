@@ -639,6 +639,51 @@
 .hw-settings-save-btn:hover { background: #b5891f; border-color: #b5891f; }
 .hw-settings-save-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* ─── Leave / Danger Zone ────────────────────────────────────────────────── */
+.hw-settings-danger-card { border-color: #f2d0cc; }
+.hw-settings-danger-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.hw-settings-danger-btn {
+  padding: 8px 18px;
+  border-radius: 7px;
+  border: 1px solid #c0512a;
+  background: transparent;
+  color: #c0512a;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.hw-settings-danger-btn:hover:not(:disabled) { background: #c0512a; color: #fff; }
+.hw-settings-danger-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.hw-leave-dialog { display: flex; flex-direction: column; gap: 12px; }
+.hw-leave-hint { margin: 0; font-size: 0.84rem; color: var(--hw-charcoal); line-height: 1.5; }
+.hw-leave-hint--warn { color: #8a3a18; background: #fdf2ee; border-radius: 6px; padding: 10px 12px; }
+.hw-leave-error { margin: 0; font-size: 0.82rem; color: #c0392b; }
+.hw-leave-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.hw-leave-cancel-btn {
+  padding: 8px 16px;
+  border-radius: 7px;
+  border: 1px solid var(--hw-border);
+  background: transparent;
+  color: var(--hw-charcoal);
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+}
+.hw-leave-cancel-btn:hover:not(:disabled) { background: var(--hw-sand-200); }
+.hw-leave-cancel-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* ─── Skeletons ──────────────────────────────────────────────────────────── */
 .hw-feed-skel { display: flex; flex-direction: column; gap: 14px; }
 .hw-skel-card {

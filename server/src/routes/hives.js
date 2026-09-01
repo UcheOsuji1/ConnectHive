@@ -26,6 +26,7 @@ import {
   notifyMember,
   getUploadSignature,
   updateHiveMedia,
+  leaveHive,
 } from '../controllers/hivesController.js';
 import {
   listMessages,
@@ -80,6 +81,7 @@ router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
 router.post('/:id/members/:userId/notify', requireAuth, notifyMember);
 router.delete('/:id/members/:userId',      requireAuth, removeMember);
 router.post('/:id/join',                  requireAuth, joinHive);
+router.post('/:id/leave',                requireAuth, leaveHive);
 router.post('/:id/request',              requireAuth, requestToJoin);
 router.get('/:id/requests',              requireAuth, getHiveRequests);
 router.post('/:id/requests/:requestId',  requireAuth, reviewRequest);

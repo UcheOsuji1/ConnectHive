@@ -1,7 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 
 export default function HiveSettings({ hive, hiveId, onSaved }) {
+  const navigate        = useNavigate();
+  const { user }        = useAuth();
+
   const [fields, setFields] = useState({
     description:   hive.description   ?? '',
     join_policy:   hive.join_policy   ?? 'open',
@@ -14,6 +19,14 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState(null);
   const [success,  setSuccess]  = useState(false);
+
+  // Leave Hive dialog state
+  const [leaveOpen,       setLeaveOpen]       = useState(false);
+  const [leaveMembers,    setLeaveMembers]     = useState(null); // null = not loaded
+  const [loadingMembers,  setLoadingMembers]   = useState(false);
+  const [successorId,     setSuccessorId]      = useState('');
+  const [leaving,         setLeaving]          = useState(false);
+  const [leaveError,      setLeaveError]       = useState(null);
 
   function set(key, val) {
     setFields(prev => ({ ...prev, [key]: val }));
@@ -42,6 +55,39 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
       setError(err.data?.error ?? 'Save failed. Try again.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function openLeaveDialog() {
+    setLeaveOpen(true);
+    setLeaveError(null);
+    setSuccessorId('');
+    if (leaveMembers !== null) return; // already loaded
+    setLoadingMembers(true);
+    try {
+      const data = await api.get(`/api/hives/${hiveId}/members`);
+      // Keep only other active members (not yourself)
+      const others = (data.members ?? []).filter(
+        m => m.membership_status === 'active' && m.user_id !== user?.userId,
+      );
+      setLeaveMembers(others);
+    } catch {
+      setLeaveMembers([]);
+    } finally {
+      setLoadingMembers(false);
+    }
+  }
+
+  async function confirmLeave() {
+    setLeaving(true);
+    setLeaveError(null);
+    try {
+      const body = successorId ? { transfer_to_user_id: successorId } : {};
+      await api.post(`/api/hives/${hiveId}/leave`, body);
+      navigate('/my-hive');
+    } catch (err) {
+      setLeaveError(err.data?.error ?? 'Could not leave. Please try again.');
+      setLeaving(false);
     }
   }
 
@@ -177,6 +223,87 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
         </div>
 
       </form>
+
+      {/* ── Danger Zone ── */}
+      <div className="hw-settings-card hw-settings-danger-card">
+        <div className="hw-card-label">Danger Zone</div>
+
+        {!leaveOpen ? (
+          <div className="hw-settings-danger-row">
+            <div>
+              <div className="hw-settings-label">Leave this Hive</div>
+              <div className="hw-settings-hint">
+                If you are the sole owner, leaving will archive the Hive.
+              </div>
+            </div>
+            <button
+              type="button"
+              className="hw-settings-danger-btn"
+              onClick={openLeaveDialog}
+            >
+              Leave Hive
+            </button>
+          </div>
+        ) : (
+          <div className="hw-leave-dialog">
+            {loadingMembers ? (
+              <p className="hw-leave-hint">Loading members…</p>
+            ) : leaveMembers !== null && leaveMembers.length === 0 ? (
+              <>
+                <p className="hw-leave-hint hw-leave-hint--warn">
+                  You are the only active member. Leaving will <strong>archive this Hive</strong> — this cannot be undone.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="hw-leave-hint">
+                  You are the owner. Choose a member to transfer ownership to before you leave.
+                </p>
+                <select
+                  className="hw-settings-select"
+                  value={successorId}
+                  onChange={e => setSuccessorId(e.target.value)}
+                >
+                  <option value="">— Select new owner —</option>
+                  {(leaveMembers ?? []).map(m => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.full_name || m.email} {m.role === 'admin' ? '(admin)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+
+            {leaveError && (
+              <p className="hw-leave-error">{leaveError}</p>
+            )}
+
+            <div className="hw-leave-actions">
+              <button
+                type="button"
+                className="hw-leave-cancel-btn"
+                onClick={() => setLeaveOpen(false)}
+                disabled={leaving}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="hw-settings-danger-btn"
+                onClick={confirmLeave}
+                disabled={
+                  leaving ||
+                  loadingMembers ||
+                  (leaveMembers !== null && leaveMembers.length > 0 && !successorId)
+                }
+              >
+                {leaving ? 'Leaving…' : 'Confirm Leave'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }
