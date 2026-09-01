@@ -722,8 +722,8 @@ export const requestToJoin = async (req, res) => {
            (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
          VALUES ($1, $2, 'member', 'active', 'completed', NULL)
          ON CONFLICT (hive_id, user_id) DO UPDATE SET
-           membership_status = 'active', onboarding_status = 'completed', welcome_seen_at = NULL,
-           onboarding_started_at = NULL, onboarding_completed_at = NULL`,
+           role = 'member', membership_status = 'active', onboarding_status = 'completed',
+           welcome_seen_at = NULL, onboarding_started_at = NULL, onboarding_completed_at = NULL`,
         [hiveId, req.userId],
       );
       // Best-effort: welcome notification + notify existing members
@@ -765,7 +765,8 @@ export const requestToJoin = async (req, res) => {
            (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
          VALUES ($1, $2, 'member', 'active', $3, NULL)
          ON CONFLICT (hive_id, user_id) DO UPDATE SET
-           membership_status = 'active', onboarding_status = $3, welcome_seen_at = NULL`,
+           role = 'member', membership_status = 'active', onboarding_status = $3,
+           welcome_seen_at = NULL`,
         [hiveId, req.userId, obStatus],
       );
       return res.json({ joined: true });
@@ -949,9 +950,10 @@ export const reviewRequest = async (req, res) => {
            (hive_id, user_id, role, membership_status, welcome_seen_at, onboarding_status)
          VALUES ($1, $2, 'member', 'active', NULL, $3)
          ON CONFLICT (hive_id, user_id) DO UPDATE
-           SET membership_status    = 'active',
-               welcome_seen_at      = NULL,
-               onboarding_status    = $3,
+           SET role                    = 'member',
+               membership_status       = 'active',
+               welcome_seen_at         = NULL,
+               onboarding_status       = $3,
                onboarding_started_at   = NULL,
                onboarding_completed_at = NULL`,
         [hiveId, request.user_id, onboardingStatus],
@@ -1235,7 +1237,7 @@ export const removeMember = async (req, res) => {
     }
 
     await query(
-      `UPDATE hive_members SET membership_status = 'removed'
+      `UPDATE hive_members SET membership_status = 'removed', role = 'member'
        WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
       [hiveId, targetId],
     );
@@ -1408,9 +1410,9 @@ export const leaveHive = async (req, res) => {
     }
 
     if (caller.role !== 'owner') {
-      // Non-owner: leave immediately
+      // Non-owner: leave immediately; demote role so a rejoin gets plain member
       await client.query(
-        `UPDATE hive_members SET membership_status = 'left'
+        `UPDATE hive_members SET membership_status = 'left', role = 'member'
          WHERE hive_id = $1 AND user_id = $2`,
         [hiveId, userId],
       );
@@ -1423,13 +1425,13 @@ export const leaveHive = async (req, res) => {
       );
 
       if (others.length === 0) {
-        // Sole owner: archive and leave
+        // Sole owner: archive and leave; demote role so a rejoin gets plain member
         await client.query(
           `UPDATE hives SET hive_status = 'archived', updated_at = NOW() WHERE hive_id = $1`,
           [hiveId],
         );
         await client.query(
-          `UPDATE hive_members SET membership_status = 'left'
+          `UPDATE hive_members SET membership_status = 'left', role = 'member'
            WHERE hive_id = $1 AND user_id = $2`,
           [hiveId, userId],
         );
@@ -1455,8 +1457,9 @@ export const leaveHive = async (req, res) => {
            WHERE hive_id = $1 AND user_id = $2`,
           [hiveId, transfer_to_user_id],
         );
+        // Demote role so a rejoin gets plain member, not owner
         await client.query(
-          `UPDATE hive_members SET membership_status = 'left'
+          `UPDATE hive_members SET membership_status = 'left', role = 'member'
            WHERE hive_id = $1 AND user_id = $2`,
           [hiveId, userId],
         );

@@ -99,12 +99,13 @@ export function initSocket(httpServer, clientUrl) {
     // Personal room — used for targeted events (access revocation, DMs, etc.)
     socket.join(`user:${userId}`);
 
-    // Lazy-load display name and stored presence status once per connection
+    // Lazy-load display name and stored presence status once per connection.
+    // LEFT JOIN profiles so presence_status loads even before profile setup.
     try {
       const { rows: [p] } = await query(
         `SELECT p.full_name, u.presence_status
-         FROM profiles p JOIN users u ON u.user_id = p.user_id
-         WHERE p.user_id = $1`,
+         FROM users u LEFT JOIN profiles p ON p.user_id = u.user_id
+         WHERE u.user_id = $1`,
         [userId],
       );
       socket.data.fullName = p?.full_name ?? null;

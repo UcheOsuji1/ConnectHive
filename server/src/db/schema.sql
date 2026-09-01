@@ -474,3 +474,9 @@ FROM   hive_channels c
 WHERE  c.hive_id   = m.hive_id
   AND  c.is_default
   AND  m.channel_id IS NULL;
+
+-- ─── Data repair: demote stale elevated roles on non-active rows ──────────────
+-- Idempotent. Fixes rows left by removeMember and leaveHive before the role-
+-- reset fix was applied. Safe to re-run: no-op once all rows are clean.
+UPDATE hive_members SET role = 'member'
+WHERE membership_status <> 'active' AND role <> 'member';
