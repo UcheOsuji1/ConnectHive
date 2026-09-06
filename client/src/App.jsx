@@ -13,8 +13,10 @@ import MyHivePage from './pages/MyHivePage';
 import ProfilePage from './pages/ProfilePage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import MemberWelcomePage from './pages/MemberWelcomePage';
+import NotFoundPage from './pages/NotFoundPage';
 
 import RequireAuth from './components/RequireAuth';
+import MarketingLayout from './components/MarketingLayout';
 import HiveDashboardLayout from './components/HiveDashboardLayout';
 import HiveOverviewPage from './pages/hive/HiveOverviewPage';
 import HiveFeedPage from './pages/hive/HiveFeedPage';
@@ -26,6 +28,16 @@ import HiveSoonPage from './pages/hive/HiveSoonPage';
 import HiveChatPage from './pages/hive/HiveChatPage';
 import HiveOnboardingPage from './pages/HiveOnboardingPage';
 
+import AboutPage from './pages/marketing/AboutPage';
+import MissionPage from './pages/marketing/MissionPage';
+import CareersPage from './pages/marketing/CareersPage';
+import BlogPage from './pages/marketing/BlogPage';
+import PressPage from './pages/marketing/PressPage';
+import SafetyPage from './pages/marketing/SafetyPage';
+import PrivacyPage from './pages/marketing/PrivacyPage';
+import TermsPage from './pages/marketing/TermsPage';
+import ContactPage from './pages/marketing/ContactPage';
+
 export default function App() {
   return (
     <Routes>
@@ -33,6 +45,19 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
+
+      {/* Marketing routes */}
+      <Route element={<MarketingLayout />}>
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/mission" element={<MissionPage />} />
+        <Route path="/careers" element={<CareersPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/press" element={<PressPage />} />
+        <Route path="/safety" element={<SafetyPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
+        <Route path="/contact" element={<ContactPage />} />
+      </Route>
 
       {/* Protected routes */}
       <Route element={<RequireAuth />}>
@@ -67,6 +92,8 @@ export default function App() {
         <Route path="/settings" element={<AccountSettingsPage />} />
         <Route path="/welcome/hive/:hiveId" element={<MemberWelcomePage />} />
       </Route>
+
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
