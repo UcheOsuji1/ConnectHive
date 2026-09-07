@@ -31,7 +31,7 @@ export default function LoginPage() {
         navigate('/my-hive');
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong — please try again.');
+      setError(err.message || 'Something went wrong, please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +97,7 @@ export default function LoginPage() {
               <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"   fill="none" stroke="url(#lg2)" strokeWidth="9" strokeLinejoin="round"/>
               <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#lg3)" strokeWidth="9" strokeLinejoin="round"/>
             </svg>
-            <span className="si-wordmark">CONNECTHIVE</span>
+            <span className="si-wordmark">TRUEHIVE</span>
           </Link>
 
           {/* Heading */}
@@ -155,7 +155,7 @@ export default function LoginPage() {
           {/* Subtitle */}
           <p className="si-subtitle">
             Don't have an account?{' '}
-            <Link to="/signup">Join ConnectHive →</Link>
+            <Link to="/signup">Join TrueHive →</Link>
           </p>
 
           {/* OAuth buttons */}
@@ -258,7 +258,7 @@ export default function LoginPage() {
             onClick={handleSubmit}
             disabled={submitting}
           >
-            {submitting ? 'Signing in…' : 'Sign In to ConnectHive'}
+            {submitting ? 'Signing in…' : 'Sign In to TrueHive'}
           </button>
 
           {/* Footer line */}
@@ -269,11 +269,11 @@ export default function LoginPage() {
           {/* Legal */}
           <p className="si-legal">
             By signing in you agree to our{' '}
-            <a href="#terms">Terms of Service</a>
+            <Link to="/terms">Terms of Service</Link>
             {' '}and{' '}
-            <a href="#privacy">Privacy Policy</a>.
+            <Link to="/privacy">Privacy Policy</Link>.
             <br />
-            © 2026 ConnectHive. All rights reserved.
+            © 2026 TrueHive. All rights reserved.
           </p>
 
         </div>

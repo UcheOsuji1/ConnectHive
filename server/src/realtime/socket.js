@@ -57,12 +57,23 @@ function _removePresence(hiveId, userId, socketId) {
 
 // Kick a user from a hive room without disconnecting their socket.
 // Called by hivesController after setting membership_status = 'removed'.
-export function evictUserFromHive(hiveId, userId) {
+export async function evictUserFromHive(hiveId, userId) {
   if (!io) return;
   const room = `hive:${hiveId}`;
 
-  // Remove every socket belonging to this user from the hive room
+  // Leave the hive room
   io.in(`user:${userId}`).socketsLeave(room);
+
+  // Leave all channel rooms for this hive
+  const chPrefix = `hive:${hiveId}:ch:`;
+  try {
+    const sockets = await io.in(`user:${userId}`).fetchSockets();
+    for (const s of sockets) {
+      for (const r of s.rooms) {
+        if (r.startsWith(chPrefix)) s.leave(r);
+      }
+    }
+  } catch { /* non-fatal */ }
 
   // Clean up presence
   const hivePres = presence.get(hiveId);
@@ -142,6 +153,21 @@ export function initSocket(httpServer, clientUrl) {
     socket.on('leave_hive_room', ({ hiveId } = {}) => {
       socket.leave(`hive:${hiveId}`);
       _removePresence(hiveId, userId, socket.id);
+    });
+
+    // ── join_channel / leave_channel ─────────────────────────────────────────
+    socket.on('join_channel', async ({ hiveId, channelId } = {}, ack) => {
+      try {
+        await requireMembership(hiveId, userId);
+        socket.join(`hive:${hiveId}:ch:${channelId}`);
+        if (typeof ack === 'function') ack({ ok: true });
+      } catch (err) {
+        if (typeof ack === 'function') ack({ error: err.message });
+      }
+    });
+
+    socket.on('leave_channel', ({ hiveId, channelId } = {}) => {
+      socket.leave(`hive:${hiveId}:ch:${channelId}`);
     });
 
     // ── set_status ───────────────────────────────────────────────────────────

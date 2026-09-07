@@ -80,6 +80,7 @@ export default function App() {
           <Route path="settings" element={<HiveSettingsPage />} />
           <Route path="about" element={<HiveAboutPage />} />
           <Route path="chat" element={<HiveChatPage />} />
+          <Route path="chat/:channelId" element={<HiveChatPage />} />
           <Route path="events" element={<HiveSoonPage feature="Events" />} />
           <Route path="analytics" element={<HiveSoonPage feature="Analytics" />} />
           <Route path="roles" element={<HiveSoonPage feature="Roles & Permissions" />} />

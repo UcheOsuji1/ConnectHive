@@ -140,6 +140,22 @@ function _shape(row) {
   };
 }
 
+// ── Channel resolver ─────────────────────────────────────────────────────────
+// Returns a validated channel_id belonging to hiveId.
+// If requestedId is provided and belongs to the hive, returns it.
+// Otherwise falls back to the hive's default channel.
+async function _resolveChannelId(hiveId, requestedId) {
+  if (requestedId) {
+    const { rows: [ch] } = await query(
+      `SELECT channel_id FROM hive_channels
+       WHERE channel_id = $1 AND hive_id = $2 AND archived_at IS NULL`,
+      [requestedId, hiveId],
+    );
+    if (ch) return ch.channel_id;
+  }
+  return getDefaultChannelId(hiveId);
+}
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 
 export const listMessages = async (req, res) => {
@@ -149,12 +165,11 @@ export const listMessages = async (req, res) => {
 
     const before    = req.query.before ? new Date(req.query.before).toISOString() : new Date().toISOString();
     const limit     = Math.min(Math.max(parseInt(req.query.limit ?? '50', 10), 1), 100);
-    const channelId = await getDefaultChannelId(hiveId);
+    const channelId = await _resolveChannelId(hiveId, req.query.channel_id);
 
     const msgs = await _runEnriched(
-      // NULL arm: drop the OR clause when the channel picker ships and every message has a channel_id
-      `WHERE m.hive_id = $1
-         AND (m.channel_id = $2 OR m.channel_id IS NULL)
+      `WHERE m.hive_id    = $1
+         AND m.channel_id = $2
          AND m.sent_at < $3
        ORDER BY m.sent_at DESC LIMIT $4`,
       [hiveId, channelId, before, limit + 1],
@@ -174,7 +189,7 @@ export const createMessage = async (req, res) => {
     const hiveId = req.params.id;
     await requireMembership(hiveId, req.userId);
 
-    const { message_text, reply_to_message_id, attachments: rawAtts } = req.body ?? {};
+    const { message_text, reply_to_message_id, attachments: rawAtts, channel_id: reqChannelId } = req.body ?? {};
     const text        = (message_text ?? '').trim();
     const attachments = Array.isArray(rawAtts) ? rawAtts : [];
 
@@ -208,7 +223,7 @@ export const createMessage = async (req, res) => {
       }
     }
 
-    const channelId = await getDefaultChannelId(hiveId);
+    const channelId = await _resolveChannelId(hiveId, reqChannelId);
 
     const { rows: [ins] } = await query(
       `INSERT INTO messages (hive_id, sender_user_id, message_text, reply_to_message_id, channel_id)
@@ -246,7 +261,11 @@ export const createMessage = async (req, res) => {
     }
 
     const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [ins.message_id]);
-    try { getIO().to(`hive:${hiveId}`).emit('receive_message', msg); } catch { /* no socket in tests */ }
+    try {
+      const io = getIO();
+      io.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', msg);
+      io.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+    } catch { /* no socket in tests */ }
     res.status(201).json(msg);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -264,7 +283,7 @@ export const updateMessage = async (req, res) => {
     }
 
     const { rows: [existing] } = await query(
-      `SELECT message_id, hive_id, sender_user_id, deleted_at FROM messages WHERE message_id = $1`,
+      `SELECT message_id, hive_id, channel_id, sender_user_id, deleted_at FROM messages WHERE message_id = $1`,
       [messageId],
     );
     if (!existing)           return res.status(404).json({ error: 'Message not found.' });
@@ -279,7 +298,12 @@ export const updateMessage = async (req, res) => {
     );
 
     const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [messageId]);
-    try { getIO().to(`hive:${existing.hive_id}`).emit('message_updated', msg); } catch {}
+    try {
+      const room = existing.channel_id
+        ? `hive:${existing.hive_id}:ch:${existing.channel_id}`
+        : `hive:${existing.hive_id}`;
+      getIO().to(room).emit('message_updated', msg);
+    } catch {}
     res.json(msg);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -293,7 +317,7 @@ export const deleteMessage = async (req, res) => {
     const { messageId } = req.params;
 
     const { rows: [existing] } = await query(
-      `SELECT message_id, hive_id, sender_user_id, deleted_at FROM messages WHERE message_id = $1`,
+      `SELECT message_id, hive_id, channel_id, sender_user_id, deleted_at FROM messages WHERE message_id = $1`,
       [messageId],
     );
     if (!existing) return res.status(404).json({ error: 'Message not found.' });
@@ -310,9 +334,13 @@ export const deleteMessage = async (req, res) => {
     await query(`UPDATE messages SET deleted_at = NOW() WHERE message_id = $1`, [messageId]);
 
     try {
-      getIO().to(`hive:${existing.hive_id}`).emit('message_deleted', {
+      const room = existing.channel_id
+        ? `hive:${existing.hive_id}:ch:${existing.channel_id}`
+        : `hive:${existing.hive_id}`;
+      getIO().to(room).emit('message_deleted', {
         message_id: messageId,
         hive_id:    existing.hive_id,
+        channel_id: existing.channel_id ?? null,
       });
     } catch {}
 
@@ -333,7 +361,7 @@ export const toggleReaction = async (req, res) => {
     }
 
     const { rows: [msg] } = await query(
-      `SELECT message_id, hive_id FROM messages WHERE message_id = $1`, [messageId],
+      `SELECT message_id, hive_id, channel_id FROM messages WHERE message_id = $1`, [messageId],
     );
     if (!msg) return res.status(404).json({ error: 'Message not found.' });
 
@@ -373,9 +401,13 @@ export const toggleReaction = async (req, res) => {
     }));
 
     try {
-      getIO().to(`hive:${msg.hive_id}`).emit('reaction_updated', {
+      const room = msg.channel_id
+        ? `hive:${msg.hive_id}:ch:${msg.channel_id}`
+        : `hive:${msg.hive_id}`;
+      getIO().to(room).emit('reaction_updated', {
         message_id: messageId,
         hive_id:    msg.hive_id,
+        channel_id: msg.channel_id ?? null,
         reactions,
       });
     } catch {}

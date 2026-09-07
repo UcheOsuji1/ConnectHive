@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import usePageMeta from '../../hooks/usePageMeta';
 
 export default function PrivacyPage() {
-  usePageMeta('Privacy Policy', 'TrueHive\'s privacy policy — how we collect, use, and protect your personal information.');
+  usePageMeta('Privacy Policy', 'TrueHive\'s privacy policy: how we collect, use, and protect your personal information.');
 
   return (
     <>
@@ -20,7 +20,7 @@ export default function PrivacyPage() {
           letterSpacing: '.01em',
         }}
       >
-        DRAFT — This document has not been reviewed by legal counsel and is not a final legal instrument. Do not rely on it as such.
+        DRAFT. This document has not been reviewed by legal counsel and is not a final legal instrument. Do not rely on it as such.
       </div>
 
       <section className="section">
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           <span className="label">Privacy Policy</span>
           <h1 className="section-heading" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)' }}>Privacy Policy</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '40px' }}>
-            Last updated: January 2026 — <strong>DRAFT</strong>
+            Last updated: September 2026 (<strong>DRAFT</strong>)
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
@@ -42,7 +42,7 @@ export default function PrivacyPage() {
 
             <div>
               <h2 style={{ fontSize: '1.3rem', marginBottom: '12px' }}>2. How we use it</h2>
-              <p style={{ marginBottom: '12px' }}>We use your information to provide and operate the TrueHive platform — to authenticate you, to surface Hives you may be interested in, and to enable communication between members within Hives.</p>
+              <p style={{ marginBottom: '12px' }}>We use your information to provide and operate the TrueHive platform: to authenticate you, to surface Hives you may be interested in, and to enable communication between members within Hives.</p>
               <p>We do not sell your personal information to third parties.</p>
             </div>
 
@@ -79,7 +79,7 @@ export default function PrivacyPage() {
       <section className="final-cta">
         <div className="container">
           <h2>Have a question about your data?</h2>
-          <p className="section-sub">Email us directly — we read every message.</p>
+          <p className="section-sub">Email us directly. We read every message.</p>
           <div className="final-cta-btns">
             <a href="mailto:hello@truehive.app?subject=Privacy question" className="btn btn-primary btn-lg">Contact us</a>
             <Link to="/terms" className="btn btn-ghost-light btn-lg">Terms of Service</Link>

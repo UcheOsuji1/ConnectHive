@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import usePageMeta from '../../hooks/usePageMeta';
 
 export default function TermsPage() {
-  usePageMeta('Terms of Service', 'TrueHive\'s terms of service — the rules governing your use of the platform.');
+  usePageMeta('Terms of Service', 'TrueHive\'s terms of service: the rules governing your use of the platform.');
 
   return (
     <>
@@ -20,7 +20,7 @@ export default function TermsPage() {
           letterSpacing: '.01em',
         }}
       >
-        DRAFT — This document has not been reviewed by legal counsel and is not a final legal instrument. Do not rely on it as such.
+        DRAFT. This document has not been reviewed by legal counsel and is not a final legal instrument. Do not rely on it as such.
       </div>
 
       <section className="section">
@@ -28,7 +28,7 @@ export default function TermsPage() {
           <span className="label">Terms of Service</span>
           <h1 className="section-heading" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)' }}>Terms of Service</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '40px' }}>
-            Last updated: January 2026 — <strong>DRAFT</strong>
+            Last updated: September 2026 (<strong>DRAFT</strong>)
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
@@ -95,7 +95,7 @@ export default function TermsPage() {
       <section className="final-cta">
         <div className="container">
           <h2>Questions about these terms?</h2>
-          <p className="section-sub">Email us — we're a small team and we respond personally.</p>
+          <p className="section-sub">Email us. We're a small team and we respond personally.</p>
           <div className="final-cta-btns">
             <a href="mailto:hello@truehive.app?subject=Terms question" className="btn btn-primary btn-lg">Contact us</a>
             <Link to="/privacy" className="btn btn-ghost-light btn-lg">Privacy Policy</Link>

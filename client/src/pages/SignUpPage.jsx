@@ -4,9 +4,9 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/signup.css';
 
 const STEPS = [
-  { n: 1, label: 'Create your account', desc: '— takes less than a minute.' },
-  { n: 2, label: 'Build your profile',   desc: '— tell us your interests, skills, and goals.' },
-  { n: 3, label: 'Find your Hive',       desc: '— get matched with the right groups instantly.' },
+  { n: 1, label: 'Create your account', desc: ': takes less than a minute.' },
+  { n: 2, label: 'Build your profile',   desc: ': tell us your interests, skills, and goals.' },
+  { n: 3, label: 'Find your Hive',       desc: ': get matched with the right groups instantly.' },
 ];
 
 const PILLS = ['Profile Setup', 'Find Your Hive', 'Your Hive'];
@@ -29,7 +29,7 @@ export default function SignUpPage() {
       await register(email, password);
       navigate('/profile-setup');
     } catch (err) {
-      setError(err.message || 'Something went wrong — please try again.');
+      setError(err.message || 'Something went wrong, please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -91,7 +91,7 @@ export default function SignUpPage() {
               <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="url(#su-lg2)" strokeWidth="9" strokeLinejoin="round"/>
               <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#su-lg3)" strokeWidth="9" strokeLinejoin="round"/>
             </svg>
-            <span className="su-wordmark">CONNECTHIVE</span>
+            <span className="su-wordmark">TRUEHIVE</span>
           </Link>
 
           {/* Heading */}
@@ -112,7 +112,7 @@ export default function SignUpPage() {
                 <div className="su-step-badge">{s.n}</div>
                 <div className="su-step-text">
                   <span className="su-step-label">{s.label}</span>
-                  <span> {s.desc}</span>
+                  <span>{s.desc}</span>
                 </div>
               </div>
             ))}
@@ -151,7 +151,7 @@ export default function SignUpPage() {
           {/* Eyebrow */}
           <div className="su-eyebrow">
             <div className="su-eyebrow-dash" />
-            <span className="su-eyebrow-text">Get Started — It's Free</span>
+            <span className="su-eyebrow-text">Get Started. It's Free</span>
           </div>
 
           {/* Title */}
@@ -263,10 +263,10 @@ export default function SignUpPage() {
           <div className="su-terms">
             <input type="checkbox" className="su-check" id="su-agree"/>
             <label htmlFor="su-agree" className="su-terms-text">
-              I agree to ConnectHive's{' '}
-              <a href="#terms" className="su-gold-link">Terms of Service</a>
+              I agree to TrueHive's{' '}
+              <Link to="/terms" className="su-gold-link">Terms of Service</Link>
               {' '}and{' '}
-              <a href="#privacy" className="su-gold-link">Privacy Policy</a>
+              <Link to="/privacy" className="su-gold-link">Privacy Policy</Link>
               . I'm ready to find my Hive.
             </label>
           </div>

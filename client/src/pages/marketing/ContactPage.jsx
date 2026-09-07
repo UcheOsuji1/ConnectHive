@@ -83,7 +83,7 @@ export default function ContactPage() {
           <h2 style={{ marginBottom: '16px' }}>We aim to respond within 48 hours.</h2>
           <p>
             We're building TrueHive with a small team and don't have a dedicated support operation.
-            We respond to every message personally — it just might take a couple of days during
+            We respond to every message personally. It just might take a couple of days during
             busy periods.
           </p>
         </div>
@@ -91,7 +91,7 @@ export default function ContactPage() {
 
       <section className="final-cta">
         <div className="container">
-          <h2>While you wait — try the platform.</h2>
+          <h2>While you wait, try the platform.</h2>
           <p className="section-sub">Browse Hives, start one, or just explore what's possible.</p>
           <div className="final-cta-btns">
             <Link to="/find-your-hive" className="btn btn-primary btn-lg">Browse Hives</Link>

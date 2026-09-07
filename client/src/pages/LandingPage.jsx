@@ -6,14 +6,14 @@ import { getInitials } from '../lib/initials.js';
 import SiteFooter from '../components/SiteFooter.jsx';
 
 const heroImages = [
-  '/Hero Images/ConnectHive College Conert.png',
-  '/Hero Images/ConnectHive Night party.png',
-  '/Hero Images/ConnectHive Younginparty.png',
-  '/Hero Images/ConnectHiveBoat.png',
-  '/Hero Images/ConnectHiveFriendsbythebeach.png',
-  '/Hero Images/ConnectHiveLANetwork.png',
-  '/Hero Images/ConnectHiveMarthasVinyard.png',
-  '/Hero Images/ConnectHiveProject.png',
+  '/Hero Images/ConnectHive College Conert.webp',
+  '/Hero Images/ConnectHiveLANetwork.webp',
+  '/Hero Images/ConnectHiveFriendsbythebeach.webp',
+  '/Hero Images/ConnectHiveProject.webp',
+  '/Hero Images/ConnectHive Night party.webp',
+  '/Hero Images/ConnectHiveMarthasVinyard.webp',
+  '/Hero Images/ConnectHive Younginparty.webp',
+  '/Hero Images/ConnectHiveBoat.webp',
 ];
 
 const CARD1_DATA = [
@@ -123,7 +123,7 @@ export default function LandingPage() {
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="navbar-inner">
 
-          <Link to="/" className="nav-logo" aria-label="ConnectHive home">
+          <Link to="/" className="nav-logo" aria-label="TrueHive home">
             <svg className="nav-logo-icon" viewBox="8 2 68 66" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <defs>
                 <linearGradient id="g-nav" x1="8" y1="2" x2="76" y2="68" gradientUnits="userSpaceOnUse">
@@ -136,14 +136,14 @@ export default function LandingPage() {
               <polygon points="54,4 69.6,13 69.6,31 54,40 38.4,31 38.4,13" stroke="url(#g-nav)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
               <polygon points="41,30 56.6,39 56.6,57 41,66 25.4,57 25.4,39" stroke="url(#g-nav)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
             </svg>
-            <span className="nav-logo-text">ConnectHive</span>
+            <span className="nav-logo-text">TrueHive</span>
           </Link>
 
           <ul className="nav-links" role="list">
             <li><a href="#home">Home</a></li>
             <li><Link to="/find-your-hive">Find Your Hive</Link></li>
             <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#about">About</a></li>
+            <li><Link to="/about">About</Link></li>
           </ul>
 
           <div className="nav-right">
@@ -157,7 +157,7 @@ export default function LandingPage() {
             ) : (
               <>
                 <Link to="/login" className="nav-signin">Sign In</Link>
-                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join ConnectHive</Link>
+                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join TrueHive</Link>
               </>
             )}
           </div>
@@ -181,7 +181,7 @@ export default function LandingPage() {
           <li><a href="#home" onClick={closeMenu}>Home</a></li>
           <li><Link to="/find-your-hive" onClick={closeMenu}>Find Your Hive</Link></li>
           <li><a href="#how-it-works" onClick={closeMenu}>How It Works</a></li>
-          <li><a href="#about" onClick={closeMenu}>About</a></li>
+          <li><Link to="/about" onClick={closeMenu}>About</Link></li>
         </ul>
         <div className="mobile-ctas">
           {loading ? null : user ? (
@@ -192,7 +192,7 @@ export default function LandingPage() {
           ) : (
             <>
               <Link to="/login" className="btn btn-ghost" onClick={closeMenu}>Sign In</Link>
-              <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>Join ConnectHive</Link>
+              <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>Join TrueHive</Link>
             </>
           )}
         </div>
@@ -208,6 +208,8 @@ export default function LandingPage() {
               className={`hero-bg-slide${i === currentSlide ? ' hbs-active' : ''}`}
               src={src}
               alt=""
+              fetchPriority={i === 0 ? 'high' : 'low'}
+              loading={i === 0 ? undefined : 'lazy'}
             />
           ))}
         </div>
@@ -217,42 +219,25 @@ export default function LandingPage() {
           <div className="hero-left">
             <div className="hero-eyebrow reveal">
               <span aria-hidden="true"></span>
-              Purpose-Based Community Platform
+              Purpose-Based Groups
             </div>
             <h1 className="reveal reveal-delay-1">
               Find Your <em>Hive.</em>
             </h1>
             <p className="hero-sub reveal reveal-delay-2">
-              ConnectHive helps you discover purpose-based groups for friendship,
-              networking, travel, events, and project collaboration.
+              Making friends as an adult is harder than anyone admits. TrueHive finds you a group that already shares your purpose, then gives you somewhere to actually talk.
             </p>
             <p className="hero-support reveal reveal-delay-3">
-              Whether you are new to a city, building your career, looking for travel buddies,
-              or searching for people to create with — ConnectHive matches you with the right
-              group based on your goals, interests, and availability.
+              New to a city. Building a career. Looking for people to travel with, or to build something with. You pick what you're looking for, we match you to Hives that fit, and you're in a real group chat the same day.
             </p>
             <div className="hero-ctas reveal reveal-delay-4">
               <Link to={user ? '/find-your-hive' : '/signup'} className="btn btn-primary btn-lg">
-                Start Finding Your Hive
+                Find My Hive
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </Link>
-              <a href="#how-it-works" className="btn btn-ghost btn-lg">Explore How It Works</a>
-            </div>
-            <div className="hero-stats reveal reveal-delay-5">
-              <div>
-                <div className="hero-stat-num">12k+</div>
-                <div className="hero-stat-label">Active Members</div>
-              </div>
-              <div>
-                <div className="hero-stat-num">850+</div>
-                <div className="hero-stat-label">Hives Formed</div>
-              </div>
-              <div>
-                <div className="hero-stat-num">94%</div>
-                <div className="hero-stat-label">Match Accuracy</div>
-              </div>
+              <a href="#how-it-works" className="btn btn-ghost btn-lg">See How It Works</a>
             </div>
           </div>
 
@@ -337,6 +322,33 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ══ THIS IS FOR YOU IF ══ */}
+      <section className="section" style={{background:'var(--white)'}}>
+        <div className="container">
+          <h2 className="section-heading reveal">This is for you if…</h2>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:'16px 56px',maxWidth:'800px',marginTop:'32px'}}>
+            {[
+              'You moved somewhere new and your calendar is empty.',
+              "Your friends are great, but none of them care about the thing you care about.",
+              "You want to build something and you're tired of building it alone.",
+              "You want to travel and nobody's schedule ever lines up.",
+              "You've outgrown the group chat you've been in since high school.",
+              "You keep meaning to find your people and never get around to it.",
+            ].map((text, i) => (
+              <div key={i} className={`reveal reveal-delay-${(i % 3) + 1}`} style={{display:'flex',alignItems:'flex-start',gap:'12px'}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" aria-hidden="true" style={{flexShrink:0,marginTop:'5px'}}>
+                  <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+                </svg>
+                <p style={{margin:0}}>{text}</p>
+              </div>
+            ))}
+          </div>
+          <p className="section-sub reveal reveal-delay-4" style={{marginTop:'40px'}}>
+            If you nodded at any of those, you're who we built this for.
+          </p>
+        </div>
+      </section>
+
       {/* ══ TRUST / VALUE STRIP ══ */}
       <section className="trust-strip" aria-label="Value propositions">
         <div className="container">
@@ -351,7 +363,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Purpose-Based Matching</h3>
-              <p>Find groups based on what you actually want — friends, networking, travel, events, or collaboration. Every Hive has a clear purpose.</p>
+              <p>Find groups based on what you actually want: friends, networking, travel, events, or collaboration. Every Hive has a clear purpose.</p>
             </div>
 
             <div className="trust-card reveal reveal-delay-2">
@@ -362,7 +374,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Compatibility Scores</h3>
-              <p>See exactly how well each Hive matches your profile. We explain why — so you join groups where you genuinely belong.</p>
+              <p>See exactly how well each Hive matches your profile. We explain why, so you join groups where you genuinely belong.</p>
             </div>
 
             <div className="trust-card reveal reveal-delay-3">
@@ -373,7 +385,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Group-First Connection</h3>
-              <p>Join or create Hives designed for real interaction, planning, and community — not endless scrolling or random swiping.</p>
+              <p>Join or create Hives designed for real interaction, planning, and community. No endless scrolling, no random swiping.</p>
             </div>
 
           </div>
@@ -393,7 +405,7 @@ export default function LandingPage() {
 
             <Link to="/find-your-hive?cat=social" className="cat-card reveal reveal-delay-1">
               <div className="cat-img-wrap">
-                <img src="/Hive Images/ConnectHive socialGroup img.png" alt="" className="cat-img"/>
+                <img src="/Hive Images/ConnectHive socialGroup img.webp" alt="" className="cat-img" loading="lazy"/>
               </div>
               <div className="cat-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -403,7 +415,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Social Groups</h3>
-              <p>Make friends, meet people with shared hobbies, and expand your social circle in a meaningful way.</p>
+              <p>You're in the room with people who already share your interests. Friendship starts with something in common.</p>
               <span className="cat-arrow">Explore
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -413,7 +425,7 @@ export default function LandingPage() {
 
             <Link to="/find-your-hive?cat=professional" className="cat-card reveal reveal-delay-2">
               <div className="cat-img-wrap">
-                <img src="/Hive Images/ConnectHive  Professional Network img.png" alt="" className="cat-img"/>
+                <img src="/Hive Images/ConnectHive  Professional Network img.webp" alt="" className="cat-img" loading="lazy"/>
               </div>
               <div className="cat-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -422,7 +434,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Professional Networking</h3>
-              <p>Connect with people in your field, find mentors, meet peers, and build meaningful career relationships.</p>
+              <p>Find your field, not just a contact. Mentors, peers, and collaborators who are actually doing the work.</p>
               <span className="cat-arrow">Explore
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -432,7 +444,7 @@ export default function LandingPage() {
 
             <Link to="/find-your-hive?cat=travel" className="cat-card reveal reveal-delay-3">
               <div className="cat-img-wrap">
-                <img src="/Hive Images/ConnectHive Travel Buddies img.png" alt="" className="cat-img"/>
+                <img src="/Hive Images/ConnectHive Travel Buddies img.webp" alt="" className="cat-img" loading="lazy"/>
               </div>
               <div className="cat-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -440,7 +452,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Travel Buddies</h3>
-              <p>Find people exploring the same city, planning trips, or looking for local experiences and adventures.</p>
+              <p>Someone to go with, not just a place to go. Find people who want the same trip, the same pace, the same kind of adventure.</p>
               <span className="cat-arrow">Explore
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -450,7 +462,7 @@ export default function LandingPage() {
 
             <Link to="/find-your-hive?cat=project" className="cat-card reveal reveal-delay-1">
               <div className="cat-img-wrap">
-                <img src="/Hive Images/ConnectHive ProjectCollab img.png" alt="" className="cat-img"/>
+                <img src="/Hive Images/ConnectHive ProjectCollab img.webp" alt="" className="cat-img" loading="lazy"/>
               </div>
               <div className="cat-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -460,7 +472,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Project Collaboration</h3>
-              <p>Meet teammates for startups, school projects, films, content creation, coding, or business ideas.</p>
+              <p>Start something. Find the people who've been looking for someone like you to make it real.</p>
               <span className="cat-arrow">Explore
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -470,7 +482,7 @@ export default function LandingPage() {
 
             <Link to="/find-your-hive?cat=events" className="cat-card reveal reveal-delay-2">
               <div className="cat-img-wrap">
-                <img src="/Hive Images/ConnectHive EventBuddies img.png" alt="" className="cat-img"/>
+                <img src="/Hive Images/ConnectHive EventBuddies img.webp" alt="" className="cat-img" loading="lazy"/>
               </div>
               <div className="cat-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -480,7 +492,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Event Buddies</h3>
-              <p>Find people to attend concerts, conferences, campus events, networking events, and local activities.</p>
+              <p>Nobody wants to go alone. Find people already going to the things you care about.</p>
               <span className="cat-arrow">Explore
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -490,7 +502,7 @@ export default function LandingPage() {
 
             <Link to="/find-your-hive?cat=specialized" className="cat-card reveal reveal-delay-3">
               <div className="cat-img-wrap">
-                <img src="/Hive Images/ConnectHive Specialized Groups img.png" alt="" className="cat-img"/>
+                <img src="/Hive Images/ConnectHive Specialized Groups img.webp" alt="" className="cat-img" loading="lazy"/>
               </div>
               <div className="cat-icon">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -498,7 +510,7 @@ export default function LandingPage() {
                 </svg>
               </div>
               <h3>Specialized Groups</h3>
-              <p>Create or join groups for unique needs like fitness accountability, study circles, camping, or creative pursuits.</p>
+              <p>Your niche is a group waiting to happen. Fitness accountability, study circles, creative pursuits: name it and find your people.</p>
               <span className="cat-arrow">Explore
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
@@ -511,39 +523,39 @@ export default function LandingPage() {
       </section>
 
       {/* ══ HOW IT WORKS ══ */}
-      <section className="section how-it-works" id="how-it-works" aria-label="How ConnectHive works">
+      <section className="section how-it-works" id="how-it-works" aria-label="How TrueHive works">
         <div className="container">
           <div className="text-center">
             <span className="label reveal">Simple Process</span>
-            <h2 className="section-heading reveal reveal-delay-1">How ConnectHive Works</h2>
-            <p className="section-sub reveal reveal-delay-2">From profile to Hive in minutes. Five clear steps to finding your people.</p>
+            <h2 className="section-heading reveal reveal-delay-1">How TrueHive Works</h2>
+            <p className="section-sub reveal reveal-delay-2">Five steps. Most people are in a Hive the same day they sign up.</p>
           </div>
 
           <div className="steps-grid" role="list">
             <div className="step reveal reveal-delay-1" role="listitem">
               <div className="step-num" aria-label="Step 1">1</div>
               <div className="step-title">Create Your Profile</div>
-              <div className="step-desc">Add your interests, skills, goals, personality, and availability. The more detail, the better your matches.</div>
+              <div className="step-desc">Ten minutes now saves you from twenty groups that aren't for you. The more you tell us, the sharper the match.</div>
             </div>
             <div className="step reveal reveal-delay-2" role="listitem">
               <div className="step-num" aria-label="Step 2">2</div>
               <div className="step-title">Choose Your Purpose</div>
-              <div className="step-desc">Select the type of Hive you want: social, professional, travel, project, event, or specialized.</div>
+              <div className="step-desc">Friends, career, travel, projects, events. Naming what you want is what makes the rest work.</div>
             </div>
             <div className="step reveal reveal-delay-3" role="listitem">
               <div className="step-num" aria-label="Step 3">3</div>
               <div className="step-title">Discover Compatible Hives</div>
-              <div className="step-desc">Browse recommended Hives with compatibility scores, descriptions, member counts, and tags.</div>
+              <div className="step-desc">You see a score and the reason behind it, so you're never guessing whether a group is for you.</div>
             </div>
             <div className="step reveal reveal-delay-4" role="listitem">
               <div className="step-num" aria-label="Step 4">4</div>
               <div className="step-title">Join or Create a Hive</div>
-              <div className="step-desc">Request to join an existing Hive or create a new one around your own goal. Don't see the right fit? Build it.</div>
+              <div className="step-desc">Request to join, or start your own and let us bring people to you.</div>
             </div>
             <div className="step reveal reveal-delay-5" role="listitem">
               <div className="step-num" aria-label="Step 5">5</div>
-              <div className="step-title">Connect Inside the Hive</div>
-              <div className="step-desc">Chat, plan events, share resources, collaborate, and build real connections with your group.</div>
+              <div className="step-title">Start Talking</div>
+              <div className="step-desc">A real group chat with your Hive from day one: messages, files, who's around right now.</div>
             </div>
           </div>
         </div>
@@ -552,21 +564,26 @@ export default function LandingPage() {
       {/* ══ FEATURED HIVE PREVIEW ══ */}
       <section className="section hive-preview" aria-label="Hive card preview">
         <div className="container">
+          <div className="text-center" style={{marginBottom:'64px'}}>
+            <span className="label reveal">Product Tour</span>
+            <h2 className="section-heading reveal reveal-delay-1">See TrueHive in action.</h2>
+            <p className="section-sub reveal reveal-delay-2">Two screens: how you find a Hive, and what it looks like once you're in one.</p>
+          </div>
           <div className="hive-preview-inner">
 
             <div className="hive-preview-text">
               <span className="label reveal">Live Preview</span>
-              <h2 className="section-heading reveal reveal-delay-1">Preview the Hive Experience</h2>
+              <h2 className="section-heading reveal reveal-delay-1">1 · Find a Hive that fits</h2>
               <p className="section-sub reveal reveal-delay-2">
                 This is what you will see after onboarding. Each Hive card shows everything
-                you need to decide — who they are, what they do, and exactly why you match.
+                you need to decide: who they are, what they do, and exactly why you match.
               </p>
               <div className="why-pillars" style={{marginTop:'32px'}}>
                 <div className="pillar reveal reveal-delay-3">
                   <div className="pillar-num">92%</div>
                   <div>
                     <div className="pillar-title">Transparent Match Score</div>
-                    <div className="pillar-desc">You see the score and the reason — not just a number.</div>
+                    <div className="pillar-desc">You see the score and the reason, not just a number.</div>
                   </div>
                 </div>
                 <div className="pillar reveal reveal-delay-4">
@@ -582,7 +599,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div style={{marginTop:'32px'}} className="reveal reveal-delay-5">
-                <Link to="/signup" className="btn btn-primary">Start Finding Your Hive</Link>
+                <Link to="/signup" className="btn btn-primary">Find My Hive</Link>
               </div>
             </div>
 
@@ -598,7 +615,7 @@ export default function LandingPage() {
                 </div>
                 <div className="phc-name">LA Creative Builders</div>
                 <div className="phc-category">Project Collaboration</div>
-                <div className="phc-desc">A group for creators, developers, filmmakers, and entrepreneurs looking to build projects together. We meet weekly — online and in-person.</div>
+                <div className="phc-desc">A group for creators, developers, filmmakers, and entrepreneurs looking to build projects together. We meet weekly, online and in person.</div>
                 <div className="phc-tags">
                   <span className="phc-tag">Film</span>
                   <span className="phc-tag">Tech</span>
@@ -637,12 +654,12 @@ export default function LandingPage() {
           <div className="feed-preview-inner">
 
             <div className="feed-mockup-col reveal">
-              <div className="feed-mockup" role="img" aria-label="ConnectHive home feed mockup">
+              <div className="feed-mockup" role="img" aria-label="TrueHive home feed mockup">
                 <div className="feed-topbar" aria-hidden="true">
                   <div className="feed-topbar-dots">
                     <span></span><span></span><span></span>
                   </div>
-                  <div className="feed-topbar-title">ConnectHive · Home Feed</div>
+                  <div className="feed-topbar-title">TrueHive · Home Feed</div>
                 </div>
                 <div className="feed-body" aria-hidden="true">
                   <div className="feed-item">
@@ -711,10 +728,10 @@ export default function LandingPage() {
 
             <div className="feed-preview-text">
               <span className="label reveal">Always Active</span>
-              <h2 className="section-heading reveal reveal-delay-1">Stay connected beyond the match.</h2>
+              <h2 className="section-heading reveal reveal-delay-1">2 · Live inside your Hive</h2>
               <p className="section-sub reveal reveal-delay-2">
                 Your home feed keeps you updated on your Hives, nearby activities, events,
-                trending groups, and new opportunities to connect — all in one place.
+                trending groups, and new opportunities to connect, all in one place.
               </p>
               <ul style={{listStyle:'none',marginTop:'28px',display:'flex',flexDirection:'column',gap:'14px'}}>
                 {[
@@ -739,8 +756,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ══ WHY CONNECTHIVE ══ */}
-      <section className="section why-section" id="about" aria-label="Why ConnectHive">
+      {/* ══ TRUST & SAFETY ══ */}
+      <section className="section trust-safety" aria-label="Trust and safety">
+        <div className="container">
+          <div className="text-center">
+            <span className="label reveal">Trust &amp; Safety</span>
+            <h2 className="section-heading reveal reveal-delay-1">Groups only work when they're safe.</h2>
+            <p className="section-sub reveal reveal-delay-2">
+              TrueHive is built around small, purposeful groups with real people in them. Not open rooms anyone can walk into.
+            </p>
+          </div>
+
+          <div className="trust-grid" style={{marginTop:'48px'}}>
+            <div className="trust-card reveal reveal-delay-1">
+              <div className="trust-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+                  <polyline points="8 12 11 15 16 9"/>
+                </svg>
+              </div>
+              <h3>Open or approval-only: owners decide</h3>
+              <p>Hive owners choose their join policy. Some Hives welcome anyone; others review every request. Either way, membership is a deliberate decision.</p>
+            </div>
+
+            <div className="trust-card reveal reveal-delay-2">
+              <div className="trust-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M20 21a8 8 0 1 0-16 0"/>
+                </svg>
+              </div>
+              <h3>Real profiles, not blank ones</h3>
+              <p>Matching runs on a completed profile, so the people you meet have actually shown up as themselves.</p>
+            </div>
+
+            <div className="trust-card reveal reveal-delay-3">
+              <div className="trust-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C9A24A" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <h3>You control who stays</h3>
+              <p>Owners and admins can remove members, and leaving a Hive is one click.</p>
+            </div>
+          </div>
+
+          <div className="trust-safety-footer reveal reveal-delay-4">
+            <p>Read our <Link to="/safety">Safety Guidelines</Link> →</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ WHY TRUEHIVE ══ */}
+      <section className="section why-section" id="about" aria-label="Why TrueHive">
         <div className="container">
           <div className="why-grid">
 
@@ -748,9 +816,7 @@ export default function LandingPage() {
               <span className="label reveal">Our Difference</span>
               <h2 className="section-heading reveal reveal-delay-1">More than a<br />friend app.</h2>
               <p className="section-sub reveal reveal-delay-2">
-                ConnectHive is designed for people who want meaningful groups, not random
-                connections. Whether your goal is friendship, career growth, travel, events, or
-                collaboration — the platform helps you find people who match your purpose and lifestyle.
+                Friend apps introduce you to a person. TrueHive puts you in a room where something is already happening.
               </p>
               <div className="why-pillars">
                 <div className="pillar reveal reveal-delay-3">
@@ -771,36 +837,38 @@ export default function LandingPage() {
                   <div className="pillar-num">03</div>
                   <div>
                     <div className="pillar-title">Designed for Real-World Connection</div>
-                    <div className="pillar-desc">Events, meetups, projects, and plans — ConnectHive is built so Hives move from online to real life.</div>
+                    <div className="pillar-desc">Events, meetups, projects, and plans. TrueHive is built so Hives move from online to real life.</div>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="why-visual">
-              <div className="why-quote reveal">
-                <p>"ConnectHive helped me find the exact group of founders I was looking for. Within two weeks we had our first project meeting — and now we ship together every month."</p>
-                <div className="why-quote-attr">
-                  <div className="why-quote-avatar" aria-hidden="true">JM</div>
-                  <div>
-                    <div className="why-quote-name">Jordan M.</div>
-                    <div className="why-quote-role">Founder · LA Creative Builders Hive</div>
-                  </div>
-                </div>
-              </div>
-              <div className="why-stats">
-                <div className="why-stat reveal reveal-delay-1">
-                  <span className="why-stat-num">12k+</span>
-                  <div className="why-stat-label">Members</div>
-                </div>
-                <div className="why-stat reveal reveal-delay-2">
-                  <span className="why-stat-num">850+</span>
-                  <div className="why-stat-label">Hives Formed</div>
-                </div>
-                <div className="why-stat reveal reveal-delay-3">
-                  <span className="why-stat-num">94%</span>
-                  <div className="why-stat-label">Match Rate</div>
-                </div>
+              <div className="compare-table-wrap reveal reveal-delay-2">
+                <table className="compare-table">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Friend apps</th>
+                      <th>TrueHive</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ['What you get',       'One person at a time',         'A group with a shared purpose'],
+                      ['How you meet',       'Swipe, match, hope',           'Matched on goals and availability'],
+                      ['First conversation', '"hey"',                        'A group already talking about something'],
+                      ['What happens next',  'Usually nothing',              'Events, projects, plans'],
+                      ["If it's not a fit",  'Start over',                   'Leave, and try another Hive'],
+                    ].map(([label, app, hive]) => (
+                      <tr key={label}>
+                        <td className="compare-row-label">{label}</td>
+                        <td className="compare-app-col">{app}</td>
+                        <td className="compare-hive-col">{hive}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 
@@ -808,8 +876,22 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ══ MISSION ══ */}
+      <section className="section" style={{background:'var(--white)',borderTop:'1px solid var(--beige)'}}>
+        <div className="container" style={{maxWidth:'760px'}}>
+          <span className="label reveal">Why We Exist</span>
+          <h2 className="section-heading reveal reveal-delay-1">Why TrueHive exists.</h2>
+          <p className="reveal reveal-delay-2" style={{marginBottom:'24px'}}>
+            Adults lose friends slowly and quietly. School ends, jobs change, people move, and one day the group chat is dead and nobody says anything about it. Everyone knows this happens. Almost nothing is built to fix it.
+          </p>
+          <p className="reveal reveal-delay-3">
+            TrueHive exists because a group is easier to join than a person is to meet. Find people who already want the same thing you do, and the hard part is mostly over.
+          </p>
+        </div>
+      </section>
+
       {/* ══ FINAL CTA ══ */}
-      <section className="final-cta" aria-label="Get started with ConnectHive">
+      <section className="final-cta" aria-label="Get started with TrueHive">
         <div className="final-cta-hex left" aria-hidden="true">
           <svg viewBox="0 0 200 230" fill="none" xmlns="http://www.w3.org/2000/svg">
             <polygon points="100,10 190,57.5 190,172.5 100,220 10,172.5 10,57.5" stroke="white" strokeWidth="8"/>
@@ -828,12 +910,11 @@ export default function LandingPage() {
           <h2 className="reveal reveal-delay-1">Your next circle starts here.</h2>
           <span className="gold-line reveal reveal-delay-1"></span>
           <p className="section-sub reveal reveal-delay-2" style={{marginTop:'20px'}}>
-            Find people who share your interests, goals, lifestyle, and ambition.
-            The right Hive is waiting for you.
+            Pick what you're looking for. We'll show you the groups. You could be talking to your Hive tonight.
           </p>
           <div className="final-cta-btns reveal reveal-delay-3" style={{marginTop:'40px'}}>
-            <Link to="/signup" className="btn btn-primary btn-lg">Create Your Profile</Link>
-            <Link to="/find-your-hive" className="btn btn-ghost-light btn-lg">Browse Hives</Link>
+            <Link to="/signup" className="btn btn-primary btn-lg">Find My Hive</Link>
+            <Link to="/find-your-hive" className="btn btn-ghost-light btn-lg">Explore Hives</Link>
           </div>
         </div>
       </section>

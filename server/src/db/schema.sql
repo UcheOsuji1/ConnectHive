@@ -475,6 +475,9 @@ WHERE  c.hive_id   = m.hive_id
   AND  c.is_default
   AND  m.channel_id IS NULL;
 
+-- Soft-delete support for channels (idempotent)
+ALTER TABLE hive_channels ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
+
 -- ─── Data repair: demote stale elevated roles on non-active rows ──────────────
 -- Idempotent. Fixes rows left by removeMember and leaveHive before the role-
 -- reset fix was applied. Safe to re-run: no-op once all rows are clean.

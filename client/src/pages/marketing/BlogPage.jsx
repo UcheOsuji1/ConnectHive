@@ -22,7 +22,7 @@ export default function BlogPage() {
         <div className="container" style={{ maxWidth: '640px' }}>
           <span className="label">Want to collaborate?</span>
           <h2 style={{ color: 'var(--ivory)', marginBottom: '20px' }}>
-            If you'd like to write about TrueHive — or pitch a collab — we're listening.
+            If you'd like to write about TrueHive, or pitch a collab, we're listening.
           </h2>
           <p style={{ color: 'rgba(248,244,234,.6)', marginBottom: '36px', lineHeight: '1.75' }}>
             That includes articles, interviews, newsletters, podcasts, and anything else you have in mind.

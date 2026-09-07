@@ -4,7 +4,7 @@ import usePageMeta from '../../hooks/usePageMeta';
 const DARK = { background: 'var(--charcoal)', padding: '96px 0', textAlign: 'center' };
 
 export default function CareersPage() {
-  usePageMeta('Careers', 'TrueHive is an early-stage team. No open roles right now — but we\'d love to hear from people who believe in what we\'re building.');
+  usePageMeta('Careers', 'TrueHive is an early-stage team. No open roles right now, but we\'d love to hear from people who believe in what we\'re building.');
 
   return (
     <>
@@ -15,7 +15,7 @@ export default function CareersPage() {
             We're an <em>early team.</em>
           </h1>
           <p style={{ color: 'rgba(248,244,234,.6)', maxWidth: '520px', margin: '0 auto', lineHeight: '1.75' }}>
-            No open roles right now — but if you believe in what we're building, we'd love to hear from you.
+            No open roles right now. If you believe in what we're building, we'd love to hear from you.
           </p>
         </div>
       </section>
@@ -25,13 +25,13 @@ export default function CareersPage() {
           <span className="label">Where We Are</span>
           <h2 className="section-heading">Small team, large ambition.</h2>
           <p style={{ marginBottom: '24px' }}>
-            TrueHive is in its early stages. We're building carefully and intentionally — which means
+            TrueHive is in its early stages. We're building carefully and intentionally, which means
             we're not hiring for the sake of growing headcount. When we do bring people on, we want
             them to be the kind who care about the problem as much as we do.
           </p>
           <p style={{ marginBottom: '40px' }}>
-            If that's you — whether you're a designer, engineer, community builder, or something else
-            entirely — send us a note. There's no formal process right now, just a conversation.
+            If that's you, whether you're a designer, engineer, community builder, or something else
+            entirely, send us a note. There's no formal process right now, just a conversation.
           </p>
 
           <a
@@ -49,7 +49,7 @@ export default function CareersPage() {
           <h2 style={{ marginBottom: '32px' }}>The kind of people we're looking for.</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
             {[
-              { title: 'Genuine curiosity', body: 'We want people who ask "why" before asking "how" — and who are comfortable changing their mind when the answer turns out differently than expected.' },
+              { title: 'Genuine curiosity', body: 'We want people who ask "why" before asking "how", and who are comfortable changing their mind when the answer turns out differently than expected.' },
               { title: 'Care about the user', body: 'Every decision we make runs through a simple test: does this make TrueHive better for the people using it? We want teammates who run the same test instinctively.' },
               { title: 'Comfort with early-stage', body: 'Things change. Priorities shift. Problems turn out to be different than they looked on paper. If that sounds like an interesting environment rather than an exhausting one, we\'re speaking the same language.' },
             ].map(({ title, body }) => (

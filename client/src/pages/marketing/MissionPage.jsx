@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import usePageMeta from '../../hooks/usePageMeta';
 
 export default function MissionPage() {
-  usePageMeta('Mission', 'TrueHive is built on the belief that real human connection requires intentionality — and that the platforms we use should make that easier, not harder.');
+  usePageMeta('Mission', 'TrueHive is built on the belief that real human connection requires intentionality, and that the platforms we use should make that easier, not harder.');
 
   return (
     <>
@@ -22,17 +22,17 @@ export default function MissionPage() {
         <div className="container" style={{ maxWidth: '800px' }}>
           <span className="label">What We Believe</span>
           <h2 style={{ color: 'var(--ivory)', marginBottom: '32px' }}>
-            Community is <em>intentional</em> — not accidental.
+            Community is <em>intentional</em>, not accidental.
           </h2>
           <p style={{ color: 'rgba(248,244,234,.65)', marginBottom: '28px', lineHeight: '1.8' }}>
             The best communities in your life didn't happen because an algorithm served you the right
-            content at the right time. They happened because you shared a space — physical or digital
-            — with people who cared about the same things. You built something together. You showed up
+            content at the right time. They happened because you shared a space, physical or digital,
+            with people who cared about the same things. You built something together. You showed up
             for each other. That takes intention.
           </p>
           <p style={{ color: 'rgba(248,244,234,.65)', marginBottom: '28px', lineHeight: '1.8' }}>
             We believe digital community can work the same way. Not as a passive feed you scroll
-            through, but as a space you belong to — where the people around you are there for a reason,
+            through, but as a space you belong to, where the people around you are there for a reason,
             and where the tools you're given actually support connection rather than just
             visibility.
           </p>
@@ -57,7 +57,7 @@ export default function MissionPage() {
               },
               {
                 title: 'Your presence is yours to control.',
-                body: 'You decide what others see about you — including whether you appear online at all. TrueHive will never expose your status against your preferences.',
+                body: 'You decide what others see about you, including whether you appear online at all. TrueHive will never expose your status against your preferences.',
               },
               {
                 title: 'Hives are for the members, not the platform.',

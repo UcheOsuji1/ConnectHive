@@ -38,6 +38,12 @@ import {
   getChatUploadSignature,
 } from '../controllers/messagesController.js';
 import {
+  listChannels,
+  createChannel,
+  updateChannel,
+  archiveChannel,
+} from '../controllers/channelsController.js';
+import {
   getOnboarding,
   updateOnboarding,
   createStep,
@@ -103,6 +109,12 @@ router.get('/:id/ai-match',       requireAuth, getAiMatch);
 // ── Media (banner / logo) ─────────────────────────────────────────────────────
 router.post('/:id/upload-signature', requireAuth, getUploadSignature);
 router.patch('/:id/media',           requireAuth, updateHiveMedia);
+
+// ── Channels (rooms) ──────────────────────────────────────────────────────────
+router.get('/:id/channels',                      requireAuth, listChannels);
+router.post('/:id/channels',                     requireAuth, createChannel);
+router.patch('/:id/channels/:channelId',         requireAuth, updateChannel);
+router.delete('/:id/channels/:channelId',        requireAuth, archiveChannel);
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 router.get('/:id/onboarding',                                requireAuth, getOnboarding);

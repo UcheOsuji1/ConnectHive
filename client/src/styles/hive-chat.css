@@ -51,21 +51,60 @@
 .hc-room-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  width: 100%;
   padding: 6px 10px 6px 12px;
   border-radius: 6px;
   margin: 0 4px;
+  width: calc(100% - 8px);
   font-size: 0.82rem;
   color: #7a6e5e;
-  cursor: default;
-  gap: 4px;
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  gap: 6px;
+  transition: background 0.1s, color 0.1s;
 }
-
+.hc-room-item:hover {
+  background: rgba(196, 154, 40, 0.1);
+  color: #5a4e3e;
+}
 .hc-room-item--active {
   background: rgba(196, 154, 40, 0.18);
   color: #c49a28;
   font-weight: 700;
-  cursor: pointer;
+}
+.hc-room-item--disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+.hc-room-item--disabled:hover {
+  background: none;
+  color: #7a6e5e;
+}
+
+.hc-room-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.hc-room-item--active .hc-room-icon {
+  opacity: 1;
+}
+
+.hc-room-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hc-room-unread {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c49a28;
+  flex-shrink: 0;
 }
 
 .hc-room-soon-pill {
@@ -81,15 +120,158 @@
 }
 
 .hc-add-room {
+  display: block;
+  width: calc(100% - 16px);
   margin: 12px 8px 0;
   padding: 6px 10px;
   border: 1px dashed rgba(140, 127, 108, 0.4);
   border-radius: 6px;
   font-size: 0.78rem;
   color: #a09080;
-  cursor: default;
+  background: none;
+  cursor: pointer;
   text-align: center;
+  transition: border-color 0.1s, color 0.1s;
 }
+.hc-add-room:hover {
+  border-color: rgba(196, 154, 40, 0.5);
+  color: #c49a28;
+}
+
+/* ── Create channel modal ────────────────────────────────────────────────── */
+.hc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 20, 8, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.hc-modal {
+  background: #fffdf8;
+  border: 1px solid #e9dfcf;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(26, 20, 8, 0.18);
+}
+
+.hc-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #e9dfcf;
+}
+.hc-modal-header h2 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2d2416;
+  margin: 0;
+}
+.hc-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #a09080;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.hc-modal-close:hover { background: #ede7d9; color: #2d2416; }
+
+.hc-modal-body { padding: 16px 20px; }
+
+.hc-modal-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7a6e5e;
+  margin-bottom: 6px;
+  margin-top: 14px;
+}
+.hc-modal-label:first-child { margin-top: 0; }
+
+.hc-modal-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #d9cfbf;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  color: #2d2416;
+  background: #fff;
+  outline: none;
+  box-sizing: border-box;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  transition: border-color 0.15s;
+}
+.hc-modal-input:focus { border-color: #c49a28; }
+
+.hc-modal-types {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.hc-modal-type {
+  padding: 5px 12px;
+  border: 1px solid #d9cfbf;
+  border-radius: 99px;
+  font-size: 0.8rem;
+  color: #7a6e5e;
+  background: none;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.hc-modal-type:hover { border-color: #c49a28; color: #c49a28; }
+.hc-modal-type--active {
+  background: rgba(196, 154, 40, 0.15);
+  border-color: #c49a28;
+  color: #c49a28;
+  font-weight: 600;
+}
+
+.hc-modal-error {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  color: #c0512a;
+}
+
+.hc-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #e9dfcf;
+}
+.hc-modal-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.hc-modal-btn--cancel {
+  background: none;
+  border-color: #d9cfbf;
+  color: #7a6e5e;
+}
+.hc-modal-btn--cancel:hover { background: #f5f0e8; }
+.hc-modal-btn--create {
+  background: #c49a28;
+  color: #fff;
+}
+.hc-modal-btn--create:hover:not(:disabled) { background: #b08a20; }
+.hc-modal-btn--create:disabled { opacity: 0.6; cursor: not-allowed; }
 
 @media (max-width: 900px) {
   .hc-rooms-rail { display: none; }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import usePageMeta from '../../hooks/usePageMeta';
 
-const BOILERPLATE = `TrueHive is a community platform built around Hives — small, structured groups organized around shared purpose. Members join Hives aligned with their interests, connect through real-time chat and a shared feed, and participate in events — all within a focused community rather than a global feed. TrueHive is independently built and currently in early access.`;
+const BOILERPLATE = `TrueHive is a community platform built around Hives: small, structured groups organized around shared purpose. Members join Hives aligned with their interests, connect through real-time chat and a shared feed, and participate in events, all within a focused community rather than a global feed. TrueHive is independently built and currently in early access.`;
 
 export default function PressPage() {
   usePageMeta('Press', 'Media contact and boilerplate for journalists and content creators writing about TrueHive.');
@@ -51,13 +51,13 @@ export default function PressPage() {
               <h3 style={{ marginBottom: '10px' }}>We aim for 48 hours</h3>
               <p>
                 We're a small team. We don't have a PR agency. We'll respond personally and try to be
-                genuinely useful — not just send a press release.
+                genuinely useful, not just send a press release.
               </p>
             </div>
           </div>
 
           <span className="label">Boilerplate</span>
-          <h2 className="section-heading">About TrueHive — for publication</h2>
+          <h2 className="section-heading">Boilerplate for publication</h2>
           <p style={{ marginBottom: '24px' }}>
             You're welcome to use the paragraph below verbatim, or adapt it as needed. If you'd like
             something more tailored to your piece, email us.
@@ -89,13 +89,13 @@ export default function PressPage() {
           <h2 style={{ marginBottom: '24px' }}>A few things we'd appreciate.</h2>
           <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {[
-              'Please refer to the product as "TrueHive" — capital T, capital H.',
+              'Please refer to the product as "TrueHive", with a capital T and a capital H.',
               'We\'re early-stage. We don\'t have verified member numbers to share publicly.',
-              'We\'re happy to review quotes for accuracy before publication — just ask.',
+              'We\'re happy to review quotes for accuracy before publication. Just ask.',
               'Screenshots of the live product are welcome with attribution.',
             ].map(item => (
               <li key={item} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <span style={{ color: 'var(--gold)', fontWeight: '700', flexShrink: 0, marginTop: '2px' }}>—</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" aria-hidden="true" style={{flexShrink:0,marginTop:'2px'}}><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
                 <p style={{ margin: 0, color: 'var(--text-muted)' }}>{item}</p>
               </li>
             ))}
@@ -106,7 +106,7 @@ export default function PressPage() {
       <section className="final-cta">
         <div className="container">
           <h2>Questions we haven't answered?</h2>
-          <p className="section-sub">Reach out — we respond to every press inquiry personally.</p>
+          <p className="section-sub">Reach out. We respond to every press inquiry personally.</p>
           <div className="final-cta-btns">
             <a href="mailto:press@truehive.app" className="btn btn-primary btn-lg">Email the team</a>
             <Link to="/about" className="btn btn-ghost-light btn-lg">About TrueHive</Link>

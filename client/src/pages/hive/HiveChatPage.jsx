@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useOutletContext, Link, useNavigate } from 'react-router-dom';
+import { useOutletContext, useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import EmojiPicker from '../../components/EmojiPicker.jsx';
@@ -118,20 +118,143 @@ function StagedFileChips({ files, onRemove }) {
 
 // ── RoomsRail ─────────────────────────────────────────────────────────────────
 
-function RoomsRail() {
+const CHANNEL_ICON = (
+  <svg className="hc-room-icon" width="11" height="11" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+  </svg>
+);
+
+function RoomsRail({ channels, activeChannelId, unreadChannels, onSelect, onAddRoom, canManage }) {
+  const textChannels  = channels.filter(c => ['text', 'announcement', 'resource', 'planning'].includes(c.channel_type));
+  const voiceChannels = channels.filter(c => ['voice', 'video'].includes(c.channel_type));
+
   return (
     <aside className="hc-rooms-rail" aria-label="Rooms">
       <div className="hc-rail-section-label">Rooms</div>
-      <div className="hc-room-item hc-room-item--active"># general</div>
-      <div className="hc-room-item"># announcements <span className="hc-room-soon-pill">Soon</span></div>
-      <div className="hc-room-item"># resources <span className="hc-room-soon-pill">Soon</span></div>
-      <div className="hc-room-item"># planning <span className="hc-room-soon-pill">Soon</span></div>
 
-      <div className="hc-rail-section-label">Voice</div>
-      <div className="hc-room-item">🔊 Lounge <span className="hc-room-soon-pill">Soon</span></div>
+      {textChannels.map(ch => (
+        <button
+          key={ch.channel_id}
+          className={[
+            'hc-room-item',
+            ch.channel_id === activeChannelId ? 'hc-room-item--active' : '',
+          ].filter(Boolean).join(' ')}
+          onClick={() => onSelect(ch.channel_id)}
+          aria-current={ch.channel_id === activeChannelId ? 'page' : undefined}
+        >
+          {CHANNEL_ICON}
+          <span className="hc-room-name">{ch.name}</span>
+          {unreadChannels.has(ch.channel_id) && (
+            <span className="hc-room-unread" aria-label="Unread messages" />
+          )}
+        </button>
+      ))}
 
-      <div title="Coming soon" className="hc-add-room">+ Add room</div>
+      {voiceChannels.length > 0 && (
+        <>
+          <div className="hc-rail-section-label">Voice</div>
+          {voiceChannels.map(ch => (
+            <div key={ch.channel_id} className="hc-room-item hc-room-item--disabled">
+              🔊 <span className="hc-room-name">{ch.name}</span>
+              <span className="hc-room-soon-pill">Soon</span>
+            </div>
+          ))}
+        </>
+      )}
+
+      {canManage && (
+        <button className="hc-add-room" onClick={onAddRoom}>
+          + Add room
+        </button>
+      )}
     </aside>
+  );
+}
+
+// ── CreateChannelModal ────────────────────────────────────────────────────────
+
+const CHANNEL_TYPES = [
+  { value: 'text',         label: 'Text' },
+  { value: 'announcement', label: 'Announcements' },
+  { value: 'resource',     label: 'Resources' },
+  { value: 'planning',     label: 'Planning' },
+];
+
+function CreateChannelModal({ hiveId, onClose, onCreated }) {
+  const [name,     setName]     = useState('');
+  const [type,     setType]     = useState('text');
+  const [creating, setCreating] = useState(false);
+  const [error,    setError]    = useState('');
+
+  async function handleCreate() {
+    const trimmed = name.trim();
+    if (!trimmed) { setError('Room name is required.'); return; }
+    setCreating(true);
+    setError('');
+    try {
+      const ch = await api.post(`/api/hives/${hiveId}/channels`, {
+        name:         trimmed,
+        channel_type: type,
+      });
+      onCreated(ch);
+    } catch (err) {
+      setError(err.message || 'Failed to create room.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter')  handleCreate();
+    if (e.key === 'Escape') onClose();
+  }
+
+  return (
+    <div className="hc-modal-overlay" onClick={onClose}>
+      <div className="hc-modal" onClick={e => e.stopPropagation()}>
+        <div className="hc-modal-header">
+          <h2>Create Room</h2>
+          <button className="hc-modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className="hc-modal-body">
+          <label className="hc-modal-label" htmlFor="hc-new-room-name">Room name</label>
+          <input
+            id="hc-new-room-name"
+            className="hc-modal-input"
+            placeholder="e.g. project-updates"
+            value={name}
+            onChange={e => setName(e.target.value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''))}
+            onKeyDown={handleKey}
+            maxLength={32}
+            autoFocus
+          />
+          <label className="hc-modal-label">Room type</label>
+          <div className="hc-modal-types">
+            {CHANNEL_TYPES.map(t => (
+              <button
+                key={t.value}
+                className={`hc-modal-type${type === t.value ? ' hc-modal-type--active' : ''}`}
+                onClick={() => setType(t.value)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {error && <p className="hc-modal-error">{error}</p>}
+        </div>
+        <div className="hc-modal-footer">
+          <button className="hc-modal-btn hc-modal-btn--cancel" onClick={onClose}>Cancel</button>
+          <button
+            className="hc-modal-btn hc-modal-btn--create"
+            onClick={handleCreate}
+            disabled={creating}
+          >
+            {creating ? 'Creating…' : 'Create Room'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -427,10 +550,20 @@ function ContextRail({ members, presenceData, myStatus, onStatusChange, pinnedGo
 
 export default function HiveChatPage() {
   const { hive, hiveId, isOwner, canPost, setChatUnread } = useOutletContext();
+  const { channelId: routeChannelId } = useParams();
   const { user }   = useAuth();
   const navigate   = useNavigate();
 
   const userId = user?.userId ?? null;
+
+  // Channels
+  const [channels,          setChannels]          = useState([]);
+  const [channelsLoading,   setChannelsLoading]   = useState(true);
+  const [activeChannelId,   setActiveChannelId]   = useState(null);
+  const [unreadChannels,    setUnreadChannels]     = useState(new Set());
+  const [showCreateChannel, setShowCreateChannel] = useState(false);
+  const activeChannelIdRef  = useRef(null);
+  const msgCacheRef         = useRef(new Map()); // channelId → { messages, hasMore }
 
   // Data
   const [messages,     setMessages]     = useState([]);
@@ -479,10 +612,11 @@ export default function HiveChatPage() {
   const autoAwayTimer    = useRef(null);
 
   // Keep refs in sync with state
-  useEffect(() => { hasMoreRef.current      = hasMore; },      [hasMore]);
-  useEffect(() => { loadingOlderRef.current = loadingOlder; }, [loadingOlder]);
-  useEffect(() => { messagesRef.current     = messages; },     [messages]);
-  useEffect(() => { myStatusRef.current     = myStatus; },     [myStatus]);
+  useEffect(() => { hasMoreRef.current        = hasMore; },         [hasMore]);
+  useEffect(() => { loadingOlderRef.current   = loadingOlder; },    [loadingOlder]);
+  useEffect(() => { messagesRef.current       = messages; },        [messages]);
+  useEffect(() => { myStatusRef.current       = myStatus; },        [myStatus]);
+  useEffect(() => { activeChannelIdRef.current = activeChannelId; }, [activeChannelId]);
 
   // Revoke all object URLs on unmount — empty deps captures the ref, not the array
   useEffect(() => {
@@ -562,7 +696,8 @@ export default function HiveChatPage() {
     const prevTop = el?.scrollTop    ?? 0;
 
     try {
-      const data  = await api.get(`/api/hives/${hiveId}/messages?before=${encodeURIComponent(oldest.sent_at)}&limit=50`);
+      const chParam = activeChannelIdRef.current ? `&channel_id=${activeChannelIdRef.current}` : '';
+      const data  = await api.get(`/api/hives/${hiveId}/messages?before=${encodeURIComponent(oldest.sent_at)}&limit=50${chParam}`);
       const older = data.messages ?? [];
       setHasMore(data.has_more ?? false);
       setMessages(prev => {
@@ -589,22 +724,87 @@ export default function HiveChatPage() {
     if (el.scrollTop < 100) loadOlderMessages();
   }
 
-  // ── Initial load ───────────────────────────────────────────────────────────
+  // ── Load channels once per hive ───────────────────────────────────────────
   useEffect(() => {
-    setLoading(true);
-    Promise.all([
-      api.get(`/api/hives/${hiveId}/messages?limit=50`),
-      api.get(`/api/hives/${hiveId}/members`),
-    ]).then(([msgData, memData]) => {
-      setMessages(msgData.messages ?? []);
-      setHasMore(msgData.has_more ?? false);
-      setMembers(memData.members ?? []);
-    }).catch(() => {}).finally(() => {
+    setChannelsLoading(true);
+    api.get(`/api/hives/${hiveId}/channels`)
+      .then(data => setChannels(data.channels ?? []))
+      .catch(() => {})
+      .finally(() => setChannelsLoading(false));
+  }, [hiveId]);
+
+  // ── Load members once per hive ────────────────────────────────────────────
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/members`)
+      .then(data => setMembers(data.members ?? []))
+      .catch(() => {});
+  }, [hiveId]);
+
+  // ── Redirect to default channel when channels are ready ───────────────────
+  useEffect(() => {
+    if (channelsLoading || channels.length === 0) return;
+
+    const validChannel = channels.find(c => c.channel_id === routeChannelId);
+    if (!validChannel) {
+      const defaultCh = channels.find(c => c.is_default) ?? channels[0];
+      navigate(`/hive/${hiveId}/chat/${defaultCh.channel_id}`, { replace: true });
+      return;
+    }
+    setActiveChannelId(routeChannelId);
+  }, [channelsLoading, channels, routeChannelId, hiveId, navigate]);
+
+  // ── Load messages when active channel changes ─────────────────────────────
+  useEffect(() => {
+    if (!activeChannelId) return;
+
+    // Clear unread for this channel now that we've switched to it
+    setUnreadChannels(prev => {
+      if (!prev.has(activeChannelId)) return prev;
+      const next = new Set(prev);
+      next.delete(activeChannelId);
+      return next;
+    });
+
+    // Check cache first
+    const cached = msgCacheRef.current.get(activeChannelId);
+    if (cached) {
+      setMessages(cached.messages);
+      setHasMore(cached.hasMore);
       setLoading(false);
       requestAnimationFrame(() => scrollToBottom());
-    });
+      return;
+    }
+
+    setLoading(true);
+    setMessages([]);
+    api.get(`/api/hives/${hiveId}/messages?channel_id=${activeChannelId}&limit=50`)
+      .then(data => {
+        const msgs = data.messages ?? [];
+        setMessages(msgs);
+        setHasMore(data.has_more ?? false);
+        msgCacheRef.current.set(activeChannelId, { messages: msgs, hasMore: data.has_more ?? false });
+      }).catch(() => {}).finally(() => {
+        setLoading(false);
+        requestAnimationFrame(() => scrollToBottom());
+      });
     markSeen();
-  }, [hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeChannelId, hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Join/leave channel socket room on channel switch ──────────────────────
+  useEffect(() => {
+    if (!activeChannelId) return;
+
+    socket.emit('join_channel', { hiveId, channelId: activeChannelId });
+
+    return () => {
+      socket.emit('leave_channel', { hiveId, channelId: activeChannelId });
+      // Save current messages back to cache on leave
+      msgCacheRef.current.set(activeChannelId, {
+        messages: messagesRef.current,
+        hasMore:  hasMoreRef.current,
+      });
+    };
+  }, [activeChannelId, hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!loading && messages.length > 0) {
@@ -627,14 +827,26 @@ export default function HiveChatPage() {
     });
 
     const onReceiveMessage = (msg) => {
+      // receive_message arrives from channel room — always the active channel
       setMessages(prev => {
         if (prev.some(m => m.message_id === msg.message_id)) return prev;
         if (!isNearBottomRef.current) setNewMsgCount(c => c + 1);
-        return [...prev, msg];
+        const next = [...prev, msg];
+        msgCacheRef.current.set(activeChannelIdRef.current, {
+          messages: next,
+          hasMore:  hasMoreRef.current,
+        });
+        return next;
       });
       if (document.visibilityState === 'visible') {
         markSeen();
         if (isNearBottomRef.current) requestAnimationFrame(() => scrollToBottom(true));
+      }
+    };
+
+    const onChannelActivity = ({ channel_id }) => {
+      if (channel_id && channel_id !== activeChannelIdRef.current) {
+        setUnreadChannels(prev => new Set([...prev, channel_id]));
       }
     };
 
@@ -685,6 +897,7 @@ export default function HiveChatPage() {
     socket.on('presence_update',      onPresenceUpdate);
     socket.on('typing_update',        onTypingUpdate);
     socket.on('hive_access_revoked',  onHiveAccessRevoked);
+    socket.on('channel_activity',     onChannelActivity);
 
     return () => {
       socket.emit('leave_hive_room', { hiveId });
@@ -695,6 +908,7 @@ export default function HiveChatPage() {
       socket.off('presence_update',     onPresenceUpdate);
       socket.off('typing_update',       onTypingUpdate);
       socket.off('hive_access_revoked', onHiveAccessRevoked);
+      socket.off('channel_activity',    onChannelActivity);
       Object.values(typingTimers.current).forEach(clearTimeout);
       typingTimers.current = {};
     };
@@ -825,6 +1039,7 @@ export default function HiveChatPage() {
     const optimistic = {
       message_id:     tempId,
       hive_id:        hiveId,
+      channel_id:     activeChannelId,
       sender_user_id: userId,
       message_text:   text || null,
       sent_at:        new Date().toISOString(),
@@ -846,7 +1061,10 @@ export default function HiveChatPage() {
     requestAnimationFrame(() => scrollToBottom());
 
     try {
-      const payload = { reply_to_message_id: capturedReply?.message_id ?? null };
+      const payload = {
+        reply_to_message_id: capturedReply?.message_id ?? null,
+        channel_id:          activeChannelId,
+      };
       if (text)                  payload.message_text = text;
       if (capturedAtts.length)   payload.attachments  = capturedAtts;
 
@@ -873,7 +1091,10 @@ export default function HiveChatPage() {
     setMessages(prev => prev.map(m => m.message_id === tempId ? { ...m, _status: 'sending' } : m));
     try {
       // Resend already-uploaded attachment metadata — do not re-upload files
-      const payload = { reply_to_message_id: msg.reply_to?.message_id ?? null };
+      const payload = {
+        reply_to_message_id: msg.reply_to?.message_id ?? null,
+        channel_id:          msg.channel_id ?? activeChannelIdRef.current,
+      };
       if (msg.message_text)         payload.message_text = msg.message_text;
       if (msg.attachments?.length)  payload.attachments  = msg.attachments;
 
@@ -943,6 +1164,21 @@ export default function HiveChatPage() {
     } catch {}
   }
 
+  // ── Channel navigation ────────────────────────────────────────────────────
+  function handleChannelSelect(channelId) {
+    if (channelId === activeChannelId) return;
+    navigate(`/hive/${hiveId}/chat/${channelId}`);
+  }
+
+  function handleChannelCreated(newChannel) {
+    setChannels(prev => [...prev, newChannel]);
+    setShowCreateChannel(false);
+    navigate(`/hive/${hiveId}/chat/${newChannel.channel_id}`);
+  }
+
+  const activeChannel = channels.find(c => c.channel_id === activeChannelId);
+  const canManageChannels = isOwner || (hive?.my_role === 'admin');
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const annotated  = annotate(messages);
   const memberCount = hive?.member_count ?? members.length;
@@ -961,14 +1197,31 @@ export default function HiveChatPage() {
 
   return (
     <div className="hc-root">
-      <RoomsRail />
+      {showCreateChannel && (
+        <CreateChannelModal
+          hiveId={hiveId}
+          onClose={() => setShowCreateChannel(false)}
+          onCreated={handleChannelCreated}
+        />
+      )}
+
+      <RoomsRail
+        channels={channels}
+        activeChannelId={activeChannelId}
+        unreadChannels={unreadChannels}
+        onSelect={handleChannelSelect}
+        onAddRoom={() => setShowCreateChannel(true)}
+        canManage={canManageChannels}
+      />
 
       {/* Center */}
       <div className="hc-center">
         {/* Header */}
         <div className="hc-header">
           <div className="hc-header-left">
-            <div className="hc-header-room"># general</div>
+            <div className="hc-header-room">
+              {activeChannel ? activeChannel.name : '…'}
+            </div>
             <div className="hc-header-meta">
               <span className="hc-presence-dot" />
               <span>{onlineUserIds.length} online · {memberCount} members</span>
@@ -1007,7 +1260,9 @@ export default function HiveChatPage() {
               <div className="hc-empty">
                 <div className="hc-empty-glyph">⬡</div>
                 <h2 className="hc-empty-title">
-                  Welcome to the beginning of {hive?.hive_name ?? 'this Hive'}
+                  {activeChannel && activeChannel.name !== 'general'
+                    ? `Welcome to ${activeChannel.name}`
+                    : `Welcome to the beginning of ${hive?.hive_name ?? 'this Hive'}`}
                 </h2>
                 <p className="hc-empty-sub">Every great Hive starts with its first conversation.</p>
                 {hive?.icebreaker && (
@@ -1114,7 +1369,7 @@ export default function HiveChatPage() {
               <textarea
                 ref={composerRef}
                 className="hc-textarea"
-                placeholder="Message # general…"
+                placeholder={activeChannel ? `Message ${activeChannel.name}…` : 'Select a room…'}
                 value={draftText}
                 onChange={handleDraftChange}
                 onKeyDown={handleComposerKey}

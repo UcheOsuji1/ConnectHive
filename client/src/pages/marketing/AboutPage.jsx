@@ -27,11 +27,11 @@ export default function AboutPage() {
           <p style={{ marginBottom: '24px' }}>
             TrueHive started with a simple frustration: most social platforms are built to maximize
             time-on-site, not to help you find people who share your actual interests and goals.
-            We wanted something different — a place built around purpose, not performance.
+            We wanted something different: a place built around purpose, not performance.
           </p>
           <p style={{ marginBottom: '24px' }}>
             What we've built is a Hive-based community platform. Hives are small, structured groups
-            organized around a shared theme — professional development, creative projects, travel,
+            organized around a shared theme: professional development, creative projects, travel,
             social connection, and more. Inside a Hive, members get real-time chat, a shared feed,
             a member directory, and event planning: the tools a focused community actually needs.
           </p>
@@ -39,10 +39,10 @@ export default function AboutPage() {
             We launched because the product works. The community is still growing. We're not going
             to claim numbers we don't have or tell you we're bigger than we are. What we can tell
             you is that TrueHive is built thoughtfully, maintained actively, and genuinely intended
-            to be useful to real people — not to extract engagement from them.
+            to be useful to real people, not to extract engagement from them.
           </p>
           <p>
-            If you're here early — welcome. You get to help shape what TrueHive becomes.
+            If you're here early, welcome. You get to help shape what TrueHive becomes.
           </p>
         </div>
       </section>

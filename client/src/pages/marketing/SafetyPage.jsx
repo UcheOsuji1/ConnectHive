@@ -4,11 +4,11 @@ import usePageMeta from '../../hooks/usePageMeta';
 const features = [
   {
     title: 'Authentication on every request',
-    body: 'Every protected route — including the API and real-time connections — verifies a signed JWT stored in an httpOnly cookie. You cannot access a Hive, send a message, or join a room without a valid session.',
+    body: 'Every protected route, including the API and real-time connections, verifies a signed JWT stored in an httpOnly cookie. You cannot access a Hive, send a message, or join a room without a valid session.',
   },
   {
     title: 'Membership required to access Hive content',
-    body: 'You must be an active member of a Hive to read its chat, join its live room, or view its private feed. Membership is checked on every API call and every socket event — there is no client-side shortcut around it.',
+    body: 'You must be an active member of a Hive to read its chat, join its live room, or view its private feed. Membership is checked on every API call and every socket event. There is no client-side shortcut around it.',
   },
   {
     title: 'Rate limiting on messages',
@@ -16,11 +16,11 @@ const features = [
   },
   {
     title: 'Attachment validation',
-    body: 'Files attached to messages must be hosted on TrueHive\'s own Cloudinary account — arbitrary external URLs are rejected. Each attachment is limited to 25 MB; a message may include up to 6 attachments.',
+    body: 'Files attached to messages must be hosted on TrueHive\'s own Cloudinary account. Arbitrary external URLs are rejected. Each attachment is limited to 25 MB; a message may include up to 6 attachments.',
   },
   {
     title: 'Invisible presence is truly invisible',
-    body: 'When you set your status to invisible, you are excluded from presence payloads entirely — not just visually hidden. Other members\' clients never receive your user ID or status in the online list.',
+    body: 'When you set your status to invisible, you are excluded from presence payloads entirely, not just visually hidden. Other members\' clients never receive your user ID or status in the online list.',
   },
   {
     title: 'Roles reset on membership changes',
@@ -41,7 +41,7 @@ export default function SafetyPage() {
           </h1>
           <p className="section-sub" style={{ margin: '0 auto' }}>
             The protections below are active in the current version of the platform. We describe
-            only what the code actually does — nothing more.
+            only what the code actually does. Nothing more.
           </p>
         </div>
       </section>
@@ -79,7 +79,7 @@ export default function SafetyPage() {
               'Report behavior to your Hive\'s owner or admin if something feels wrong.',
             ].map(item => (
               <li key={item} style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-                <span style={{ color: 'var(--gold)', fontWeight: '700', flexShrink: 0, marginTop: '2px' }}>—</span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="1.8" aria-hidden="true" style={{flexShrink:0,marginTop:'2px'}}><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/></svg>
                 <p style={{ margin: 0 }}>{item}</p>
               </li>
             ))}
