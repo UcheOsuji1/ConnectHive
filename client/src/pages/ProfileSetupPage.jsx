@@ -443,7 +443,7 @@ function CelebrationScreen({ fullName, initials, avatarPreview, typeLine, tags, 
 
         <h2 className="ps-celeb-headline">You&apos;re <em>in.</em></h2>
 
-        <p className="ps-celeb-subtext">You&apos;ve completed the full ConnectHive screening. Your compatibility profile is built. Your Hives are waiting.</p>
+        <p className="ps-celeb-subtext">You&apos;ve completed the full TrueHive screening. Your compatibility profile is built. Your Hives are waiting.</p>
 
         <div className="ps-celeb-badge">
           <span className="ps-celeb-badge-icon">🔐</span>
@@ -684,7 +684,7 @@ export default function ProfileSetupPage() {
     if (roleLabel && purposeLabel) return `${roleLabel} · ${purposeLabel}`;
     if (roleLabel)    return roleLabel;
     if (purposeLabel) return purposeLabel;
-    return 'ConnectHive Member';
+    return 'TrueHive Member';
   })();
   const tags     = [...Object.values(interests).flat(), ...Object.values(skills).flat()].slice(0, 6);
   const memberId = user?.memberId || 'CHV-PENDING';
@@ -693,7 +693,7 @@ export default function ProfileSetupPage() {
     return (
       <div className="ps-page">
         <div className="ps-topbar">
-          <Link to="/" className="ps-brand"><LogoSVG size={28} /><span className="ps-wordmark">CONNECTHIVE</span></Link>
+          <Link to="/" className="ps-brand"><LogoSVG size={28} /><span className="ps-wordmark">TRUEHIVE</span></Link>
         </div>
         <div className="ps-card" style={{ textAlign: 'center', padding: '60px 24px', color: '#8a7a5a' }}>
           Loading your profile…
@@ -709,7 +709,7 @@ export default function ProfileSetupPage() {
       <div className="ps-topbar">
         <Link to="/" className="ps-brand">
           <LogoSVG size={28} />
-          <span className="ps-wordmark">CONNECTHIVE</span>
+          <span className="ps-wordmark">TRUEHIVE</span>
         </Link>
         {isEdit
           ? <Link to="/profile" className="ps-skip">Cancel</Link>

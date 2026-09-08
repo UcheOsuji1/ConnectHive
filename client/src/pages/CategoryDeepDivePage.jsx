@@ -1345,7 +1345,7 @@ export default function CategoryDeepDivePage() {
         <div className="cdd-topbar">
           <Link to="/" className="cdd-logo">
             <LogoSVG />
-            <span className="cdd-wordmark">ConnectHive</span>
+            <span className="cdd-wordmark">TrueHive</span>
           </Link>
           <button
             type="button"

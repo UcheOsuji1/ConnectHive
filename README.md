@@ -1,4 +1,4 @@
-# ConnectHive
+# TrueHive
 
 A community-building platform where people join small, curated groups — Hives — based on shared interests, goals, and availability. Think of it as Discord for real-life connections: purpose-driven, locally aware, and built for people who want more than a follower count.
 
@@ -111,7 +111,7 @@ Open `http://localhost:5173`.
 
 ## Deployment
 
-ConnectHive is tested on **Render** (backend) + **Vercel** (frontend).
+TrueHive is tested on **Render** (backend) + **Vercel** (frontend).
 
 ### Before you deploy
 

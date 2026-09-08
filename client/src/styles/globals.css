@@ -325,11 +325,6 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   .hero-right { display: none; }
 }
 
-@media (max-width: 480px) {
-  .hero-stats { flex-wrap: wrap; gap: 20px; justify-content: center; }
-  .hero-stats > div { min-width: 80px; text-align: center; }
-}
-
 .hero-left { max-width: 580px; }
 .hero-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;
@@ -348,15 +343,6 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   font-size: .95rem; color: var(--text-light); line-height: 1.75; margin-bottom: 36px;
 }
 .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 44px; }
-.hero-stats {
-  display: flex; gap: 32px; padding-top: 36px;
-  border-top: 1px solid rgba(201,162,74,.20);
-}
-.hero-stat-num {
-  font-family: 'Cormorant Garamond', serif; font-size: 1.8rem; font-weight: 700;
-  color: var(--charcoal); line-height: 1;
-}
-.hero-stat-label { font-size: .8rem; color: var(--text-light); margin-top: 4px; }
 
 .hero h1                  { color: #FFFFFF; }
 .hero h1 em               { color: var(--gold); }
@@ -368,9 +354,6 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   border-color: rgba(255,255,255,.22);
 }
 .hero .hero-eyebrow span  { background: #FFFFFF; }
-.hero .hero-stat-num      { color: #FFFFFF; }
-.hero .hero-stat-label    { color: rgba(255,255,255,.65); }
-.hero .hero-stats         { border-top-color: rgba(255,255,255,.20); }
 .hero .btn-ghost          { color: #FFFFFF; border-color: rgba(255,255,255,.55); }
 .hero .btn-ghost:hover    { background: rgba(255,255,255,.10); border-color: #FFFFFF; color: #FFFFFF; }
 
@@ -718,7 +701,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 }
 
 /* ══════════════════════════════════════════════════════════════
-   8. WHY CONNECTHIVE
+   8. WHY TRUEHIVE
 ══════════════════════════════════════════════════════════════ */
 .why-section { background: var(--beige-2); border-top: 1px solid var(--beige); }
 .why-grid {
@@ -743,42 +726,6 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .pillar-desc { font-size: .87rem; color: var(--text-muted); line-height: 1.6; }
 
 .why-visual { position: relative; }
-.why-quote {
-  background: var(--charcoal); border-radius: var(--radius-lg); padding: 36px;
-  position: relative; overflow: hidden;
-}
-.why-quote::before {
-  content: '\201C'; position: absolute; top: -10px; left: 24px;
-  font-family: 'Cormorant Garamond', serif; font-size: 8rem; color: rgba(201,162,74,.12);
-  line-height: 1; pointer-events: none;
-}
-.why-quote p {
-  font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; font-style: italic;
-  color: var(--ivory); line-height: 1.65; position: relative;
-}
-.why-quote-attr {
-  display: flex; align-items: center; gap: 12px; margin-top: 24px;
-}
-.why-quote-avatar {
-  width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--gold);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: .82rem; color: var(--gold); background: rgba(201,162,74,.12);
-  flex-shrink: 0;
-}
-.why-quote-name { font-size: .85rem; font-weight: 600; color: var(--ivory); }
-.why-quote-role { font-size: .78rem; color: rgba(248,244,234,.5); }
-.why-stats {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px;
-}
-.why-stat {
-  background: var(--white); border: 1px solid var(--beige);
-  border-radius: var(--radius-md); padding: 18px; text-align: center;
-}
-.why-stat-num {
-  font-family: 'Cormorant Garamond', serif; font-size: 1.7rem; font-weight: 700;
-  color: var(--gold-dark); display: block;
-}
-.why-stat-label { font-size: .75rem; color: var(--text-muted); margin-top: 4px; }
 
 /* ══════════════════════════════════════════════════════════════
    9. FINAL CTA
@@ -1094,3 +1041,52 @@ svg { display: block; }
 .card-visible  { opacity: 1; transform: translateY(0); }
 .card-exiting  { opacity: 0; transform: translateY(-12px); }
 .card-entering { opacity: 0; transform: translateY(12px); }
+
+/* ══════════════════════════════════════════════════════════════
+   11. TRUST & SAFETY SECTION
+══════════════════════════════════════════════════════════════ */
+.trust-safety { background: var(--charcoal); border-top: 1px solid rgba(201,162,74,.12); }
+.trust-safety .label { color: var(--gold-muted); }
+.trust-safety .label::before { background: var(--gold-muted); }
+.trust-safety h2 { color: var(--ivory); }
+.trust-safety .section-sub { color: rgba(248,244,234,.6); }
+.trust-safety .trust-card { background: rgba(248,244,234,.06); border-color: rgba(248,244,234,.10); }
+.trust-safety .trust-card:hover { border-color: rgba(201,162,74,.4); }
+.trust-safety .trust-card h3 { color: var(--ivory); }
+.trust-safety .trust-card p { color: rgba(248,244,234,.65); }
+.trust-safety-footer { margin-top: 40px; text-align: center; }
+.trust-safety-footer p { color: rgba(248,244,234,.55); font-size: .9rem; }
+.trust-safety-footer a { color: var(--gold-muted); text-decoration: none; }
+.trust-safety-footer a:hover { color: var(--gold-light); }
+
+/* ══════════════════════════════════════════════════════════════
+   12. COMPARISON TABLE
+══════════════════════════════════════════════════════════════ */
+.compare-table-wrap {
+  border-radius: var(--radius-md); overflow: hidden;
+  border: 1px solid rgba(30,27,24,.10); margin-top: 32px; overflow-x: auto;
+}
+.compare-table {
+  width: 100%; border-collapse: collapse;
+  background: var(--ivory); font-family: 'DM Sans', sans-serif;
+}
+.compare-table th {
+  padding: 16px 20px; text-align: left;
+  font-size: .75rem; font-weight: 700; letter-spacing: .10em; text-transform: uppercase;
+  border-bottom: 1px solid rgba(30,27,24,.08);
+}
+.compare-table th:first-child { color: transparent; width: 22%; }
+.compare-table th:nth-child(2) { color: var(--text-light); }
+.compare-table th:nth-child(3) { color: var(--gold-dark); }
+.compare-table tbody tr { border-top: 1px solid rgba(30,27,24,.07); }
+.compare-table td { padding: 14px 20px; font-size: .88rem; vertical-align: top; }
+.compare-row-label {
+  font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--text-light); width: 22%;
+}
+.compare-app-col { color: var(--text-light); }
+.compare-hive-col { color: var(--charcoal); font-weight: 500; }
+@media (max-width: 560px) {
+  .compare-table th:first-child, .compare-row-label { display: none; }
+  .compare-table th, .compare-table td { padding: 12px 14px; }
+}

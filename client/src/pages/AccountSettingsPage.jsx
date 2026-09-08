@@ -78,7 +78,7 @@ export default function AccountSettingsPage() {
               <div className="acct-row">
                 <dt className="acct-row-label">Who can view your profile</dt>
                 <dd className="acct-row-value acct-row-action">
-                  <span>Everyone in ConnectHive</span>
+                  <span>Everyone in TrueHive</span>
                   <span className="acct-soon">Soon</span>
                 </dd>
               </div>
@@ -111,7 +111,7 @@ export default function AccountSettingsPage() {
             <div className="acct-session-row">
               <div>
                 <div className="acct-session-title">Log out</div>
-                <div className="acct-session-sub">Sign out of your ConnectHive account on this device.</div>
+                <div className="acct-session-sub">Sign out of your TrueHive account on this device.</div>
               </div>
               <button className="acct-btn acct-btn-gold" onClick={handleLogout}>Log out</button>
             </div>

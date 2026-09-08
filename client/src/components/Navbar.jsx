@@ -54,7 +54,7 @@ export default function Navbar() {
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="navbar-inner">
 
-          <Link to={user ? '/home' : '/'} className="nav-logo" aria-label="ConnectHive home">
+          <Link to={user ? '/home' : '/'} className="nav-logo" aria-label="TrueHive home">
             <svg className="nav-logo-icon" viewBox="8 2 68 66" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
               <defs>
                 <linearGradient id="g-nav-shared" x1="8" y1="2" x2="76" y2="68" gradientUnits="userSpaceOnUse">
@@ -67,7 +67,7 @@ export default function Navbar() {
               <polygon points="54,4 69.6,13 69.6,31 54,40 38.4,31 38.4,13" stroke="url(#g-nav-shared)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
               <polygon points="41,30 56.6,39 56.6,57 41,66 25.4,57 25.4,39" stroke="url(#g-nav-shared)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
             </svg>
-            <span className="nav-logo-text">ConnectHive</span>
+            <span className="nav-logo-text">TrueHive</span>
           </Link>
 
           {loading ? null : user ? (
@@ -116,12 +116,13 @@ export default function Navbar() {
             <>
               <ul className="nav-links" role="list">
                 <li><Link to="/">Home</Link></li>
+                <li><Link to="/about">About</Link></li>
                 <li><Link to="/find-your-hive">Find Your Hive</Link></li>
                 <li><Link to="/create-hive">Create a Hive</Link></li>
               </ul>
               <div className="nav-right">
                 <Link to="/login" className="nav-signin">Sign In</Link>
-                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join ConnectHive</Link>
+                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join TrueHive</Link>
               </div>
             </>
           )}
@@ -170,12 +171,13 @@ export default function Navbar() {
           <>
             <ul>
               <li><Link to="/">Home</Link></li>
+              <li><Link to="/about">About</Link></li>
               <li><Link to="/find-your-hive">Find Your Hive</Link></li>
               <li><Link to="/create-hive">Create a Hive</Link></li>
             </ul>
             <div className="mobile-ctas">
               <Link to="/login" className="btn btn-ghost">Sign In</Link>
-              <Link to="/signup" className="btn btn-primary">Join ConnectHive</Link>
+              <Link to="/signup" className="btn btn-primary">Join TrueHive</Link>
             </div>
           </>
         )}
