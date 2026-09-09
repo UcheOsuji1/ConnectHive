@@ -127,7 +127,7 @@ export default function LandingPage() {
 
           <Link to="/" className="nav-logo" aria-label="TrueHive home">
             <TrueHiveMark size={36} className="nav-logo-icon" />
-            <TrueHiveWordmark variant="dark" className="th-wordmark--nav" />
+            <TrueHiveWordmark variant="light" className="th-wordmark--nav" />
           </Link>
 
           <ul className="nav-links" role="list">

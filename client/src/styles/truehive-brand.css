@@ -26,11 +26,16 @@
   paint-order: stroke fill;
 }
 
-/* ── light variant: "True" in charcoal, no stroke ────────────────────────── */
+/* ── light variant: "True" in charcoal with a gold outline ───────────────── */
 .th-wordmark--light .th-true {
   color: var(--charcoal);
-  -webkit-text-stroke: 0;
-  paint-order: fill;
+  -webkit-text-stroke: 0.6px var(--gold);
+  paint-order: stroke fill;
+}
+
+/* At 13px the 0.6px stroke is too large a fraction of the stem — thin it down */
+.th-wordmark--compact.th-wordmark--light .th-true {
+  -webkit-text-stroke: 0.4px var(--gold);
 }
 
 /* ── size overrides for each placement ───────────────────────────────────── */
