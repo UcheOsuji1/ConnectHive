@@ -483,3 +483,38 @@ ALTER TABLE hive_channels ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 -- reset fix was applied. Safe to re-run: no-op once all rows are clean.
 UPDATE hive_members SET role = 'member'
 WHERE membership_status <> 'active' AND role <> 'member';
+
+-- ─── Auth additions ───────────────────────────────────────────────────────────
+
+-- Google-only accounts have no password; allow NULL.
+ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+
+-- Email verification flag (set TRUE after the user clicks the link).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified   BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Increment to invalidate all existing JWTs for a user (logout-everywhere, password reset).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version    INT     NOT NULL DEFAULT 0;
+
+-- ─── auth_identities — OAuth provider links ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS auth_identities (
+  id               UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  provider         TEXT        NOT NULL,           -- 'google'
+  provider_user_id TEXT        NOT NULL,
+  email            TEXT        NOT NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (provider, provider_user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_auth_identities_user_id ON auth_identities(user_id);
+
+-- ─── auth_tokens — email verification + password reset ───────────────────────
+CREATE TABLE IF NOT EXISTS auth_tokens (
+  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  type       TEXT        NOT NULL,    -- 'email_verification' | 'password_reset'
+  token_hash TEXT        NOT NULL,   -- SHA-256 hex of the raw token sent to user
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);

@@ -1,0 +1,114 @@
+.as-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f5e8;
+  padding: 24px 16px;
+}
+
+.as-card {
+  background: #fff;
+  border: 1px solid #e8dfc8;
+  border-radius: 16px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+
+.as-back {
+  display: inline-block;
+  font-size: 13px;
+  color: #8a7a54;
+  text-decoration: none;
+  margin-bottom: 24px;
+}
+.as-back:hover { color: #c49a28; }
+
+.as-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1508;
+  margin: 0 0 16px;
+}
+
+.as-body {
+  font-size: 14px;
+  color: #5a4f38;
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+.as-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1508;
+  margin-bottom: 6px;
+  margin-top: 16px;
+}
+
+.as-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #d8cfb0;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #1a1508;
+  background: #fdfaf2;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.as-input:focus { border-color: #c49a28; }
+
+.as-pw-wrap {
+  position: relative;
+}
+.as-pw-wrap .as-input {
+  padding-right: 60px;
+}
+.as-pw-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: #8a7a54;
+  cursor: pointer;
+  padding: 0;
+}
+.as-pw-toggle:hover { color: #c49a28; }
+
+.as-error {
+  font-size: 13px;
+  color: #c0392b;
+  background: #fdf0ef;
+  border: 1px solid #f5c6c2;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin: 12px 0 4px;
+}
+
+.as-btn {
+  display: block;
+  width: 100%;
+  margin-top: 24px;
+  padding: 12px;
+  background: linear-gradient(135deg, #e8c84a, #c49a28);
+  color: #1a1508;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+.as-btn:disabled { opacity: 0.5; cursor: default; }
+.as-btn:hover:not(:disabled) { opacity: 0.9; }
+.as-btn--inline { display: inline-block; width: auto; padding: 12px 24px; }

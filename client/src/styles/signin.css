@@ -238,6 +238,8 @@
   background: #fdf9f0;
 }
 
+.si-oauth--full { font-weight: 500; }
+
 .si-or {
   display: flex;
   align-items: center;

@@ -281,6 +281,8 @@
   background: #fdf9f0;
 }
 
+.su-oauth--full { font-weight: 500; }
+
 /* OR divider */
 .su-or {
   display: flex;

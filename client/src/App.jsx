@@ -27,6 +27,9 @@ import HiveAboutPage from './pages/hive/HiveAboutPage';
 import HiveSoonPage from './pages/hive/HiveSoonPage';
 import HiveChatPage from './pages/hive/HiveChatPage';
 import HiveOnboardingPage from './pages/HiveOnboardingPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 import AboutPage from './pages/marketing/AboutPage';
 import MissionPage from './pages/marketing/MissionPage';
@@ -45,6 +48,9 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/verify-email" element={<VerifyEmailPage />} />
 
       {/* Marketing routes */}
       <Route element={<MarketingLayout />}>
