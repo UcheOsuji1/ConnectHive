@@ -29,14 +29,6 @@
 }
 .ps-brand:hover { opacity: 0.8; }
 
-.ps-wordmark {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #c49a28;
-}
 
 .ps-skip {
   font-family: 'DM Sans', sans-serif;

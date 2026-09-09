@@ -43,14 +43,6 @@
 
 .si-brand:hover { opacity: 0.8; }
 
-.si-wordmark {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #c49a28;
-}
 
 .si-heading {
   display: flex;

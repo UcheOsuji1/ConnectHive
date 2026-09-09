@@ -1,0 +1,48 @@
+/* ── TrueHive brand components ──────────────────────────────────────────────── */
+
+/* Shared wordmark base */
+.th-wordmark {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 700;
+  letter-spacing: .01em;
+  white-space: nowrap;
+  font-size: 1.3rem;
+  line-height: 1;
+  display: inline;
+}
+
+/* ── "Hive" — gold gradient, both variants ────────────────────────────────── */
+.th-wordmark .th-hive {
+  background: linear-gradient(135deg, #F2D89A 0%, #E8C56A 25%, #C9A24A 55%, #D4B267 80%, #9A7830 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ── dark variant: "True" in white with a gold outline ───────────────────── */
+.th-wordmark--dark .th-true {
+  color: #FFFFFF;
+  -webkit-text-stroke: 0.6px var(--gold);
+  paint-order: stroke fill;
+}
+
+/* ── light variant: "True" in charcoal, no stroke ────────────────────────── */
+.th-wordmark--light .th-true {
+  color: var(--charcoal);
+  -webkit-text-stroke: 0;
+  paint-order: fill;
+}
+
+/* ── size overrides for each placement ───────────────────────────────────── */
+
+/* App navbar and landing navbar */
+.th-wordmark--nav   { font-size: 1.3rem; }
+
+/* Footer */
+.th-wordmark--footer { font-size: 1.25rem; }
+
+/* Auth panels (signup, login) */
+.th-wordmark--auth { font-size: 15px; }
+
+/* Compact bars (profile setup, category deep dive) */
+.th-wordmark--compact { font-size: 13px; }

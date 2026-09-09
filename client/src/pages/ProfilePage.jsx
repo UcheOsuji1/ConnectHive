@@ -6,6 +6,7 @@ import { getInitials } from '../lib/initials.js';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import '../styles/profile.css';
+import TrueHiveMark from '../components/TrueHiveMark.jsx';
 
 // ── Category hex tile ────────────────────────────────────────────────────────
 
@@ -366,11 +367,7 @@ export default function ProfilePage() {
                 ) : hives.length === 0 && pendingRequests.length === 0 && rejectedRecent.length === 0 ? (
                   <div className="prof-hives-empty">
                     <span className="prof-hives-icon">
-                      <svg width="40" height="40" viewBox="0 0 120 110" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.35"/>
-                        <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.55"/>
-                        <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" stroke="#c49a28" strokeWidth="7" strokeLinejoin="round" opacity="0.55"/>
-                      </svg>
+                      <TrueHiveMark size={40} style={{ opacity: 0.45 }} />
                     </span>
                     <p className="prof-hives-msg">No Hives yet</p>
                     <p className="prof-hives-sub">Your Hives will show here once you join or found one.</p>

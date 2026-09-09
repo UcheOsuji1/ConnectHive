@@ -4,6 +4,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import { getInitials } from '../lib/initials.js';
 import '../styles/profile-setup.css';
+import TrueHiveMark from '../components/TrueHiveMark.jsx';
+import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 
 // ── Data ──────────────────────────────────────────────────────
 
@@ -288,31 +290,6 @@ function SectionLabel({ children }) {
   return <div className="ps-section-label">{children}</div>;
 }
 
-// ── Logo SVG (shared between TopBar and Completion) ───────────
-const LogoSVG = ({ size = 28 }) => (
-  <svg width={size} height={Math.round(size * 0.93)} viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <defs>
-      <linearGradient id="ps-lg1" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stopColor="#e8c84a"/>
-        <stop offset="50%" stopColor="#c49a28"/>
-        <stop offset="100%" stopColor="#8a6510"/>
-      </linearGradient>
-      <linearGradient id="ps-lg2" x1="100%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stopColor="#e8c84a"/>
-        <stop offset="50%" stopColor="#c49a28"/>
-        <stop offset="100%" stopColor="#8a6510"/>
-      </linearGradient>
-      <linearGradient id="ps-lg3" x1="0%" y1="100%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="#8a6510"/>
-        <stop offset="50%" stopColor="#c49a28"/>
-        <stop offset="100%" stopColor="#e8c84a"/>
-      </linearGradient>
-    </defs>
-    <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     fill="none" stroke="url(#ps-lg1)" strokeWidth="9" strokeLinejoin="round"/>
-    <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="url(#ps-lg2)" strokeWidth="9" strokeLinejoin="round"/>
-    <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#ps-lg3)" strokeWidth="9" strokeLinejoin="round"/>
-  </svg>
-);
 
 // ── CelebrationScreen ─────────────────────────────────────────
 function CelebrationScreen({ fullName, initials, avatarPreview, typeLine, tags, memberId, purposesCount, mattersCount, interestsTotal, skillsTotal }) {
@@ -419,16 +396,7 @@ function CelebrationScreen({ fullName, initials, avatarPreview, typeLine, tags, 
           <div id="ps-orbit-dots" className="ps-celeb-orbit-dots" />
           <div className="ps-celeb-outer-ring" />
           <div className="ps-celeb-inner-circle">
-            <svg width="44" height="40" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="ps-cl1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#e8c84a"/><stop offset="50%" stopColor="#c49a28"/><stop offset="100%" stopColor="#8a6510"/></linearGradient>
-                <linearGradient id="ps-cl2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stopColor="#e8c84a"/><stop offset="50%" stopColor="#c49a28"/><stop offset="100%" stopColor="#8a6510"/></linearGradient>
-                <linearGradient id="ps-cl3" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#8a6510"/><stop offset="50%" stopColor="#c49a28"/><stop offset="100%" stopColor="#e8c84a"/></linearGradient>
-              </defs>
-              <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     fill="none" stroke="url(#ps-cl1)" strokeWidth="9" strokeLinejoin="round"/>
-              <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="url(#ps-cl2)" strokeWidth="9" strokeLinejoin="round"/>
-              <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#ps-cl3)" strokeWidth="9" strokeLinejoin="round"/>
-            </svg>
+            <TrueHiveMark size={44} />
           </div>
           <span className="ps-celeb-sparkle" style={{top:'4px',right:'10px',animationDelay:'0s'}}>✦</span>
           <span className="ps-celeb-sparkle" style={{bottom:'6px',left:'8px',animationDelay:'0.7s'}}>✦</span>
@@ -455,11 +423,7 @@ function CelebrationScreen({ fullName, initials, avatarPreview, typeLine, tags, 
 
         <div className="ps-celeb-card">
           <div className="ps-celeb-card-glow" />
-          <svg className="ps-celeb-card-wm" width="120" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
-            <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     fill="none" stroke="#c49a28" strokeWidth="9" strokeLinejoin="round"/>
-            <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="#c49a28" strokeWidth="9" strokeLinejoin="round"/>
-            <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="#c49a28" strokeWidth="9" strokeLinejoin="round"/>
-          </svg>
+          <TrueHiveMark size={120} className="ps-celeb-card-wm" />
           <div className="ps-celeb-card-top">
             <div className="ps-celeb-avatar">
               <div className="ps-celeb-avatar-ring" />
@@ -693,7 +657,7 @@ export default function ProfileSetupPage() {
     return (
       <div className="ps-page">
         <div className="ps-topbar">
-          <Link to="/" className="ps-brand"><LogoSVG size={28} /><span className="ps-wordmark">TRUEHIVE</span></Link>
+          <Link to="/" className="ps-brand"><TrueHiveMark size={28} /><TrueHiveWordmark variant="dark" className="th-wordmark--compact" /></Link>
         </div>
         <div className="ps-card" style={{ textAlign: 'center', padding: '60px 24px', color: '#8a7a5a' }}>
           Loading your profile…
@@ -708,8 +672,8 @@ export default function ProfileSetupPage() {
       {/* ── Top bar ── */}
       <div className="ps-topbar">
         <Link to="/" className="ps-brand">
-          <LogoSVG size={28} />
-          <span className="ps-wordmark">TRUEHIVE</span>
+          <TrueHiveMark size={28} />
+          <TrueHiveWordmark variant="dark" className="th-wordmark--compact" />
         </Link>
         {isEdit
           ? <Link to="/profile" className="ps-skip">Cancel</Link>

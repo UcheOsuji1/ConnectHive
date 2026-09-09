@@ -42,14 +42,6 @@
 }
 .su-brand:hover { opacity: 0.8; }
 
-.su-wordmark {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 15px;
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: #c49a28;
-}
 
 .su-heading { line-height: 1.15; }
 

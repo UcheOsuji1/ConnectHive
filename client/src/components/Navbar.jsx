@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import Avatar from './Avatar.jsx';
 import NotificationBell from './NotificationBell.jsx';
+import TrueHiveMark from './TrueHiveMark.jsx';
+import TrueHiveWordmark from './TrueHiveWordmark.jsx';
 
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
@@ -55,19 +57,8 @@ export default function Navbar() {
         <div className="navbar-inner">
 
           <Link to={user ? '/home' : '/'} className="nav-logo" aria-label="TrueHive home">
-            <svg className="nav-logo-icon" viewBox="8 2 68 66" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <linearGradient id="g-nav-shared" x1="8" y1="2" x2="76" y2="68" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#E8C56A"/>
-                  <stop offset="45%" stopColor="#C9A24A"/>
-                  <stop offset="100%" stopColor="#9A7830"/>
-                </linearGradient>
-              </defs>
-              <polygon points="28,4 43.6,13 43.6,31 28,40 12.4,31 12.4,13" stroke="url(#g-nav-shared)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
-              <polygon points="54,4 69.6,13 69.6,31 54,40 38.4,31 38.4,13" stroke="url(#g-nav-shared)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
-              <polygon points="41,30 56.6,39 56.6,57 41,66 25.4,57 25.4,39" stroke="url(#g-nav-shared)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
-            </svg>
-            <span className="nav-logo-text">TrueHive</span>
+            <TrueHiveMark size={36} className="nav-logo-icon" />
+            <TrueHiveWordmark variant="dark" className="th-wordmark--nav" />
           </Link>
 
           {loading ? null : user ? (

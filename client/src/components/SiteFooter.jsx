@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import TrueHiveMark from './TrueHiveMark.jsx';
+import TrueHiveWordmark from './TrueHiveWordmark.jsx';
 
 export default function SiteFooter() {
   return (
@@ -9,19 +11,8 @@ export default function SiteFooter() {
 
             <div className="footer-brand">
               <div className="footer-logo">
-                <svg width="30" height="30" viewBox="8 2 68 66" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                  <defs>
-                    <linearGradient id="g-footer" x1="8" y1="2" x2="76" y2="68" gradientUnits="userSpaceOnUse">
-                      <stop offset="0%" stopColor="#E8C56A"/>
-                      <stop offset="45%" stopColor="#C9A24A"/>
-                      <stop offset="100%" stopColor="#9A7830"/>
-                    </linearGradient>
-                  </defs>
-                  <polygon points="28,4 43.6,13 43.6,31 28,40 12.4,31 12.4,13" stroke="url(#g-footer)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
-                  <polygon points="54,4 69.6,13 69.6,31 54,40 38.4,31 38.4,13" stroke="url(#g-footer)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
-                  <polygon points="41,30 56.6,39 56.6,57 41,66 25.4,57 25.4,39" stroke="url(#g-footer)" strokeWidth="4.5" strokeLinejoin="round" fill="none"/>
-                </svg>
-                <span className="footer-logo-text">TrueHive</span>
+                <TrueHiveMark size={30} />
+                <TrueHiveWordmark variant="dark" className="th-wordmark--footer" />
               </div>
               <p className="footer-tagline">Find your Hive. Build meaningful connections with people who share your purpose.</p>
               <div className="footer-socials" aria-label="Social media links">

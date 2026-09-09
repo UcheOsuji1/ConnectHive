@@ -1,5 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import TrueHiveMark from '../components/TrueHiveMark.jsx';
+import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 import '../styles/category-deep-dive.css';
 
 // ── Social Groups content data ────────────────────────────────
@@ -1210,34 +1212,6 @@ function PrefCardRow({ id, cards, selectedCard, onSelect }) {
   );
 }
 
-// ── Logo SVG (gradient IDs namespaced to avoid conflicts) ─────
-
-function LogoSVG() {
-  return (
-    <svg width="26" height="24" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="cdd-g1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%"   stopColor="#e8c84a" />
-          <stop offset="50%"  stopColor="#c49a28" />
-          <stop offset="100%" stopColor="#8a6510" />
-        </linearGradient>
-        <linearGradient id="cdd-g2" x1="100%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%"   stopColor="#e8c84a" />
-          <stop offset="50%"  stopColor="#c49a28" />
-          <stop offset="100%" stopColor="#8a6510" />
-        </linearGradient>
-        <linearGradient id="cdd-g3" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%"   stopColor="#8a6510" />
-          <stop offset="50%"  stopColor="#c49a28" />
-          <stop offset="100%" stopColor="#e8c84a" />
-        </linearGradient>
-      </defs>
-      <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     fill="none" stroke="url(#cdd-g1)" strokeWidth="9" strokeLinejoin="round" />
-      <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="url(#cdd-g2)" strokeWidth="9" strokeLinejoin="round" />
-      <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#cdd-g3)" strokeWidth="9" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 function CreateBtn({ text, onClick }) {
   const [hov, setHov] = useState(false);
@@ -1343,9 +1317,9 @@ export default function CategoryDeepDivePage() {
 
         {/* ── Top Bar ── */}
         <div className="cdd-topbar">
-          <Link to="/" className="cdd-logo">
-            <LogoSVG />
-            <span className="cdd-wordmark">TrueHive</span>
+          <Link to="/" className="cdd-logo" aria-label="TrueHive home">
+            <TrueHiveMark size={24} />
+            <TrueHiveWordmark variant="light" className="th-wordmark--compact" />
           </Link>
           <button
             type="button"

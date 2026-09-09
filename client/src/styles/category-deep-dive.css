@@ -27,14 +27,6 @@
   text-decoration: none;
 }
 
-.cdd-wordmark {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #1a1508;
-}
 
 .cdd-back-btn {
   border: 0.5px solid #e2dacb;

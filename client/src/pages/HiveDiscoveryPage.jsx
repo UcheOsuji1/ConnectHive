@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
+import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import '../styles/hive-discovery.css';
 
 const CATEGORY_LABELS = {
@@ -379,21 +380,7 @@ function FounderEmptyState({ categoryLabel, city, category, waitingCount: initia
 
       {/* ── Badge ── */}
       <div className="hd-founder-badge-wrap">
-        <svg className="hd-founder-logo" viewBox="8 2 68 66" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="es-grad" x1="8" y1="2" x2="76" y2="68" gradientUnits="userSpaceOnUse">
-              <stop offset="0%"   stopColor="#E8C56A" />
-              <stop offset="45%"  stopColor="#C9A24A" />
-              <stop offset="100%" stopColor="#9A7830" />
-            </linearGradient>
-          </defs>
-          <polygon points="28,4 43.6,13 43.6,31 28,40 12.4,31 12.4,13"
-            stroke="url(#es-grad)" strokeWidth="4.5" strokeLinejoin="round" fill="#fdf8ec" />
-          <polygon points="54,4 69.6,13 69.6,31 54,40 38.4,31 38.4,13"
-            stroke="url(#es-grad)" strokeWidth="4.5" strokeLinejoin="round" fill="#fdf8ec" />
-          <polygon points="41,30 56.6,39 56.6,57 41,66 25.4,57 25.4,39"
-            stroke="url(#es-grad)" strokeWidth="4.5" strokeLinejoin="round" fill="#fdf8ec" />
-        </svg>
+        <TrueHiveMark size={88} className="hd-founder-logo" />
         <div className="hd-founder-badge-dot">
           <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
             <path d="M6 1.2 L7.18 4.02 L10.24 4.31 L8.07 6.24 L8.71 9.25 L6 7.74 L3.29 9.25 L3.93 6.24 L1.76 4.31 L4.82 4.02 Z" fill="#1a1508"/>
@@ -706,26 +693,7 @@ export default function HiveDiscoveryPage() {
           <div className="hd-ring-wrap">
             <div className="hd-ring-outer" />
             <div className="hd-ring-scan" />
-            <svg
-              className="hd-logo-svg"
-              viewBox="8 2 68 66"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <defs>
-                <linearGradient id="hd-grad" x1="8" y1="2" x2="76" y2="68" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%"   stopColor="#E8C56A" />
-                  <stop offset="45%"  stopColor="#C9A24A" />
-                  <stop offset="100%" stopColor="#9A7830" />
-                </linearGradient>
-              </defs>
-              <polygon points="28,4 43.6,13 43.6,31 28,40 12.4,31 12.4,13"
-                stroke="url(#hd-grad)" strokeWidth="4.5" strokeLinejoin="round" fill="#faf8f4" />
-              <polygon points="54,4 69.6,13 69.6,31 54,40 38.4,31 38.4,13"
-                stroke="url(#hd-grad)" strokeWidth="4.5" strokeLinejoin="round" fill="#faf8f4" />
-              <polygon points="41,30 56.6,39 56.6,57 41,66 25.4,57 25.4,39"
-                stroke="url(#hd-grad)" strokeWidth="4.5" strokeLinejoin="round" fill="#faf8f4" />
-            </svg>
+            <TrueHiveMark size={96} className="hd-logo-svg" />
           </div>
 
           {/* ── Eyebrow ── */}

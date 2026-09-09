@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/signup.css';
+import TrueHiveMark from '../components/TrueHiveMark.jsx';
+import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 
 const STEPS = [
   { n: 1, label: 'Create your account', desc: ': takes less than a minute.' },
@@ -69,29 +71,8 @@ export default function SignUpPage() {
 
           {/* Logo — links to landing page */}
           <Link to="/" className="su-brand">
-            <svg width="36" height="34" viewBox="0 0 120 110" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-              <defs>
-                <linearGradient id="su-lg1" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%"   stopColor="#e8c84a"/>
-                  <stop offset="50%"  stopColor="#c49a28"/>
-                  <stop offset="100%" stopColor="#8a6510"/>
-                </linearGradient>
-                <linearGradient id="su-lg2" x1="100%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%"   stopColor="#e8c84a"/>
-                  <stop offset="50%"  stopColor="#c49a28"/>
-                  <stop offset="100%" stopColor="#8a6510"/>
-                </linearGradient>
-                <linearGradient id="su-lg3" x1="0%" y1="100%" x2="100%" y2="0%">
-                  <stop offset="0%"   stopColor="#8a6510"/>
-                  <stop offset="50%"  stopColor="#c49a28"/>
-                  <stop offset="100%" stopColor="#e8c84a"/>
-                </linearGradient>
-              </defs>
-              <polygon points="60,2 88,18 88,48 60,64 32,48 32,18"     fill="none" stroke="url(#su-lg1)" strokeWidth="9" strokeLinejoin="round"/>
-              <polygon points="32,46 60,62 60,92 32,108 4,92 4,62"     fill="none" stroke="url(#su-lg2)" strokeWidth="9" strokeLinejoin="round"/>
-              <polygon points="88,46 116,62 116,92 88,108 60,92 60,62" fill="none" stroke="url(#su-lg3)" strokeWidth="9" strokeLinejoin="round"/>
-            </svg>
-            <span className="su-wordmark">TRUEHIVE</span>
+            <TrueHiveMark size={36} />
+            <TrueHiveWordmark variant="dark" className="th-wordmark--auth" />
           </Link>
 
           {/* Heading */}
