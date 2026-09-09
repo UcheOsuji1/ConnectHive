@@ -107,14 +107,6 @@ async function createHive(payload) {
   return api.post('/api/hives', payload);
 }
 
-async function saveDraft(payload) {
-  try {
-    await api.post('/api/hives/draft', payload);
-  } catch {
-    // Endpoint not built yet — no-op
-  }
-}
-
 // ── Pre-fill derivation ───────────────────────────────────────────────────────
 
 function derivePrefills(category, prefillData) {
@@ -241,21 +233,14 @@ export default function CreateHivePage() {
   const [obNotif,      setObNotif]      = useState(true);
   const [obTemplate,   setObTemplate]   = useState('default'); // 'default' | 'blank'
 
-  // ── Submit & draft state ───────────────────────────────────────
+  // ── Submit state ───────────────────────────────────────────────
   const [errors,      setErrors]      = useState({});
   const [submitState, setSubmitState] = useState('idle');   // 'idle' | 'submitting' | 'error'
-  const [draftState,  setDraftState]  = useState('idle');   // 'idle' | 'saving' | 'saved'
 
   // ── Refs ───────────────────────────────────────────────────────
   const hiveNameRef  = useRef(null);
   const catFieldRef  = useRef(null);
   const descRef      = useRef(null);
-  const draftTimerRef = useRef(null);
-
-  // Clear draft reset timer on unmount
-  useEffect(() => {
-    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
-  }, []);
 
   // ── Helpers ────────────────────────────────────────────────────
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
@@ -325,15 +310,6 @@ export default function CreateHivePage() {
       console.error('[CreateHive] launch failed:', err);
       setSubmitState('error');
     }
-  };
-
-  const handleDraft = async () => {
-    if (draftState === 'saving' || draftState === 'saved') return;
-    setDraftState('saving');
-    await saveDraft(buildPayload());
-    setDraftState('saved');
-    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
-    draftTimerRef.current = setTimeout(() => setDraftState('idle'), 3000);
   };
 
   // ── Pre-fill flags ─────────────────────────────────────────────
@@ -853,16 +829,6 @@ export default function CreateHivePage() {
             )}
           </div>
           <div className="ch-launch-actions">
-            <button
-              type="button"
-              className={`ch-btn-draft${draftState === 'saved' ? ' saved' : ''}`}
-              onClick={handleDraft}
-              disabled={draftState === 'saving' || submitState === 'submitting'}
-            >
-              {draftState === 'saving' ? 'Saving…'
-                : draftState === 'saved' ? 'Draft Saved ✓'
-                : 'Save Draft'}
-            </button>
             <button
               type="button"
               className="ch-btn-launch"

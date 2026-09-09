@@ -680,31 +680,6 @@
   align-items: center;
 }
 
-/* Save Draft button */
-.ch-btn-draft {
-  padding: 10px 20px;
-  border: 0.5px solid #c8bfa0;
-  border-radius: 10px;
-  background: transparent;
-  font-family: 'DM Sans', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  color: #6a5828;
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-  white-space: nowrap;
-}
-.ch-btn-draft:hover:not(:disabled) {
-  border-color: #c49a28;
-  color: #8a6510;
-}
-.ch-btn-draft.saved {
-  border-color: #c49a28;
-  color: #c49a28;
-  cursor: default;
-}
-.ch-btn-draft:disabled { opacity: 0.6; cursor: default; }
-
 /* Launch Hive button */
 .ch-btn-launch {
   padding: 10px 24px;

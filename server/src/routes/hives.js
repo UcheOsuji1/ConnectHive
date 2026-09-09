@@ -1,15 +1,12 @@
 import { Router } from 'express';
 import {
-  getHives,
   getHive,
   getHiveMembers,
   createHive,
-  saveDraft,
   matchHives,
   joinWaitlist,
   updateHive,
   getHiveOverview,
-  joinHive,
   requestToJoin,
   getHiveRequests,
   reviewRequest,
@@ -63,14 +60,12 @@ const router = Router();
 // ── Static paths (must come before /:id) ─────────────────────────────────────
 router.post('/match',         requireAuth, matchHives);
 router.post('/waitlist',      requireAuth, joinWaitlist);
-router.post('/draft',         requireAuth, saveDraft);
 router.get('/mine',           requireAuth, getMyHive);
 router.get('/my',             requireAuth, getMyHive);   // alias kept for compat
 router.get('/following',      requireAuth, getFollowedHives);
 router.get('/requests/mine',  requireAuth, getMyRequests);
 
 // ── Collection ────────────────────────────────────────────────────────────────
-router.get('/',    getHives);
 router.post('/',   requireAuth, createHive);
 
 // ── Single hive by id ─────────────────────────────────────────────────────────
@@ -86,7 +81,6 @@ router.get('/:id/members',                requireAuth, getHiveMembers);
 router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
 router.post('/:id/members/:userId/notify', requireAuth, notifyMember);
 router.delete('/:id/members/:userId',      requireAuth, removeMember);
-router.post('/:id/join',                  requireAuth, joinHive);
 router.post('/:id/leave',                requireAuth, leaveHive);
 router.post('/:id/request',              requireAuth, requestToJoin);
 router.get('/:id/requests',              requireAuth, getHiveRequests);

@@ -33,7 +33,7 @@ async function migrate() {
   const client = await pool.connect();
   try {
     // ── 1. Test connection ────────────────────────────────────────
-    banner('ConnectHive — database migration');
+    banner('TrueHive — database migration');
     const { rows: [{ now }] } = await client.query('SELECT NOW() AS now');
     console.log(`  Connected to Neon — server time: ${now}`);
 

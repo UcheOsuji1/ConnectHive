@@ -252,24 +252,6 @@ export const joinWaitlist = async (req, res) => {
   }
 };
 
-export const saveDraft = async (req, res) => {
-  try {
-    // TODO: upsert draft hive for authenticated user
-    res.json({ message: 'saveDraft — not yet implemented' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-export const getHives = async (req, res) => {
-  try {
-    // TODO: query hives with filters (category, location, search) + compatibility scores
-    res.json({ hives: [], message: 'getHives — not yet implemented' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
 export const getHive = async (req, res) => {
   try {
     const { rows: [row] } = await query(
@@ -664,14 +646,6 @@ export const updateHive = async (req, res) => {
   } catch (err) {
     console.error('[hives/updateHive]', err);
     res.status(500).json({ error: 'Failed to update Hive.' });
-  }
-};
-
-export const joinHive = async (req, res) => {
-  try {
-    res.json({ message: 'joinHive — not yet implemented' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 };
 
@@ -1254,15 +1228,6 @@ export const removeMember = async (req, res) => {
   } catch (err) {
     console.error('[hives/removeMember]', err);
     res.status(500).json({ error: 'Failed to remove member.' });
-  }
-};
-
-export const getHiveMessages = async (req, res) => {
-  try {
-    // TODO: paginated message history for hive chat
-    res.json({ messages: [], message: 'getHiveMessages — not yet implemented' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
 };
 

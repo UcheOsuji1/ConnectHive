@@ -1,5 +1,5 @@
 /**
- * ConnectHive — dev seed script
+ * TrueHive — dev seed script
  *
  * Usage:
  *   node src/db/seed.js           # add seed data, skip if already present
@@ -619,7 +619,7 @@ const REACTIONS = [
 
 async function main() {
   console.log('\n────────────────────────────────────────────────────────────');
-  console.log('  ConnectHive — seed');
+  console.log('  TrueHive — seed');
   console.log('────────────────────────────────────────────────────────────');
 
   if (RESET) {

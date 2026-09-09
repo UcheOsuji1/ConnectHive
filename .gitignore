@@ -4,3 +4,7 @@ server/node_modules/
 client/dist/
 .env
 *.local
+
+# Python
+__pycache__/
+*.pyc

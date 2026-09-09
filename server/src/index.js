@@ -62,7 +62,7 @@ const server = http.createServer(app);
 initSocket(server, CLIENT_URL);
 
 server.listen(PORT, async () => {
-  console.log(`\n  ConnectHive API  →  http://localhost:${PORT}`);
+  console.log(`\n  TrueHive API  →  http://localhost:${PORT}`);
   console.log(`  Health check     →  http://localhost:${PORT}/api/health\n`);
   await testConnection();
 });
