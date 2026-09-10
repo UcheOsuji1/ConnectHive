@@ -5,14 +5,15 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user,    setUser]    = useState(null);
+  const [config,  setConfig]  = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ── Session restore on app mount ─────────────────────────────────────────────
+  // ── Session restore + public config on app mount ──────────────────────────────
   useEffect(() => {
-    api.get('/api/auth/me')
-      .then(data => setUser(data.user))
-      .catch(() => setUser(null))   // 401 = not logged in — not an error worth logging
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.get('/api/auth/me').then(data => setUser(data.user)).catch(() => setUser(null)),
+      api.get('/api/config').then(data => setConfig(data)).catch(() => setConfig({})),
+    ]).finally(() => setLoading(false));
   }, []);
 
   // ── register ─────────────────────────────────────────────────────────────────
@@ -54,7 +55,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, register, login, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, config, loading, register, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

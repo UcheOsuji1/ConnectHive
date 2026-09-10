@@ -1,8 +1,24 @@
 import { Resend } from 'resend';
 
-const resend     = new Resend(process.env.RESEND_API_KEY);
 const FROM       = process.env.EMAIL_FROM ?? 'TrueHive <hello@send.truehive.app>';
 const CLIENT_URL = process.env.CLIENT_URL;
+
+// Lazy singleton — constructed on first use so a missing key doesn't crash the
+// server at module load. Callers already treat send failures as non-fatal.
+let _resend = null;
+let _warnedNoKey = false;
+function _getResend() {
+  if (_resend) return _resend;
+  if (!process.env.RESEND_API_KEY) {
+    if (!_warnedNoKey) {
+      console.warn('[email] RESEND_API_KEY is not set — emails will not be sent.');
+      _warnedNoKey = true;
+    }
+    return null;
+  }
+  _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 
 // ── Shared layout helpers ──────────────────────────────────────────────────────
 
@@ -111,7 +127,7 @@ export async function sendVerificationEmail(to, rawToken) {
     `If you didn't create a TrueHive account, you can safely ignore this email.\n\n` +
     `— TrueHive (${CLIENT_URL})`;
 
-  await resend.emails.send({ from: FROM, to, subject: 'Verify your TrueHive email', html, text });
+  await _getResend()?.emails.send({ from: FROM, to, subject: 'Verify your TrueHive email', html, text });
 }
 
 // ── Password reset email ───────────────────────────────────────────────────────
@@ -150,7 +166,7 @@ export async function sendPasswordResetEmail(to, rawToken) {
     `your password has not been changed.\n\n` +
     `— TrueHive (${CLIENT_URL})`;
 
-  await resend.emails.send({ from: FROM, to, subject: 'Reset your TrueHive password', html, text });
+  await _getResend()?.emails.send({ from: FROM, to, subject: 'Reset your TrueHive password', html, text });
 }
 
 // ── Password changed notification ──────────────────────────────────────────────
@@ -187,7 +203,7 @@ export async function sendPasswordChangedEmail(to) {
     `Please contact us immediately at hello@truehive.app so we can secure your account.\n\n` +
     `— TrueHive (${CLIENT_URL})`;
 
-  await resend.emails.send({
+  await _getResend()?.emails.send({
     from: FROM,
     to,
     subject: 'Your TrueHive password was changed',

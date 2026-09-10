@@ -77,29 +77,30 @@
   margin: 0;
 }
 
-.si-stats {
-  width: 100%;
+.si-value-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
   border-top: 0.5px solid #2a2415;
-  padding-top: 2rem;
+  padding-top: 1.5rem;
   display: flex;
-  justify-content: center;
-  gap: 2rem;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.si-stat-num {
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 26px;
-  color: #c49a28;
-  line-height: 1.1;
-}
-
-.si-stat-label {
+.si-value-list li {
   font-family: 'DM Sans', sans-serif;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: #5a5040;
-  margin-top: 4px;
+  font-size: 13px;
+  color: #c0a870;
+  padding-left: 1.1em;
+  position: relative;
+}
+
+.si-value-list li::before {
+  content: '–';
+  position: absolute;
+  left: 0;
+  color: #c49a28;
 }
 
 /* ── Right panel ─────────────────────────────────────────── */

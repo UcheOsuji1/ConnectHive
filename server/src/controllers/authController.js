@@ -254,6 +254,9 @@ export async function getMe(req, res) {
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 
 export function googleRedirect(_req, res) {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(503).json({ error: 'Google sign-in is not configured on this server.' });
+  }
   const state = crypto.randomBytes(16).toString('hex');
   res.cookie('oauth_state', state, STATE_COOKIE_OPTS);
   const url = googleClient.generateAuthUrl({

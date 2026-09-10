@@ -69,12 +69,6 @@ function HexItem({ hex, isSelected, onToggle }) {
   );
 }
 
-const STATS = [
-  ['12k+', 'Members'],
-  ['850+', 'Active Hives'],
-  ['94%',  'Match Rate'],
-  ['6',    'Categories'],
-];
 
 export default function FindYourHivePage() {
   const [selected, setSelected] = useState(null);
@@ -124,15 +118,8 @@ export default function FindYourHivePage() {
           </p>
         </div>
 
-        {/* ── Stats Strip ── */}
-        <div className="fyh-stats-strip">
-          {STATS.map(([num, lbl]) => (
-            <div key={lbl} className="fyh-stat-item">
-              <span className="fyh-stat-number">{num}</span>
-              <span className="fyh-stat-label">{lbl}</span>
-            </div>
-          ))}
-        </div>
+        {/* ── Category count ── */}
+        <p className="fyh-category-note">Six categories to find your people.</p>
 
         {/* ── Hex Grid ── */}
         <div className="fyh-hex-scene">
