@@ -6,7 +6,10 @@ import { query }     from '../db/index.js';
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
+  sendPasswordChangedEmail,
 } from '../lib/email.js';
+import { invalidateTokenVersion } from '../middleware/auth.js';
+import { disconnectUserSockets }  from '../realtime/socket.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -175,7 +178,12 @@ export async function logout(req, res) {
   if (raw) {
     try {
       const payload = jwt.verify(raw, process.env.JWT_SECRET);
-      query('UPDATE users SET token_version = token_version + 1 WHERE user_id = $1', [payload.userId])
+      const userId = payload.userId;
+      // Clear cache immediately so the 30s window doesn't shelter the old token.
+      invalidateTokenVersion(userId);
+      // Disconnect any open sockets for this user.
+      disconnectUserSockets(userId);
+      query('UPDATE users SET token_version = token_version + 1 WHERE user_id = $1', [userId])
         .catch(e => console.error('[auth/logout] version bump failed:', e.message));
     } catch { /* expired/invalid token — no bump needed */ }
   }
@@ -418,12 +426,16 @@ export async function verifyEmail(req, res) {
 // ── Password reset ────────────────────────────────────────────────────────────
 
 export async function forgotPassword(req, res) {
-  // Always return the same response — never reveal whether the email exists.
   const RESPONSE = { message: 'If an account with that email exists, a reset link has been sent.' };
   const { email } = req.body ?? {};
 
-  if (!email || !isValidEmail(email)) return res.json(RESPONSE);
+  // Respond immediately — uniform response time prevents user-existence enumeration
+  // regardless of whether the email is registered or not.
+  res.json(RESPONSE);
 
+  if (!email || !isValidEmail(email)) return;
+
+  // Token work happens asynchronously after the response is already sent.
   try {
     const { rows } = await query(
       'SELECT user_id FROM users WHERE email = $1',
@@ -448,8 +460,6 @@ export async function forgotPassword(req, res) {
   } catch (err) {
     console.error('[auth/forgotPassword]', err);
   }
-
-  return res.json(RESPONSE);
 }
 
 export async function resetPassword(req, res) {
@@ -461,10 +471,12 @@ export async function resetPassword(req, res) {
     }
 
     const tokenHash = hashToken(rawToken);
+    // Join users to get email for the post-reset notification.
     const { rows } = await query(
-      `SELECT id, user_id, used_at, expires_at
-       FROM auth_tokens
-       WHERE token_hash = $1 AND type = 'password_reset'`,
+      `SELECT at.id, at.user_id, at.used_at, at.expires_at, u.email
+       FROM auth_tokens at
+       JOIN users u ON u.user_id = at.user_id
+       WHERE at.token_hash = $1 AND at.type = 'password_reset'`,
       [tokenHash],
     );
 
@@ -472,7 +484,7 @@ export async function resetPassword(req, res) {
       return res.status(400).json({ error: 'This reset link is invalid or has expired.' });
     }
 
-    const { id: tokenId, user_id: userId } = rows[0];
+    const { id: tokenId, user_id: userId, email } = rows[0];
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
     // Mark token used + update password + invalidate all sessions via token_version bump.
@@ -483,6 +495,14 @@ export async function resetPassword(req, res) {
         [passwordHash, userId],
       ),
     ]);
+
+    // Clear cache immediately and disconnect all open sockets for this user.
+    invalidateTokenVersion(userId);
+    disconnectUserSockets(userId);
+
+    // Notify the account owner that their password changed (non-blocking).
+    sendPasswordChangedEmail(email)
+      .catch(e => console.error('[auth/resetPassword] notification email failed:', e.message));
 
     return res.json({ message: 'Password updated. Please log in with your new password.' });
   } catch (err) {

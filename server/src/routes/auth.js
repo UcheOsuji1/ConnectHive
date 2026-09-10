@@ -42,6 +42,14 @@ const forgotLimiter = rateLimit({
   message: { error: 'Too many password reset requests — try again in an hour.' },
 });
 
+const resetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,  // 1 hour
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many password reset attempts — try again in an hour.' },
+});
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 router.post('/register', registerLimiter, register);
@@ -59,6 +67,6 @@ router.post('/resend-verification',   requireAuth, resendVerification);
 
 // Password reset
 router.post('/forgot-password', forgotLimiter, forgotPassword);
-router.post('/reset-password',                 resetPassword);
+router.post('/reset-password', resetLimiter,   resetPassword);
 
 export default router;

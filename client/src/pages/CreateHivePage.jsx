@@ -236,6 +236,7 @@ export default function CreateHivePage() {
   // ── Submit state ───────────────────────────────────────────────
   const [errors,      setErrors]      = useState({});
   const [submitState, setSubmitState] = useState('idle');   // 'idle' | 'submitting' | 'error'
+  const [submitError, setSubmitError] = useState(null);
 
   // ── Refs ───────────────────────────────────────────────────────
   const hiveNameRef  = useRef(null);
@@ -302,12 +303,14 @@ export default function CreateHivePage() {
     }
     setErrors({});
     setSubmitState('submitting');
+    setSubmitError(null);
     try {
       const result = await createHive(buildPayload());
       const hiveId = result?.id;
       navigate(hiveId ? `/hive/${hiveId}` : '/my-hive');
     } catch (err) {
       console.error('[CreateHive] launch failed:', err);
+      setSubmitError(err.data?.error ?? 'Something went wrong — please try again.');
       setSubmitState('error');
     }
   };
@@ -825,7 +828,7 @@ export default function CreateHivePage() {
           <div className="ch-launch-bar-left">
             <p className="ch-launch-meta">{barMeta}</p>
             {submitState === 'error' && (
-              <p className="ch-launch-error">Something went wrong — please try again.</p>
+              <p className="ch-launch-error">{submitError}</p>
             )}
           </div>
           <div className="ch-launch-actions">

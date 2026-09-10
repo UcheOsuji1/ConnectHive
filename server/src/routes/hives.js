@@ -51,7 +51,7 @@ import {
   completeStep,
   uncompleteStep,
 } from '../controllers/onboardingController.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireVerifiedEmail } from '../middleware/auth.js';
 import { getHivePosts } from '../controllers/postsController.js';
 import { getAiFit, getAiMatch } from '../controllers/aiController.js';
 
@@ -66,7 +66,7 @@ router.get('/following',      requireAuth, getFollowedHives);
 router.get('/requests/mine',  requireAuth, getMyRequests);
 
 // ── Collection ────────────────────────────────────────────────────────────────
-router.post('/',   requireAuth, createHive);
+router.post('/',   requireAuth, requireVerifiedEmail, createHive);
 
 // ── Single hive by id ─────────────────────────────────────────────────────────
 router.get('/:id',             requireAuth, getHive);
@@ -82,7 +82,7 @@ router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
 router.post('/:id/members/:userId/notify', requireAuth, notifyMember);
 router.delete('/:id/members/:userId',      requireAuth, removeMember);
 router.post('/:id/leave',                requireAuth, leaveHive);
-router.post('/:id/request',              requireAuth, requestToJoin);
+router.post('/:id/request',              requireAuth, requireVerifiedEmail, requestToJoin);
 router.get('/:id/requests',              requireAuth, getHiveRequests);
 router.post('/:id/requests/:requestId',  requireAuth, reviewRequest);
 router.get('/:id/messages/unread-count',             requireAuth, getUnreadCount);

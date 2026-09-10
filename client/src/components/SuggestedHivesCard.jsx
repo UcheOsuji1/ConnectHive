@@ -17,15 +17,18 @@ function HiveAvatar({ hive }) {
 function HiveRow({ hive }) {
   const navigate = useNavigate();
   const [joinState, setJoinState] = useState(hive.request_pending ? 'pending' : 'idle');
+  const [joinError, setJoinError] = useState(null);
 
   async function handleJoin(e) {
     e.stopPropagation();
     if (joinState !== 'idle') return;
     setJoinState('loading');
+    setJoinError(null);
     try {
       const result = await api.post(`/api/hives/${hive.hive_id}/request`, {});
       setJoinState(result.joined ? 'joined' : 'pending');
-    } catch {
+    } catch (err) {
+      setJoinError(err.data?.error ?? 'Something went wrong.');
       setJoinState('idle');
     }
   }
@@ -40,6 +43,7 @@ function HiveRow({ hive }) {
         <div className="shc-meta">
           {hive.category_name}{fit !== null ? ` · ${fit}% fit` : ''}
         </div>
+        {joinError && <div className="shc-join-error">{joinError}</div>}
       </div>
       {joinState === 'joined' ? (
         <button type="button" className="shc-join-btn shc-join-btn--done" disabled>Joined</button>

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { parseCookie } from 'cookie';
 import { query } from '../db/index.js';
 import { requireMembership } from '../lib/hiveMembership.js';
+import { dbTokenVersion } from '../middleware/auth.js';
 
 let io = null;
 
@@ -55,6 +56,12 @@ function _removePresence(hiveId, userId, socketId) {
   }
 }
 
+// Force-close all sockets belonging to a user (call after version bump on logout / pw reset).
+export function disconnectUserSockets(userId) {
+  if (!io) return;
+  io.in(`user:${userId}`).disconnectSockets(true);
+}
+
 // Kick a user from a hive room without disconnecting their socket.
 // Called by hivesController after setting membership_status = 'removed'.
 export async function evictUserFromHive(hiveId, userId) {
@@ -92,11 +99,20 @@ export function initSocket(httpServer, clientUrl) {
     cors: { origin: clientUrl, credentials: true },
   });
 
-  // JWT auth via cookie on every connection
-  io.use((socket, next) => {
+  // JWT auth via cookie on every connection — also checks token_version so revoked
+  // sessions (after logout or password reset) cannot establish a new socket.
+  io.use(async (socket, next) => {
     try {
       const cookies = parseCookie(socket.handshake.headers.cookie ?? '');
       const payload = jwt.verify(cookies.token, process.env.JWT_SECRET);
+
+      if (payload.tokenVersion !== undefined) {
+        const dbVersion = await dbTokenVersion(payload.userId);
+        if (payload.tokenVersion !== dbVersion) {
+          return next(new Error('Unauthorized'));
+        }
+      }
+
       socket.data.userId = payload.userId;
       next();
     } catch {
