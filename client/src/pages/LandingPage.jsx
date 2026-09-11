@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -73,9 +73,12 @@ function useCyclingCard(count, cycleMs = 5000, delayMs = 0) {
 }
 
 export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
+  const [scrolled,       setScrolled]       = useState(false);
+  const [menuOpen,       setMenuOpen]        = useState(false);
+  const [currentSlide,   setCurrentSlide]    = useState(0);
+  const [matchCount,     setMatchCount]      = useState(0);
+  const [visibleTagCount,setVisibleTagCount] = useState(0);
+  const cardRef = useRef(null);
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -112,10 +115,35 @@ export default function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
-  const card1 = useCyclingCard(CARD1_DATA.length, 6000, 0);
-  const card2 = useCyclingCard(CARD2_DATA.length, 6000, 1500);
+  // Cycling delayed past the ~1.3s hero entrance so cards don't swap mid-assembly
+  const card1 = useCyclingCard(CARD1_DATA.length, 6000, 1500);
+  const card2 = useCyclingCard(CARD2_DATA.length, 6000, 2000);
   const card3 = useCyclingCard(CARD3_DATA.length, 6000, 3000);
   const card4 = useCyclingCard(CARD4_DATA.length, 6000, 4000);
+
+  // Part 3 — count-up for premium hive card match score
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (rm) { setMatchCount(92); setVisibleTagCount(4); return; }
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      obs.disconnect();
+      const start = performance.now();
+      const tick = (now) => {
+        const t = Math.min((now - start) / 800, 1);
+        setMatchCount(Math.round(t * 92));
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+      for (let i = 0; i < 4; i++) {
+        setTimeout(() => setVisibleTagCount(i + 1), 500 + i * 80);
+      }
+    }, { threshold: 0.4 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const closeMenu = () => setMenuOpen(false);
 
@@ -523,31 +551,29 @@ export default function LandingPage() {
           </div>
 
           <div className="steps-grid" role="list">
-            <div className="step reveal reveal-delay-1" role="listitem">
-              <div className="step-num" aria-label="Step 1">1</div>
-              <div className="step-title">Create Your Profile</div>
-              <div className="step-desc">Ten minutes now saves you from twenty groups that aren't for you. The more you tell us, the sharper the match.</div>
-            </div>
-            <div className="step reveal reveal-delay-2" role="listitem">
-              <div className="step-num" aria-label="Step 2">2</div>
-              <div className="step-title">Choose Your Purpose</div>
-              <div className="step-desc">Friends, career, travel, projects, events. Naming what you want is what makes the rest work.</div>
-            </div>
-            <div className="step reveal reveal-delay-3" role="listitem">
-              <div className="step-num" aria-label="Step 3">3</div>
-              <div className="step-title">Discover Compatible Hives</div>
-              <div className="step-desc">You see a score and the reason behind it, so you're never guessing whether a group is for you.</div>
-            </div>
-            <div className="step reveal reveal-delay-4" role="listitem">
-              <div className="step-num" aria-label="Step 4">4</div>
-              <div className="step-title">Join or Create a Hive</div>
-              <div className="step-desc">Request to join, or start your own and let us bring people to you.</div>
-            </div>
-            <div className="step reveal reveal-delay-5" role="listitem">
-              <div className="step-num" aria-label="Step 5">5</div>
-              <div className="step-title">Start Talking</div>
-              <div className="step-desc">A real group chat with your Hive from day one: messages, files, who's around right now.</div>
-            </div>
+            {[
+              { n:1, title:'Create Your Profile',       desc:"Ten minutes now saves you from twenty groups that aren't for you. The more you tell us, the sharper the match.", delay:1 },
+              { n:2, title:'Choose Your Purpose',        desc:'Friends, career, travel, projects, events. Naming what you want is what makes the rest work.',               delay:2 },
+              { n:3, title:'Discover Compatible Hives',  desc:"You see a score and the reason behind it, so you're never guessing whether a group is for you.",              delay:3 },
+              { n:4, title:'Join or Create a Hive',      desc:'Request to join, or start your own and let us bring people to you.',                                          delay:4 },
+              { n:5, title:'Start Talking',              desc:'A real group chat with your Hive from day one: messages, files, who\'s around right now.',                   delay:5 },
+            ].map(({ n, title, desc, delay }) => (
+              <div key={n} className={`step reveal reveal-delay-${delay}`} role="listitem">
+                <div className="step-num" aria-label={`Step ${n}`}>{n}</div>
+                <div className="step-title">{title}</div>
+                <div className="step-desc">{desc}</div>
+                {n < 5 && (
+                  <svg viewBox="0 0 100 1" preserveAspectRatio="none"
+                    className="step-connector-svg" aria-hidden="true">
+                    <line x1="0" y1="0.5" x2="100" y2="0.5"
+                      pathLength="1" strokeDasharray="1" strokeDashoffset="1"
+                      stroke="#C9A24A" strokeWidth="2"
+                      vectorEffect="non-scaling-stroke"
+                      className="connector-line"/>
+                  </svg>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -594,7 +620,7 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="reveal reveal-delay-2">
+            <div className="reveal reveal-delay-2" ref={cardRef}>
               <div className="premium-hive-card">
                 <div className="phc-header">
                   <div className="phc-icon">
@@ -602,16 +628,17 @@ export default function LandingPage() {
                       <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
                     </svg>
                   </div>
-                  <span className="phc-match-badge">92% Match</span>
+                  <span className="phc-match-badge">
+                    <span className="phc-match-num-anim">{matchCount}%</span> Match
+                  </span>
                 </div>
                 <div className="phc-name">LA Creative Builders</div>
                 <div className="phc-category">Project Collaboration</div>
                 <div className="phc-desc">A group for creators, developers, filmmakers, and entrepreneurs looking to build projects together. We meet weekly, online and in person.</div>
                 <div className="phc-tags">
-                  <span className="phc-tag">Film</span>
-                  <span className="phc-tag">Tech</span>
-                  <span className="phc-tag">Startups</span>
-                  <span className="phc-tag">Content</span>
+                  {['Film', 'Tech', 'Startups', 'Content'].map((tag, i) => (
+                    <span key={tag} className={`phc-tag${i < visibleTagCount ? ' phc-tag-visible' : ''}`}>{tag}</span>
+                  ))}
                 </div>
                 <div className="phc-meta">
                   <div className="phc-meta-item">

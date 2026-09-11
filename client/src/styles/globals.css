@@ -96,6 +96,8 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   box-shadow: 0 8px 28px rgba(201,162,74,.40);
 }
 .btn-primary:active { transform: translateY(0); }
+.btn-primary svg { transition: transform var(--transition); flex-shrink: 0; }
+@media (hover: hover) { .btn-primary:hover svg { transform: translateX(4px); } }
 
 .btn-ghost {
   background: transparent; color: var(--charcoal);
@@ -483,11 +485,13 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   overflow: hidden;
   transition: border-color var(--transition), box-shadow var(--transition), transform var(--transition);
 }
-.cat-card:hover {
-  border-color: var(--gold); box-shadow: 0 8px 32px rgba(201,162,74,.18);
-  transform: translateY(-4px);
-}
 .cat-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+@media (hover: hover) {
+  .cat-card:hover {
+    border-color: var(--gold); box-shadow: 0 8px 32px rgba(201,162,74,.18);
+    transform: translateY(-4px);
+  }
+}
 .cat-icon {
   width: 48px; height: 48px; border-radius: 14px;
   background: linear-gradient(135deg, rgba(201,162,74,.15), rgba(201,162,74,.04));
@@ -501,7 +505,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   color: var(--gold); font-size: .82rem; font-weight: 600; margin-top: 14px;
   transition: gap var(--transition);
 }
-.cat-card:hover .cat-arrow { gap: 8px; }
+@media (hover: hover) { .cat-card:hover .cat-arrow { gap: 8px; } }
 
 /* ── Category card image banner ─────────────────────────── */
 .cat-img-wrap {
@@ -529,7 +533,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   transition: transform 400ms ease;
 }
 
-.cat-card:hover .cat-img { transform: scale(1.05); }
+@media (hover: hover) { .cat-card:hover .cat-img { transform: scale(1.03) translateY(-3px); } }
 
 /* ══════════════════════════════════════════════════════════════
    5. HOW IT WORKS
@@ -551,17 +555,34 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .step {
   position: relative; text-align: center; padding: 0 20px;
 }
-.step:not(:last-child)::after {
-  content: ''; position: absolute; top: 28px; left: calc(50% + 28px); right: calc(-50% + 28px);
-  height: 1px; background: linear-gradient(90deg, var(--gold), rgba(201,162,74,.2));
-}
+/* Desktop connector replaced by animated SVG; CSS ::after kept for mobile only */
 @media (max-width: 900px) {
   .step:not(:last-child)::after {
-    top: auto; bottom: 0; left: 28px; right: auto;
+    content: ''; position: absolute; top: 56px; left: 28px;
     width: 1px; height: calc(100% - 56px);
     background: linear-gradient(180deg, var(--gold), rgba(201,162,74,.2));
-    top: 56px;
   }
+}
+
+/* ── Step connector SVG (desktop only) ───────────────────────────── */
+.step-connector-svg {
+  position: absolute; top: 28px;
+  left: calc(50% + 28px); width: calc(100% - 56px); height: 1px;
+  overflow: visible; pointer-events: none;
+}
+@media (max-width: 900px) { .step-connector-svg { display: none; } }
+
+.connector-line {
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 500ms cubic-bezier(.4,0,.2,1) 0.8s;
+}
+.step.reveal-delay-1.visible .connector-line { transition-delay: 0.75s; }
+.step.reveal-delay-2.visible .connector-line { transition-delay: 0.85s; }
+.step.reveal-delay-3.visible .connector-line { transition-delay: 0.95s; }
+.step.reveal-delay-4.visible .connector-line { transition-delay: 1.05s; }
+.step.visible .connector-line { stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .connector-line { transition-duration: 0ms !important; transition-delay: 0ms !important; }
 }
 
 .step-num {
@@ -1033,6 +1054,51 @@ svg { display: block; }
 .card-visible  { opacity: 1; transform: translateY(0); }
 .card-exiting  { opacity: 0; transform: translateY(-12px); }
 .card-entering { opacity: 0; transform: translateY(12px); }
+
+/* ── Hero entrance (auto-play on load) ─────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  .hero-hex-bg {
+    animation: heroHexIn 700ms cubic-bezier(.4,0,.2,1) 350ms both;
+  }
+  .hero-center-card {
+    animation: heroCardIn 500ms ease 500ms both;
+  }
+  .float-card.fc-top-left {
+    animation: float 4s ease-in-out -2s infinite, heroCardIn 500ms ease 600ms both;
+  }
+  .float-card.fc-top-right {
+    animation: float 4s ease-in-out -0.5s infinite, heroCardIn 500ms ease 700ms both;
+  }
+  .float-card.fc-bottom {
+    animation: float 4s ease-in-out -3s infinite, heroCardIn 500ms ease 800ms both;
+  }
+}
+@keyframes heroHexIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes heroCardIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Match card animated number + tag entrance ─────────────── */
+.phc-match-num-anim {
+  display: inline-block;
+  min-width: 2ch;
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .phc-tag {
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 250ms ease, transform 250ms ease;
+  }
+  .phc-tag.phc-tag-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 /* ══════════════════════════════════════════════════════════════
    11. TRUST & SAFETY SECTION
