@@ -29,7 +29,7 @@ function _htmlHeader() {
         <img src="${CLIENT_URL}/brand/truehive-mark-128.png" width="44" height="44"
              alt="TrueHive" style="display:block;margin:0 auto 10px;border:0;" />
         <p style="margin:0;font-family:Georgia,'Times New Roman',serif;font-size:21px;
-                  font-weight:700;color:#C9A24A;letter-spacing:0.01em;">TrueHive</p>
+                  font-weight:700;letter-spacing:0.01em;"><span style="color:#FFFFFF;">True</span><span style="color:#C9A24A;">Hive</span></p>
       </td>
     </tr>`;
 }
