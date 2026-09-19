@@ -47,7 +47,7 @@ const PURPOSE_WEIGHTS = {
   goals:       20,
   skills:      10,
   location:     5,
-  availability: 5,
+  cadence:      5,
   personality:  5,
 };
 
@@ -60,6 +60,37 @@ const PAIR_WEIGHTS = {
 };
 
 export const BLEND = { purpose: 0.6, people: 0.4 };
+
+// Vocabulary-aware match between user commitment chips and hive meeting cadence.
+// User FREQ_CHIPS: 'Daily','A few times a week','Weekly','Bi-weekly','Monthly','As needed'
+// Hive CADENCE_CHIPS: 'Daily','Weekly','Biweekly','Monthly','Flexible'
+function cadenceScore(commitmentArr, hiveCadence) {
+  if (!commitmentArr.length || !hiveCadence) return 50;
+  const hc = norm(hiveCadence); // 'daily','weekly','biweekly','monthly','flexible'
+  if (hc === 'flexible') return 100; // flexible hive accepts any commitment
+  const hits = commitmentArr.filter(c => {
+    const uc = norm(c);
+    if (uc === 'as needed') return true;                               // wildcard
+    if (hc === 'daily')    return uc === 'daily'    || uc.includes('few times');
+    if (hc === 'weekly')   return uc === 'weekly'   || uc.includes('few times');
+    if (hc === 'biweekly') return uc === 'biweekly' || uc === 'bi-weekly';
+    if (hc === 'monthly')  return uc === 'monthly';
+    return false;
+  }).length;
+  return Math.round((hits / commitmentArr.length) * 100);
+}
+
+// Band-based age preference score: 100 if otherAge falls in any pref band, 20 if not.
+// Returns null when no preference is set (caller falls back to diff-based score).
+function ageInBand(age, band) {
+  if (band.endsWith('+')) return age >= Number(band.slice(0, -1));
+  const parts = band.split('–'); // en-dash '–'
+  return parts.length === 2 && age >= Number(parts[0]) && age <= Number(parts[1]);
+}
+function bandScore(pref, otherAge) {
+  if (!pref?.length || !otherAge) return null;
+  return pref.some(b => ageInBand(otherAge, b)) ? 100 : 20;
+}
 
 export function scorePurpose(profile, hive, selectedCategoryKey) {
   // Category match
@@ -101,12 +132,11 @@ export function scorePurpose(profile, hive, selectedCategoryKey) {
     }
   }
 
-  // Availability: profile availability vs hive cadence
-  const userAvail = flatten(profile.availability);
-  const hiveAvail = hive.cadence ? flatten(hive.cadence) : [];
-  const availability = userAvail.length && hiveAvail.length
-    ? overlapScore(userAvail, hiveAvail)
-    : 50;
+  // Cadence: profile commitment (social_preferences.commitment) vs hive meeting frequency
+  const sp = profile.social_preferences ?? {};
+  const userCommitment = Array.isArray(sp.commitment) ? sp.commitment
+    : sp.commitment ? [sp.commitment] : [];
+  const cadence = cadenceScore(userCommitment, hive.cadence);
 
   // Personality: personality_type + connection_preference vs hive descriptive text
   const userPersonality = norm(profile.personality_type ?? '');
@@ -118,7 +148,7 @@ export function scorePurpose(profile, hive, selectedCategoryKey) {
   if (userPersonality && hivePersonalityText.includes(userPersonality)) personality = 90;
   else if (userConnPref && hivePersonalityText.includes(userConnPref)) personality = 70;
 
-  const factors = { category, interests, goals, skills, location, availability, personality };
+  const factors = { category, interests, goals, skills, location, cadence, personality };
   const total   = Math.round(
     Object.entries(PURPOSE_WEIGHTS).reduce((sum, [k, w]) => sum + (factors[k] * w) / 100, 0),
   );
@@ -137,8 +167,21 @@ export function scorePair(profileA, profileB) {
 
   let age = 50;
   if (profileA.age && profileB.age) {
-    const diff = Math.abs(Number(profileA.age) - Number(profileB.age));
-    age = diff <= 5 ? 100 : diff <= 10 ? 75 : diff <= 20 ? 50 : 25;
+    const ageA = Number(profileA.age);
+    const ageB = Number(profileB.age);
+    const spA = profileA.social_preferences ?? {};
+    const spB = profileB.social_preferences ?? {};
+    const bandsA = Array.isArray(spA.ageRange) ? spA.ageRange : (spA.ageRange ? [spA.ageRange] : []);
+    const bandsB = Array.isArray(spB.ageRange) ? spB.ageRange : (spB.ageRange ? [spB.ageRange] : []);
+    const diff = Math.abs(ageA - ageB);
+    const diffScore = diff <= 5 ? 100 : diff <= 10 ? 75 : diff <= 20 ? 50 : 25;
+    if (!bandsA.length && !bandsB.length) {
+      age = diffScore;
+    } else {
+      const aToB = bandScore(bandsA, ageB) ?? diffScore;
+      const bToA = bandScore(bandsB, ageA) ?? diffScore;
+      age = Math.round((aToB + bToA) / 2);
+    }
   }
 
   const factors = { interests, goals, personality, availability, age };
@@ -171,7 +214,7 @@ export function buildReasons(purposeFactors, peopleFit, topPairs) {
   if (purposeFactors.goals       >= 60) reasons.push('Shared goals alignment');
   if (purposeFactors.skills      >= 50) reasons.push('Your skills match what this Hive needs');
   if (purposeFactors.location    >= 90) reasons.push('Great location fit');
-  if (purposeFactors.availability >= 70) reasons.push('Schedule compatibility');
+  if (purposeFactors.cadence >= 70) reasons.push('Schedule compatibility');
 
   if (peopleFit !== null && peopleFit >= 65) reasons.push('High people fit with current members');
   else if (peopleFit !== null && peopleFit >= 40) reasons.push('Good people fit with existing members');

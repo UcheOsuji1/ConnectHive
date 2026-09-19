@@ -81,13 +81,6 @@ const SIZE_OPTIONS = [
   { key: 'a', num: 'Any',  label: 'No Pref' },
 ];
 
-const GENDER_PREF = [
-  { key: 'coed',  emoji: '🌍',    name: 'Co-ed (Mixed)',      desc: 'Open to all genders — the more diverse the better.' },
-  { key: 'same',  emoji: '🙋',    name: 'Same Gender',        desc: 'I prefer groups that are primarily my gender.' },
-  { key: 'none',  emoji: '👤',    name: 'No Preference',      desc: "It doesn't matter — just match me well." },
-  { key: 'lgbtq', emoji: '🏳️‍🌈', name: 'LGBTQ+ Inclusive',   desc: 'I want a space that is explicitly inclusive.' },
-];
-
 const MEET_PREF = [
   { key: 'online',   emoji: '🏠', name: 'Online Only',     desc: 'Video calls, chats, and virtual hangouts.' },
   { key: 'inperson', emoji: '📍', name: 'In-Person Only',  desc: 'Real meetups, local events, face-to-face.' },
@@ -652,10 +645,11 @@ export default function ProfileSetupPage() {
   const [energyLevel, setEnergyLevel]   = useState(5);
   const [matters, setMatters]           = useState([]);
 
-  // Step 6 — multi-select for genderPref, commitment, ageRange
+  // Step 6 — multi-select for commitment, ageRange
+  // genderPref is preserved from the DB but no longer shown or edited in the UI
+  const [genderPrefStored, setGenderPrefStored] = useState(undefined);
   const [availability, setAvailability] = useState([]);
   const [groupSize, setGroupSize]       = useState(null);
-  const [genderPref, setGenderPref]     = useState([]);
   const [meetPref, setMeetPref]         = useState(null);
   const [frequency, setFrequency]       = useState(null);
   const [commitment, setCommitment]     = useState([]);
@@ -724,7 +718,8 @@ export default function ProfileSetupPage() {
 
         // Multi-select fields: coerce old single-string values to arrays
         const toArr = v => Array.isArray(v) ? v : (v ? [v] : []);
-        setGenderPref(toArr(sp.genderPref));
+        // Preserve stored genderPref without showing it in the UI
+        if (sp.genderPref !== undefined) setGenderPrefStored(sp.genderPref);
         setCommitment(toArr(sp.commitment));
         setAgeRange(toArr(sp.ageRange));
       })
@@ -759,7 +754,7 @@ export default function ProfileSetupPage() {
       socialEnergy,
       commStyle,
       energyLevel,
-      genderPref,
+      ...(genderPrefStored !== undefined ? { genderPref: genderPrefStored } : {}),
       meetPref,
       frequency,
       commitment,
@@ -1171,9 +1166,6 @@ export default function ProfileSetupPage() {
                 </div>
               ))}
             </div>
-
-            <SectionLabel>Group gender preference <span className="ps-multiselect-hint">(select all that apply)</span></SectionLabel>
-            <PrefGrid items={GENDER_PREF} value={genderPref} onChange={setGenderPref} multi />
 
             <SectionLabel>Where do you prefer to meet?</SectionLabel>
             <PrefGrid items={MEET_PREF} value={meetPref} onChange={setMeetPref} />
