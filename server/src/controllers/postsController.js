@@ -7,7 +7,7 @@ export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad', 'wave'];
 // ── Shared SELECT (userId always = $1; caller appends WHERE/ORDER/LIMIT) ─────
 const FEED_SELECT = `
   SELECT
-    p.post_id, p.hive_id, p.author_user_id, p.post_type,
+    p.post_id, p.hive_id, p.author_user_id, p.post_type, p.visibility,
     p.headline, p.body, p.media_url, p.event_at, p.event_location, p.created_at,
     h.hive_name, h.creator_user_id, h.banner_url, h.logo_url,
     c.category_name,
@@ -50,28 +50,52 @@ function nestComments(rows) {
   return roots;
 }
 
-// ── Membership helpers ────────────────────────────────────────────────────────
+// ── Access helpers ────────────────────────────────────────────────────────────
 
-async function _getPostHiveId(postId) {
+// Returns { hive_id, visibility } for a post, or null.
+async function _getPostInfo(postId) {
   const { rows: [row] } = await query(
-    'SELECT hive_id FROM hive_posts WHERE post_id = $1',
+    'SELECT hive_id, visibility FROM hive_posts WHERE post_id = $1',
     [postId],
   );
-  return row?.hive_id ?? null;
+  return row ?? null;
 }
 
-async function _getCommentHiveId(commentId) {
+// Returns { hive_id, post_id, visibility } resolved from a comment, or null.
+async function _getCommentInfo(commentId) {
   const { rows: [row] } = await query(
-    `SELECT hp.hive_id FROM post_comments pc
+    `SELECT hp.hive_id, pc.post_id, hp.visibility
+     FROM post_comments pc
      JOIN hive_posts hp ON hp.post_id = pc.post_id
      WHERE pc.comment_id = $1`,
     [commentId],
   );
-  return row?.hive_id ?? null;
+  return row ?? null;
 }
 
-// Returns true if member; sends 403/404 and returns false otherwise.
-async function _assertMember(hiveId, userId, res) {
+// Read gate: member OR (follower + visibility = 'public').
+// Sends 404/403 and returns false when access is denied.
+async function _assertCanRead(postInfo, userId, res) {
+  if (!postInfo) {
+    res.status(404).json({ error: 'Not found.' });
+    return false;
+  }
+  const { hive_id, visibility } = postInfo;
+  const { rows: [row] } = await query(
+    `SELECT
+       EXISTS(SELECT 1 FROM hive_members   WHERE hive_id=$1 AND user_id=$2 AND membership_status='active') AS is_member,
+       EXISTS(SELECT 1 FROM hive_followers WHERE hive_id=$1 AND user_id=$2) AS is_following`,
+    [hive_id, userId],
+  );
+  if (row.is_member) return true;
+  if (row.is_following && visibility === 'public') return true;
+  res.status(403).json({ error: 'You must be a member of this Hive.' });
+  return false;
+}
+
+// Write gate: member only, regardless of post visibility.
+// Sends 404/403 and returns false when access is denied.
+async function _assertMemberForHive(hiveId, userId, res) {
   if (!hiveId) {
     res.status(404).json({ error: 'Not found.' });
     return false;
@@ -116,7 +140,7 @@ async function attachTopComments(posts) {
 // ── createPost ────────────────────────────────────────────────────────────────
 export const createPost = async (req, res) => {
   try {
-    const { hiveId, headline, body, mediaUrl, postType, eventAt, eventLocation } = req.body;
+    const { hiveId, headline, body, mediaUrl, postType, eventAt, eventLocation, visibility } = req.body;
     if (!headline?.trim() || !hiveId) {
       return res.status(400).json({ error: 'Headline and hiveId are required.' });
     }
@@ -127,10 +151,14 @@ export const createPost = async (req, res) => {
     if (!member || !['owner', 'admin'].includes(member.role)) {
       return res.status(403).json({ error: 'Only Hive owners and admins can post.' });
     }
+    // Only owners/admins may set 'public'; any other value (or role) silently defaults to 'hive'.
+    const safeVisibility = (visibility === 'public' && ['owner', 'admin'].includes(member.role))
+      ? 'public'
+      : 'hive';
     const { rows: [inserted] } = await query(
       `INSERT INTO hive_posts
-         (hive_id, author_user_id, post_type, headline, body, media_url, event_at, event_location)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         (hive_id, author_user_id, post_type, headline, body, media_url, event_at, event_location, visibility)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING post_id`,
       [
         hiveId, req.userId,
@@ -140,6 +168,7 @@ export const createPost = async (req, res) => {
         mediaUrl?.trim()      || null,
         eventAt               || null,
         eventLocation?.trim() || null,
+        safeVisibility,
       ],
     );
     const { rows: [post] } = await query(
@@ -154,6 +183,8 @@ export const createPost = async (req, res) => {
 };
 
 // ── getFeed ───────────────────────────────────────────────────────────────────
+// Members see all posts from their Hives.
+// Followers see only public posts from Hives they follow (but are not members of).
 export const getFeed = async (req, res) => {
   try {
     const limit  = Math.min(Number(req.query.limit)  || 20, 50);
@@ -161,9 +192,11 @@ export const getFeed = async (req, res) => {
     const { rows: posts } = await query(
       `${FEED_SELECT}
        WHERE (
-         EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)
-         OR
-         EXISTS(SELECT 1 FROM hive_members   WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active')
+         EXISTS(SELECT 1 FROM hive_members WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active')
+         OR (
+           EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)
+           AND p.visibility = 'public'
+         )
        )
        ORDER BY p.created_at DESC
        LIMIT $2 OFFSET $3`,
@@ -179,7 +212,7 @@ export const getFeed = async (req, res) => {
 // ── getHivePosts ──────────────────────────────────────────────────────────────
 export const getHivePosts = async (req, res) => {
   try {
-    if (!await _assertMember(req.params.id, req.userId, res)) return;
+    if (!await _assertMemberForHive(req.params.id, req.userId, res)) return;
     const limit  = Math.min(Number(req.query.limit)  || 20, 50);
     const offset = Number(req.query.offset) || 0;
     const { rows: posts } = await query(
@@ -199,8 +232,8 @@ export const getHivePosts = async (req, res) => {
 // ── getPost ───────────────────────────────────────────────────────────────────
 export const getPost = async (req, res) => {
   try {
-    const hiveId = await _getPostHiveId(req.params.id);
-    if (!await _assertMember(hiveId, req.userId, res)) return;
+    const postInfo = await _getPostInfo(req.params.id);
+    if (!await _assertCanRead(postInfo, req.userId, res)) return;
     const { rows: [post] } = await query(
       `${FEED_SELECT} WHERE p.post_id = $2`,
       [req.userId, req.params.id],
@@ -221,7 +254,7 @@ export const deletePost = async (req, res) => {
       'SELECT hive_id, author_user_id FROM hive_posts WHERE post_id=$1', [req.params.id],
     );
     if (!post) return res.status(404).json({ error: 'Post not found.' });
-    if (!await _assertMember(post.hive_id, req.userId, res)) return;
+    if (!await _assertMemberForHive(post.hive_id, req.userId, res)) return;
     if (post.author_user_id !== req.userId) {
       return res.status(403).json({ error: 'Not authorised.' });
     }
@@ -237,8 +270,8 @@ export const deletePost = async (req, res) => {
 export const toggleReaction = async (req, res) => {
   try {
     const postId   = req.params.id;
-    const hiveId   = await _getPostHiveId(postId);
-    if (!await _assertMember(hiveId, req.userId, res)) return;
+    const postInfo = await _getPostInfo(postId);
+    if (!await _assertMemberForHive(postInfo?.hive_id, req.userId, res)) return;
     const reaction = REACTIONS.includes(req.body.reaction) ? req.body.reaction : 'like';
 
     const { rows: [existing] } = await query(
@@ -320,8 +353,8 @@ export const toggleReaction = async (req, res) => {
 // ── getReactors ───────────────────────────────────────────────────────────────
 export const getReactors = async (req, res) => {
   try {
-    const hiveId = await _getPostHiveId(req.params.id);
-    if (!await _assertMember(hiveId, req.userId, res)) return;
+    const postInfo = await _getPostInfo(req.params.id);
+    if (!await _assertCanRead(postInfo, req.userId, res)) return;
     const { rows } = await query(
       `SELECT u.user_id, p.full_name, p.profile_photo_url, pr.reaction
        FROM post_reactions pr
@@ -341,8 +374,8 @@ export const getReactors = async (req, res) => {
 // ── addComment ────────────────────────────────────────────────────────────────
 export const addComment = async (req, res) => {
   try {
-    const hiveId = await _getPostHiveId(req.params.id);
-    if (!await _assertMember(hiveId, req.userId, res)) return;
+    const postInfo = await _getPostInfo(req.params.id);
+    if (!await _assertMemberForHive(postInfo?.hive_id, req.userId, res)) return;
     const { body, parentCommentId } = req.body;
     if (!body?.trim()) return res.status(400).json({ error: 'Comment body is required.' });
 
@@ -381,8 +414,8 @@ export const addComment = async (req, res) => {
 // ── getComments ───────────────────────────────────────────────────────────────
 export const getComments = async (req, res) => {
   try {
-    const hiveId = await _getPostHiveId(req.params.id);
-    if (!await _assertMember(hiveId, req.userId, res)) return;
+    const postInfo = await _getPostInfo(req.params.id);
+    if (!await _assertCanRead(postInfo, req.userId, res)) return;
     const { rows } = await query(
       `SELECT pc.*,
               prof.full_name, prof.profile_photo_url,
@@ -403,8 +436,8 @@ export const getComments = async (req, res) => {
 // ── deleteComment ─────────────────────────────────────────────────────────────
 export const deleteComment = async (req, res) => {
   try {
-    const hiveId = await _getCommentHiveId(req.params.commentId);
-    if (!await _assertMember(hiveId, req.userId, res)) return;
+    const commentInfo = await _getCommentInfo(req.params.commentId);
+    if (!await _assertMemberForHive(commentInfo?.hive_id, req.userId, res)) return;
     const { rows: [comment] } = await query(
       'SELECT user_id FROM post_comments WHERE comment_id=$1',
       [req.params.commentId],
@@ -416,5 +449,47 @@ export const deleteComment = async (req, res) => {
   } catch (err) {
     console.error('[posts/deleteComment]', err);
     res.status(500).json({ error: 'Failed to delete comment.' });
+  }
+};
+
+// ── updatePostVisibility ──────────────────────────────────────────────────────
+// PATCH /api/posts/:id/visibility
+// Rules:
+//   - Must be a Hive member with role owner or admin
+//   - Narrowing (public → hive) is allowed
+//   - Widening (hive → public) is rejected — retroactively exposes existing comments
+export const updatePostVisibility = async (req, res) => {
+  try {
+    const { visibility } = req.body;
+    if (!['hive', 'public'].includes(visibility)) {
+      return res.status(400).json({ error: 'visibility must be "hive" or "public".' });
+    }
+
+    const { rows: [post] } = await query(
+      'SELECT hive_id, visibility FROM hive_posts WHERE post_id=$1',
+      [req.params.id],
+    );
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+
+    const member = await getMembership(post.hive_id, req.userId);
+    if (!member) {
+      return res.status(403).json({ error: 'You must be a member of this Hive.' });
+    }
+    if (!['owner', 'admin'].includes(member.role)) {
+      return res.status(403).json({ error: 'Only Hive owners and admins can change post visibility.' });
+    }
+
+    // Widening is permanently blocked — comments were written under a privacy expectation.
+    if (post.visibility === 'hive' && visibility === 'public') {
+      return res.status(400).json({
+        error: 'Post visibility cannot be widened after posting. Existing comments were written under an expectation of privacy.',
+      });
+    }
+
+    await query('UPDATE hive_posts SET visibility=$1 WHERE post_id=$2', [visibility, req.params.id]);
+    res.json({ visibility });
+  } catch (err) {
+    console.error('[posts/updatePostVisibility]', err);
+    res.status(500).json({ error: 'Failed to update post visibility.' });
   }
 };

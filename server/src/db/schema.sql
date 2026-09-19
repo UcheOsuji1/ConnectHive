@@ -518,3 +518,10 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);
+
+-- ─── Post visibility ──────────────────────────────────────────────────────────
+-- 'hive'   = members only (default, every pre-existing post stays private)
+-- 'public' = members + followers
+ALTER TABLE hive_posts ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'hive'
+  CHECK (visibility IN ('hive','public'));
+CREATE INDEX IF NOT EXISTS idx_hive_posts_visibility ON hive_posts(hive_id, visibility);

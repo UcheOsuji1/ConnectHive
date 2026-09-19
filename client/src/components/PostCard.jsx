@@ -605,6 +605,13 @@ export default function PostCard({ post: initialPost, variant }) {
             ))
           )}
 
+          {/* Visibility warning — always visible when post is public */}
+          {post.visibility === 'public' && (
+            <p className="post-public-comment-notice">
+              Anyone following this Hive can see this.
+            </p>
+          )}
+
           {/* Top-level comment input */}
           <form className="post-add-comment" onSubmit={handleSubmitComment}>
             <textarea

@@ -10,8 +10,14 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
   const [body,          setBody]          = useState('');
   const [eventAt,       setEventAt]       = useState('');
   const [eventLocation, setEventLocation] = useState('');
+  // Visibility defaults to 'hive' every time the modal opens — never sticky.
+  const [visibility, setVisibility] = useState('hive');
   const [saving,        setSaving]        = useState(false);
   const [error,         setError]         = useState(null);
+
+  // Derive the role for the currently selected hive.
+  const selectedHive = hives.find(h => h.hive_id === hiveId);
+  const canSetPublic = selectedHive?.role === 'owner' || selectedHive?.role === 'admin';
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -24,6 +30,7 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
         headline: headline.trim(),
         body: body.trim() || null,
         postType,
+        visibility,
         eventAt: postType === 'event' && eventAt ? eventAt : null,
         eventLocation: postType === 'event' && eventLocation.trim() ? eventLocation.trim() : null,
       });
@@ -136,6 +143,41 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
                 />
               </div>
             </>
+          )}
+
+          {/* Visibility — shown only to owners/admins; defaults to 'hive' every open */}
+          {canSetPublic && (
+            <div className="cpm-field">
+              <label className="cpm-label">Who can see this</label>
+              <div className="cpm-visibility-row">
+                <label className="cpm-visibility-opt">
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value="hive"
+                    checked={visibility === 'hive'}
+                    onChange={() => setVisibility('hive')}
+                  />
+                  <span className="cpm-visibility-label">
+                    <strong>Members only</strong>
+                    <span className="cpm-visibility-sub">People in this Hive</span>
+                  </span>
+                </label>
+                <label className="cpm-visibility-opt">
+                  <input
+                    type="radio"
+                    name="visibility"
+                    value="public"
+                    checked={visibility === 'public'}
+                    onChange={() => setVisibility('public')}
+                  />
+                  <span className="cpm-visibility-label">
+                    <strong>Public</strong>
+                    <span className="cpm-visibility-sub">Anyone who follows this Hive</span>
+                  </span>
+                </label>
+              </div>
+            </div>
           )}
 
           {error && <div className="cpm-error">{error}</div>}

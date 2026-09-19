@@ -9,6 +9,7 @@ import {
   addComment,
   getComments,
   deleteComment,
+  updatePostVisibility,
 } from '../controllers/postsController.js';
 import { requireAuth } from '../middleware/auth.js';
 
@@ -22,6 +23,7 @@ router.delete('/comments/:commentId',  requireAuth, deleteComment);
 // Single post
 router.get('/:id',                     requireAuth, getPost);
 router.delete('/:id',                  requireAuth, deletePost);
+router.patch('/:id/visibility',        requireAuth, updatePostVisibility);
 
 // Post actions
 router.post('/:id/react',              requireAuth, toggleReaction);
