@@ -61,8 +61,8 @@ const PAIR_WEIGHTS = {
 
 export const BLEND = { purpose: 0.6, people: 0.4 };
 
-// Vocabulary-aware match between user commitment chips and hive meeting cadence.
-// User FREQ_CHIPS: 'Daily','A few times a week','Weekly','Bi-weekly','Monthly','As needed'
+// Vocabulary-aware match between user meeting frequency and hive cadence.
+// User social_preferences.frequency (FREQ_CHIPS): 'Daily','A few times a week','Weekly','Bi-weekly','Monthly','As needed'
 // Hive CADENCE_CHIPS: 'Daily','Weekly','Biweekly','Monthly','Flexible'
 function cadenceScore(commitmentArr, hiveCadence) {
   if (!commitmentArr.length || !hiveCadence) return 50;
@@ -132,11 +132,11 @@ export function scorePurpose(profile, hive, selectedCategoryKey) {
     }
   }
 
-  // Cadence: profile commitment (social_preferences.commitment) vs hive meeting frequency
+  // Cadence: profile meeting frequency (social_preferences.frequency) vs hive cadence
   const sp = profile.social_preferences ?? {};
-  const userCommitment = Array.isArray(sp.commitment) ? sp.commitment
-    : sp.commitment ? [sp.commitment] : [];
-  const cadence = cadenceScore(userCommitment, hive.cadence);
+  const rawFreq = sp.frequency;
+  const userFrequency = rawFreq ? (Array.isArray(rawFreq) ? rawFreq : [rawFreq]) : [];
+  const cadence = cadenceScore(userFrequency, hive.cadence);
 
   // Personality: personality_type + connection_preference vs hive descriptive text
   const userPersonality = norm(profile.personality_type ?? '');
