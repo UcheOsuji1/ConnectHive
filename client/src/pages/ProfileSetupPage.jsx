@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import { getInitials } from '../lib/initials.js';
+import { SKILL_CATS } from '../data/skillTaxonomy.js';
 import '../styles/profile-setup.css';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
@@ -24,7 +25,7 @@ const INTEREST_CATS = [
   { key: 'gaming',  emoji: '🎮', name: 'Gaming',             desc: 'What types of games do you play?',
     chips: ['🎯 FPS / Shooters','⚔️ RPGs','🏆 Competitive / Esports','🎲 Board Games','🃏 Card Games','🌍 Open World','👾 Indie Games','📱 Mobile Gaming','🕹️ Retro / Classic','🎮 Console Gaming','💻 PC Gaming','🌐 MMORPGs'] },
   { key: 'food',    emoji: '🍜', name: 'Food & Drink',       desc: "What's your relationship with food?",
-    chips: ['🍱 Trying new cuisines','🍳 Home cooking','🥗 Healthy eating','🍕 Restaurant hopping','☕ Coffee culture','🍷 Wine & cocktails','🥘 Meal prepping','🌱 Plant-based','🍣 Sushi & Asian food','🧁 Baking & desserts','🌮 Street food','🫗 Mixology'] },
+    chips: ['🍱 Trying new cuisines','🍳 Home cooking','🥗 Healthy eating','🍕 Restaurant hopping','☕ Coffee culture','🍷 Wine & cocktails','🥘 Meal prepping','🌱 Plant-based','🍣 Sushi & Asian food','🧁 Baking & desserts','🌮 Street food','🫗 Mixology','🔥 Grilling & BBQ','🫙 Fermentation & preservation','🍵 Tea culture','👨‍👩‍👧 Family recipes','📸 Food photography','🌾 Farmers markets'] },
   { key: 'music',   emoji: '🎵', name: 'Music',              desc: 'What music moves you?',
     chips: ['🎤 Hip-Hop / Rap','🎸 Rock / Alternative','🎹 R&B / Soul','🎧 Electronic / EDM','🎻 Classical','🎷 Jazz','🌍 Afrobeats','💃 Latin / Reggaeton','🎵 Pop','🎸 Indie','🎤 Live concerts','🎼 Music production'] },
   { key: 'film',    emoji: '🎬', name: 'Film & TV',          desc: 'What do you love watching or making?',
@@ -39,23 +40,6 @@ const INTEREST_CATS = [
     chips: ['✏️ Drawing / Illustration','🖌️ Painting','🎭 Acting / Theater','💃 Dance','🖋️ Poetry / Writing','🎤 Spoken word','📸 Photography','🎬 Videography','🏺 Sculpture / Ceramics','🎨 Digital art','🖼️ Museum & gallery hopping','🎪 Improv / Comedy'] },
   { key: 'travel',  emoji: '✈️', name: 'Travel & Adventure', desc: 'What kind of explorer are you?',
     chips: ['🌍 International travel','🏙️ City exploration','🏕️ Camping','🥾 Hiking','🏖️ Beach trips','🍽️ Food tourism','🎒 Backpacking','🚗 Road trips','🧗 Adventure sports','📸 Travel photography'] },
-];
-
-const SKILL_CATS = [
-  { key: 'coding',    emoji: '💻', name: 'Coding & Engineering', desc: 'What do you build or code?',
-    chips: ['⚛️ React / Frontend','🐍 Python','☕ Java','📱 iOS / Swift','🤖 Android / Kotlin','🗄️ Backend / APIs','☁️ Cloud / AWS','🤖 AI / ML','🔐 Cybersecurity','🎮 Game Dev','⛓️ Blockchain','🗃️ Databases / SQL'] },
-  { key: 'design',    emoji: '🎨', name: 'Design',               desc: 'What kind of design work do you do?',
-    chips: ['🖥️ UI/UX Design','🖌️ Graphic Design','🎬 Motion Design','📦 Product Design','🏗️ Industrial Design','🏠 Interior Design','👗 Fashion Design','🖋️ Brand / Identity','🌐 Web Design','🖼️ Illustration','📐 Figma / Prototyping'] },
-  { key: 'data',      emoji: '📊', name: 'Data & Analysis',      desc: 'How do you work with data?',
-    chips: ['📈 Data Analysis','🤖 Machine Learning','📊 Data Visualization','🗃️ SQL / Databases','🐍 Python / Pandas','📉 Financial Modeling','🔬 Research','📋 Surveys / UX Research'] },
-  { key: 'marketing', emoji: '📢', name: 'Marketing & Growth',   desc: 'How do you grow things?',
-    chips: ['📱 Social Media Marketing','✍️ Content Marketing','🔍 SEO / SEM','📧 Email Marketing','🤝 Brand Partnerships','📊 Analytics / Growth','🎤 PR / Communications','💰 Paid Ads','🎥 Video Marketing','🌐 Community Building'] },
-  { key: 'acting',    emoji: '🎭', name: 'Acting & Performance', desc: "What's your performance background?",
-    chips: ['🎭 Stage Acting','🎬 Film / TV Acting','🎙️ Voice Acting','🎤 Hosting / MC','🎪 Improv','😂 Stand-up Comedy','💃 Dance Performance','🎶 Musical Theater','📹 Content Creation / UGC'] },
-  { key: 'business',  emoji: '💼', name: 'Business & Leadership', desc: 'How do you lead and build?',
-    chips: ['🚀 Entrepreneurship','📋 Project Management','🏆 Leadership','💰 Sales / Negotiation','📊 Business Strategy','💵 Finance / Investing','⚖️ Legal / Contracts','🤝 Operations','🗂️ Event Planning','🎤 Public Speaking'] },
-  { key: 'content',   emoji: '🎬', name: 'Content & Media',      desc: 'What kind of content do you create?',
-    chips: ['📹 Video Editing','🎙️ Podcasting','✍️ Copywriting','📸 Photography','🎵 Music Production','📱 Short-form video','🖥️ Streaming / Live','📝 Blogging / Journalism','📖 Screenwriting','🎨 Graphic creation'] },
 ];
 
 const SOCIAL_ENERGY = [
@@ -120,9 +104,25 @@ const COMMITMENT_CARDS = [
 
 const AVAIL_CHIPS = ['Weekdays','Weekends','Mornings','Afternoons','Evenings','Late Nights','Flexible'];
 const FREQ_CHIPS  = ['Daily','A few times a week','Weekly','Bi-weekly','Monthly','As needed'];
-const AGE_CHIPS   = ['18–22','21–25','25–30','30–40','Any age'];
+const AGE_CHIPS   = ['18–24','25–34','35–44','45–54','55+'];
 const STEP_LABELS = ['About','Purpose','Interests','Skills','Vibe','Schedule'];
 const FILL_PCT    = [0, 16, 33, 50, 66, 83, 100, 100];
+
+// All chips across all categories (for suggestion search)
+const ALL_INTEREST_CHIPS = INTEREST_CATS.flatMap(c => c.chips);
+const ALL_SKILL_CHIPS    = SKILL_CATS.flatMap(c => c.chips);
+
+// ── Utilities ─────────────────────────────────────────────────
+
+function normalizeChip(s) {
+  return s.trim().replace(/\s+/g, ' ').slice(0, 40);
+}
+
+function findSuggestions(input, allChips) {
+  const q = normalizeChip(input).toLowerCase();
+  if (q.length < 2) return [];
+  return allChips.filter(c => c.toLowerCase().includes(q)).slice(0, 6);
+}
 
 // ── Helper components ─────────────────────────────────────────
 
@@ -161,8 +161,82 @@ function NavButtons({ step, onBack, onNext, isLast, saving, editMode }) {
   );
 }
 
-function Accordion({ cats, selected, onToggle }) {
+function SectionSaveBar({ saving, saved, error, onSave }) {
+  return (
+    <div className="ps-section-save-bar">
+      {error && <span className="ps-section-save-err">{error}</span>}
+      {saved && !error && <span className="ps-section-save-ok">Saved ✓</span>}
+      <button
+        type="button"
+        className="ps-section-save-btn"
+        onClick={onSave}
+        disabled={saving}
+      >
+        {saving ? 'Saving…' : 'Save'}
+      </button>
+    </div>
+  );
+}
+
+function Accordion({ cats, selected, onToggle, customChips, onAddCustom, onRemoveCustom, allChipsForSuggest }) {
   const [openKey, setOpenKey] = useState(null);
+  const [input, setInput] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+
+  function handleInputChange(e) {
+    const val = e.target.value;
+    setInput(val);
+    setSuggestions(findSuggestions(val, allChipsForSuggest));
+  }
+
+  function commitCustom(raw) {
+    const chip = normalizeChip(raw);
+    if (!chip) return;
+    // If it matches an existing chip exactly (case-insensitive), find and select it
+    const exactMatch = allChipsForSuggest.find(c => c.toLowerCase() === chip.toLowerCase());
+    if (exactMatch) {
+      // Find which cat it belongs to and toggle it
+      for (const cat of cats) {
+        if (cat.chips.includes(exactMatch)) {
+          if (!(selected[cat.key] || []).includes(exactMatch)) {
+            onToggle(cat.key, exactMatch);
+          }
+          break;
+        }
+      }
+    } else {
+      // Case-insensitive dedup against existing custom entries
+      const isDup = customChips.some(c => c.toLowerCase() === chip.toLowerCase());
+      // Also dedup against already-selected cat chips
+      const alreadySelected = Object.values(selected).flat();
+      const isDupSelected = alreadySelected.some(c => c.toLowerCase() === chip.toLowerCase());
+      if (!isDup && !isDupSelected) {
+        onAddCustom(chip);
+      }
+    }
+    setInput('');
+    setSuggestions([]);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') { e.preventDefault(); commitCustom(input); }
+    if (e.key === 'Escape') { setInput(''); setSuggestions([]); }
+  }
+
+  function selectSuggestion(chip) {
+    // Find its category and toggle it selected
+    for (const cat of cats) {
+      if (cat.chips.includes(chip)) {
+        if (!(selected[cat.key] || []).includes(chip)) {
+          onToggle(cat.key, chip);
+        }
+        break;
+      }
+    }
+    setInput('');
+    setSuggestions([]);
+  }
+
   return (
     <div className="ps-accordion">
       {cats.map(cat => {
@@ -202,18 +276,83 @@ function Accordion({ cats, selected, onToggle }) {
           </div>
         );
       })}
+
+      {/* Custom entries */}
+      {customChips.length > 0 && (
+        <div className="ps-custom-chips-row">
+          <span className="ps-custom-chips-label">Your custom entries</span>
+          <div className="ps-chips">
+            {customChips.map(chip => (
+              <button
+                key={chip}
+                type="button"
+                className="ps-chip ps-chip-custom selected"
+                onClick={() => onRemoveCustom(chip)}
+              >
+                {chip} ✕
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Free-text input */}
+      <div className="ps-custom-input-wrap">
+        <div className="ps-custom-input-row">
+          <input
+            type="text"
+            className="ps-custom-input"
+            placeholder="Add your own…"
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            maxLength={50}
+          />
+          <button
+            type="button"
+            className="ps-custom-add-btn"
+            onClick={() => commitCustom(input)}
+            disabled={!normalizeChip(input)}
+          >
+            Add
+          </button>
+        </div>
+        {suggestions.length > 0 && (
+          <div className="ps-suggestions">
+            {suggestions.map(s => (
+              <button
+                key={s}
+                type="button"
+                className="ps-suggestion-item"
+                onMouseDown={e => { e.preventDefault(); selectSuggestion(s); }}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function VibeGrid({ items, value, onChange, cols }) {
+function VibeGrid({ items, value, onChange, cols, multi }) {
+  const isSelected = key => multi ? (Array.isArray(value) ? value.includes(key) : false) : value === key;
+  const handleClick = key => {
+    if (multi) {
+      const arr = Array.isArray(value) ? value : [];
+      onChange(arr.includes(key) ? arr.filter(k => k !== key) : [...arr, key]);
+    } else {
+      onChange(value === key ? null : key);
+    }
+  };
   return (
     <div className="ps-vibe-grid" style={cols === 3 ? { gridTemplateColumns: 'repeat(3,1fr)' } : {}}>
       {items.map(item => (
         <div
           key={item.key}
-          className={`ps-vibe-card${value === item.key ? ' selected' : ''}`}
-          onClick={() => onChange(value === item.key ? null : item.key)}
+          className={`ps-vibe-card${isSelected(item.key) ? ' selected' : ''}`}
+          onClick={() => handleClick(item.key)}
         >
           <div className="ps-vibe-icon">{item.emoji}</div>
           <div>
@@ -226,14 +365,23 @@ function VibeGrid({ items, value, onChange, cols }) {
   );
 }
 
-function PrefGrid({ items, value, onChange }) {
+function PrefGrid({ items, value, onChange, multi }) {
+  const isSelected = key => multi ? (Array.isArray(value) ? value.includes(key) : false) : value === key;
+  const handleClick = key => {
+    if (multi) {
+      const arr = Array.isArray(value) ? value : [];
+      onChange(arr.includes(key) ? arr.filter(k => k !== key) : [...arr, key]);
+    } else {
+      onChange(value === key ? null : key);
+    }
+  };
   return (
     <div className="ps-pref-grid">
       {items.map(item => (
         <div
           key={item.key}
-          className={`ps-pref-card${value === item.key ? ' selected' : ''}`}
-          onClick={() => onChange(value === item.key ? null : item.key)}
+          className={`ps-pref-card${isSelected(item.key) ? ' selected' : ''}`}
+          onClick={() => handleClick(item.key)}
         >
           <span className="ps-pref-emoji">{item.emoji}</span>
           <div className="ps-pref-name">{item.name}</div>
@@ -245,9 +393,9 @@ function PrefGrid({ items, value, onChange }) {
 }
 
 function ChipRow({ chips, value, onChange, multi }) {
-  const isSelected = c => multi ? value.includes(c) : value === c;
+  const isSelected = c => multi ? (Array.isArray(value) ? value.includes(c) : false) : value === c;
   const toggle = c => multi
-    ? onChange(value.includes(c) ? value.filter(v => v !== c) : [...value, c])
+    ? onChange(Array.isArray(value) ? (value.includes(c) ? value.filter(v => v !== c) : [...value, c]) : [c])
     : onChange(value === c ? null : c);
   return (
     <div className="ps-chip-row">
@@ -474,11 +622,6 @@ export default function ProfileSetupPage() {
   const isEdit = location.pathname === '/profile/edit';
   const { refreshUser, user, loading } = useAuth();
 
-  // Redirect users who already completed onboarding away from the blank form.
-  // Depends on [loading] only so it fires once when the session resolves and
-  // does NOT re-run when refreshUser() flips hasProfile at the end of step 6
-  // (which would otherwise kick the user off their own celebration screen).
-  // Edit mode is exempt: /profile/edit must be reachable even when hasProfile=true.
   useEffect(() => {
     if (loading) return;
     if (user?.hasProfile && !isEdit) navigate('/find-your-hive', { replace: true });
@@ -494,11 +637,13 @@ export default function ProfileSetupPage() {
   // Step 2
   const [purposes, setPurposes] = useState([]);
 
-  // Step 3
-  const [interests, setInterests] = useState({});
+  // Step 3 — interests + custom entries
+  const [interests, setInterests]             = useState({});
+  const [customInterests, setCustomInterests] = useState([]);
 
-  // Step 4
-  const [skills, setSkills] = useState({});
+  // Step 4 — skills + custom entries
+  const [skills, setSkills]           = useState({});
+  const [customSkills, setCustomSkills] = useState([]);
 
   // Step 5
   const [socialEnergy, setSocialEnergy] = useState(null);
@@ -507,17 +652,22 @@ export default function ProfileSetupPage() {
   const [energyLevel, setEnergyLevel]   = useState(5);
   const [matters, setMatters]           = useState([]);
 
-  // Step 6
+  // Step 6 — multi-select for genderPref, commitment, ageRange
   const [availability, setAvailability] = useState([]);
   const [groupSize, setGroupSize]       = useState(null);
-  const [genderPref, setGenderPref]     = useState(null);
+  const [genderPref, setGenderPref]     = useState([]);
   const [meetPref, setMeetPref]         = useState(null);
   const [frequency, setFrequency]       = useState(null);
-  const [commitment, setCommitment]     = useState(null);
-  const [ageRange, setAgeRange]         = useState(null);
+  const [commitment, setCommitment]     = useState([]);
+  const [ageRange, setAgeRange]         = useState([]);
 
   const [saving,    setSaving]    = useState(false);
   const [saveError, setSaveError] = useState(null);
+
+  // Per-section save state (edit mode only)
+  const [sectionSaving, setSectionSaving] = useState(null);
+  const [sectionSaved,  setSectionSaved]  = useState(null);
+  const [sectionError,  setSectionError]  = useState(null);
 
   // In edit mode, fetch saved profile on mount and pre-fill all state.
   useEffect(() => {
@@ -537,20 +687,29 @@ export default function ProfileSetupPage() {
           bio:       p.bio || '',
         });
         setPurposes(Array.isArray(p.connection_purposes) ? p.connection_purposes : []);
+
+        // Interests: map recognized chips to category keys; anything else → custom
         const rawInterests = Array.isArray(p.interests) ? p.interests : [];
         const iMap = {};
         INTEREST_CATS.forEach(cat => {
           const m = rawInterests.filter(c => cat.chips.includes(c));
           if (m.length) iMap[cat.key] = m;
         });
+        const knownInterestChips = ALL_INTEREST_CHIPS;
         setInterests(iMap);
+        setCustomInterests(rawInterests.filter(c => !knownInterestChips.includes(c)));
+
+        // Skills: map recognized chips to category keys; anything else → custom
         const rawSkills = Array.isArray(p.skills) ? p.skills : [];
         const sMap = {};
         SKILL_CATS.forEach(cat => {
           const m = rawSkills.filter(c => cat.chips.includes(c));
           if (m.length) sMap[cat.key] = m;
         });
+        const knownSkillChips = ALL_SKILL_CHIPS;
         setSkills(sMap);
+        setCustomSkills(rawSkills.filter(c => !knownSkillChips.includes(c)));
+
         const sp = p.social_preferences && typeof p.social_preferences === 'object'
           ? p.social_preferences : {};
         setSocialEnergy(sp.socialEnergy ?? null);
@@ -560,15 +719,24 @@ export default function ProfileSetupPage() {
         setMatters(Array.isArray(p.goals) ? p.goals : []);
         setAvailability(Array.isArray(p.availability) ? p.availability : []);
         setGroupSize(p.group_size_preference ?? null);
-        setGenderPref(sp.genderPref ?? null);
         setMeetPref(sp.meetPref ?? null);
         setFrequency(sp.frequency ?? null);
-        setCommitment(sp.commitment ?? null);
-        setAgeRange(sp.ageRange ?? null);
+
+        // Multi-select fields: coerce old single-string values to arrays
+        const toArr = v => Array.isArray(v) ? v : (v ? [v] : []);
+        setGenderPref(toArr(sp.genderPref));
+        setCommitment(toArr(sp.commitment));
+        setAgeRange(toArr(sp.ageRange));
       })
       .catch(() => {})
       .finally(() => setHydrating(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scrollToSection = n => {
+    const el = document.getElementById(`ps-s${n}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setStep(n);
+  };
 
   const goNext = () => setStep(s => Math.min(s + 1, 6));
   const goBack = () => setStep(s => Math.max(1, s - 1));
@@ -580,8 +748,8 @@ export default function ProfileSetupPage() {
     school_company:        form1.school   || null,
     bio:                   form1.bio      || null,
     profile_photo_url:     null,
-    interests:             Object.values(interests).flat(),
-    skills:                Object.values(skills).flat(),
+    interests:             [...Object.values(interests).flat(), ...customInterests],
+    skills:                [...Object.values(skills).flat(),    ...customSkills],
     goals:                 matters,
     availability,
     group_size_preference: groupSize,
@@ -599,6 +767,7 @@ export default function ProfileSetupPage() {
     },
   });
 
+  // Wizard finish (step 6 → celebration)
   const handleFinish = async () => {
     setSaving(true);
     setSaveError(null);
@@ -614,6 +783,22 @@ export default function ProfileSetupPage() {
       setSaveError(err.data?.error ?? 'Failed to save profile — please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Per-section save (edit mode)
+  const handleSaveSection = async n => {
+    setSectionSaving(n);
+    setSectionSaved(null);
+    setSectionError(null);
+    try {
+      await saveProfile();
+      setSectionSaved(n);
+      setTimeout(() => setSectionSaved(s => s === n ? null : s), 2500);
+    } catch (err) {
+      setSectionError(err.data?.error ?? 'Failed to save — please try again.');
+    } finally {
+      setSectionSaving(null);
     }
   };
 
@@ -650,8 +835,10 @@ export default function ProfileSetupPage() {
     if (purposeLabel) return purposeLabel;
     return 'TrueHive Member';
   })();
-  const tags     = [...Object.values(interests).flat(), ...Object.values(skills).flat()].slice(0, 6);
-  const memberId = user?.memberId || 'CHV-PENDING';
+  const tags      = [...Object.values(interests).flat(), ...customInterests, ...Object.values(skills).flat(), ...customSkills].slice(0, 6);
+  const memberId  = user?.memberId || 'CHV-PENDING';
+  const totalInterests = Object.values(interests).flat().length + customInterests.length;
+  const totalSkills    = Object.values(skills).flat().length    + customSkills.length;
 
   if (hydrating) {
     return (
@@ -665,6 +852,9 @@ export default function ProfileSetupPage() {
       </div>
     );
   }
+
+  // In edit mode every section is visible; in wizard mode only the current step is.
+  const show = n => isEdit || step === n;
 
   return (
     <div className="ps-page">
@@ -691,7 +881,7 @@ export default function ProfileSetupPage() {
                     key={label}
                     type="button"
                     className={`ps-step-label${step === i + 1 ? ' active' : step > i + 1 ? ' done' : ''}`}
-                    onClick={() => setStep(i + 1)}
+                    onClick={() => scrollToSection(i + 1)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, font: 'inherit' }}
                   >
                     {label}
@@ -711,16 +901,19 @@ export default function ProfileSetupPage() {
       )}
 
       {/* ── Card ── */}
-      <div className={`ps-card${step === 7 ? ' ps-card-dark' : ''}`}>
+      <div className={`ps-card${step === 7 ? ' ps-card-dark' : ''}${isEdit ? ' ps-card-edit' : ''}`}>
 
         {/* ══ STEP 1 — About You ══ */}
-        {step === 1 && (
-          <>
-            <StepHeader
-              n={1}
-              title={<>Let's start with <em>you.</em></>}
-              subtitle="The basics help us personalize your experience from day one."
-            />
+        {show(1) && (
+          <div id="ps-s1" className={isEdit ? 'ps-edit-section' : ''}>
+            {isEdit && <div className="ps-edit-section-title">About You</div>}
+            {!isEdit && (
+              <StepHeader
+                n={1}
+                title={<>Let's start with <em>you.</em></>}
+                subtitle="The basics help us personalize your experience from day one."
+              />
+            )}
 
             {/* Photo upload */}
             <div className="ps-photo-row">
@@ -783,18 +976,29 @@ export default function ProfileSetupPage() {
               />
             </div>
 
-            <NavButtons step={1} onBack={goBack} onNext={goNext} isLast={false} />
-          </>
+            {isEdit
+              ? <SectionSaveBar
+                  saving={sectionSaving === 1}
+                  saved={sectionSaved === 1}
+                  error={sectionSaving === null && sectionError && sectionSaved !== 1 ? sectionError : null}
+                  onSave={() => handleSaveSection(1)}
+                />
+              : <NavButtons step={1} onBack={goBack} onNext={goNext} isLast={false} />
+            }
+          </div>
         )}
 
         {/* ══ STEP 2 — Purpose ══ */}
-        {step === 2 && (
-          <>
-            <StepHeader
-              n={2}
-              title={<>What kind of <em>Hive</em> are you after?</>}
-              subtitle="Select all that apply. This shapes which groups we recommend first."
-            />
+        {show(2) && (
+          <div id="ps-s2" className={isEdit ? 'ps-edit-section' : ''}>
+            {isEdit && <div className="ps-edit-section-title">Purpose</div>}
+            {!isEdit && (
+              <StepHeader
+                n={2}
+                title={<>What kind of <em>Hive</em> are you after?</>}
+                subtitle="Select all that apply. This shapes which groups we recommend first."
+              />
+            )}
             <div className="ps-purpose-grid">
               {PURPOSE_CARDS.map(card => (
                 <div
@@ -813,52 +1017,93 @@ export default function ProfileSetupPage() {
                 </div>
               ))}
             </div>
-            <NavButtons step={2} onBack={goBack} onNext={goNext} isLast={false} />
-          </>
+            {isEdit
+              ? <SectionSaveBar
+                  saving={sectionSaving === 2}
+                  saved={sectionSaved === 2}
+                  error={sectionSaving === null && sectionError && sectionSaved !== 2 ? sectionError : null}
+                  onSave={() => handleSaveSection(2)}
+                />
+              : <NavButtons step={2} onBack={goBack} onNext={goNext} isLast={false} />
+            }
+          </div>
         )}
 
         {/* ══ STEP 3 — Interests ══ */}
-        {step === 3 && (
-          <>
-            <StepHeader
-              n={3}
-              title={<>What are you <em>into?</em></>}
-              subtitle="Tap a category to expand it, then pick everything that fits. More selections = better matches."
-            />
+        {show(3) && (
+          <div id="ps-s3" className={isEdit ? 'ps-edit-section' : ''}>
+            {isEdit && <div className="ps-edit-section-title">Interests</div>}
+            {!isEdit && (
+              <StepHeader
+                n={3}
+                title={<>What are you <em>into?</em></>}
+                subtitle="Tap a category to expand it, then pick everything that fits. More selections = better matches."
+              />
+            )}
             <Accordion
               cats={INTEREST_CATS}
               selected={interests}
               onToggle={toggleCat(setInterests)}
+              customChips={customInterests}
+              onAddCustom={chip => setCustomInterests(prev => [...prev, chip])}
+              onRemoveCustom={chip => setCustomInterests(prev => prev.filter(c => c !== chip))}
+              allChipsForSuggest={ALL_INTEREST_CHIPS}
             />
-            <NavButtons step={3} onBack={goBack} onNext={goNext} isLast={false} />
-          </>
+            {isEdit
+              ? <SectionSaveBar
+                  saving={sectionSaving === 3}
+                  saved={sectionSaved === 3}
+                  error={sectionSaving === null && sectionError && sectionSaved !== 3 ? sectionError : null}
+                  onSave={() => handleSaveSection(3)}
+                />
+              : <NavButtons step={3} onBack={goBack} onNext={goNext} isLast={false} />
+            }
+          </div>
         )}
 
         {/* ══ STEP 4 — Skills ══ */}
-        {step === 4 && (
-          <>
-            <StepHeader
-              n={4}
-              title={<>What do you <em>bring</em> to the table?</>}
-              subtitle="Expand each skill area and go deep. This powers your Project Collaboration and Professional matches."
-            />
+        {show(4) && (
+          <div id="ps-s4" className={isEdit ? 'ps-edit-section' : ''}>
+            {isEdit && <div className="ps-edit-section-title">Skills</div>}
+            {!isEdit && (
+              <StepHeader
+                n={4}
+                title={<>What do you <em>bring</em> to the table?</>}
+                subtitle="Expand each skill area and go deep. This powers your Project Collaboration and Professional matches."
+              />
+            )}
             <Accordion
               cats={SKILL_CATS}
               selected={skills}
               onToggle={toggleCat(setSkills)}
+              customChips={customSkills}
+              onAddCustom={chip => setCustomSkills(prev => [...prev, chip])}
+              onRemoveCustom={chip => setCustomSkills(prev => prev.filter(c => c !== chip))}
+              allChipsForSuggest={ALL_SKILL_CHIPS}
             />
-            <NavButtons step={4} onBack={goBack} onNext={goNext} isLast={false} />
-          </>
+            {isEdit
+              ? <SectionSaveBar
+                  saving={sectionSaving === 4}
+                  saved={sectionSaved === 4}
+                  error={sectionSaving === null && sectionError && sectionSaved !== 4 ? sectionError : null}
+                  onSave={() => handleSaveSection(4)}
+                />
+              : <NavButtons step={4} onBack={goBack} onNext={goNext} isLast={false} />
+            }
+          </div>
         )}
 
         {/* ══ STEP 5 — Vibe ══ */}
-        {step === 5 && (
-          <>
-            <StepHeader
-              n={5}
-              title={<>What's your <em>vibe?</em></>}
-              subtitle="The more you tell us, the better we match your energy with the right Hive culture."
-            />
+        {show(5) && (
+          <div id="ps-s5" className={isEdit ? 'ps-edit-section' : ''}>
+            {isEdit && <div className="ps-edit-section-title">Vibe</div>}
+            {!isEdit && (
+              <StepHeader
+                n={5}
+                title={<>What's your <em>vibe?</em></>}
+                subtitle="The more you tell us, the better we match your energy with the right Hive culture."
+              />
+            )}
 
             <SectionLabel>Your social energy</SectionLabel>
             <VibeGrid items={SOCIAL_ENERGY} value={socialEnergy} onChange={setSocialEnergy} />
@@ -886,18 +1131,29 @@ export default function ProfileSetupPage() {
               ))}
             </div>
 
-            <NavButtons step={5} onBack={goBack} onNext={goNext} isLast={false} />
-          </>
+            {isEdit
+              ? <SectionSaveBar
+                  saving={sectionSaving === 5}
+                  saved={sectionSaved === 5}
+                  error={sectionSaving === null && sectionError && sectionSaved !== 5 ? sectionError : null}
+                  onSave={() => handleSaveSection(5)}
+                />
+              : <NavButtons step={5} onBack={goBack} onNext={goNext} isLast={false} />
+            }
+          </div>
         )}
 
         {/* ══ STEP 6 — Schedule ══ */}
-        {step === 6 && (
-          <>
-            <StepHeader
-              n={6}
-              title={<>Schedule & <em>group preferences.</em></>}
-              subtitle="Help us match you with Hives that actually fit your life."
-            />
+        {show(6) && (
+          <div id="ps-s6" className={isEdit ? 'ps-edit-section' : ''}>
+            {isEdit && <div className="ps-edit-section-title">Schedule &amp; Preferences</div>}
+            {!isEdit && (
+              <StepHeader
+                n={6}
+                title={<>Schedule & <em>group preferences.</em></>}
+                subtitle="Help us match you with Hives that actually fit your life."
+              />
+            )}
 
             <SectionLabel>When are you usually available?</SectionLabel>
             <ChipRow chips={AVAIL_CHIPS} value={availability} onChange={setAvailability} multi />
@@ -916,8 +1172,8 @@ export default function ProfileSetupPage() {
               ))}
             </div>
 
-            <SectionLabel>Group gender preference</SectionLabel>
-            <PrefGrid items={GENDER_PREF} value={genderPref} onChange={setGenderPref} />
+            <SectionLabel>Group gender preference <span className="ps-multiselect-hint">(select all that apply)</span></SectionLabel>
+            <PrefGrid items={GENDER_PREF} value={genderPref} onChange={setGenderPref} multi />
 
             <SectionLabel>Where do you prefer to meet?</SectionLabel>
             <PrefGrid items={MEET_PREF} value={meetPref} onChange={setMeetPref} />
@@ -925,41 +1181,24 @@ export default function ProfileSetupPage() {
             <SectionLabel>How often do you want to connect with your Hive?</SectionLabel>
             <ChipRow chips={FREQ_CHIPS} value={frequency} onChange={setFrequency} multi={false} />
 
-            <SectionLabel>Commitment level</SectionLabel>
-            <VibeGrid items={COMMITMENT_CARDS} value={commitment} onChange={setCommitment} />
+            <SectionLabel>Commitment level <span className="ps-multiselect-hint">(select all that apply)</span></SectionLabel>
+            <VibeGrid items={COMMITMENT_CARDS} value={commitment} onChange={setCommitment} multi />
 
-            <SectionLabel>Age range preference for your Hive</SectionLabel>
-            <ChipRow chips={AGE_CHIPS} value={ageRange} onChange={setAgeRange} multi={false} />
+            <SectionLabel>Age range preference <span className="ps-multiselect-hint">(leave blank for no preference)</span></SectionLabel>
+            <ChipRow chips={AGE_CHIPS} value={ageRange} onChange={setAgeRange} multi />
 
-            {saveError && <p style={{ color: '#c0392b', fontSize: '0.85rem', marginTop: '0.5rem', textAlign: 'center' }}>{saveError}</p>}
-            <NavButtons step={6} onBack={goBack} onNext={handleFinish} isLast saving={saving} editMode={isEdit} />
-          </>
-        )}
-
-        {/* ══ Persistent Save Changes bar (edit mode, steps 1–5) ══ */}
-        {isEdit && step >= 1 && step <= 5 && (
-          <div style={{ borderTop: '1px solid #ebe1cd', paddingTop: '16px', marginTop: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            {saveError && <p style={{ color: '#c0392b', fontSize: '0.85rem', margin: 0, textAlign: 'center' }}>{saveError}</p>}
-            <button
-              type="button"
-              onClick={handleFinish}
-              disabled={saving}
-              style={{
-                background: 'linear-gradient(120deg,#e8c84a 0%,#c49a28 100%)',
-                color: '#1a1508',
-                border: 'none',
-                borderRadius: '10px',
-                padding: '11px 32px',
-                fontFamily: "'DM Sans',sans-serif",
-                fontSize: '0.9rem',
-                fontWeight: 700,
-                cursor: saving ? 'not-allowed' : 'pointer',
-                opacity: saving ? 0.65 : 1,
-                letterSpacing: '0.01em',
-              }}
-            >
-              {saving ? 'Saving…' : 'Save Changes'}
-            </button>
+            {isEdit
+              ? <SectionSaveBar
+                  saving={sectionSaving === 6}
+                  saved={sectionSaved === 6}
+                  error={sectionSaving === null && sectionError && sectionSaved !== 6 ? sectionError : null}
+                  onSave={() => handleSaveSection(6)}
+                />
+              : <>
+                  {saveError && <p style={{ color: '#c0392b', fontSize: '0.85rem', marginTop: '0.5rem', textAlign: 'center' }}>{saveError}</p>}
+                  <NavButtons step={6} onBack={goBack} onNext={handleFinish} isLast saving={saving} editMode={isEdit} />
+                </>
+            }
           </div>
         )}
 
@@ -974,8 +1213,8 @@ export default function ProfileSetupPage() {
             memberId={memberId}
             purposesCount={purposes.length}
             mattersCount={matters.length}
-            interestsTotal={Object.values(interests).flat().length}
-            skillsTotal={Object.values(skills).flat().length}
+            interestsTotal={totalInterests}
+            skillsTotal={totalSkills}
           />
         )}
 

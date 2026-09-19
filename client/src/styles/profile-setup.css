@@ -905,3 +905,175 @@
   .ps-vibe-grid { grid-template-columns: 1fr; }
   .ps-pref-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Custom chip entry (Part 2) ──────────────────────────── */
+.ps-custom-input-wrap {
+  margin-top: 12px;
+  position: relative;
+}
+
+.ps-custom-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ps-custom-input {
+  flex: 1;
+  background: #1a1508;
+  border: 1px solid #3a2e18;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: #f0e8d0;
+  outline: none;
+  transition: border-color 150ms;
+}
+.ps-custom-input::placeholder { color: #5a5040; }
+.ps-custom-input:focus { border-color: #c49a28; }
+
+.ps-custom-add-btn {
+  background: #2a2010;
+  border: 1px solid #3a2e18;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #c49a28;
+  cursor: pointer;
+  transition: background 120ms;
+  white-space: nowrap;
+}
+.ps-custom-add-btn:hover:not(:disabled) { background: #3a2e18; }
+.ps-custom-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.ps-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 56px;
+  background: #1a1508;
+  border: 1px solid #3a2e18;
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 20;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+
+.ps-suggestion-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 9px 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.83rem;
+  color: #d4c090;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 100ms;
+}
+.ps-suggestion-item:hover { background: #2a2010; }
+
+.ps-custom-chips-row {
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+
+.ps-custom-chips-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.74rem;
+  color: #8a7a5a;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: block;
+  margin-bottom: 6px;
+}
+
+/* Custom chips — outlined gold, no fill */
+.ps-chip.ps-chip-custom {
+  background: transparent;
+  border: 1.5px solid #c49a28;
+  color: #c49a28;
+}
+.ps-chip.ps-chip-custom:hover {
+  background: rgba(196,154,40,0.1);
+}
+
+/* ── Multi-select hint label ─────────────────────────────── */
+.ps-multiselect-hint {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: #8a7a5a;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Edit mode layout (Part 4) ───────────────────────────── */
+.ps-card-edit {
+  max-width: 800px;
+}
+
+.ps-edit-section {
+  border-bottom: 1px solid #2a2010;
+  padding-bottom: 28px;
+  margin-bottom: 28px;
+}
+.ps-edit-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.ps-edit-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #e8c84a;
+  letter-spacing: 0.02em;
+  margin-bottom: 18px;
+  padding-top: 4px;
+}
+
+.ps-section-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 12px;
+  border-top: 1px solid #2a2010;
+}
+
+.ps-section-save-btn {
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #1a1508;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 24px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.87rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: opacity 150ms;
+}
+.ps-section-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ps-section-save-btn:hover:not(:disabled) { opacity: 0.9; }
+
+.ps-section-save-ok {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.83rem;
+  color: #5a9a5a;
+}
+
+.ps-section-save-err {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.83rem;
+  color: #c0392b;
+  flex: 1;
+}
