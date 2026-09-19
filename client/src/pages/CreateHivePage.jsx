@@ -3,6 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
 import '../styles/create-hive.css';
+import { SKILL_CATS } from '../data/skillTaxonomy.js';
+import { INTEREST_CATS } from '../data/interestTaxonomy.js';
+
+// Flat chip list shared with profile taxonomy — drives tag suggestions
+const ALL_TAXONOMY_CHIPS = [
+  ...INTEREST_CATS.flatMap(c => c.chips),
+  ...SKILL_CATS.flatMap(c => c.chips),
+];
 
 // ── Tunable defaults ──────────────────────────────────────────────────────────
 
@@ -251,6 +259,13 @@ export default function CreateHivePage() {
     setTagInputVal('');
     setTagInputOpen(false);
   };
+  // When a taxonomy chip is selected: strip emoji, keep plain text as the tag
+  const commitSuggestion = chip => {
+    const tag = chip.replace(/[^ -]/g, '').trim();
+    if (tag && !tags.includes(tag)) setTags(prev => [...prev, tag]);
+    setTagInputVal('');
+    setTagInputOpen(false);
+  };
   const toggleChip = (val, getter, setter) => setter(getter === val ? '' : val);
 
   const buildPayload = () => ({
@@ -314,6 +329,14 @@ export default function CreateHivePage() {
       setSubmitState('error');
     }
   };
+
+  // ── Tag suggestions — filter taxonomy chips by current input ───
+  const tagSuggestions = tagInputVal.length >= 2
+    ? ALL_TAXONOMY_CHIPS.filter(chip => {
+        const plain = chip.replace(/[^ -]/g, '').trim().toLowerCase();
+        return plain.includes(tagInputVal.trim().toLowerCase());
+      }).slice(0, 8)
+    : [];
 
   // ── Pre-fill flags ─────────────────────────────────────────────
   const flagDesc    = hasPrefill && !!descDefault;
@@ -480,18 +503,34 @@ export default function CreateHivePage() {
                 </span>
               ))}
               {tagInputOpen ? (
-                <input
-                  className="ch-tag-inline-input"
-                  autoFocus
-                  placeholder="Add tag..."
-                  value={tagInputVal}
-                  onChange={e => setTagInputVal(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') { e.preventDefault(); commitTag(); }
-                    if (e.key === 'Escape') setTagInputOpen(false);
-                  }}
-                  onBlur={commitTag}
-                />
+                <div className="ch-tag-input-wrap">
+                  <input
+                    className="ch-tag-inline-input"
+                    autoFocus
+                    placeholder="Add tag..."
+                    value={tagInputVal}
+                    onChange={e => setTagInputVal(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); commitTag(); }
+                      if (e.key === 'Escape') setTagInputOpen(false);
+                    }}
+                    onBlur={commitTag}
+                  />
+                  {tagSuggestions.length > 0 && (
+                    <div className="ch-tag-suggestions">
+                      {tagSuggestions.map(chip => (
+                        <button
+                          key={chip}
+                          type="button"
+                          className="ch-tag-suggestion-item"
+                          onMouseDown={e => { e.preventDefault(); commitSuggestion(chip); }}
+                        >
+                          {chip}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <button type="button" className="ch-add-chip" onClick={() => setTagInputOpen(true)}>
                   + Add tag
