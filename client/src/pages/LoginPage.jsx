@@ -16,7 +16,7 @@ export default function LoginPage() {
   const navigate        = useNavigate();
   const [searchParams]  = useSearchParams();
 
-  // Surface errors from the OAuth callback redirect
+  // Surface errors from the OAuth callback redirect, or a verified=1 success flag
   useEffect(() => {
     const oauthError = searchParams.get('error');
     if (oauthError) {
@@ -28,6 +28,8 @@ export default function LoginPage() {
       setError(messages[oauthError] ?? 'Sign-in failed — please try again.');
     }
   }, [searchParams]);
+
+  const emailVerifiedSuccess = searchParams.get('verified') === '1';
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -225,6 +227,13 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
+
+          {/* Email verified success banner */}
+          {emailVerifiedSuccess && (
+            <p style={{ margin: '0', fontSize: '12.5px', color: '#3a7a3a' }}>
+              Email verified — sign in to continue.
+            </p>
+          )}
 
           {/* Inline error */}
           {error && (

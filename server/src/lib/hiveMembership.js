@@ -13,7 +13,7 @@ export async function getMembership(hiveId, userId) {
 export async function requireMembership(hiveId, userId) {
   const row = await getMembership(hiveId, userId);
   if (!row) {
-    const err = new Error('You must be a member of this Hive to access its chat.');
+    const err = new Error('You must be a member of this Hive.');
     err.status = 403;
     throw err;
   }

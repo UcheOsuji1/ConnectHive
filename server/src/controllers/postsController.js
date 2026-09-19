@@ -1,5 +1,6 @@
 import { query } from '../db/index.js';
 import { createNotification } from './notificationsController.js';
+import { getMembership } from '../lib/hiveMembership.js';
 
 export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad', 'wave'];
 
@@ -47,6 +48,40 @@ function nestComments(rows) {
     }
   }
   return roots;
+}
+
+// ── Membership helpers ────────────────────────────────────────────────────────
+
+async function _getPostHiveId(postId) {
+  const { rows: [row] } = await query(
+    'SELECT hive_id FROM hive_posts WHERE post_id = $1',
+    [postId],
+  );
+  return row?.hive_id ?? null;
+}
+
+async function _getCommentHiveId(commentId) {
+  const { rows: [row] } = await query(
+    `SELECT hp.hive_id FROM post_comments pc
+     JOIN hive_posts hp ON hp.post_id = pc.post_id
+     WHERE pc.comment_id = $1`,
+    [commentId],
+  );
+  return row?.hive_id ?? null;
+}
+
+// Returns true if member; sends 403/404 and returns false otherwise.
+async function _assertMember(hiveId, userId, res) {
+  if (!hiveId) {
+    res.status(404).json({ error: 'Not found.' });
+    return false;
+  }
+  const member = await getMembership(hiveId, userId);
+  if (!member) {
+    res.status(403).json({ error: 'You must be a member of this Hive.' });
+    return false;
+  }
+  return true;
 }
 
 // ── Reaction summary helper ───────────────────────────────────────────────────
@@ -144,6 +179,7 @@ export const getFeed = async (req, res) => {
 // ── getHivePosts ──────────────────────────────────────────────────────────────
 export const getHivePosts = async (req, res) => {
   try {
+    if (!await _assertMember(req.params.id, req.userId, res)) return;
     const limit  = Math.min(Number(req.query.limit)  || 20, 50);
     const offset = Number(req.query.offset) || 0;
     const { rows: posts } = await query(
@@ -163,6 +199,8 @@ export const getHivePosts = async (req, res) => {
 // ── getPost ───────────────────────────────────────────────────────────────────
 export const getPost = async (req, res) => {
   try {
+    const hiveId = await _getPostHiveId(req.params.id);
+    if (!await _assertMember(hiveId, req.userId, res)) return;
     const { rows: [post] } = await query(
       `${FEED_SELECT} WHERE p.post_id = $2`,
       [req.userId, req.params.id],
@@ -180,9 +218,10 @@ export const getPost = async (req, res) => {
 export const deletePost = async (req, res) => {
   try {
     const { rows: [post] } = await query(
-      'SELECT author_user_id FROM hive_posts WHERE post_id=$1', [req.params.id],
+      'SELECT hive_id, author_user_id FROM hive_posts WHERE post_id=$1', [req.params.id],
     );
     if (!post) return res.status(404).json({ error: 'Post not found.' });
+    if (!await _assertMember(post.hive_id, req.userId, res)) return;
     if (post.author_user_id !== req.userId) {
       return res.status(403).json({ error: 'Not authorised.' });
     }
@@ -198,6 +237,8 @@ export const deletePost = async (req, res) => {
 export const toggleReaction = async (req, res) => {
   try {
     const postId   = req.params.id;
+    const hiveId   = await _getPostHiveId(postId);
+    if (!await _assertMember(hiveId, req.userId, res)) return;
     const reaction = REACTIONS.includes(req.body.reaction) ? req.body.reaction : 'like';
 
     const { rows: [existing] } = await query(
@@ -279,6 +320,8 @@ export const toggleReaction = async (req, res) => {
 // ── getReactors ───────────────────────────────────────────────────────────────
 export const getReactors = async (req, res) => {
   try {
+    const hiveId = await _getPostHiveId(req.params.id);
+    if (!await _assertMember(hiveId, req.userId, res)) return;
     const { rows } = await query(
       `SELECT u.user_id, p.full_name, p.profile_photo_url, pr.reaction
        FROM post_reactions pr
@@ -298,6 +341,8 @@ export const getReactors = async (req, res) => {
 // ── addComment ────────────────────────────────────────────────────────────────
 export const addComment = async (req, res) => {
   try {
+    const hiveId = await _getPostHiveId(req.params.id);
+    if (!await _assertMember(hiveId, req.userId, res)) return;
     const { body, parentCommentId } = req.body;
     if (!body?.trim()) return res.status(400).json({ error: 'Comment body is required.' });
 
@@ -336,6 +381,8 @@ export const addComment = async (req, res) => {
 // ── getComments ───────────────────────────────────────────────────────────────
 export const getComments = async (req, res) => {
   try {
+    const hiveId = await _getPostHiveId(req.params.id);
+    if (!await _assertMember(hiveId, req.userId, res)) return;
     const { rows } = await query(
       `SELECT pc.*,
               prof.full_name, prof.profile_photo_url,
@@ -356,6 +403,8 @@ export const getComments = async (req, res) => {
 // ── deleteComment ─────────────────────────────────────────────────────────────
 export const deleteComment = async (req, res) => {
   try {
+    const hiveId = await _getCommentHiveId(req.params.commentId);
+    if (!await _assertMember(hiveId, req.userId, res)) return;
     const { rows: [comment] } = await query(
       'SELECT user_id FROM post_comments WHERE comment_id=$1',
       [req.params.commentId],
