@@ -1,13 +1,13 @@
-// 17-category skill taxonomy — replaces the original 7-category SKILL_CATS.
+// 19-category skill taxonomy — replaces the original 7-category SKILL_CATS.
 // Covers knowledge work, trades, health, science, education, culinary, sports,
-// arts, public service, and personal development so no profession is left out.
+// arts, music, writing/language, public service, and personal development.
 
 export const SKILL_CATS = [
   { key: 'software', emoji: '💻', name: 'Software & Development',
     desc: 'What do you build or code?',
     chips: ['⚛️ Frontend / React','🐍 Python','🟨 JavaScript','☕ Java / Kotlin','📱 iOS / Swift','🤖 Android','🗄️ Backend / APIs','☁️ Cloud / DevOps','🤖 AI / ML','🔐 Cybersecurity','🎮 Game Dev','⛓️ Blockchain / Web3','🗃️ Databases / SQL','🧪 QA / Testing','🐳 Docker / Kubernetes'] },
 
-  { key: 'data', emoji: '📊', name: 'Data & Research',
+  { key: 'data', emoji: '📊', name: 'Data & Analytics',
     desc: 'How do you work with data?',
     chips: ['📈 Data Analysis','🤖 Machine Learning','📊 Data Visualization','🗃️ SQL / Databases','🐍 Python / Pandas','📉 Financial Modeling','🔬 Research Methods','📋 UX Research / Surveys','🧮 Statistics','🧠 NLP / LLMs','📡 Data Engineering','🔭 Business Intelligence'] },
 
@@ -31,9 +31,17 @@ export const SKILL_CATS = [
     desc: 'What kind of content do you create?',
     chips: ['📹 Video Editing','🎙️ Podcasting','✍️ Copywriting / Blogging','📸 Photography','🎵 Music Production','📱 Short-form / Reels','🖥️ Live Streaming','📝 Journalism / Reporting','📖 Screenwriting','🎨 Graphic Creation','📺 Documentary','🤳 Influencer / Creator'] },
 
+  { key: 'writing', emoji: '✍️', name: 'Writing & Language',
+    desc: 'What do you write or speak?',
+    chips: ['📖 Creative Writing','📄 Technical Writing','🔖 Editing / Proofreading','🌍 Translation','🗣️ Interpreting','📚 Bilingual / Multilingual','📝 Grant Writing','⚖️ Legal Writing','📓 Poetry','📧 Business Writing','🗞️ Essays / Long-form','🏷️ Localization'] },
+
   { key: 'arts', emoji: '🎭', name: 'Arts & Performance',
     desc: 'How do you perform and create?',
     chips: ['🎭 Acting / Theater','🎬 Film / TV Acting','🎙️ Voice Acting','🎤 Hosting / MC','🎪 Improv / Comedy','😂 Stand-up Comedy','💃 Dance / Choreography','🎶 Musical Theater','🎨 Fine Art / Painting','✏️ Drawing / Illustration','🏺 Sculpture / Ceramics','🎻 Music Performance'] },
+
+  { key: 'music', emoji: '🎵', name: 'Music & Audio',
+    desc: 'How do you make sound?',
+    chips: ['🎸 Guitar / Bass','🎹 Piano / Keys','🥁 Drums / Percussion','🎤 Vocals','🎻 Strings','🎺 Brass / Woodwind','🎵 Music Production','🎚️ Mixing / Mastering','🎧 DJing','🎼 Composition / Arranging','🔊 Live Sound','🎙️ Audio Engineering'] },
 
   { key: 'health', emoji: '🏥', name: 'Health & Medicine',
     desc: 'How do you care for others?',
@@ -71,3 +79,26 @@ export const SKILL_CATS = [
     desc: 'How do you help others grow?',
     chips: ['🧭 Life Coaching','💼 Career Coaching','🧠 Executive / Leadership Coaching','💑 Relationship Coaching','🧘 Mindfulness / Meditation','🌱 Wellness Coaching','😴 Sleep & Recovery','🥗 Health & Lifestyle Coaching','💪 Athletic / Performance Coaching','📚 Academic Coaching','🌿 Holistic / Integrative Health','🎯 Goal Setting / Accountability'] },
 ];
+
+// Dev-only guard: two chips sharing a label (text after the emoji prefix) but
+// different full strings silently inflates match scores and defeats the custom-
+// entry dedup from Part 2. Throws at module load time in the Vite dev server so
+// the error is impossible to miss. Tree-shaken from production builds.
+if (import.meta.env.DEV) {
+  const seen = new Map(); // normalised label → first full chip string
+  for (const cat of SKILL_CATS) {
+    for (const chip of cat.chips) {
+      // Label = everything after the first space (strip leading emoji).
+      const label = chip.split(' ').slice(1).join(' ').toLowerCase();
+      if (seen.has(label) && seen.get(label) !== chip) {
+        throw new Error(
+          `[skillTaxonomy] Duplicate chip label "${label}":\n` +
+          `  "${seen.get(label)}" (first occurrence)\n` +
+          `  "${chip}" (${cat.name})\n` +
+          `Use the same full string or choose a different label.`
+        );
+      }
+      seen.set(label, chip);
+    }
+  }
+}
