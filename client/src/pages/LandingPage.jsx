@@ -6,6 +6,7 @@ import { getInitials } from '../lib/initials.js';
 import SiteFooter from '../components/SiteFooter.jsx';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
+import FindYourHiveCTA from '../components/FindYourHiveCTA.jsx';
 
 const heroImages = [
   '/Hero Images/ConnectHive College Conert.webp',
@@ -83,6 +84,11 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    document.documentElement.style.setProperty('--announce-h', '44px');
+    return () => document.documentElement.style.removeProperty('--announce-h');
+  }, []);
+
+  useEffect(() => {
     if (loading) return;
     if (user && !window.location.hash) navigate('/find-your-hive', { replace: true });
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -149,6 +155,14 @@ export default function LandingPage() {
 
   return (
     <>
+      {/* ══ ANNOUNCEMENT BAR ══ */}
+      <div className="announce-bar" role="status" aria-live="polite">
+        <span className="announce-text">
+          Early access is open —{' '}
+          <a href="#early-access" className="announce-link">Join the waitlist</a>
+        </span>
+      </div>
+
       {/* ══ NAVBAR ══ */}
       <nav className={`navbar${scrolled ? ' scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="navbar-inner">
@@ -168,7 +182,7 @@ export default function LandingPage() {
           <div className="nav-right">
             {loading ? null : user ? (
               <>
-                <Link to="/find-your-hive" className="btn btn-primary btn-sm">Go to your Hive</Link>
+                <Link to="/find-your-hive" className="btn btn-primary btn-sm">Find Your Hive</Link>
                 <Link to="/profile" aria-label="Your profile">
                   <Avatar name={user.fullName} email={user.email} src={user.profilePhotoUrl} size={34} />
                 </Link>
@@ -176,7 +190,7 @@ export default function LandingPage() {
             ) : (
               <>
                 <Link to="/login" className="nav-signin">Sign In</Link>
-                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Join TrueHive</Link>
+                <Link to="/signup" className="btn btn-primary btn-sm nav-join-desktop">Find Your Hive</Link>
               </>
             )}
           </div>
@@ -205,13 +219,13 @@ export default function LandingPage() {
         <div className="mobile-ctas">
           {loading ? null : user ? (
             <>
-              <Link to="/find-your-hive" className="btn btn-primary" onClick={closeMenu}>Go to your Hive</Link>
+              <Link to="/find-your-hive" className="btn btn-primary" onClick={closeMenu}>Find Your Hive</Link>
               <Link to="/profile" className="btn btn-ghost" onClick={closeMenu}>Profile</Link>
             </>
           ) : (
             <>
               <Link to="/login" className="btn btn-ghost" onClick={closeMenu}>Sign In</Link>
-              <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>Join TrueHive</Link>
+              <Link to="/signup" className="btn btn-primary" onClick={closeMenu}>Find Your Hive</Link>
             </>
           )}
         </div>
@@ -250,12 +264,7 @@ export default function LandingPage() {
               New to a city. Building a career. Looking for people to travel with, or to build something with. You pick what you're looking for, we match you to Hives that fit, and you're in a real group chat the same day.
             </p>
             <div className="hero-ctas reveal reveal-delay-4">
-              <Link to={user ? '/find-your-hive' : '/signup'} className="btn btn-primary btn-lg">
-                Find My Hive
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </Link>
+              <FindYourHiveCTA />
               <a href="#how-it-works" className="btn btn-ghost btn-lg">See How It Works</a>
             </div>
           </div>
@@ -575,6 +584,9 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+          <div className="text-center reveal reveal-delay-5" style={{marginTop:'48px'}}>
+            <FindYourHiveCTA />
+          </div>
         </div>
       </section>
 
@@ -616,7 +628,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div style={{marginTop:'32px'}} className="reveal reveal-delay-5">
-                <Link to="/signup" className="btn btn-primary">Find My Hive</Link>
+                <FindYourHiveCTA className="btn btn-primary" />
               </div>
             </div>
 
@@ -766,7 +778,7 @@ export default function LandingPage() {
                 ))}
               </ul>
               <div style={{marginTop:'36px'}} className="reveal reveal-delay-5">
-                <Link to="/home" className="btn btn-primary">See Your Feed</Link>
+                <FindYourHiveCTA className="btn btn-primary" />
               </div>
             </div>
 
@@ -908,6 +920,20 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* ══ EARLY ACCESS ══ */}
+      <section className="section" id="early-access" aria-label="Early access" style={{background:'var(--white)',borderTop:'1px solid var(--beige)'}}>
+        <div className="container" style={{maxWidth:'680px',textAlign:'center'}}>
+          <span className="label reveal">Limited Access</span>
+          <h2 className="section-heading reveal reveal-delay-1">Get early access.</h2>
+          <p className="section-sub reveal reveal-delay-2">
+            We're opening TrueHive city by city. Sign up now and be among the first to find your Hive.
+          </p>
+          <div className="reveal reveal-delay-3" style={{marginTop:'32px'}}>
+            <FindYourHiveCTA label="Join the Waitlist" />
+          </div>
+        </div>
+      </section>
+
       {/* ══ FINAL CTA ══ */}
       <section className="final-cta" aria-label="Get started with TrueHive">
         <div className="final-cta-hex left" aria-hidden="true">
@@ -931,8 +957,8 @@ export default function LandingPage() {
             Pick what you're looking for. We'll show you the groups. You could be talking to your Hive tonight.
           </p>
           <div className="final-cta-btns reveal reveal-delay-3" style={{marginTop:'40px'}}>
-            <Link to="/signup" className="btn btn-primary btn-lg">Find My Hive</Link>
-            <Link to="/find-your-hive" className="btn btn-ghost-light btn-lg">Explore Hives</Link>
+            <FindYourHiveCTA />
+            <a href="#categories" className="btn btn-ghost-light btn-lg">See Categories</a>
           </div>
         </div>
       </section>

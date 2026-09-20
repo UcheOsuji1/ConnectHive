@@ -18,6 +18,8 @@
   --success:    #22C55E;
   --error:      #EF4444;
   --nav-h:      72px;
+  --announce-h: 0px;
+  --header-h:   calc(var(--nav-h) + var(--announce-h));
   --radius-sm:  8px;
   --radius-md:  14px;
   --radius-lg:  20px;
@@ -142,7 +144,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
    1. NAVBAR
 ══════════════════════════════════════════════════════════════ */
 .navbar {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+  position: fixed; top: var(--announce-h); left: 0; right: 0; z-index: 50;
   height: var(--nav-h); background: var(--ivory);
   border-bottom: 1px solid transparent;
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
@@ -194,7 +196,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
 .mobile-menu {
-  display: none; position: fixed; top: var(--nav-h); left: 0; right: 0;
+  display: none; position: fixed; top: var(--header-h); left: 0; right: 0;
   background: var(--ivory); border-bottom: 1px solid var(--beige);
   padding: 24px; z-index: 49;
   box-shadow: 0 8px 32px rgba(30,27,24,.10);
@@ -213,6 +215,22 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   padding-top: 20px; border-top: 1px solid var(--beige);
 }
 .mobile-menu .btn { width: 100%; justify-content: center; }
+
+/* ─── Announcement bar ─────────────────────────────────────── */
+.announce-bar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 51;
+  height: var(--announce-h); display: flex; align-items: center; justify-content: center;
+  background: var(--charcoal); padding: 0 16px;
+}
+.announce-text {
+  font-family: 'DM Sans', sans-serif; font-size: .82rem; font-weight: 500;
+  color: rgba(248,244,234,.85); letter-spacing: .02em; text-align: center;
+}
+.announce-link {
+  color: var(--gold); text-decoration: underline; text-underline-offset: 2px;
+  text-decoration-thickness: 1px; white-space: nowrap;
+}
+.announce-link:hover { color: #e8c84a; }
 
 @media (max-width: 900px) {
   .nav-links, .nav-signin { display: none; }
@@ -300,7 +318,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
    2. HERO SECTION
 ══════════════════════════════════════════════════════════════ */
 .hero {
-  min-height: 100vh; padding-top: var(--nav-h);
+  min-height: 100vh; padding-top: var(--header-h);
   display: flex; align-items: center;
   background: linear-gradient(135deg, var(--ivory) 0%, #F2EAD8 60%, #EDE3CC 100%);
   position: relative; overflow: hidden;
@@ -830,7 +848,7 @@ footer {
 svg { display: block; }
 
 /* ─── Scroll padding for sticky nav ────────────────────────── */
-[id] { scroll-margin-top: calc(var(--nav-h) + 16px); }
+[id] { scroll-margin-top: calc(var(--header-h) + 16px); }
 
 /* ══ HERO BACKGROUND SLIDESHOW ═════════════════════════════════ */
 .hero-bg-slideshow {
@@ -1013,7 +1031,7 @@ svg { display: block; }
   align-items: center;
   justify-content: center;
   background: var(--ivory);
-  padding-top: var(--nav-h);
+  padding-top: var(--header-h);
 }
 .page-placeholder-inner {
   text-align: center;

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/signup.css';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
@@ -22,6 +22,8 @@ export default function SignUpPage() {
 
   const { register, config } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextPath = new URLSearchParams(location.search).get('next') || '/profile-setup';
 
   const handleSubmit = async () => {
     if (submitting) return;
@@ -29,7 +31,7 @@ export default function SignUpPage() {
     setSubmitting(true);
     try {
       await register(email, password);
-      navigate('/profile-setup');
+      navigate(nextPath);
     } catch (err) {
       setError(err.message || 'Something went wrong, please try again.');
     } finally {
