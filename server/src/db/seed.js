@@ -181,7 +181,8 @@ const VALID_SKILLS = new Set([
   '📚 Academic Coaching','🌿 Holistic / Integrative Health','🎯 Goal Setting / Accountability',
 ]);
 
-const VALID_GOALS    = new Set(['goals','vibes','growth','account','diversity','action']);
+const VALID_GOALS      = new Set(['goals','vibes','growth','account','diversity','action']);
+const VALID_HIVE_VALS  = VALID_GOALS; // same six keys
 const VALID_AVAIL    = new Set(['Weekdays','Weekends','Mornings','Afternoons','Evenings','Late Nights','Flexible']);
 const VALID_MEET     = new Set(['online','inperson','hybrid','global']);
 const VALID_SIZE     = new Set(['s','m','l','a']);
@@ -209,6 +210,12 @@ function validateVocabulary() {
     if (sp.commitment && !VALID_COMMIT.has(sp.commitment))
       errors.push(`${name} sp.commitment: ${JSON.stringify(sp.commitment)}`);
   }
+  for (const h of HIVES) {
+    (h.hive_values ?? []).forEach(v => {
+      if (!VALID_HIVE_VALS.has(v)) errors.push(`${h.hive_name} hive_values: ${JSON.stringify(v)}`);
+    });
+  }
+
   if (errors.length) {
     console.error('\n✗ Vocabulary drift detected — fix these before seeding:\n');
     errors.forEach(e => console.error('  •', e));
@@ -512,6 +519,7 @@ const HIVES = [
     max_members:  80,
     cadence:      'Monthly',
     tags:         ['NSBE', 'Robotics', 'Startups', 'Afrobeats', 'Black engineers'],
+    hive_values:  ['goals', 'action', 'diversity'],
     pinned_goal:  'Place 10 members in engineering roles by year-end.',
     ground_rules: 'Respect everyone. Share opportunities. No spam.',
     discoverable: true,
@@ -531,6 +539,7 @@ const HIVES = [
     max_members:  20,
     cadence:      'Weekly',
     tags:         ['CSUN', 'Web Development', 'Cloud / DevOps', 'Mobile Apps', 'interview prep'],
+    hive_values:  ['goals', 'account', 'growth'],
     pinned_goal:  'Every member lands an internship — shared goals with real accountability.',
     icebreaker:   'What\'s the first program you ever wrote?',
     discoverable: true,
@@ -550,6 +559,7 @@ const HIVES = [
     max_members:  30,
     cadence:      'Monthly',
     tags:         ['filmmaking', 'Photography', 'Screenwriting', 'Painting', 'Drawing / Illustration'],
+    hive_values:  ['vibes', 'action'],
     pinned_goal:  'Produce one collaborative short film this year.',
     ground_rules: 'Constructive feedback only. Credit your collaborators.',
     discoverable: true,
@@ -569,6 +579,7 @@ const HIVES = [
     max_members:  25,
     cadence:      'Biweekly',
     tags:         ['SaaS', 'Cloud / DevOps', 'Web Development', 'Startups', 'indie hacker'],
+    hive_values:  ['action', 'goals', 'account'],
     pinned_goal:  'Each member ships something in 90 days.',
     icebreaker:   'What are you building and why?',
     discoverable: true,
@@ -588,6 +599,7 @@ const HIVES = [
     max_members:  40,
     cadence:      'Biweekly',
     tags:         ['community', 'new to LA', 'social', 'valley', 'friends'],
+    hive_values:  ['vibes'],
     icebreaker:   'Where did you move from and what surprised you most about the Valley?',
     discoverable: true,
     ownerIdx:     8,
@@ -606,6 +618,7 @@ const HIVES = [
     max_members:  60,
     cadence:      'Monthly',
     tags:         ['NSBE', 'Aerospace', 'Afrobeats', 'Robotics', 'Startups'],
+    hive_values:  ['diversity', 'goals', 'action'],
     discoverable: true,
     ownerIdx:     4,
     adminIdxs:    [1, 9],
@@ -623,6 +636,7 @@ const HIVES = [
     max_members:  35,
     cadence:      'Biweekly',
     tags:         ['Machine Learning', 'Data Science', 'Python', 'Statistics', 'Kaggle'],
+    hive_values:  ['growth', 'account', 'goals'],
     pinned_goal:  'Win a Kaggle Featured competition as a team.',
     icebreaker:   'What\'s the most interesting dataset you\'ve worked with?',
     discoverable: true,
@@ -642,6 +656,7 @@ const HIVES = [
     max_members:  25,
     cadence:      'Weekly',
     tags:         ['Biology / Genetics', 'Biotech', 'Lab Techniques', 'MCAT', 'CSUN'],
+    hive_values:  ['diversity', 'growth', 'goals'],
     pinned_goal:  'Every member submits their med school application.',
     icebreaker:   'What made you want to go into medicine?',
     discoverable: true,
@@ -661,6 +676,7 @@ const HIVES = [
     max_members:  30,
     cadence:      'Weekly',
     tags:         ['Hiking', 'Running', 'Camping', 'outdoors', 'fitness'],
+    hive_values:  ['vibes', 'growth'],
     icebreaker:   'What\'s your favourite hike you\'ve done in California?',
     discoverable: true,
     ownerIdx:     9,
@@ -679,6 +695,7 @@ const HIVES = [
     max_members:  15,
     cadence:      'Biweekly',
     tags:         ['UI / UX Design', 'Figma / Prototyping', 'Web Design', 'Drawing / Illustration', 'critique'],
+    hive_values:  ['growth', 'account', 'diversity'],
     ground_rules: 'Be specific. Reference design principles. No personal jabs.',
     discoverable: true,
     ownerIdx:     6,
@@ -697,6 +714,7 @@ const HIVES = [
     max_members:  50,
     cadence:      'Monthly',
     tags:         ['Entrepreneurship', 'Startups', 'Social Media Marketing', 'Brand Strategy', 'Black business'],
+    hive_values:  ['action', 'goals'],
     discoverable: true,
     ownerIdx:     11,
     adminIdxs:    [5],
@@ -714,6 +732,7 @@ const HIVES = [
     max_members:  20,
     cadence:      'Weekly',
     tags:         ['Investment Banking', 'Stock / Equity Trading', 'Data Science', 'Startups', 'CFA'],
+    hive_values:  ['goals', 'account', 'growth'],
     icebreaker:   'What\'s a stock you own and why?',
     discoverable: true,
     ownerIdx:     10,
@@ -732,6 +751,7 @@ const HIVES = [
     max_members:  null,
     cadence:      'Monthly',
     tags:         ['Aerospace', 'Mechanical Engineering', 'Electrical Engineering', 'Robotics', 'networking'],
+    hive_values:  ['goals', 'action'],
     discoverable: true,
     ownerIdx:     9,
     adminIdxs:    [4, 1],
@@ -749,6 +769,7 @@ const HIVES = [
     max_members:  20,
     cadence:      'Monthly',
     tags:         ['Legal Practice / Attorney', 'Machine Learning', 'Legal Writing', 'Policy', 'legal tech'],
+    hive_values:  ['diversity', 'growth'],
     discoverable: true,
     ownerIdx:     13,
     adminIdxs:    [12],
@@ -766,6 +787,7 @@ const HIVES = [
     max_members:  null,
     cadence:      'Monthly',
     tags:         ['Painting', 'Drawing / Illustration', 'Photography', 'filmmaking', 'Leimert Park'],
+    hive_values:  ['vibes', 'diversity'],
     icebreaker:   'What piece of art stopped you in your tracks?',
     discoverable: true,
     ownerIdx:     11,
@@ -934,8 +956,8 @@ async function main() {
       `INSERT INTO hives
          (creator_user_id, category_id, hive_name, description, ideal_members, join_policy,
           location_type, location, max_members, cadence, tags,
-          pinned_goal, ground_rules, icebreaker, discoverable)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+          pinned_goal, ground_rules, icebreaker, discoverable, hive_values)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING hive_id`,
       [
         creatorId, catId, h.hive_name, h.description, h.ideal_members ?? null,
@@ -944,6 +966,7 @@ async function main() {
         JSON.stringify(h.tags ?? []),
         h.pinned_goal ?? null, h.ground_rules ?? null, h.icebreaker ?? null,
         h.discoverable ?? true,
+        JSON.stringify(h.hive_values ?? []),
       ],
     );
     hiveIds.push(row.hive_id);

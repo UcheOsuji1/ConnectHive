@@ -499,7 +499,7 @@ export const createHive = async (req, res) => {
       name, category, description, tags, idealMembers,
       joinPolicy, discoverable, maxMembers, activationThreshold,
       meetingType, location, cadence, pinnedGoal, groundRules, icebreaker,
-      onboarding,
+      hiveValues, onboarding,
     } = req.body;
 
     if (!name || !name.trim() || !category) {
@@ -523,8 +523,9 @@ export const createHive = async (req, res) => {
       `INSERT INTO hives (
         creator_user_id, category_id, hive_name, description, ideal_members,
         max_members, activation_threshold, tags, join_policy, discoverable,
-        location_type, location, cadence, pinned_goal, ground_rules, icebreaker
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        location_type, location, cadence, pinned_goal, ground_rules, icebreaker,
+        hive_values
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
       RETURNING *`,
       [
         userId,
@@ -543,6 +544,7 @@ export const createHive = async (req, res) => {
         pinnedGoal || null,
         groundRules || null,
         icebreaker || null,
+        JSON.stringify(Array.isArray(hiveValues) ? hiveValues : []),
       ],
     );
 

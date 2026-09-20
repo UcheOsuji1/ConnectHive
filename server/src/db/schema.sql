@@ -90,6 +90,7 @@ CREATE TABLE IF NOT EXISTS hives (
 );
 
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS cadence TEXT;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS hive_values JSONB NOT NULL DEFAULT '[]';
 
 -- ─── Hive Members ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS hive_members (

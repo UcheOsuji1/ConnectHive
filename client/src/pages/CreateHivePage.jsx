@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import '../styles/create-hive.css';
 import { SKILL_CATS } from '../data/skillTaxonomy.js';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
+import { MATTERS } from '../data/mattersTaxonomy.js';
 
 // Flat chip list shared with profile taxonomy — drives tag suggestions
 const ALL_TAXONOMY_CHIPS = [
@@ -230,6 +231,7 @@ export default function CreateHivePage() {
   const [cadence,     setCadence]     = useState(prefillCadence || '');
 
   // ── Section 5 ──────────────────────────────────────────────────
+  const [hiveValues,  setHiveValues]  = useState([]);
   const [pinnedGoal,  setPinnedGoal]  = useState('');
   const [groundRules, setGroundRules] = useState('');
   const [icebreaker,  setIcebreaker]  = useState('');
@@ -267,6 +269,8 @@ export default function CreateHivePage() {
     setTagInputOpen(false);
   };
   const toggleChip = (val, getter, setter) => setter(getter === val ? '' : val);
+  const toggleValue = key =>
+    setHiveValues(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
 
   const buildPayload = () => ({
     name:                hiveName.trim(),
@@ -283,6 +287,7 @@ export default function CreateHivePage() {
     meetingType:         meetType,
     location:            locationVal.trim(),
     cadence,
+    hiveValues,
     pinnedGoal:          pinnedGoal.trim(),
     groundRules:         groundRules.trim(),
     icebreaker:          icebreaker.trim(),
@@ -718,6 +723,24 @@ export default function CreateHivePage() {
             Section 5 — Set the tone (optional)
         ════════════════════════════════════════════════════════════ */}
         <SectionCard number="5" title="Set the tone" desc="Optional — gives your Hive a head start">
+
+          {/* What matters most in this Hive */}
+          <div className="ch-field">
+            <div className="ch-field-label">What matters most in this Hive?</div>
+            <div className="ch-field-sub">Helps match the right people to your Hive. Select up to 3.</div>
+            <div className="ch-matters-grid">
+              {MATTERS.map(m => (
+                <div
+                  key={m.key}
+                  className={`ch-matters-card${hiveValues.includes(m.key) ? ' selected' : ''}`}
+                  onClick={() => toggleValue(m.key)}
+                >
+                  <span className="ch-matters-emoji">{m.emoji}</span>
+                  <span className="ch-matters-name">{m.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
 
           <div className="ch-field">
             <div className="ch-field-label">Pinned goal</div>
