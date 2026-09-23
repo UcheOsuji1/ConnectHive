@@ -9,7 +9,7 @@ import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 import FindYourHiveCTA from '../components/FindYourHiveCTA.jsx';
 
 const heroImages = [
-  { src: '/Hero Images/Bandgarage.webp', focal: '50% 22%' },
+  { src: '/Hero Images/Bandgarage.webp', focal: '40% 22%' },
   { src: '/Hero Images/ConnectHive College Conert.webp' },
   { src: '/Hero Images/ConnectHiveLANetwork.webp' },
   { src: '/Hero Images/ConnectHiveFriendsbythebeach.webp' },
@@ -245,6 +245,7 @@ export default function LandingPage() {
               style={{ objectPosition: img.focal ?? '50% 50%' }}
               fetchPriority={i === 0 ? 'high' : 'low'}
               loading={i === 0 ? undefined : 'lazy'}
+              style={img.focal ? { objectPosition: img.focal } : undefined}
             />
           ))}
         </div>

@@ -318,7 +318,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
    2. HERO SECTION
 ══════════════════════════════════════════════════════════════ */
 .hero {
-  min-height: 100vh; padding-top: var(--header-h);
+  min-height: 100svh; padding-top: var(--header-h);
   display: flex; align-items: center;
   background: linear-gradient(135deg, var(--ivory) 0%, #F2EAD8 60%, #EDE3CC 100%);
   position: relative; overflow: hidden;
@@ -339,6 +339,12 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   .hero-inner { grid-template-columns: 1fr; gap: 48px; padding: 60px 24px; }
   /* hide floating cards on mobile — they overlap text on small screens */
   .hero-right { display: none; }
+  /* Part 2: cut hero height on mobile — 560px target, free to grow on 320px-wide devices */
+  .hero { min-height: min(560px, 78svh); }
+  /* Part 3: second paragraph hidden — too much reading over a photo at 390px */
+  .hero-support { display: none; }
+  /* Part 5: stronger overlay on mobile for legibility */
+  .hero-overlay { background: rgba(0, 0, 0, 0.45); }
 }
 
 .hero-left { max-width: 580px; }
