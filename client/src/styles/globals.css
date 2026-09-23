@@ -337,9 +337,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 @media (min-width: 1024px) { .hero-inner { padding: 80px 56px 80px 32px; } }
 @media (max-width: 900px) {
   .hero-inner { grid-template-columns: 1fr; gap: 48px; padding: 60px 24px; }
-  /* Part 2: cut hero height on mobile — 560px target, free to grow on 320px-wide devices */
-  .hero { min-height: min(560px, 78svh); }
-  /* Part 3: second paragraph hidden — too much reading over a photo at 390px */
+  .hero { flex-direction: column; align-items: stretch; min-height: min(640px, 88svh); }
   .hero-support { display: none; }
 }
 
@@ -378,6 +376,59 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .hero-right { position: relative; display: flex; align-items: center; justify-content: center; }
 /* hide floating-card column on mobile — must come after the base rule or display:flex wins */
 @media (max-width: 900px) { .hero-right { display: none; } }
+
+/* ─── Mobile floating preview cards ───────────────────────── */
+.hero-floats { display: none; }
+@media (max-width: 900px) {
+  .hero-floats {
+    display: flex; flex-direction: column; gap: 10px;
+    margin-top: auto; padding: 0 18px 20px;
+    position: relative; z-index: 2;
+  }
+}
+.hero-float {
+  border-radius: 17px; padding: 13px 15px;
+  background: rgba(26,23,20,.60);
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  border: 1px solid rgba(201,162,74,.30);
+  box-shadow: 0 18px 44px rgba(0,0,0,.5);
+  text-decoration: none; display: block; cursor: pointer;
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .hero-float { background: rgba(26,23,20,.86); }
+}
+.hf-card-1 { transform: rotate(-1.6deg); }
+.hf-card-2 { transform: rotate(1.3deg); margin-top: -14px; margin-left: 54px; }
+.hf-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.hf-match-pill {
+  background: var(--gold); color: var(--charcoal);
+  font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+  padding: 3px 9px; border-radius: 100px;
+}
+.hf-eyebrow {
+  font-size: .65rem; font-weight: 500; color: rgba(255,255,255,.45);
+  text-transform: uppercase; letter-spacing: .07em;
+}
+.hf-name {
+  font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 600;
+  color: #FFFFFF; line-height: 1.25; margin-bottom: 4px;
+}
+.hf-sub { font-size: .75rem; color: rgba(255,255,255,.62); margin-bottom: 8px; }
+.hf-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+.hf-chip {
+  background: rgba(255,255,255,.12); color: rgba(255,255,255,.86);
+  font-size: .68rem; font-weight: 500; padding: 3px 8px; border-radius: 100px;
+}
+.hf-avatars { display: flex; }
+.hf-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: #1E1B18; border: 1.5px solid rgba(201,162,74,.55);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .62rem; font-weight: 700; color: rgba(255,255,255,.85);
+  margin-left: -6px;
+}
+.hf-avatar:first-child { margin-left: 0; }
 .hero-visual {
   position: relative; width: 100%; max-width: 480px; aspect-ratio: 1;
 }
@@ -420,7 +471,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .fc-avatars { display: flex; margin-top: 6px; }
 .fc-avatar {
   width: 22px; height: 22px; border-radius: 50%;
-  border: 2px solid var(--white); margin-left: -6px;
+  border: 1.5px solid rgba(201,162,74,.45); margin-left: -6px;
   display: flex; align-items: center; justify-content: center;
   font-size: .55rem; font-weight: 700; color: var(--white); flex-shrink: 0;
 }

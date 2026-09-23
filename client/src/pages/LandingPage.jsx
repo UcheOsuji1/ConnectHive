@@ -7,6 +7,7 @@ import SiteFooter from '../components/SiteFooter.jsx';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 import FindYourHiveCTA from '../components/FindYourHiveCTA.jsx';
+import { track } from '../lib/analytics.js';
 
 const heroImages = [
   { src: '/Hero Images/Bandgarage.webp', focal: '40% 22%' },
@@ -30,10 +31,10 @@ const CARD1_DATA = [
 
 const CARD2_DATA = [
   { name: 'NYC Networkers',       desc: 'Professional Networking', avatars: ['JK','AM','+4'], colors: ['#C9A24A','#9A7830','#6B5020'] },
-  { name: 'West Coast Wanderers', desc: 'Travel Buddies',          avatars: ['SL','KR','+3'], colors: ['#4A90C9','#2E6E9A','#1A4D6B'] },
-  { name: 'Game Night Gang',      desc: 'Social Events',           avatars: ['TM','BJ','+5'], colors: ['#4AC96B','#309A50','#1A6B33'] },
-  { name: 'The Content Lab',      desc: 'Specialized',             avatars: ['PR','AW','+2'], colors: ['#C94A7C','#9A3060','#6B1A40'] },
-  { name: 'Run the City',         desc: 'Fitness & Outdoors',      avatars: ['CL','MN','+6'], colors: ['#7C4AC9','#5E309A','#3E1A6B'] },
+  { name: 'West Coast Wanderers', desc: 'Travel Buddies',          avatars: ['SL','KR','+3'], colors: ['#1E1B18','#2C2925','#3D3830'] },
+  { name: 'Game Night Gang',      desc: 'Social Events',           avatars: ['TM','BJ','+5'], colors: ['#1E1B18','#2C2925','#3D3830'] },
+  { name: 'The Content Lab',      desc: 'Specialized',             avatars: ['PR','AW','+2'], colors: ['#1E1B18','#2C2925','#3D3830'] },
+  { name: 'Run the City',         desc: 'Fitness & Outdoors',      avatars: ['CL','MN','+6'], colors: ['#1E1B18','#2C2925','#3D3830'] },
 ];
 
 const CARD3_DATA = [
@@ -245,7 +246,6 @@ export default function LandingPage() {
               style={{ objectPosition: img.focal ?? '50% 50%' }}
               fetchPriority={i === 0 ? 'high' : 'low'}
               loading={i === 0 ? undefined : 'lazy'}
-              style={img.focal ? { objectPosition: img.focal } : undefined}
             />
           ))}
         </div>
@@ -351,6 +351,40 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+
+        {/* ── mobile floating preview cards ── */}
+        <div className="hero-floats">
+          <Link
+            to="/find-your-hive"
+            className="hero-float hf-card-1"
+            onClick={() => track('cta_preview_card', { hive: 'LA Creative Builders' })}
+          >
+            <div className="hf-top">
+              <span className="hf-eyebrow">Example</span>
+              <span className="hf-match-pill">92% Match</span>
+            </div>
+            <div className="hf-name">LA Creative Builders</div>
+            <div className="hf-chips">
+              <span className="hf-chip">Film</span>
+              <span className="hf-chip">Tech</span>
+              <span className="hf-chip">Startups</span>
+            </div>
+          </Link>
+          <Link
+            to="/find-your-hive"
+            className="hero-float hf-card-2"
+            onClick={() => track('cta_preview_card', { hive: 'NYC Networkers' })}
+          >
+            <div className="hf-name">NYC Networkers</div>
+            <div className="hf-sub">Professional Networking</div>
+            <div className="hf-avatars">
+              <div className="hf-avatar">JK</div>
+              <div className="hf-avatar">AM</div>
+              <div className="hf-avatar">+4</div>
+            </div>
+          </Link>
+        </div>
+
       </section>
 
       {/* ══ THIS IS FOR YOU IF ══ */}
