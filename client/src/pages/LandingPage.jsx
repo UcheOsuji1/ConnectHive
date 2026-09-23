@@ -9,14 +9,15 @@ import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 import FindYourHiveCTA from '../components/FindYourHiveCTA.jsx';
 
 const heroImages = [
-  '/Hero Images/ConnectHive College Conert.webp',
-  '/Hero Images/ConnectHiveLANetwork.webp',
-  '/Hero Images/ConnectHiveFriendsbythebeach.webp',
-  '/Hero Images/ConnectHiveProject.webp',
-  '/Hero Images/ConnectHive Night party.webp',
-  '/Hero Images/ConnectHiveMarthasVinyard.webp',
-  '/Hero Images/ConnectHive Younginparty.webp',
-  '/Hero Images/ConnectHiveBoat.webp',
+  { src: '/Hero Images/Bandgarage.webp', focal: '50% 22%' },
+  { src: '/Hero Images/ConnectHive College Conert.webp' },
+  { src: '/Hero Images/ConnectHiveLANetwork.webp' },
+  { src: '/Hero Images/ConnectHiveFriendsbythebeach.webp' },
+  { src: '/Hero Images/ConnectHiveProject.webp' },
+  { src: '/Hero Images/ConnectHive Night party.webp' },
+  { src: '/Hero Images/ConnectHiveMarthasVinyard.webp' },
+  { src: '/Hero Images/ConnectHive Younginparty.webp' },
+  { src: '/Hero Images/ConnectHiveBoat.webp' },
 ];
 
 const CARD1_DATA = [
@@ -235,12 +236,13 @@ export default function LandingPage() {
       <section className="hero" id="home" aria-label="Hero">
 
         <div className="hero-bg-slideshow" aria-hidden="true">
-          {heroImages.map((src, i) => (
+          {heroImages.map((img, i) => (
             <img
               key={i}
               className={`hero-bg-slide${i === currentSlide ? ' hbs-active' : ''}`}
-              src={src}
+              src={img.src}
               alt=""
+              style={{ objectPosition: img.focal ?? '50% 50%' }}
               fetchPriority={i === 0 ? 'high' : 'low'}
               loading={i === 0 ? undefined : 'lazy'}
             />
