@@ -336,9 +336,10 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 }
 @media (min-width: 1024px) { .hero-inner { padding: 80px 56px 80px 32px; } }
 @media (max-width: 900px) {
-  .hero-inner { grid-template-columns: 1fr; gap: 48px; padding: 60px 24px; }
+  .hero-inner { grid-template-columns: 1fr; gap: 48px; padding: 36px 24px 0; }
   .hero { flex-direction: column; align-items: stretch; min-height: min(640px, 88svh); }
   .hero-support { display: none; }
+  .hero-ctas { margin-bottom: 0; }
 }
 
 .hero-left { max-width: 580px; }
@@ -398,8 +399,10 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 @supports not (backdrop-filter: blur(1px)) {
   .hero-float { background: rgba(26,23,20,.86); }
 }
-.hf-card-1 { transform: rotate(-1.6deg); }
-.hf-card-2 { transform: rotate(1.3deg); margin-top: -14px; margin-left: 54px; }
+/* tilt via standalone rotate: — doesn't conflict with translate: drift or entrance scale: */
+.hero-float-wrap:nth-child(2) { margin-top: -14px; margin-left: 54px; }
+.hero-float-wrap:nth-child(1) .hero-float { rotate: -1.6deg; }
+.hero-float-wrap:nth-child(2) .hero-float { rotate:  1.3deg; }
 .hf-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .hf-match-pill {
   background: var(--gold); color: var(--charcoal);
@@ -1161,6 +1164,23 @@ svg { display: block; }
 @keyframes heroCardIn {
   from { opacity: 0; }
   to   { opacity: 1; }
+}
+
+/* ── Mobile float entrance + drift ─────────────────────────── */
+@keyframes heroFloatIn {
+  from { opacity: 0; translate: 0 20px; scale: .955; }
+  to   { opacity: 1; translate: 0 0;    scale: 1; }
+}
+@keyframes heroFloatDrift {
+  0%, 100% { translate: 0 0; }
+  50%       { translate: 0 -7px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-float-wrap { animation: heroFloatIn .68s cubic-bezier(.16,.84,.44,1) both; }
+  .hero-float-wrap:nth-child(1) { animation-delay: .40s; }
+  .hero-float-wrap:nth-child(2) { animation-delay: .57s; }
+  .hero-float-wrap:nth-child(1) .hero-float { animation: heroFloatDrift 6.5s ease-in-out 1.3s infinite; }
+  .hero-float-wrap:nth-child(2) .hero-float { animation: heroFloatDrift 7.4s ease-in-out 1.9s infinite; }
 }
 
 /* ── Match card animated number + tag entrance ─────────────── */

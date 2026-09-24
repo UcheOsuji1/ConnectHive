@@ -22,11 +22,11 @@ const heroImages = [
 ];
 
 const CARD1_DATA = [
-  { name: 'LA Creative Builders', match: '92%', tags: ['Film', 'Tech', 'Startups'] },
-  { name: 'Sunday Brunch Crew',   match: '87%', tags: ['Food', 'Social', 'Weekends'] },
-  { name: 'Passport Collectors',  match: '89%', tags: ['Travel', 'International'] },
-  { name: '5AM Club',             match: '94%', tags: ['Fitness', 'Discipline'] },
-  { name: 'Concert Crew',         match: '85%', tags: ['Music', 'Live Shows'] },
+  { name: 'LA Creative Builders', match: '74%', tags: ['Film', 'Tech', 'Startups'] },
+  { name: 'Sunday Brunch Crew',   match: '71%', tags: ['Food', 'Social', 'Weekends'] },
+  { name: 'Passport Collectors',  match: '73%', tags: ['Travel', 'International'] },
+  { name: '5AM Club',             match: '76%', tags: ['Fitness', 'Discipline'] },
+  { name: 'Concert Crew',         match: '68%', tags: ['Music', 'Live Shows'] },
 ];
 
 const CARD2_DATA = [
@@ -38,11 +38,11 @@ const CARD2_DATA = [
 ];
 
 const CARD3_DATA = [
-  { name: 'Startup Builders', cat: 'Project Collaboration', match: '91%', tags: ['Coding', 'Design', 'AI'] },
-  { name: 'Book Club Hive',   cat: 'Specialized',           match: '88%', tags: ['Reading', 'Discussion'] },
-  { name: 'Festival Fam',     cat: 'Event Buddies',         match: '86%', tags: ['Festivals', 'Vibes'] },
-  { name: 'Design Guild',     cat: 'Professional',          match: '93%', tags: ['UI/UX', 'Branding'] },
-  { name: 'Study Squad',      cat: 'Specialized',           match: '90%', tags: ['Students', 'Accountability'] },
+  { name: 'Startup Builders', cat: 'Project Collaboration', match: '73%', tags: ['Coding', 'Design', 'AI'] },
+  { name: 'Book Club Hive',   cat: 'Specialized',           match: '71%', tags: ['Reading', 'Discussion'] },
+  { name: 'Festival Fam',     cat: 'Event Buddies',         match: '69%', tags: ['Festivals', 'Vibes'] },
+  { name: 'Design Guild',     cat: 'Professional',          match: '76%', tags: ['UI/UX', 'Branding'] },
+  { name: 'Study Squad',      cat: 'Specialized',           match: '72%', tags: ['Students', 'Accountability'] },
 ];
 
 const CARD4_DATA = [
@@ -58,6 +58,7 @@ function useCyclingCard(count, cycleMs = 5000, delayMs = 0) {
   const [phase, setPhase] = useState('visible');
 
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     let timer;
     const start = setTimeout(() => {
       timer = setInterval(() => {
@@ -134,14 +135,14 @@ export default function LandingPage() {
     const el = cardRef.current;
     if (!el) return;
     const rm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (rm) { setMatchCount(92); setVisibleTagCount(4); return; }
+    if (rm) { setMatchCount(74); setVisibleTagCount(4); return; }
     const obs = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting) return;
       obs.disconnect();
       const start = performance.now();
       const tick = (now) => {
         const t = Math.min((now - start) / 800, 1);
-        setMatchCount(Math.round(t * 92));
+        setMatchCount(Math.round(t * 74));
         if (t < 1) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
@@ -352,37 +353,45 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* ── mobile floating preview cards ── */}
+        {/* ── mobile floating preview cards — wrapper handles entrance, card handles rotate + drift ── */}
         <div className="hero-floats">
-          <Link
-            to="/find-your-hive"
-            className="hero-float hf-card-1"
-            onClick={() => track('cta_preview_card', { hive: 'LA Creative Builders' })}
-          >
-            <div className="hf-top">
-              <span className="hf-eyebrow">Example</span>
-              <span className="hf-match-pill">92% Match</span>
-            </div>
-            <div className="hf-name">LA Creative Builders</div>
-            <div className="hf-chips">
-              <span className="hf-chip">Film</span>
-              <span className="hf-chip">Tech</span>
-              <span className="hf-chip">Startups</span>
-            </div>
-          </Link>
-          <Link
-            to="/find-your-hive"
-            className="hero-float hf-card-2"
-            onClick={() => track('cta_preview_card', { hive: 'NYC Networkers' })}
-          >
-            <div className="hf-name">NYC Networkers</div>
-            <div className="hf-sub">Professional Networking</div>
-            <div className="hf-avatars">
-              <div className="hf-avatar">JK</div>
-              <div className="hf-avatar">AM</div>
-              <div className="hf-avatar">+4</div>
-            </div>
-          </Link>
+          <div className="hero-float-wrap">
+            <Link
+              to="/find-your-hive"
+              className="hero-float"
+              onClick={() => track('cta_preview_card', { hive: CARD1_DATA[card1.index].name })}
+            >
+              <div className={`hf-inner card-anim card-${card1.phase}`}>
+                <div className="hf-top">
+                  <span className="hf-eyebrow">Example</span>
+                  <span className="hf-match-pill">{CARD1_DATA[card1.index].match} Match</span>
+                </div>
+                <div className="hf-name">{CARD1_DATA[card1.index].name}</div>
+                <div className="hf-chips">
+                  {CARD1_DATA[card1.index].tags.map(t => (
+                    <span key={t} className="hf-chip">{t}</span>
+                  ))}
+                </div>
+              </div>
+            </Link>
+          </div>
+          <div className="hero-float-wrap">
+            <Link
+              to="/find-your-hive"
+              className="hero-float"
+              onClick={() => track('cta_preview_card', { hive: CARD2_DATA[card2.index].name })}
+            >
+              <div className={`hf-inner card-anim card-${card2.phase}`}>
+                <div className="hf-name">{CARD2_DATA[card2.index].name}</div>
+                <div className="hf-sub">{CARD2_DATA[card2.index].desc}</div>
+                <div className="hf-avatars">
+                  {CARD2_DATA[card2.index].avatars.map((av, i) => (
+                    <div key={i} className="hf-avatar" style={{background: CARD2_DATA[card2.index].colors[i]}}>{av}</div>
+                  ))}
+                </div>
+              </div>
+            </Link>
+          </div>
         </div>
 
       </section>
