@@ -30,38 +30,42 @@ export default function SiteFooter() {
               </div>
             </div>
 
-            <div className="footer-col">
-              <h4>TrueHive</h4>
-              <ul>
-                <li><Link to="/about">About</Link></li>
-                <li><Link to="/mission">Mission</Link></li>
-                <li><Link to="/careers">Careers</Link></li>
-                <li><Link to="/blog">Blog</Link></li>
-                <li><Link to="/press">Press</Link></li>
-                <li><Link to="/contact">Contact</Link></li>
-              </ul>
-            </div>
+            <div className="footer-links">
 
-            <div className="footer-col">
-              <h4>Product</h4>
-              <ul>
-                <li><Link to="/find-your-hive">Find Your Hive</Link></li>
-                <li><Link to="/create-hive">Create a Hive</Link></li>
-                <li><Link to="/profile-setup">Profile Setup</Link></li>
-                <li><Link to="/home">Home Feed</Link></li>
-                <li><Link to="/my-hive">My Hive</Link></li>
-              </ul>
-            </div>
+              <div className="footer-col">
+                <h4>TrueHive</h4>
+                <ul>
+                  <li><Link to="/about">About</Link></li>
+                  <li><Link to="/mission">Mission</Link></li>
+                  <li><Link to="/careers">Careers</Link></li>
+                  <li><Link to="/blog">Blog</Link></li>
+                  <li><Link to="/press">Press</Link></li>
+                  <li><Link to="/contact">Contact</Link></li>
+                </ul>
+              </div>
 
-            <div className="footer-col">
-              <h4>Community</h4>
-              <ul>
-                <li><Link to="/find-your-hive?cat=social">Social Groups</Link></li>
-                <li><Link to="/find-your-hive?cat=professional">Professional</Link></li>
-                <li><Link to="/find-your-hive?cat=travel">Travel Buddies</Link></li>
-                <li><Link to="/find-your-hive?cat=project">Project Collab</Link></li>
-                <li><Link to="/find-your-hive?cat=events">Event Buddies</Link></li>
-              </ul>
+              <div className="footer-col">
+                <h4>Product</h4>
+                <ul>
+                  <li><Link to="/find-your-hive">Find Your Hive</Link></li>
+                  <li><Link to="/create-hive">Create a Hive</Link></li>
+                  <li><Link to="/profile-setup">Profile Setup</Link></li>
+                  <li><Link to="/home">Home Feed</Link></li>
+                  <li><Link to="/my-hive">My Hive</Link></li>
+                </ul>
+              </div>
+
+              <div className="footer-col">
+                <h4>Community</h4>
+                <ul>
+                  <li><Link to="/find-your-hive?cat=social">Social Groups</Link></li>
+                  <li><Link to="/find-your-hive?cat=professional">Professional</Link></li>
+                  <li><Link to="/find-your-hive?cat=travel">Travel Buddies</Link></li>
+                  <li><Link to="/find-your-hive?cat=project">Project Collab</Link></li>
+                  <li><Link to="/find-your-hive?cat=events">Event Buddies</Link></li>
+                </ul>
+              </div>
+
             </div>
 
           </div>
