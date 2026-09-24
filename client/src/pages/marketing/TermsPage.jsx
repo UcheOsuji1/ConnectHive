@@ -6,29 +6,12 @@ export default function TermsPage() {
 
   return (
     <>
-      <div
-        role="alert"
-        style={{
-          background: '#FEF9C3',
-          borderBottom: '2px solid #CA8A04',
-          padding: '14px 24px',
-          textAlign: 'center',
-          fontFamily: 'DM Sans, sans-serif',
-          fontSize: '0.88rem',
-          fontWeight: '600',
-          color: '#713F12',
-          letterSpacing: '.01em',
-        }}
-      >
-        DRAFT. This document has not been reviewed by legal counsel and is not a final legal instrument. Do not rely on it as such.
-      </div>
-
       <section className="section">
         <div className="container" style={{ maxWidth: '760px' }}>
           <span className="label">Terms of Service</span>
           <h1 className="section-heading" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)' }}>Terms of Service</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '40px' }}>
-            Last updated: September 2026 (<strong>DRAFT</strong>)
+            Last updated: September 2026
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>

@@ -6,29 +6,12 @@ export default function PrivacyPage() {
 
   return (
     <>
-      <div
-        role="alert"
-        style={{
-          background: '#FEF9C3',
-          borderBottom: '2px solid #CA8A04',
-          padding: '14px 24px',
-          textAlign: 'center',
-          fontFamily: 'DM Sans, sans-serif',
-          fontSize: '0.88rem',
-          fontWeight: '600',
-          color: '#713F12',
-          letterSpacing: '.01em',
-        }}
-      >
-        DRAFT. This document has not been reviewed by legal counsel and is not a final legal instrument. Do not rely on it as such.
-      </div>
-
       <section className="section">
         <div className="container" style={{ maxWidth: '760px' }}>
           <span className="label">Privacy Policy</span>
           <h1 className="section-heading" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)' }}>Privacy Policy</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '40px' }}>
-            Last updated: September 2026 (<strong>DRAFT</strong>)
+            Last updated: September 2026
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
@@ -59,7 +42,15 @@ export default function PrivacyPage() {
 
             <div>
               <h2 style={{ fontSize: '1.3rem', marginBottom: '12px' }}>5. Third-party services</h2>
-              <p>TrueHive uses Cloudinary for file and image hosting. Files you upload are stored on Cloudinary's infrastructure. We use Neon for our database hosting. We do not share your data with these providers for their own purposes.</p>
+              <p style={{ marginBottom: '12px' }}>TrueHive uses the following third-party services to operate the platform. Each receives only the data necessary for its function, and we do not share your data with them for their own purposes.</p>
+              <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--text-muted)' }}>
+                <li><strong>Vercel</strong> — serves the TrueHive website and sees visitor IP addresses.</li>
+                <li><strong>Render</strong> — runs the API server and handles all data submitted to the platform.</li>
+                <li><strong>Neon</strong> — hosts the database where your account data, posts, and messages are stored.</li>
+                <li><strong>Cloudinary</strong> — stores profile photos and other files you upload.</li>
+                <li><strong>Resend</strong> — sends transactional emails (email verification, password reset) and sees your email address.</li>
+                <li><strong>Google</strong> — provides optional OAuth sign-in and confirms your identity if you choose that method.</li>
+              </ul>
             </div>
 
             <div>
