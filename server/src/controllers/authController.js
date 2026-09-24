@@ -10,6 +10,7 @@ import {
 } from '../lib/email.js';
 import { invalidateTokenVersion } from '../middleware/auth.js';
 import { disconnectUserSockets }  from '../realtime/socket.js';
+import { POLICY_VERSION, MIN_AGE, ageFromDob } from '../lib/policy.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -78,13 +79,23 @@ async function _createVerificationToken(userId) {
 
 export async function register(req, res) {
   try {
-    const { email, password } = req.body ?? {};
+    const { email, password, acceptedTerms, dateOfBirth } = req.body ?? {};
 
     if (!email || !isValidEmail(email)) {
       return res.status(400).json({ error: 'A valid email address is required.' });
     }
     if (!password || password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+    if (!acceptedTerms) {
+      return res.status(400).json({ error: 'You must accept the Terms of Service and Privacy Policy.' });
+    }
+    if (!dateOfBirth) {
+      return res.status(400).json({ error: 'Date of birth is required.' });
+    }
+    const age = ageFromDob(dateOfBirth);
+    if (isNaN(age) || age < MIN_AGE) {
+      return res.status(400).json({ error: `You must be at least ${MIN_AGE} years old to create an account.` });
     }
 
     const existing = await query('SELECT user_id FROM users WHERE email = $1', [email.toLowerCase()]);
@@ -94,10 +105,10 @@ export async function register(req, res) {
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
     const { rows } = await query(
-      `INSERT INTO users (email, password_hash)
-       VALUES ($1, $2)
+      `INSERT INTO users (email, password_hash, date_of_birth, terms_accepted_at, terms_policy_version)
+       VALUES ($1, $2, $3, NOW(), $4)
        RETURNING user_id, email, account_status, created_at, member_id, token_version`,
-      [email.toLowerCase(), passwordHash],
+      [email.toLowerCase(), passwordHash, dateOfBirth, POLICY_VERSION],
     );
     const user = rows[0];
 
@@ -340,11 +351,14 @@ export async function googleCallback(req, res) {
       );
     } else {
       // 3. No existing account — create one (no password, email pre-verified).
+      // Consent is recorded here because the "Sign up with Google" button on the
+      // signup page is gated behind the Terms checkbox (client-side). The consent
+      // timestamp and policy version are stored so the record exists server-side.
       const { rows: [newUser] } = await query(
-        `INSERT INTO users (email, password_hash, email_verified)
-         VALUES ($1, NULL, TRUE)
+        `INSERT INTO users (email, password_hash, email_verified, terms_accepted_at, terms_policy_version)
+         VALUES ($1, NULL, TRUE, NOW(), $2)
          RETURNING user_id, token_version`,
-        [email],
+        [email, POLICY_VERSION],
       );
       userId       = newUser.user_id;
       tokenVersion = newUser.token_version;

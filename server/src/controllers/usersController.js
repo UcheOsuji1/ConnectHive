@@ -1,4 +1,5 @@
 import { query } from '../db/index.js';
+import { MIN_AGE } from '../lib/policy.js';
 
 export const getProfile = async (req, res) => {
   try {
@@ -43,6 +44,13 @@ export const setupProfile = async (req, res) => {
       connection_purposes,
       social_preferences,
     } = req.body ?? {};
+
+    if (age != null && age !== '') {
+      const parsedAge = parseInt(age, 10);
+      if (isNaN(parsedAge) || parsedAge < MIN_AGE) {
+        return res.status(400).json({ error: `You must be at least ${MIN_AGE} years old to use TrueHive.` });
+      }
+    }
 
     const { rows } = await query(
       `INSERT INTO profiles (

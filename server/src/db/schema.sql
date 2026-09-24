@@ -29,6 +29,11 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS member_id TEXT DEFAULT
   'CHV-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(nextval('chv_member_seq')::TEXT, 5, '0');
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_member_id ON users(member_id);
 
+-- Idempotent: consent record and age floor enforcement
+ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth        DATE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at    TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_policy_version TEXT;
+
 -- ─── Profiles ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS profiles (
   profile_id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

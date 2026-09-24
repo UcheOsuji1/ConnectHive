@@ -928,7 +928,7 @@ export default function ProfileSetupPage() {
             <div className="ps-row-2col">
               <div className="ps-field">
                 <label className="ps-label">Age</label>
-                <input type="number" className="ps-input" placeholder="24" min="18" max="99" value={form1.age} onChange={e => f1('age', e.target.value)}/>
+                <input type="number" className="ps-input" placeholder="24" min="13" max="99" value={form1.age} onChange={e => f1('age', e.target.value)}/>
               </div>
               <div className="ps-field">
                 <label className="ps-label">Location</label>

@@ -13,10 +13,24 @@ const STEPS = [
 
 const PILLS = ['Profile Setup', 'Find Your Hive', 'Your Hive'];
 
+const MIN_AGE = 13;
+
+function ageFromDob(dob) {
+  const birth = new Date(dob);
+  if (isNaN(birth.getTime())) return NaN;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+
 export default function SignUpPage() {
   const [showPw,     setShowPw]     = useState(false);
   const [email,      setEmail]      = useState('');
   const [password,   setPassword]   = useState('');
+  const [dob,        setDob]        = useState('');
+  const [agreed,     setAgreed]     = useState(false);
   const [error,      setError]      = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,12 +39,35 @@ export default function SignUpPage() {
   const location = useLocation();
   const nextPath = new URLSearchParams(location.search).get('next') || '/profile-setup';
 
+  const maxDob = (() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - MIN_AGE);
+    return d.toISOString().split('T')[0];
+  })();
+
+  function validateConsent() {
+    if (!agreed) {
+      setError('You must agree to the Terms of Service and Privacy Policy to create an account.');
+      return false;
+    }
+    if (!dob) {
+      setError('Date of birth is required.');
+      return false;
+    }
+    if (ageFromDob(dob) < MIN_AGE) {
+      setError(`You must be at least ${MIN_AGE} years old to create an account.`);
+      return false;
+    }
+    return true;
+  }
+
   const handleSubmit = async () => {
     if (submitting) return;
     setError('');
+    if (!validateConsent()) return;
     setSubmitting(true);
     try {
-      await register(email, password);
+      await register(email, password, true, dob);
       navigate(nextPath);
     } catch (err) {
       setError(err.message || 'Something went wrong, please try again.');
@@ -38,6 +75,11 @@ export default function SignUpPage() {
       setSubmitting(false);
     }
   };
+
+  function handleGoogleClick() {
+    if (!validateConsent()) return;
+    window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/auth/google`;
+  }
 
   return (
     <div className="su-page">
@@ -146,9 +188,7 @@ export default function SignUpPage() {
                 <button
                   className="su-oauth su-oauth--full"
                   type="button"
-                  onClick={() => {
-                    window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/auth/google`;
-                  }}
+                  onClick={handleGoogleClick}
                 >
                   <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -179,6 +219,23 @@ export default function SignUpPage() {
               <label className="su-label" htmlFor="su-last">Last Name</label>
               <input id="su-last" type="text" className="su-input" placeholder="Blake" autoComplete="family-name"/>
             </div>
+          </div>
+
+          {/* Date of birth — required for age verification */}
+          <div className="su-field">
+            <label className="su-label" htmlFor="su-dob">Date of Birth</label>
+            <input
+              id="su-dob"
+              type="date"
+              className="su-input"
+              max={maxDob}
+              value={dob}
+              onChange={e => setDob(e.target.value)}
+              autoComplete="bday"
+            />
+            <span style={{ fontSize: '11.5px', color: '#9a8c72', marginTop: '4px', display: 'block' }}>
+              You must be at least {MIN_AGE} years old to use TrueHive.
+            </span>
           </div>
 
           {/* Email */}
@@ -239,7 +296,13 @@ export default function SignUpPage() {
 
           {/* Terms */}
           <div className="su-terms">
-            <input type="checkbox" className="su-check" id="su-agree"/>
+            <input
+              type="checkbox"
+              className="su-check"
+              id="su-agree"
+              checked={agreed}
+              onChange={e => setAgreed(e.target.checked)}
+            />
             <label htmlFor="su-agree" className="su-terms-text">
               I agree to TrueHive's{' '}
               <Link to="/terms" className="su-gold-link">Terms of Service</Link>
