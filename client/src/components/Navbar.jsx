@@ -9,7 +9,7 @@ import TrueHiveWordmark from './TrueHiveWordmark.jsx';
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
   { to: '/find-your-hive', label: 'Find Your Hive' },
-  { to: '/my-hive',        label: 'My Hive' },
+  { to: '/my-hive',        label: 'My Hives' },
   { to: '/profile',        label: 'Profile' },
 ];
 

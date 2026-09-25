@@ -163,7 +163,13 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 }
 @media (min-width: 1024px) { .navbar-inner { padding: 0 56px 0 32px; } }
 
-.nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0; }
+/* Tap targets: every nav control is padded to a 44x44 minimum hit area. The
+   icons and text keep their own size — only the transparent box around them
+   grows, and --nav-h stays 72px so nothing below the header shifts. */
+.nav-logo {
+  display: flex; align-items: center; gap: 10px; text-decoration: none; flex-shrink: 0;
+  padding: 4px 0;
+}
 .nav-logo-icon { width: 36px; height: 36px; flex-shrink: 0; }
 
 .nav-links {
@@ -171,7 +177,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 }
 .nav-links a {
   font-size: .9rem; font-family: 'DM Sans', sans-serif; font-weight: 500; color: var(--text-muted);
-  text-decoration: none; padding: 8px 14px; border-radius: 8px;
+  text-decoration: none; padding: 13px 14px; border-radius: 8px;
   transition: color var(--transition), background var(--transition);
   cursor: pointer;
 }
@@ -180,7 +186,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .nav-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .nav-signin {
   font-size: .9rem; font-family: 'DM Sans', sans-serif; font-weight: 600; color: var(--text-muted);
-  text-decoration: none; padding: 8px 14px; border-radius: 8px;
+  text-decoration: none; padding: 13px 14px; border-radius: 8px;
   transition: color var(--transition);
   cursor: pointer;
 }
@@ -189,6 +195,12 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .hamburger {
   display: none; flex-direction: column; gap: 5px; cursor: pointer;
   padding: 8px; border: none; background: none; border-radius: 8px;
+  /* 44x44 hit area; bars stay 22px and centred, so the icon looks unchanged.
+     -3px side margins cancel the 6px width growth so nothing shifts; the
+     height growth is absorbed by the navbar's align-items:center. */
+  min-width: 44px; min-height: 44px;
+  margin: 0 -3px;
+  align-items: center; justify-content: center;
 }
 .hamburger:focus-visible { outline: 2px solid var(--gold); }
 .hamburger span {
@@ -251,6 +263,8 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   background: none; border: none; cursor: pointer;
   padding: 4px 10px 4px 4px; border-radius: var(--radius-sm);
   transition: background var(--transition);
+  /* 42 -> 44 hit height; avatar stays centred so nothing moves */
+  min-height: 44px;
 }
 .nav-user-btn:hover { background: var(--beige-2); }
 
@@ -964,26 +978,46 @@ svg { display: block; }
   align-items: center;
 }
 
+/* 44x44 hit area, but the visible hover disc stays 36px: the button itself is
+   transparent and the disc is drawn by ::before, so nothing looks bigger.
+   The -4px margin cancels the 8px growth so the layout footprint stays 36px
+   and the icon does not shift in this right-anchored flex row. */
 .nb-bell {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
+  margin: -4px;
   border-radius: 50%;
   border: none;
   background: transparent;
   color: var(--charcoal);
   cursor: pointer;
+}
+.nb-bell::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 36px;
+  height: 36px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
   transition: background 0.15s;
 }
-.nb-bell:hover { background: rgba(0,0,0,0.06); }
+.nb-bell:hover::before { background: rgba(0,0,0,0.06); }
+/* Lift the icon above the ::before disc. Scoped to the svg so .nb-badge keeps
+   its own position:absolute. */
+.nb-bell > svg { position: relative; }
 
 .nb-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  /* Bell grew 36->44 for the hit area; +4px keeps the badge pinned to the same
+     spot on the 20px icon rather than drifting out to the larger box corner. */
+  top: 6px;
+  right: 6px;
   min-width: 16px;
   height: 16px;
   padding: 0 4px;
