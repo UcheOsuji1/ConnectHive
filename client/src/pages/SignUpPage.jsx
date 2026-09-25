@@ -67,7 +67,7 @@ export default function SignUpPage() {
     if (!validateConsent()) return;
     setSubmitting(true);
     try {
-      await register(email, password, true, dob);
+      await register(email, password, agreed, dob);
       navigate(nextPath);
     } catch (err) {
       setError(err.message || 'Something went wrong, please try again.');

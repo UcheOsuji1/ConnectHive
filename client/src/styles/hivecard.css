@@ -169,22 +169,23 @@
   flex-shrink: 0;
 }
 
-/* Rose-tinted, per the concept — not neutral grey. */
+/* Neutral grey at rest. The rose tint the concept shows was reverted: a
+   rose pill announcing "0 unread updates" reads as a warning about nothing. */
 .hc-unread {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   padding: 4px 12px;
   border-radius: 999px;
-  background: rgba(214, 122, 140, .13);
+  background: rgba(138, 128, 112, .10);
   font-family: 'DM Sans', sans-serif;
   font-size: .7rem;
   font-weight: 500;
-  color: #b0556c;
+  color: #8a8070;
   white-space: nowrap;
 }
-.hc-unread--on { background: rgba(214, 122, 140, .2); font-weight: 600; }
-.hc-dot { width: 6px; height: 6px; border-radius: 50%; background: #d1596f; flex-shrink: 0; }
+.hc-unread--on { background: rgba(196, 154, 40, .14); color: #a97f16; font-weight: 600; }
+.hc-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 
 /* Pending join requests — the one count an owner has to act on. Rendered only
    when > 0, so it costs nothing in the common case. */
