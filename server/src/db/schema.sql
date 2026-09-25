@@ -97,6 +97,47 @@ CREATE TABLE IF NOT EXISTS hives (
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS cadence TEXT;
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS hive_values JSONB NOT NULL DEFAULT '[]';
 
+-- ─── Hive code (public identifier: TH- + 6 chars) ──────────────────────────────
+-- Never the primary key — sequential UUIDs aren't sequential, but we still don't
+-- want the raw hive_id in a URL people paste into group chats. Alphabet drops
+-- 0/O and 1/I/L (31 symbols; Crockford-style but stricter — pure Crockford keeps
+-- 0 and 1). 6 chars over 31 symbols is ~887M combinations.
+CREATE OR REPLACE FUNCTION generate_hive_code() RETURNS TEXT AS $$
+DECLARE
+  alphabet TEXT := '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+  code     TEXT := '';
+  i        INT;
+BEGIN
+  FOR i IN 1..6 LOOP
+    code := code || substr(alphabet, 1 + floor(random() * length(alphabet))::int, 1);
+  END LOOP;
+  RETURN 'TH-' || code;
+END;
+$$ LANGUAGE plpgsql;
+
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS hive_code TEXT;
+
+-- Backfill existing rows with a unique code. Collision odds are astronomically
+-- low at this table size, but the retry loop (plus the unique index below) means
+-- we never persist a duplicate even if one happens.
+DO $$
+DECLARE
+  r        RECORD;
+  new_code TEXT;
+BEGIN
+  FOR r IN SELECT hive_id FROM hives WHERE hive_code IS NULL LOOP
+    LOOP
+      new_code := generate_hive_code();
+      EXIT WHEN NOT EXISTS (SELECT 1 FROM hives WHERE hive_code = new_code);
+    END LOOP;
+    UPDATE hives SET hive_code = new_code WHERE hive_id = r.hive_id;
+  END LOOP;
+END $$;
+
+ALTER TABLE hives ALTER COLUMN hive_code SET DEFAULT generate_hive_code();
+ALTER TABLE hives ALTER COLUMN hive_code SET NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_hives_hive_code ON hives(hive_code);
+
 -- ─── Hive Members ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS hive_members (
   hive_member_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

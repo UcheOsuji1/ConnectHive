@@ -1,9 +1,14 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   getHive,
   getHiveMembers,
   createHive,
   matchHives,
+  quickFindHives,
+  getCategoryCounts,
+  getFilterFacets,
+  getSuggestions,
   joinWaitlist,
   updateHive,
   getHiveOverview,
@@ -57,8 +62,24 @@ import { getAiFit, getAiMatch } from '../controllers/aiController.js';
 
 const router = Router();
 
+// ── Rate limiters ─────────────────────────────────────────────────────────────
+// Quick find covers both name search and exact hive-code lookup in one box —
+// a short code space plus an unthrottled endpoint is a guessing game, so both
+// paths share this limiter rather than just the code branch.
+const quickFindLimiter = rateLimit({
+  windowMs: 60 * 1000,   // 1 minute
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many searches — slow down and try again shortly.' },
+});
+
 // ── Static paths (must come before /:id) ─────────────────────────────────────
 router.post('/match',         requireAuth, matchHives);
+router.get('/quickfind',      requireAuth, quickFindLimiter, quickFindHives);
+router.get('/category-counts',requireAuth, getCategoryCounts);
+router.get('/filter-facets',  requireAuth, getFilterFacets);
+router.get('/suggestions',    requireAuth, getSuggestions);
 router.post('/waitlist',      requireAuth, joinWaitlist);
 router.get('/mine',           requireAuth, getMyHive);
 router.get('/my',             requireAuth, getMyHive);   // alias kept for compat

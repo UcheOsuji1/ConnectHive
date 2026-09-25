@@ -44,6 +44,10 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
   html { scroll-behavior: auto; }
+  /* Honeycomb (find-your-hive.css): stop the stagger-in and hover lift —
+     hexagons must still render fully visible and selectable, just static. */
+  .cellw { animation: none !important; opacity: 1 !important; translate: 0 !important; scale: 1 !important; }
+  .cellw:hover .hexpad { translate: 0 !important; }
 }
 
 /* ─── Typography ────────────────────────────────────────────── */
