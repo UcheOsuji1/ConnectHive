@@ -1,0 +1,884 @@
+/* Visually hidden but announced by screen readers. Used so a stat's number and
+   label reach assistive tech as one phrase instead of two loose fragments. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── My Hives Page (mhp-) ────────────────────────────────────────────────────── */
+
+.mhp-page {
+  min-height: 100vh;
+  background: #f5f0e8;
+  padding-top: var(--nav-h, 64px);
+  padding-bottom: 80px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.mhp-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Hex watermarks ────────────────────────────────────────────────────────────── */
+.mhp-watermark {
+  position: absolute;
+  top: 60px;
+  width: 320px;
+  height: 320px;
+  pointer-events: none;
+  opacity: 0.045;
+  z-index: 0;
+}
+.mhp-watermark--left  { left: -80px; }
+.mhp-watermark--right { right: -80px; transform: scaleX(-1); }
+
+/* ── Page header ───────────────────────────────────────────────────────────────── */
+.mhp-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 40px 0 32px;
+  flex-wrap: wrap;
+}
+
+.mhp-eyebrow {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #c49a28;
+  margin-bottom: 8px;
+}
+
+.mhp-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 4vw, 2.8rem);
+  font-weight: 600;
+  color: #1e1b18;
+  line-height: 1.1;
+  margin: 0 0 6px;
+}
+
+.mhp-subtitle {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: #6b6057;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.mhp-create-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 22px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #17120a;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.mhp-create-btn:hover { opacity: 0.88; }
+
+/* ── Stat rail ─────────────────────────────────────────────────────────────────── */
+.mhp-rail-wrap {
+  margin-bottom: 36px;
+}
+
+.mhp-rail {
+  background: #fffdf9;
+  border: 1px solid rgba(196, 154, 40, 0.2);
+  border-radius: 4px;
+  clip-path: polygon(20px 0%, calc(100% - 20px) 0%, 100% 50%, calc(100% - 20px) 100%, 20px 100%, 0% 50%);
+  padding: 0 44px;
+  display: flex;
+  align-items: stretch;
+  min-height: 80px;
+}
+
+.mhp-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  padding: 18px 0;
+  position: relative;
+}
+
+.mhp-stat + .mhp-stat {
+  padding-left: 28px;
+}
+
+/* Dotted connector between stats */
+.mhp-stat + .mhp-stat::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 36px;
+  border-left: 2px dotted rgba(196, 154, 40, 0.35);
+}
+
+/* Hexagon badge */
+.mhp-stat-hex {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  background: #f5ead4;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c49a28;
+}
+
+.mhp-stat-text {}
+
+.mhp-stat-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1e1b18;
+  line-height: 1.1;
+}
+
+.mhp-stat-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: #8a8070;
+  line-height: 1.3;
+  margin-top: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* ── Section heading ───────────────────────────────────────────────────────────── */
+.mhp-section {
+  margin-bottom: 32px;
+}
+
+.mhp-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.mhp-section-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Outlined hexagon. clip-path clips the border box, so a real border would lose
+   its diagonal edges — the ring is drawn as a gold layer with the page colour
+   inset on top, reusing the same polygon. */
+.mhp-section-hex {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  background: #c49a28;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c49a28;
+}
+.mhp-section-hex::before {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  background: #f5f0e8;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.mhp-section-hex > * { position: relative; }
+
+.mhp-section-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1e1b18;
+  margin: 0 0 2px;
+}
+
+.mhp-section-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: #8a8070;
+  margin: 0;
+}
+
+.mhp-section-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c49a28;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.mhp-section-link:hover { text-decoration: underline; }
+
+/* ── Owned Hive card (horizontal, three-region) ────────────────────────────────── */
+.mhp-owned-card {
+  background: #fff;
+  border: 1px solid rgba(35, 31, 28, 0.09);
+  border-radius: 18px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 200px 1fr 160px;
+  margin-bottom: 16px;
+  min-height: 200px;
+}
+
+/* Left — cover */
+.mhp-card-cover {
+  position: relative;
+  background: linear-gradient(135deg, #2d2415 0%, #1e1b18 55%, #3a2a10 100%);
+  overflow: hidden;
+}
+
+.mhp-card-cover-hc {
+  position: absolute;
+  inset: 0;
+  opacity: 0.1;
+  width: 100%;
+  height: 100%;
+}
+
+.mhp-card-avatar {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #3a2a10, #2d2415);
+  border: 3px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #c49a28;
+  z-index: 2;
+}
+
+/* Middle — content */
+.mhp-card-body {
+  padding: 20px 20px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+.mhp-card-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.mhp-card-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #1e1b18;
+  line-height: 1.2;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mhp-dots-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  color: #8a8070;
+  border-radius: 6px;
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mhp-dots-btn:hover { background: rgba(0,0,0,0.05); }
+.mhp-dots-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+
+.mhp-owner-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(196, 154, 40, 0.15);
+  color: #c49a28;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  align-self: flex-start;
+}
+
+.mhp-member-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(138, 128, 112, 0.12);
+  color: #8a8070;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  align-self: flex-start;
+}
+
+.mhp-card-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: #8a8070;
+  margin-bottom: 10px;
+}
+
+.mhp-card-divider {
+  height: 1px;
+  background: rgba(35, 31, 28, 0.07);
+  margin-bottom: 10px;
+}
+
+.mhp-status-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.mhp-signal {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  color: #3a3228;
+}
+.mhp-signal--muted { color: #8a8070; }
+.mhp-signal--gold  { color: #c49a28; }
+
+.mhp-signal-icon { display: flex; align-items: center; flex-shrink: 0; }
+
+.mhp-solo-main {
+  font-weight: 600;
+  color: #1e1b18;
+}
+.mhp-solo-sub {
+  padding-left: 20px;
+  font-size: 0.76rem;
+  color: #8a8070;
+}
+
+.mhp-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.mhp-btn-invite {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border: 1.5px solid rgba(196, 154, 40, 0.6);
+  border-radius: 999px;
+  background: none;
+  color: #c49a28;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+  min-height: 44px;
+}
+.mhp-btn-invite:hover { background: rgba(196, 154, 40, 0.08); }
+.mhp-btn-invite:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+
+.mhp-btn-open {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  background: #1e1b18;
+  color: #f5f0e8;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 999px;
+  text-decoration: none;
+  min-height: 44px;
+  transition: opacity 0.15s;
+}
+.mhp-btn-open:hover { opacity: 0.85; }
+.mhp-btn-open:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+
+/* Right — 2×2 badge grid */
+.mhp-card-badges {
+  padding: 20px 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  border-left: 1px solid rgba(35, 31, 28, 0.07);
+  align-content: center;
+}
+
+.mhp-badge-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  text-align: center;
+}
+
+.mhp-badge-hex {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  background: rgba(196, 154, 40, 0.55);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c49a28;
+}
+.mhp-badge-hex::before {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  background: #fff;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.mhp-badge-hex > * { position: relative; }
+
+.mhp-badge-num {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1e1b18;
+  line-height: 1;
+}
+
+.mhp-badge-lbl {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: #8a8070;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Member Of grid ────────────────────────────────────────────────────────────── */
+.mhp-member-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.mhp-member-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid rgba(35, 31, 28, 0.09);
+  border-radius: 14px;
+  padding: 14px 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s, border-color 0.15s;
+  min-height: 44px;
+  /* Grid items default to min-width:auto and would otherwise refuse to shrink
+     below their content, pushing the chevron past the track. */
+  min-width: 0;
+}
+.mhp-member-card:hover {
+  box-shadow: 0 2px 12px rgba(35, 31, 28, 0.08);
+  border-color: rgba(196, 154, 40, 0.3);
+}
+.mhp-member-card:focus-visible {
+  outline: 2px solid #c49a28;
+  outline-offset: 2px;
+}
+
+.mhp-mc-img {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2d2415 0%, #1e1b18 100%);
+  overflow: hidden;
+  position: relative;
+}
+
+.mhp-mc-hc {
+  position: absolute;
+  inset: 0;
+  opacity: 0.15;
+  width: 100%;
+  height: 100%;
+}
+
+.mhp-mc-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.mhp-mc-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e1b18;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.mhp-mc-pill {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(138, 128, 112, 0.12);
+  color: #8a8070;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-bottom: 4px;
+}
+
+.mhp-mc-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.73rem;
+  color: #8a8070;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mhp-mc-chevron {
+  color: #c8bea8;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Empty states ──────────────────────────────────────────────────────────────── */
+.mhp-empty-full {
+  text-align: center;
+  padding: 64px 24px;
+  background: #fff;
+  border: 1px solid rgba(35, 31, 28, 0.09);
+  border-radius: 18px;
+  margin-bottom: 32px;
+}
+
+.mhp-empty-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: #f5ead4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c49a28;
+}
+
+.mhp-empty-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #1e1b18;
+  margin: 0 0 8px;
+}
+
+.mhp-empty-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  color: #6b6057;
+  max-width: 400px;
+  margin: 0 auto 24px;
+  line-height: 1.5;
+}
+
+.mhp-empty-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mhp-empty-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #17120a;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  border-radius: 999px;
+  text-decoration: none;
+}
+
+.mhp-empty-secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 9px 20px;
+  border: 1.5px solid rgba(196, 154, 40, 0.5);
+  border-radius: 999px;
+  color: #c49a28;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Section-level empty */
+.mhp-section-empty {
+  background: #fffdf9;
+  border: 1px dashed rgba(196, 154, 40, 0.3);
+  border-radius: 14px;
+  padding: 28px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.mhp-se-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  background: #f5ead4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c49a28;
+}
+
+.mhp-se-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mhp-se-title {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #3a3228;
+  margin-bottom: 2px;
+}
+
+.mhp-se-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: #8a8070;
+}
+
+.mhp-se-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 16px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #17120a;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 999px;
+  text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-height: 44px;
+}
+
+/* ── No-hive rail (zero state) ─────────────────────────────────────────────────── */
+.mhp-rail-zero {
+  background: #fffdf9;
+  border: 1px solid rgba(196, 154, 40, 0.15);
+  border-radius: 12px;
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+.mhp-rail-zero-text {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.875rem;
+  color: #5a5244;
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────────── */
+
+/* ≥1100px: designed width */
+
+/* 760–1100px */
+@media (max-width: 1100px) {
+  .mhp-owned-card {
+    grid-template-columns: 160px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .mhp-card-badges {
+    grid-column: 2;
+    grid-row: 2;
+    border-left: none;
+    border-top: 1px solid rgba(35, 31, 28, 0.07);
+    grid-template-columns: repeat(4, 1fr);
+    padding: 12px 20px;
+  }
+}
+
+/* <760px */
+@media (max-width: 760px) {
+  .mhp-header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 28px 0 24px;
+  }
+  .mhp-create-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  /* Four stats will not fit across. Measured at 390px: a 2x2 wrap makes the
+     page 1513px tall, a one-row scroll strip 1402px — so the strip wins.
+     The rail is its own scroll container, so the page itself never scrolls
+     sideways. The connector rule is dropped rather than wrapped. */
+  .mhp-rail {
+    clip-path: none;
+    border-radius: 10px;
+    padding: 0 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mhp-rail::-webkit-scrollbar { display: none; }
+  .mhp-stat {
+    flex: 0 0 auto;
+    min-width: 142px;
+    padding: 14px 8px;
+  }
+  .mhp-stat + .mhp-stat {
+    padding-left: 8px;
+  }
+  .mhp-stat + .mhp-stat::before {
+    display: none;
+  }
+  .mhp-owned-card {
+    grid-template-columns: 120px 1fr;
+  }
+  .mhp-card-body {
+    padding: 14px 14px 14px 14px;
+  }
+  .mhp-member-grid {
+    grid-template-columns: 1fr;
+  }
+  .mhp-card-badges {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .mhp-card-cover {
+    grid-row: 1;
+    grid-column: 1;
+    min-height: 120px;
+  }
+  .mhp-card-body {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}
+
+/* Fully stacked at narrow */
+@media (max-width: 560px) {
+  .mhp-owned-card {
+    grid-template-columns: 1fr;
+  }
+  .mhp-card-cover {
+    height: 120px;
+    min-height: unset;
+  }
+  .mhp-card-body {
+    grid-row: auto;
+    grid-column: auto;
+    padding: 16px;
+  }
+  .mhp-card-actions .mhp-btn-invite,
+  .mhp-card-actions .mhp-btn-open {
+    flex: 1;
+    justify-content: center;
+  }
+  .mhp-card-actions {
+    flex-direction: row-reverse;
+  }
+  .mhp-card-badges {
+    grid-column: 1;
+    grid-row: auto;
+    border-left: none;
+    border-top: 1px solid rgba(35, 31, 28, 0.07);
+  }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .mhp-member-card { transition: none; }
+}

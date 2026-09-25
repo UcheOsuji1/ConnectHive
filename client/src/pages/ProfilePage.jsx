@@ -6,6 +6,7 @@ import { getInitials } from '../lib/initials.js';
 import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
+import HoneycombBg from '../components/HoneycombBg.jsx';
 import '../styles/profile.css';
 
 // ── Reverse lookup: chip string → INTEREST_CAT ───────────────────────────────
@@ -153,23 +154,6 @@ function EditIcon() {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
       <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-    </svg>
-  );
-}
-
-// Honeycomb SVG background — rendered into cover and rail cards
-function HoneycombBg({ className = 'hc-bg' }) {
-  return (
-    <svg className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <defs>
-        <pattern id="hc-pat" x="0" y="0" width="34.64" height="60" patternUnits="userSpaceOnUse">
-          <polygon points="17.32,2 32.64,11 32.64,29 17.32,38 2,29 2,11"
-            fill="none" stroke="#c49a28" strokeWidth="1.5"/>
-          <polygon points="0,29 15.32,38 15.32,56 0,65 -15.32,56 -15.32,38"
-            fill="none" stroke="#c49a28" strokeWidth="1.5"/>
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#hc-pat)"/>
     </svg>
   );
 }

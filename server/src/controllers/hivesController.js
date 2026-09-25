@@ -587,6 +587,14 @@ export const getMyHive = async (req, res) => {
               AND hm_new.membership_status = 'active' AND hm_new.joined_at > b.last_seen_at
             ORDER BY hm_new.joined_at DESC LIMIT 1
            ) AS newest_member_name,
+           (SELECT COUNT(*)::int FROM hive_posts hp3
+            WHERE hp3.hive_id = b.hive_id
+              AND hp3.post_type = 'event'
+              AND hp3.event_at > NOW()
+           ) AS upcoming_events,
+           (SELECT COUNT(*)::int FROM join_requests jr
+            WHERE jr.hive_id = b.hive_id AND jr.status = 'pending'
+           ) AS pending_requests,
            GREATEST(
              (SELECT MAX(hp2.created_at) FROM hive_posts hp2 WHERE hp2.hive_id = b.hive_id),
              (SELECT MAX(hm5.joined_at)  FROM hive_members hm5

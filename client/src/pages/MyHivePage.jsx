@@ -1,42 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import HoneycombBg from '../components/HoneycombBg.jsx';
 import { api } from '../lib/api.js';
-import '../styles/hive.css';
+import '../styles/myhives.css';
 
-const CAT_CONFIG = {
-  'Social Groups':           { color: '#5dcaa5', icon: '👥' },
-  'Professional Networking': { color: '#c49a28', icon: '💼' },
-  'Travel Buddies':          { color: '#4db6c4', icon: '✈️' },
-  'Project Collaboration':   { color: '#f08a4b', icon: '🚀' },
-  'Event Buddies':           { color: '#e86a7c', icon: '🎟️' },
-  'Specialized Groups':      { color: '#a59ae8', icon: '⭐' },
-};
-
-function HexTile({ categoryName, size = 44 }) {
-  const cfg = CAT_CONFIG[categoryName] ?? { color: '#8a8070', icon: '✦' };
-  return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <svg viewBox="0 0 36 36" width={size} height={size} style={{ position: 'absolute', inset: 0 }}>
-        <polygon
-          points="18,2 33,10 33,26 18,34 3,26 3,10"
-          fill={cfg.color} fillOpacity="0.18"
-          stroke={cfg.color} strokeWidth="1.5" strokeLinejoin="round"
-        />
-      </svg>
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: size * 0.33 + 'px',
-      }}>
-        {cfg.icon}
-      </div>
-    </div>
-  );
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(dateStr) {
-  if (!dateStr) return 'a while ago';
+  if (!dateStr) return null;
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 2)  return 'just now';
@@ -54,53 +26,143 @@ function initials(name) {
   return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
 }
 
-// ── Part 1: Summary strip ─────────────────────────────────────────────────────
+function formatMeta(hive) {
+  return [hive.category_name, hive.location_type]
+    .filter(Boolean)
+    .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' · ');
+}
 
-function SummaryStrip({ hives, pending }) {
-  const totalUnread = hives.reduce((s, h) => s + Number(h.new_posts ?? 0), 0);
-  const ownedCount  = hives.filter(h => h.role === 'owner').length;
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
+function PeopleIcon({ size = 17 }) {
   return (
-    <div className="mh-summary-strip">
-      <span className="mh-sum-item">{hives.length} Active</span>
-      <span className="mh-sum-dot">·</span>
-      <span className="mh-sum-item">{ownedCount} Owned</span>
-      <span className="mh-sum-dot">·</span>
-      <span className={`mh-sum-item${totalUnread > 0 ? ' mh-sum-gold' : ''}`}>
-        {totalUnread} Unread updates
-      </span>
-      {pending > 0 && (
-        <>
-          <span className="mh-sum-dot">·</span>
-          <span className="mh-sum-item mh-sum-gold">
-            {pending} Pending request{pending !== 1 ? 's' : ''}
-          </span>
-        </>
-      )}
-    </div>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
   );
 }
 
-// ── Part 2: Attention strip ───────────────────────────────────────────────────
-
-function AttentionStrip({ reqs }) {
-  if (!reqs.length) return null;
-  const sorted = [...reqs].sort((a, b) => new Date(b.requested_at) - new Date(a.requested_at));
+function CrownIcon({ size = 17 }) {
   return (
-    <div className="mh-attention">
-      <div className="mh-attention-label">Needs your attention</div>
-      <div className="mh-attention-list">
-        {sorted.map(req => (
-          <div key={req.request_id} className="mh-attention-item">
-            <div className="mh-att-avatar">{initials(req.full_name)}</div>
-            <div className="mh-att-body">
-              <div className="mh-att-title">
-                <strong>{req.full_name ?? 'Someone'}</strong>{' '}
-                requested to join <strong>{req.hive_name}</strong>
-              </div>
-              <div className="mh-att-sub">Requested {timeAgo(req.requested_at)}</div>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 18h20l-2-9-5 4-3-7-3 7-5-4z"/>
+    </svg>
+  );
+}
+
+function MessageIcon({ size = 17 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  );
+}
+
+function CalendarIcon({ size = 17 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  );
+}
+
+function InboxIcon({ size = 17 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/>
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>
+    </svg>
+  );
+}
+
+function StarIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+    </svg>
+  );
+}
+
+function ClockIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+    </svg>
+  );
+}
+
+function CheckIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  );
+}
+
+function ChevronRight({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  );
+}
+
+function HexOutlineIcon({ size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12,2 21,7 21,17 12,22 3,17 3,7"/>
+    </svg>
+  );
+}
+
+function PlusIcon({ size = 14 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  );
+}
+
+// ── Page-edge hex watermark (large, faint) ────────────────────────────────────
+
+function HexWatermark({ side }) {
+  return (
+    <svg
+      className={`mhp-watermark mhp-watermark--${side}`}
+      viewBox="0 0 200 200"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <polygon points="100,10 170,50 170,130 100,170 30,130 30,50"
+        fill="none" stroke="#c49a28" strokeWidth="2"/>
+      <polygon points="100,42 142,66 142,114 100,138 58,114 58,66"
+        fill="none" stroke="#c49a28" strokeWidth="2"/>
+      <polygon points="30,130 72,154 72,202 30,226 -12,202 -12,154"
+        fill="none" stroke="#c49a28" strokeWidth="2"/>
+    </svg>
+  );
+}
+
+// ── Stat rail ─────────────────────────────────────────────────────────────────
+
+function StatRail({ stats }) {
+  return (
+    <div className="mhp-rail-wrap">
+      <div className="mhp-rail">
+        {stats.map(s => (
+          <div key={s.label} className="mhp-stat">
+            <div className="mhp-stat-hex" aria-hidden="true">
+              <s.Icon />
             </div>
-            <Link to={`/hive/${req.hive_id}`} className="mh-att-review">Review →</Link>
+            {/* Number + label read as one string to a screen reader */}
+            <div className="mhp-stat-text">
+              <div className="mhp-stat-num" aria-hidden="true">{s.value}</div>
+              <div className="mhp-stat-label" aria-hidden="true">{s.label}</div>
+              <span className="sr-only">{s.value} {s.label}</span>
+            </div>
           </div>
         ))}
       </div>
@@ -108,164 +170,165 @@ function AttentionStrip({ reqs }) {
   );
 }
 
-// ── Part 3: Hive card (light, two-column grid) ────────────────────────────────
+// ── Badge grid (2×2 on the owned card) ────────────────────────────────────────
 
-function HiveCard({ hive, pendingForHive }) {
-  const newPosts    = Number(hive.new_posts ?? 0);
-  const memberCount = Number(hive.member_count ?? 0);
-  const isOwner     = hive.role === 'owner';
-  const isSoloOwner = isOwner && memberCount <= 1;
-
-  const meta = [
-    hive.category_name,
-    hive.location_type || hive.location || null,
-  ].filter(Boolean).map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' · ');
-
+function BadgeGrid({ badges }) {
   return (
-    <div className="mh-card2">
-      {/* Banner strip */}
-      <div
-        className="mh-card2-banner"
-        style={hive.banner_url
-          ? { backgroundImage: `url(${hive.banner_url})` }
-          : undefined}
-      >
-        {hive.logo_url ? (
-          <img src={hive.logo_url} className="mh-card2-banner-logo" alt={hive.hive_name} />
-        ) : (
-          <div className="mh-card2-banner-hex">
-            <HexTile categoryName={hive.category_name} size={34} />
-          </div>
-        )}
-      </div>
-
-      {/* Header */}
-      <div className="mh-card2-header">
-        {!hive.logo_url && <HexTile categoryName={hive.category_name} size={40} />}
-        <div className={`mh-card2-title-area${hive.logo_url ? ' mh-card2-title-area--no-hex' : ''}`}>
-          <div className="mh-card2-name">{hive.hive_name}</div>
-          <div className="mh-card2-badges">
-            {isOwner
-              ? <span className="mh-badge-owner">Owner</span>
-              : <span className="mh-badge-member">Member</span>}
+    <div className="mhp-card-badges">
+      {badges.map(b => (
+        <div key={b.label} className="mhp-badge-item">
+          <div className="mhp-badge-hex" aria-hidden="true"><b.Icon size={15} /></div>
+          <div>
+            <div className="mhp-badge-num" aria-hidden="true">{b.value}</div>
+            <div className="mhp-badge-lbl" aria-hidden="true">{b.label}</div>
+            <span className="sr-only">{b.value} {b.label}</span>
           </div>
         </div>
-        <button type="button" className="mh-card2-dots" aria-label="More options">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <circle cx="5" cy="12" r="2" />
-            <circle cx="12" cy="12" r="2" />
-            <circle cx="19" cy="12" r="2" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Meta */}
-      {meta && <div className="mh-card2-meta">{meta}</div>}
-
-      {/* Signals */}
-      <div className="mh-card2-signals">
-        {isSoloOwner ? (
-          <>
-            <div className="mh-signal-row">
-              <span className="mh-signal-icon">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
-                </svg>
-              </span>
-              <span className="mh-solo-main">Only you are here</span>
-            </div>
-            <div className="mh-signal-row mh-signal-row-muted" style={{ paddingLeft: 20 }}>
-              Invite members or explore suggested matches
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="mh-signal-row mh-signal-row-muted">
-              <span className="mh-signal-icon-muted">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              </span>
-              <span>{memberCount} member{memberCount !== 1 ? 's' : ''}</span>
-            </div>
-
-            {newPosts > 0 ? (
-              <div className="mh-signal-row mh-signal-row-gold">
-                <span className="mh-signal-icon">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                </span>
-                <span>{newPosts} unread post{newPosts !== 1 ? 's' : ''}</span>
-              </div>
-            ) : (
-              <div className="mh-signal-row mh-signal-row-muted">
-                <span className="mh-signal-icon-muted">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </span>
-                <span>All caught up</span>
-              </div>
-            )}
-          </>
-        )}
-
-        {hive.last_activity_at && (
-          <div className="mh-signal-row mh-signal-row-muted">
-            <span className="mh-signal-icon-muted">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </span>
-            <span>Last active {timeAgo(hive.last_activity_at)}</span>
-          </div>
-        )}
-
-        {isOwner && pendingForHive > 0 && (
-          <div className="mh-signal-row mh-signal-row-gold">
-            <span className="mh-signal-icon">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="16" />
-                <line x1="8" y1="12" x2="16" y2="12" />
-              </svg>
-            </span>
-            <span>{pendingForHive} pending request{pendingForHive !== 1 ? 's' : ''}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Actions */}
-      <div className="mh-card2-actions">
-        {isOwner && (
-          <Link to={`/hive/${hive.hive_id}`} className="mh-btn-secondary">
-            {isSoloOwner ? 'Invite' : 'Manage'}
-          </Link>
-        )}
-        <Link to={`/hive/${hive.hive_id}`} className="mh-btn-open">Open Hive →</Link>
-      </div>
+      ))}
     </div>
   );
 }
 
-// ── Skeleton grid ─────────────────────────────────────────────────────────────
+// ── Owned Hive card ───────────────────────────────────────────────────────────
 
-function SkeletonGrid() {
+function OwnedHiveCard({ hive }) {
+  const memberCount = Number(hive.member_count ?? 0);
+  const newPosts    = Number(hive.new_posts ?? 0);
+  const events      = Number(hive.upcoming_events ?? 0);
+  const requests    = Number(hive.pending_requests ?? 0);
+  const isSolo      = memberCount <= 1;
+  const lastActive  = timeAgo(hive.last_activity_at);
+  const meta        = formatMeta(hive);
+
+  const badges = [
+    { label: 'Member',   value: memberCount, Icon: PeopleIcon },
+    { label: 'Updates',  value: newPosts,    Icon: MessageIcon },
+    { label: 'Events',   value: events,      Icon: CalendarIcon },
+    { label: 'Requests', value: requests,    Icon: InboxIcon },
+  ];
+
   return (
-    <div className="mh-grid">
-      {[1, 2].map(i => (
-        <div key={i} className="mh-grid-skel">
-          <div className="hive-skel" style={{ height: 40, width: 40, borderRadius: 8 }} />
-          <div className="hive-skel" style={{ height: 14, width: '60%', borderRadius: 6 }} />
-          <div className="hive-skel" style={{ height: 10, width: '45%', borderRadius: 6 }} />
-          <div className="hive-skel" style={{ height: 10, width: '70%', borderRadius: 6 }} />
+    <div className="mhp-owned-card">
+      {/* Left — cover */}
+      <div className="mhp-card-cover">
+        {hive.banner_url
+          ? <img src={hive.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <HoneycombBg className="mhp-card-cover-hc" id={`hc-cover-${hive.hive_id}`} />}
+        <div className="mhp-card-avatar" aria-hidden="true">{initials(hive.hive_name)}</div>
+      </div>
+
+      {/* Middle — content */}
+      <div className="mhp-card-body">
+        <div className="mhp-card-top-row">
+          <h3 className="mhp-card-name">{hive.hive_name}</h3>
+          <button
+            type="button"
+            className="mhp-dots-btn"
+            aria-label={`More options for ${hive.hive_name}`}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+            </svg>
+          </button>
         </div>
-      ))}
+
+        <span className="mhp-owner-pill">Owner</span>
+        {meta && <div className="mhp-card-meta">{meta}</div>}
+        <div className="mhp-card-divider" />
+
+        <div className="mhp-status-block">
+          {isSolo ? (
+            <>
+              <div className="mhp-signal">
+                <span className="mhp-signal-icon" style={{ color: '#c49a28' }}><StarIcon /></span>
+                <span className="mhp-solo-main">Only you are here</span>
+              </div>
+              <div className="mhp-solo-sub">Invite members or explore suggested matches</div>
+            </>
+          ) : (
+            <>
+              <div className="mhp-signal mhp-signal--muted">
+                <span className="mhp-signal-icon"><PeopleIcon size={14} /></span>
+                <span>{memberCount} members</span>
+              </div>
+              {newPosts > 0 ? (
+                <div className="mhp-signal mhp-signal--gold">
+                  <span className="mhp-signal-icon"><MessageIcon size={14} /></span>
+                  <span>{newPosts} unread update{newPosts !== 1 ? 's' : ''}</span>
+                </div>
+              ) : (
+                <div className="mhp-signal mhp-signal--muted">
+                  <span className="mhp-signal-icon"><CheckIcon /></span>
+                  <span>All caught up</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {lastActive && (
+            <div className="mhp-signal mhp-signal--muted">
+              <span className="mhp-signal-icon"><ClockIcon /></span>
+              <span>Last active {lastActive}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mhp-card-actions">
+          <Link to={`/hive/${hive.hive_id}/members`} className="mhp-btn-invite">
+            <PlusIcon size={13} /> Invite
+          </Link>
+          <Link to={`/hive/${hive.hive_id}`} className="mhp-btn-open">Open Hive →</Link>
+        </div>
+      </div>
+
+      {/* Right — badges */}
+      <BadgeGrid badges={badges} />
+    </div>
+  );
+}
+
+// ── Member Of card ────────────────────────────────────────────────────────────
+
+function MemberHiveCard({ hive }) {
+  const memberCount = Number(hive.member_count ?? 0);
+  const lastActive  = timeAgo(hive.last_activity_at);
+  const meta        = formatMeta(hive);
+
+  return (
+    <Link to={`/hive/${hive.hive_id}`} className="mhp-member-card">
+      <div className="mhp-mc-img">
+        {hive.banner_url
+          ? <img src={hive.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <HoneycombBg className="mhp-mc-hc" id={`hc-mc-${hive.hive_id}`} />}
+      </div>
+      <div className="mhp-mc-body">
+        <div className="mhp-mc-name">{hive.hive_name}</div>
+        <span className="mhp-mc-pill">Member</span>
+        <div className="mhp-mc-meta">
+          {meta}
+          {meta && ' · '}
+          {memberCount} member{memberCount !== 1 ? 's' : ''}
+          {lastActive && ` · ${lastActive}`}
+        </div>
+      </div>
+      <span className="mhp-mc-chevron" aria-hidden="true"><ChevronRight /></span>
+    </Link>
+  );
+}
+
+// ── Section heading ───────────────────────────────────────────────────────────
+
+function SectionHead({ title, sub, link, linkLabel }) {
+  return (
+    <div className="mhp-section-head">
+      <div className="mhp-section-left">
+        <div className="mhp-section-hex" aria-hidden="true"><HexOutlineIcon /></div>
+        <div>
+          <h2 className="mhp-section-title">{title}</h2>
+          <p className="mhp-section-sub">{sub}</p>
+        </div>
+      </div>
+      {link && <Link to={link} className="mhp-section-link">{linkLabel}</Link>}
     </div>
   );
 }
@@ -273,94 +336,137 @@ function SkeletonGrid() {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MyHivePage() {
-  const [hives,        setHives]        = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [incomingReqs, setIncomingReqs] = useState([]);
-  const [reqsLoading,  setReqsLoading]  = useState(true);
+  const [hives, setHives]     = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     api.get('/api/hives/mine')
-      .then(data => setHives(data.hives ?? []))
+      .then(d => setHives(d.hives ?? []))
       .catch(() => setHives([]))
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => {
-    if (loading) return;
-    const ownerHives = hives.filter(h => h.role === 'owner');
-    if (!ownerHives.length) { setReqsLoading(false); return; }
-    Promise.all(
-      ownerHives.map(h =>
-        api.get(`/api/hives/${h.hive_id}/requests`)
-          .then(d => (d.requests ?? []).map(r => ({
-            ...r, hive_id: h.hive_id, hive_name: h.hive_name, category_name: h.category_name,
-          })))
-          .catch(() => [])
-      )
-    )
-      .then(groups => setIncomingReqs(groups.flat()))
-      .catch(() => setIncomingReqs([]))
-      .finally(() => setReqsLoading(false));
-  }, [hives, loading]);
+  const owned    = hives.filter(h => h.role === 'owner');
+  const memberOf = hives.filter(h => h.role !== 'owner');
 
-  const pendingTotal = incomingReqs.length;
+  const totalUnread = hives.reduce((s, h) => s + Number(h.new_posts ?? 0), 0);
+  const totalEvents = hives.reduce((s, h) => s + Number(h.upcoming_events ?? 0), 0);
 
-  const pendingByHive = {};
-  for (const r of incomingReqs) {
-    pendingByHive[r.hive_id] = (pendingByHive[r.hive_id] ?? 0) + 1;
-  }
+  const stats = [
+    { label: 'Active Hives',    value: hives.length,  Icon: PeopleIcon },
+    { label: 'Owned by You',    value: owned.length,  Icon: CrownIcon },
+    { label: 'Unread Updates',  value: totalUnread,   Icon: MessageIcon },
+    { label: 'Upcoming Events', value: totalEvents,   Icon: CalendarIcon },
+  ];
+
+  const hasNothing = !loading && hives.length === 0;
 
   return (
     <>
       <Navbar />
-      <div className="hive-page">
-        <div className="hive-inner">
+      <div className="mhp-page">
+        <HexWatermark side="left" />
+        <HexWatermark side="right" />
+
+        <div className="mhp-inner">
 
           {/* Part 1 — Header */}
-          <div className="mh-page-header">
+          <header className="mhp-header">
             <div>
-              <div className="hive-eyebrow">My Hives</div>
-              <h1 className="hive-page-title">Your spaces.</h1>
-              <p className="hive-page-sub">
-                Manage the Hives you own and stay connected to the ones you join.
+              <div className="mhp-eyebrow">My Hives</div>
+              <h1 className="mhp-title">Your spaces.</h1>
+              <p className="mhp-subtitle">
+                Manage the Hives you lead and stay close to the ones you joined.
               </p>
             </div>
-            <Link to="/create-hive" className="mh-create-btn">+ Create a Hive</Link>
-          </div>
+            <Link to="/create-hive" className="mhp-create-btn">
+              <PlusIcon /> Create a Hive
+            </Link>
+          </header>
 
-          {/* Part 1 — Summary strip */}
-          {!loading && (
-            <SummaryStrip
-              hives={hives}
-              pending={reqsLoading ? 0 : pendingTotal}
-            />
+          {/* Part 2 — Stat rail, or the zero-state line that replaces it */}
+          {loading ? null : hasNothing ? (
+            <div className="mhp-rail-zero">
+              <span className="mhp-rail-zero-text">
+                You're not in any Hives yet — nothing to count up.
+              </span>
+              <Link to="/find-your-hive" className="mhp-section-link">Explore Hives →</Link>
+            </div>
+          ) : (
+            <StatRail stats={stats} />
           )}
 
-          {/* Part 2 — Attention strip */}
-          {!reqsLoading && <AttentionStrip reqs={incomingReqs} />}
-
-          {/* Part 3 — Hive grid */}
-          {loading ? (
-            <SkeletonGrid />
-          ) : (
-            <div className="mh-grid">
-              {hives.map(hive => (
-                <HiveCard
-                  key={hive.hive_id}
-                  hive={hive}
-                  pendingForHive={pendingByHive[hive.hive_id] ?? 0}
-                />
-              ))}
+          {/* Empty state 1 — no Hives at all */}
+          {hasNothing && (
+            <div className="mhp-empty-full">
+              <div className="mhp-empty-icon" aria-hidden="true"><HexOutlineIcon size={26} /></div>
+              <h2 className="mhp-empty-title">No Hives yet</h2>
+              <p className="mhp-empty-sub">
+                A Hive is a small group built around something you care about.
+                Start one and invite people, or look through what already exists.
+              </p>
+              <div className="mhp-empty-actions">
+                <Link to="/create-hive" className="mhp-empty-primary">
+                  <PlusIcon /> Create a Hive
+                </Link>
+                <Link to="/find-your-hive" className="mhp-empty-secondary">Explore Hives</Link>
+              </div>
             </div>
           )}
 
-          {/* Part 4 — Grow banner */}
-          <div className="mh-grow-banner">
-            <span className="mh-grow-text">
-              Find another community that fits your goals.
-            </span>
-            <Link to="/find-your-hive" className="mh-grow-explore">Explore Hives</Link>
-          </div>
+          {/* Part 3 — Owned by You */}
+          {!loading && !hasNothing && (
+            <section className="mhp-section">
+              <SectionHead
+                title="Owned by You"
+                sub="Spaces you create and lead."
+              />
+              {owned.length > 0 ? (
+                owned.map(h => <OwnedHiveCard key={h.hive_id} hive={h} />)
+              ) : (
+                <div className="mhp-section-empty">
+                  <div className="mhp-se-icon" aria-hidden="true"><CrownIcon size={18} /></div>
+                  <div className="mhp-se-text">
+                    <div className="mhp-se-title">You don't lead a Hive yet</div>
+                    <div className="mhp-se-sub">
+                      Create one and you decide the purpose, the rules and who joins.
+                    </div>
+                  </div>
+                  <Link to="/create-hive" className="mhp-se-btn">
+                    <PlusIcon size={13} /> Create a Hive
+                  </Link>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Part 4 — Member Of */}
+          {!loading && !hasNothing && (
+            <section className="mhp-section">
+              <SectionHead
+                title="Member Of"
+                sub="Spaces you joined."
+                link="/find-your-hive"
+                linkLabel="Explore more Hives →"
+              />
+              {memberOf.length > 0 ? (
+                <div className="mhp-member-grid">
+                  {memberOf.map(h => <MemberHiveCard key={h.hive_id} hive={h} />)}
+                </div>
+              ) : (
+                <div className="mhp-section-empty">
+                  <div className="mhp-se-icon" aria-hidden="true"><PeopleIcon size={18} /></div>
+                  <div className="mhp-se-text">
+                    <div className="mhp-se-title">You haven't joined anyone else's Hive</div>
+                    <div className="mhp-se-sub">
+                      Browse Hives that match your interests and ask to join.
+                    </div>
+                  </div>
+                  <Link to="/find-your-hive" className="mhp-se-btn">Explore Hives</Link>
+                </div>
+              )}
+            </section>
+          )}
 
         </div>
       </div>
