@@ -6,6 +6,7 @@ import {
   aggregatePeopleFit,
   blendScores,
   buildReasons,
+  norm,
 } from '../lib/compatibility.js';
 import { createNotification } from './notificationsController.js';
 import { evictUserFromHive } from '../realtime/socket.js';
@@ -209,6 +210,199 @@ export const matchHives = async (req, res) => {
   } catch (err) {
     console.error('[hives/matchHives]', err);
     res.status(500).json({ error: 'Failed to run matching.' });
+  }
+};
+
+// ── Quick find: lookup, not a filter ───────────────────────────────────────────
+// Matches a name (discoverable hives only) OR an exact code (any hive, private
+// included — the code itself is the access grant). The privacy rule lives here,
+// in the SQL: a private hive can only enter the result set via the hive_code
+// equality branch, never via the ILIKE name branch. There is no post-query
+// client-side filtering to bypass.
+export const quickFindHives = async (req, res) => {
+  try {
+    const qRaw = String(req.query.q ?? '').trim();
+    if (qRaw.length < 2) return res.json({ hives: [] });
+
+    const namePattern = `%${qRaw}%`;
+    const codeDigits   = qRaw.replace(/^TH-?/i, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+    const codeGuess    = codeDigits ? `TH-${codeDigits}` : '';
+
+    const { rows } = await query(
+      `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type, c.category_name
+       FROM hives h
+       LEFT JOIN categories c ON c.category_id = h.category_id
+       WHERE h.hive_status = 'active'
+         AND (
+           (h.discoverable = TRUE AND h.hive_name ILIKE $1)
+           OR h.hive_code = $2
+         )
+       ORDER BY (h.hive_code = $2) DESC, h.hive_name ASC
+       LIMIT 8`,
+      [namePattern, codeGuess],
+    );
+
+    res.json({ hives: rows });
+  } catch (err) {
+    console.error('[hives/quickFindHives]', err);
+    res.status(500).json({ error: 'Search failed.' });
+  }
+};
+
+// ── Real per-category Hive counts for the honeycomb ────────────────────────────
+export const getCategoryCounts = async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT c.category_name, COUNT(h.hive_id)::int AS hive_count
+       FROM categories c
+       LEFT JOIN hives h ON h.category_id = c.category_id
+                         AND h.discoverable = TRUE AND h.hive_status = 'active'
+       GROUP BY c.category_id, c.category_name`,
+    );
+    res.json({ counts: rows });
+  } catch (err) {
+    console.error('[hives/getCategoryCounts]', err);
+    res.status(500).json({ error: 'Failed to load category counts.' });
+  }
+};
+
+// ── Refine rail facet counts ────────────────────────────────────────────────────
+// Counts are computed with every filter EXCEPT the dimension being counted
+// applied — the standard faceted-search shape, so toggling "In-person" doesn't
+// zero out the other connection-type counts. At ~15 discoverable hives this is
+// cheap enough to do in application code rather than four separate aggregate
+// queries.
+export const getFilterFacets = async (req, res) => {
+  try {
+    const { rows: hives } = await query(
+      `SELECT hive_id, location, location_type, max_members, cadence
+       FROM hives WHERE discoverable = TRUE AND hive_status = 'active'`,
+    );
+
+    const parseList = (v) => (v ? String(v).split(',').filter(Boolean) : []);
+    const selLocation = req.query.location || null;
+    const selConn     = parseList(req.query.connection);
+    const selSize     = parseList(req.query.groupSize);
+    const selCadence  = parseList(req.query.cadence);
+
+    const sizeBucket = (max) =>
+      max == null ? 'large' : max <= 10 ? 'small' : max <= 30 ? 'medium' : 'large';
+
+    const matches = (h, skip = {}) => {
+      if (!skip.location && selLocation && h.location !== selLocation) return false;
+      if (!skip.conn && selConn.length && !selConn.includes(h.location_type)) return false;
+      if (!skip.size && selSize.length && !selSize.includes(sizeBucket(h.max_members))) return false;
+      if (!skip.cadence && selCadence.length &&
+          !selCadence.includes(norm(h.cadence))) return false;
+      return true;
+    };
+
+    const locations = [...new Set(hives.map(h => h.location).filter(Boolean))].sort();
+
+    const connectionOptions = ['online', 'in-person', 'hybrid'].map(value => ({
+      value,
+      count: hives.filter(h => h.location_type === value && matches(h, { conn: true })).length,
+    }));
+
+    const sizeOptions = ['small', 'medium', 'large'].map(value => ({
+      value,
+      count: hives.filter(h => sizeBucket(h.max_members) === value && matches(h, { size: true })).length,
+    }));
+
+    const cadenceValues = [...new Set(hives.map(h => norm(h.cadence)).filter(Boolean))];
+    const cadenceOptions = cadenceValues.map(value => ({
+      value,
+      count: hives.filter(h => norm(h.cadence) === value && matches(h, { cadence: true })).length,
+    }));
+
+    res.json({ locations, connectionOptions, sizeOptions, cadenceOptions });
+  } catch (err) {
+    console.error('[hives/getFilterFacets]', err);
+    res.status(500).json({ error: 'Failed to load filters.' });
+  }
+};
+
+// ── "Might suit you" — profile-only suggestions, no category required ──────────
+// Score every eligible candidate with the same scorePurpose used by the real
+// matching flow, take the top ~15, sample 3. Re-sampling (the "Show me others"
+// control) just calls this again — the pool is recomputed but the top-15 scoring
+// is cheap at this table size, so no server-side caching is needed yet.
+export const getSuggestions = async (req, res) => {
+  try {
+    const { rows: [profile] } = await query('SELECT * FROM profiles WHERE user_id = $1', [req.userId]);
+    if (!profile) return res.json({ hives: [] });
+
+    const { rows: candidates } = await query(
+      `SELECT h.*, c.category_name,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+       FROM hives h
+       LEFT JOIN categories   c  ON c.category_id = h.category_id
+       LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
+       WHERE h.discoverable = TRUE AND h.hive_status = 'active'
+         AND NOT EXISTS (
+           SELECT 1 FROM hive_members
+           WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active'
+         )
+       GROUP BY h.hive_id, c.category_id, c.category_name
+       HAVING (h.max_members IS NULL OR
+               COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') < h.max_members)`,
+      [req.userId],
+    );
+
+    const scored = candidates
+      .map(hive => {
+        const { factors, total } = scorePurpose(profile, hive, null);
+        return { hive, factors, total };
+      })
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 15);
+
+    // Sample 3 without replacement — different set per call, always from the
+    // genuinely-relevant top 15, never a static top 3 and never fully random.
+    const pool = [...scored];
+    const picks = [];
+    while (picks.length < 3 && pool.length) {
+      const i = Math.floor(Math.random() * pool.length);
+      picks.push(pool.splice(i, 1)[0]);
+    }
+
+    const results = [];
+    for (const { hive, factors, total } of picks) {
+      const { rows: memberProfiles } = await query(
+        `SELECT p.* FROM hive_members hm JOIN profiles p ON p.user_id = hm.user_id
+         WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2`,
+        [hive.hive_id, req.userId],
+      );
+      const pairResults = memberProfiles
+        .map(mp => ({
+          user_id:   mp.user_id,
+          full_name: mp.full_name,
+          pair_score: scorePair(profile, mp).total,
+        }))
+        .sort((a, b) => b.pair_score - a.pair_score);
+
+      const peopleFit  = aggregatePeopleFit(pairResults.map(p => p.pair_score));
+      const matchScore = blendScores(total, peopleFit);
+      const reasons     = buildReasons(factors, peopleFit, pairResults);
+
+      results.push({
+        hive_id:       hive.hive_id,
+        hive_name:     hive.hive_name,
+        hive_code:     hive.hive_code,
+        category_name: hive.category_name,
+        tags:          hive.tags,
+        member_count:  Number(hive.member_count),
+        location:      hive.location,
+        location_type: hive.location_type,
+        match_score:   matchScore,
+        reasons,
+      });
+    }
+
+    res.json({ hives: results });
+  } catch (err) {
+    console.error('[hives/getSuggestions]', err);
+    res.status(500).json({ error: 'Failed to load suggestions.' });
   }
 };
 
