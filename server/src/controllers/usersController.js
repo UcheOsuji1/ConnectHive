@@ -115,3 +115,57 @@ export const getCompatibility = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export const getActivity = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { rows } = await query(
+      `SELECT label, ts, type FROM (
+         SELECT 'Joined TrueHive' AS label, u.created_at AS ts, 'joined' AS type
+         FROM users u WHERE u.user_id = $1
+         UNION ALL
+         SELECT 'Updated your profile' AS label, p.updated_at AS ts, 'profile' AS type
+         FROM profiles p JOIN users u ON u.user_id = p.user_id
+         WHERE p.user_id = $1
+           AND p.updated_at > u.created_at + INTERVAL '1 minute'
+         UNION ALL
+         SELECT 'Joined ' || h.hive_name AS label, hm.joined_at AS ts, 'hive' AS type
+         FROM hive_members hm JOIN hives h ON h.hive_id = hm.hive_id
+         WHERE hm.user_id = $1 AND hm.membership_status = 'active'
+       ) a
+       ORDER BY ts DESC
+       LIMIT 5`,
+      [userId],
+    );
+    return res.json({ activity: rows });
+  } catch (err) {
+    console.error('[users/getActivity]', err);
+    return res.status(500).json({ error: 'Failed to fetch activity.' });
+  }
+};
+
+export const getSuggestions = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { rows } = await query(
+      `SELECT
+         p.user_id, p.full_name, p.location, p.profile_photo_url,
+         p.interests, p.connection_purposes,
+         uc.total_score
+       FROM user_compatibility uc
+       JOIN profiles p ON p.user_id = CASE
+         WHEN uc.user_a = $1 THEN uc.user_b
+         ELSE uc.user_a
+       END
+       WHERE (uc.user_a = $1 OR uc.user_b = $1)
+         AND p.full_name IS NOT NULL
+       ORDER BY uc.total_score DESC
+       LIMIT 3`,
+      [userId],
+    );
+    return res.json({ suggestions: rows });
+  } catch (err) {
+    console.error('[users/getSuggestions]', err);
+    return res.status(500).json({ error: 'Failed to fetch suggestions.' });
+  }
+};
