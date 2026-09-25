@@ -110,8 +110,40 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 4px;
   margin-bottom: 2px;
+}
+
+/* Pending join requests — the one count an owner has to act on. Rendered only
+   when > 0, so it costs nothing in the common case. */
+.hc-requests {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(196, 154, 40, .18);
+  border: 1px solid rgba(196, 154, 40, .45);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .68rem;
+  font-weight: 600;
+  color: #8a6510;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.hc-requests:hover { background: rgba(196, 154, 40, .28); }
+.hc-requests:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+/* 44px hit area without making the pill itself look heavier. */
+.hc-requests::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 44px;
 }
 
 .hc-unread {
