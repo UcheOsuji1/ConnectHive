@@ -529,7 +529,7 @@ export default function ProfilePage() {
                   </div>
                   {interestArr.length > 0 && (
                     <Link to="/profile-setup" className="pf-view-all">
-                      View All Interests ({interestArr.length > 60 ? '60+' : interestArr.length}) →
+                      Edit Interests ({interestArr.length > 60 ? '60+' : interestArr.length}) →
                     </Link>
                   )}
                 </div>
@@ -581,7 +581,7 @@ export default function ProfilePage() {
                           <span key={chip + i} className="pf-chip" role="listitem">{stripEmoji(chip)}</span>
                         ))}
                       </div>
-                      <Link to="/profile-setup" className="pf-view-skills">View All Skills →</Link>
+                      <Link to="/profile-setup" className="pf-view-skills">Edit Skills →</Link>
                     </div>
                   </div>
                 )}
