@@ -1,34 +1,46 @@
 /* ── HiveCard — elongated hexagon, used in both My Hives sections ───────────── */
 
 .hc {
-  /* Silhouette. Start and end share vertex count AND units so clip-path can
-     tween; the left three vertices are identical in both, so only the right
-     edge travels and the card unfolds rightward. */
-  --clip-end:   polygon(3% 0%, 97% 0%, 100% 50%, 97% 100%, 3% 100%, 0% 50%);
-  --clip-start: polygon(3% 0%, 30% 0%, 34% 50%, 30% 100%, 3% 100%, 0% 50%);
+  /* Pixel inset, not a percentage: the angle is a fixed part of the design and
+     must not change with the card's width. */
+  --hex-inset: 28px;
+
+  --clip-end: polygon(
+    var(--hex-inset) 0,
+    calc(100% - var(--hex-inset)) 0,
+    100% 50%,
+    calc(100% - var(--hex-inset)) 100%,
+    var(--hex-inset) 100%,
+    0 50%);
+
+  /* Same six vertices in the same order and the same unit structure, so the
+     two states interpolate instead of jumping. */
+  --clip-start: polygon(
+    var(--hex-inset) 0,
+    calc(33% - var(--hex-inset)) 0,
+    33% 50%,
+    calc(33% - var(--hex-inset)) 100%,
+    var(--hex-inset) 100%,
+    0 50%);
 
   position: relative;
-  display: grid;
-  grid-template-columns: 34% 1fr;
-  /* Backstop only — the image is out of flow, so height is content-driven. */
-  max-height: 340px;
-  background: #c49a28;                 /* reads as the hairline border */
+  max-height: 340px;                 /* backstop; image is out of flow anyway */
+  background: #c49a28;               /* the hairline, revealed by the inset */
   clip-path: var(--clip-end);
-  /* box-shadow is clipped away by clip-path; drop-shadow follows the shape. */
-  filter: drop-shadow(0 4px 14px rgba(35, 31, 28, .10));
+  /* box-shadow is clipped away by clip-path, so the shadow is a filter and
+     follows the hexagon. */
+  filter: drop-shadow(0 6px 18px rgba(35, 31, 28, .13));
 }
 
-/* Near-white fill, inset by the border width. A pseudo-element rather than a
-   positioned child, so the real content still establishes the card's height. */
-.hc::before {
-  content: '';
-  position: absolute;
-  inset: 1px;
+/* Real element, not a pseudo: the cover sits inside it so the gold border
+   passes in front of the image, and its content still sets the card height. */
+.hc-inner {
+  margin: 1.5px;
+  display: flex;
+  align-items: stretch;
   background: #fffdf9;
   clip-path: var(--clip-end);
-  z-index: 0;
 }
-.hc > * { position: relative; z-index: 1; }
 
 /* ── Unfold ──────────────────────────────────────────────────────────────────
    Only the clip animates. The box is at its final size from frame one, so
@@ -51,21 +63,18 @@
   animation: hc-content-in 520ms cubic-bezier(.16, .84, .44, 1) both;
   animation-delay: calc(var(--i, 0) * 90ms);
 }
-/* Once finished, drop the animation so a later repaint cannot replay it. */
 .hc--done, .hc--done .hc-content { animation: none; }
 
-/* ── Media ───────────────────────────────────────────────────────────────── */
+/* ── Cover ───────────────────────────────────────────────────────────────── */
 .hc-media {
   position: relative;
+  flex: 0 0 clamp(240px, 33%, 380px);
   overflow: hidden;
-  /* No aspect-ratio here: as a stretched grid item the media must take the
-     row's full height. An aspect-ratio would SET its height instead and leave
-     white below the cover. The image is out of flow either way, so the card's
-     height still comes only from the content column. */
-  min-height: 140px;
+  min-height: 190px;
   background: linear-gradient(135deg, #2d2415 0%, #1e1b18 55%, #3a2a10 100%);
-  /* Chevron right edge cutting into the white. Static, so mixed units are safe. */
-  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+  /* Only the right chevron is needed here — the card's own hexagon already
+     cuts the matching angle into this element's left edge. */
+  clip-path: polygon(0 0, calc(100% - 34px) 0, 100% 50%, calc(100% - 34px) 100%, 0 100%);
 }
 
 /* Out of flow: whatever the intrinsic size, the image cannot stretch the row. */
@@ -81,18 +90,18 @@
 
 .hc-avatar {
   position: absolute;
-  left: 12px;
-  bottom: 12px;
-  width: 34px;
-  height: 34px;
-  border-radius: 9px;
+  left: 34px;
+  bottom: 16px;
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
   background: linear-gradient(135deg, #3a2a10, #2d2415);
   border: 2px solid #c49a28;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'DM Sans', sans-serif;
-  font-size: .62rem;
+  font-size: .8rem;
   font-weight: 700;
   color: #e8c84a;
   z-index: 2;
@@ -100,20 +109,82 @@
 
 /* ── Content ─────────────────────────────────────────────────────────────── */
 .hc-content {
-  padding: 18px 26px 18px 14px;
+  flex: 1;
   min-width: 0;
+  padding: 18px 46px 18px 20px;
   display: flex;
   flex-direction: column;
+  gap: 4px;
+}
+
+/* Row 1 */
+.hc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hc-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.62rem;
+  font-weight: 600;
+  color: #1e1b18;
+  line-height: 1.12;
+  margin: 0;
+  min-width: 0;
+}
+
+.hc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 11px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: rgba(138, 128, 112, .13);
+  color: #8a8070;
+  flex-shrink: 0;
+}
+.hc-pill--owner {
+  background: rgba(196, 154, 40, .16);
+  border: 1px solid rgba(196, 154, 40, .4);
+  color: #a97f16;
 }
 
 .hc-topright {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 4px;
-  margin-bottom: 2px;
+  flex-shrink: 0;
 }
+
+/* Rose-tinted, per the concept — not neutral grey. */
+.hc-unread {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(214, 122, 140, .13);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .7rem;
+  font-weight: 500;
+  color: #b0556c;
+  white-space: nowrap;
+}
+.hc-unread--on { background: rgba(214, 122, 140, .2); font-weight: 600; }
+.hc-dot { width: 6px; height: 6px; border-radius: 50%; background: #d1596f; flex-shrink: 0; }
 
 /* Pending join requests — the one count an owner has to act on. Rendered only
    when > 0, so it costs nothing in the common case. */
@@ -122,12 +193,12 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 10px;
+  padding: 4px 11px;
   border-radius: 999px;
   background: rgba(196, 154, 40, .18);
   border: 1px solid rgba(196, 154, 40, .45);
   font-family: 'DM Sans', sans-serif;
-  font-size: .68rem;
+  font-size: .7rem;
   font-weight: 600;
   color: #8a6510;
   text-decoration: none;
@@ -146,29 +217,13 @@
   height: 44px;
 }
 
-.hc-unread {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(138, 128, 112, .10);
-  font-family: 'DM Sans', sans-serif;
-  font-size: .68rem;
-  font-weight: 500;
-  color: #8a8070;
-  white-space: nowrap;
-}
-.hc-unread--on { background: rgba(196, 154, 40, .14); color: #a97f16; }
-.hc-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-
 .hc-dots {
   display: flex;
   align-items: center;
   justify-content: center;
   min-width: 44px;
   min-height: 44px;
-  margin: -11px -8px -11px 0;      /* 44px hit area, no added visual bulk */
+  margin: -12px -10px -12px 0;     /* 44px hit area, no added visual bulk */
   padding: 0;
   border: none;
   background: none;
@@ -179,80 +234,49 @@
 .hc-dots:hover { color: #3a3228; }
 .hc-dots:focus-visible { outline: 2px solid #c49a28; outline-offset: -2px; }
 
-.hc-name {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex-wrap: wrap;
-  font-family: 'Cormorant Garamond', serif;
-  font-size: 1.32rem;
-  font-weight: 600;
-  color: #1e1b18;
-  line-height: 1.15;
-  margin: 0 0 3px;
-  min-width: 0;
-}
-
-.hc-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 9px;
-  border-radius: 999px;
-  font-family: 'DM Sans', sans-serif;
-  font-size: .6rem;
-  font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  background: rgba(138, 128, 112, .13);
-  color: #8a8070;
-  flex-shrink: 0;
-}
-.hc-pill--owner { background: rgba(196, 154, 40, .16); color: #a97f16; }
-
+/* Row 2 */
 .hc-meta {
   font-family: 'DM Sans', sans-serif;
-  font-size: .76rem;
+  font-size: .82rem;
   color: #8a8070;
-  margin: 0 0 10px;
+  margin: 0;
 }
 
+/* Row 3 — side by side, no dividers */
 .hc-status {
   display: flex;
-  flex-direction: column;
-  gap: 7px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(35, 31, 28, .07);
-  margin-bottom: 14px;
+  align-items: flex-start;
+  gap: 40px;
+  flex-wrap: wrap;
+  margin: 8px 0 14px;
 }
-.hc-status-main { display: flex; flex-direction: column; gap: 2px; }
+.hc-members { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 
 .hc-status-row {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   font-family: 'DM Sans', sans-serif;
-  font-size: .8rem;
+  font-size: .86rem;
   color: #3a3228;
 }
 .hc-status-row--gold  { color: #a97f16; }
-.hc-status-row--muted { color: #8a8070; font-size: .76rem; }
+.hc-status-row--muted { color: #8a8070; font-size: .82rem; }
 .hc-status-row strong { font-weight: 600; color: #1e1b18; }
 
 .hc-status-sub {
-  padding-left: 21px;
+  padding-left: 22px;
   font-family: 'DM Sans', sans-serif;
-  font-size: .74rem;
+  font-size: .78rem;
   color: #8a8070;
 }
+.hc-last { padding-top: 1px; }
 
-/* Separated from the members line, per the design. */
-.hc-last { padding-top: 6px; border-top: 1px dashed rgba(35, 31, 28, .06); }
-
+/* Row 4 */
 .hc-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   flex-wrap: wrap;
   margin-top: auto;
 }
@@ -261,12 +285,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 7px;
   min-height: 44px;
-  padding: 0 13px;
+  padding: 0 20px;
   border-radius: 999px;
   font-family: 'DM Sans', sans-serif;
-  font-size: .78rem;
+  font-size: .82rem;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
@@ -274,53 +298,65 @@
 }
 .hc-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
 
-.hc-btn--solid { background: #1e1b18; color: #f5f0e8; }
+/* Wider than the outlined pair, per the concept. */
+.hc-btn--solid {
+  background: #1e1b18;
+  color: #f5f0e8;
+  min-width: 190px;
+  margin-left: 4px;
+}
 .hc-btn--solid:hover { opacity: .86; }
 
 .hc-btn--ghost { border: 1.5px solid rgba(196, 154, 40, .55); color: #a97f16; }
 .hc-btn--ghost:hover { background: rgba(196, 154, 40, .08); }
 
-/* ── 760–900px: one per row, angles reduced ──────────────────────────────── */
+/* ── 760–900px: shallower angle, cover narrows ───────────────────────────── */
 @media (max-width: 900px) {
-  .hc {
-    --clip-end:   polygon(1.5% 0%, 98.5% 0%, 100% 50%, 98.5% 100%, 1.5% 100%, 0% 50%);
-    --clip-start: polygon(1.5% 0%, 30% 0%, 32% 50%, 30% 100%, 1.5% 100%, 0% 50%);
-    grid-template-columns: 30% 1fr;
-  }
+  .hc { --hex-inset: 18px; }
+  .hc-media { flex-basis: clamp(190px, 30%, 260px); }
+  .hc-content { padding: 18px 30px 18px 18px; }
+  .hc-status { gap: 24px; }
+  .hc-btn--solid { min-width: 150px; }
 }
 
 /* ── <760px: stacked and squared off ─────────────────────────────────────── */
 @media (max-width: 760px) {
+  /* A 390px card cannot afford 28px chevrons on both sides, so the angles are
+     reduced to a corner cut and the unfold runs downward instead — the stacked
+     layout puts the cover on top, so a downward reveal matches the order. */
   .hc {
-    /* Angled edges would eat ~15% of a 390px card, so square them off and
-       unfold downward instead — the stacked layout puts the cover on top,
-       so a downward reveal matches the content order. Same 6 vertices. */
-    --clip-end:   polygon(0% 0%, 100% 0%, 100% 97%, 100% 100%, 0% 100%, 0% 97%);
-    --clip-start: polygon(0% 0%, 100% 0%, 100% 30%, 100% 34%, 0% 34%, 0% 30%);
-    grid-template-columns: 1fr;
+    --hex-inset: 10px;
+    --clip-end:   polygon(0 0, 100% 0, 100% calc(100% - 10px), 100% 100%, 0 100%, 0 calc(100% - 10px));
+    --clip-start: polygon(0 0, 100% 0, 100% calc(34% - 10px), 100% 34%, 0 34%, 0 calc(34% - 10px));
     max-height: none;
     border-radius: 14px;
   }
-  .hc::before { border-radius: 13px; }
+  .hc-inner { flex-direction: column; border-radius: 13px; }
 
   .hc-media {
+    flex: 0 0 auto;
     aspect-ratio: 16 / 7;
-    clip-path: none;                /* no chevron when stacked */
+    min-height: 0;
+    clip-path: none;               /* no chevron when stacked */
     border-radius: 13px 13px 0 0;
   }
+  .hc-avatar { left: 14px; bottom: 12px; width: 44px; height: 44px; }
+
   .hc-content { padding: 16px; }
+  .hc-head { flex-direction: column; gap: 8px; }
+  .hc-topright { justify-content: flex-start; }
+  .hc-status { gap: 6px; flex-direction: column; margin: 8px 0 14px; }
   .hc-actions { flex-direction: column; align-items: stretch; }
   .hc-btn { width: 100%; }
   /* Open Hive to the top of the stack. Visual order then leads the DOM order
      by two buttons within this one group; all three stay focusable and named. */
-  .hc-btn--solid { order: -1; }
+  .hc-btn--solid { order: -1; min-width: 0; margin-left: 0; }
 }
 
 /* ── Reduced motion: final clip, content visible, never inert ────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .hc, .hc .hc-content {
-    animation: none !important;
-    clip-path: var(--clip-end);
-    opacity: 1;
-  }
+  /* Kept separate: applying the hexagon clip to .hc-content as well would cut
+     the corners off the text. */
+  .hc { animation: none !important; clip-path: var(--clip-end); }
+  .hc .hc-content { animation: none !important; opacity: 1; }
 }

@@ -19,14 +19,7 @@ const PeopleIcon = ({ size = 14 }) => (
   </svg>
 );
 
-const StarIcon = ({ size = 14 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
-  </svg>
-);
-
-const ClockIcon = ({ size = 13 }) => (
+const ClockIcon = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -49,10 +42,11 @@ const InboxIcon = ({ size = 11 }) => (
   </svg>
 );
 
-const PlusIcon = ({ size = 13 }) => (
+const UserPlusIcon = ({ size = 14 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
-    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+       strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+    <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
   </svg>
 );
 
@@ -128,88 +122,97 @@ export default function HiveCard({ hive, index = 0 }) {
       style={{ '--i': index }}
       onAnimationEnd={e => { if (e.animationName === 'hc-unfold') setUnfolded(true); }}
     >
-      {/* Left — cover. The <img> is absolutely positioned so the image can
-          never contribute to the card's height, whatever its aspect ratio. */}
-      <div className="hc-media">
-        {hive.banner_url
-          ? <img className="hc-media-img" src={hive.banner_url} alt="" />
-          : <HoneycombBg className="hc-media-hc" id={`hc-bg-${hive.hive_id}`} />}
-        <span className="hc-avatar" aria-hidden="true">{initials(hive.hive_name)}</span>
-      </div>
+      {/* Inset by the hairline width. The cover lives INSIDE this, so the gold
+          border passes in front of the image and wraps the whole silhouette. */}
+      <div className="hc-inner">
 
-      {/* Right — content */}
-      <div className="hc-content">
-
-        <div className="hc-topright">
-          {/* Only surfaces when there is something to act on, and only for the
-              roles the server lets review. Invisible otherwise. */}
-          {canReview && requests > 0 && (
-            <Link
-              to={`/hive/${hive.hive_id}/requests`}
-              className="hc-requests"
-              aria-label={`Review ${requests} pending join request${requests === 1 ? '' : 's'} for ${hive.hive_name}`}
-            >
-              <InboxIcon />
-              {requests} request{requests === 1 ? '' : 's'}
-            </Link>
-          )}
-          <span className={`hc-unread${newPosts > 0 ? ' hc-unread--on' : ''}`}>
-            <span className="hc-dot" aria-hidden="true" />
-            {newPosts} unread update{newPosts === 1 ? '' : 's'}
-          </span>
-          <button type="button" className="hc-dots" aria-label={`More options for ${hive.hive_name}`}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
-            </svg>
-          </button>
+        {/* Cover. The <img> is absolutely positioned so the image can never
+            contribute to the card's height, whatever its aspect ratio. */}
+        <div className="hc-media">
+          {hive.banner_url
+            ? <img className="hc-media-img" src={hive.banner_url} alt="" />
+            : <HoneycombBg className="hc-media-hc" id={`hc-bg-${hive.hive_id}`} />}
+          <span className="hc-avatar" aria-hidden="true">{initials(hive.hive_name)}</span>
         </div>
 
-        <h3 className="hc-name">
-          {hive.hive_name}
-          <span className={`hc-pill${isOwner ? ' hc-pill--owner' : ''}`}>
-            {isOwner && <CrownIcon />}
-            {isOwner ? 'Owner' : 'Member'}
-          </span>
-        </h3>
+        <div className="hc-content">
 
-        {meta && <p className="hc-meta">{meta}</p>}
-
-        <div className="hc-status">
-          {isSolo && isOwner ? (
-            <div className="hc-status-main">
-              <span className="hc-status-row hc-status-row--gold">
-                <StarIcon /> <strong>Only you are here</strong>
+          {/* Row 1 — name + role pill, with the pills and menu at the far right */}
+          <div className="hc-head">
+            <h3 className="hc-name">
+              {hive.hive_name}
+              <span className={`hc-pill${isOwner ? ' hc-pill--owner' : ''}`}>
+                {isOwner && <CrownIcon />}
+                {isOwner ? 'Owner' : 'Member'}
               </span>
-              <span className="hc-status-sub">Invite members or explore suggested matches</span>
-            </div>
-          ) : (
-            <div className="hc-status-main">
-              <span className="hc-status-row">
-                <PeopleIcon /> {memberCount} member{memberCount === 1 ? '' : 's'}
+            </h3>
+
+            <div className="hc-topright">
+              {/* Only surfaces when there is something to act on, and only for
+                  the roles the server lets review. Invisible otherwise. */}
+              {canReview && requests > 0 && (
+                <Link
+                  to={`/hive/${hive.hive_id}/requests`}
+                  className="hc-requests"
+                  aria-label={`Review ${requests} pending join request${requests === 1 ? '' : 's'} for ${hive.hive_name}`}
+                >
+                  <InboxIcon />
+                  {requests} request{requests === 1 ? '' : 's'}
+                </Link>
+              )}
+              <span className={`hc-unread${newPosts > 0 ? ' hc-unread--on' : ''}`}>
+                <span className="hc-dot" aria-hidden="true" />
+                {newPosts} unread update{newPosts === 1 ? '' : 's'}
               </span>
+              <button type="button" className="hc-dots" aria-label={`More options for ${hive.hive_name}`}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+                </svg>
+              </button>
             </div>
-          )}
-          {lastActive && (
-            <span className="hc-status-row hc-status-row--muted hc-last">
-              <ClockIcon /> Last active {lastActive}
-            </span>
-          )}
-        </div>
+          </div>
 
-        {/* DOM order matches the desktop design (Invite, Manage, Open Hive).
-            Below 760px the solid button is lifted to the top with order:-1. */}
-        <div className="hc-actions">
-          <Link to={`/hive/${hive.hive_id}/members`} className="hc-btn hc-btn--ghost">
-            <PlusIcon /> Invite
-          </Link>
-          {isOwner && (
-            <Link to={`/hive/${hive.hive_id}/settings`} className="hc-btn hc-btn--ghost">
-              <GearIcon /> Manage
+          {/* Row 2 */}
+          {meta && <p className="hc-meta">{meta}</p>}
+
+          {/* Row 3 — members and last-active side by side, no rule between */}
+          <div className="hc-status">
+            <div className="hc-members">
+              {isSolo && isOwner ? (
+                <>
+                  <span className="hc-status-row hc-status-row--gold">
+                    <PeopleIcon /> <strong>Only you are here</strong>
+                  </span>
+                  <span className="hc-status-sub">Invite members or explore suggested matches</span>
+                </>
+              ) : (
+                <span className="hc-status-row">
+                  <PeopleIcon /> {memberCount} member{memberCount === 1 ? '' : 's'}
+                </span>
+              )}
+            </div>
+            {lastActive && (
+              <span className="hc-status-row hc-status-row--muted hc-last">
+                <ClockIcon /> Last active {lastActive}
+              </span>
+            )}
+          </div>
+
+          {/* Row 4 — DOM order matches the design (Invite, Manage, Open Hive).
+              Below 760px the solid button is lifted to the top with order:-1. */}
+          <div className="hc-actions">
+            <Link to={`/hive/${hive.hive_id}/members`} className="hc-btn hc-btn--ghost">
+              <UserPlusIcon /> Invite
             </Link>
-          )}
-          <Link to={`/hive/${hive.hive_id}`} className="hc-btn hc-btn--solid">Open Hive →</Link>
-        </div>
+            {canReview && (
+              <Link to={`/hive/${hive.hive_id}/settings`} className="hc-btn hc-btn--ghost">
+                <GearIcon /> Manage
+              </Link>
+            )}
+            <Link to={`/hive/${hive.hive_id}`} className="hc-btn hc-btn--solid">Open Hive →</Link>
+          </div>
 
+        </div>
       </div>
     </article>
   );

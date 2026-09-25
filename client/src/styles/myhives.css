@@ -248,14 +248,13 @@
 }
 .mhp-section-link:hover { text-decoration: underline; }
 
-/* ── Card grid — same in both sections, since both use <HiveCard> ───────────── */
+/* ── Card grid — same in both sections, since both use <HiveCard> ─────────────
+   One card per row. The card is a ~5:1 elongated hexagon and needs the full
+   content width; in two columns it has no choice but to stack internally. */
 .mhp-card-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px 20px;
-}
-@media (max-width: 900px) {
-  .mhp-card-grid { grid-template-columns: 1fr; }
+  grid-template-columns: 1fr;
+  gap: 18px;
 }
 
 /* ── Empty states ──────────────────────────────────────────────────────────────── */
