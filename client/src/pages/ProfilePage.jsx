@@ -204,8 +204,8 @@ function journeyTiles(hives, profile, interestCount) {
     },
     {
       value: firstPurpose ?? '—',
-      label: 'Top Category',
-      sub: 'Based on your goals',
+      label: 'Your Focus',
+      sub: 'What you selected at signup',
       Icon: StarIcon,
     },
     {
@@ -539,9 +539,7 @@ export default function ProfilePage() {
                     const subtext = cat.selected.slice(0, 3).map(c => stripEmoji(c)).join(' · ');
                     return (
                       <div key={cat.key} className="ic-card" role="listitem">
-                        <div className="ic-img" aria-hidden="true">
-                          <span role="img" aria-label={cat.name}>{cat.emoji}</span>
-                        </div>
+                        <div className="ic-img" aria-label={cat.name} />
                         <div className="ic-body">
                           <div className="ic-icon-name">
                             <span className="ic-cat-icon" aria-hidden="true">
