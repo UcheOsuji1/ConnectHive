@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import HoneycombBg from '../components/HoneycombBg.jsx';
+import HiveCard from '../components/HiveCard.jsx';
 import { api } from '../lib/api.js';
 import '../styles/myhives.css';
+import '../styles/hivecard.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -170,151 +172,6 @@ function StatRail({ stats }) {
   );
 }
 
-// ── Badge grid (2×2 on the owned card) ────────────────────────────────────────
-
-function BadgeGrid({ badges }) {
-  return (
-    <div className="mhp-card-badges">
-      {badges.map(b => (
-        <div key={b.label} className="mhp-badge-item">
-          <div className="mhp-badge-hex" aria-hidden="true"><b.Icon size={15} /></div>
-          <div>
-            <div className="mhp-badge-num" aria-hidden="true">{b.value}</div>
-            <div className="mhp-badge-lbl" aria-hidden="true">{b.label}</div>
-            <span className="sr-only">{b.value} {b.label}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Owned Hive card ───────────────────────────────────────────────────────────
-
-function OwnedHiveCard({ hive }) {
-  const memberCount = Number(hive.member_count ?? 0);
-  const newPosts    = Number(hive.new_posts ?? 0);
-  const events      = Number(hive.upcoming_events ?? 0);
-  const requests    = Number(hive.pending_requests ?? 0);
-  const isSolo      = memberCount <= 1;
-  const lastActive  = timeAgo(hive.last_activity_at);
-  const meta        = formatMeta(hive);
-
-  const badges = [
-    { label: 'Member',   value: memberCount, Icon: PeopleIcon },
-    { label: 'Updates',  value: newPosts,    Icon: MessageIcon },
-    { label: 'Events',   value: events,      Icon: CalendarIcon },
-    { label: 'Requests', value: requests,    Icon: InboxIcon },
-  ];
-
-  return (
-    <div className="mhp-owned-card">
-      {/* Left — cover */}
-      <div className="mhp-card-cover">
-        {hive.banner_url
-          ? <img src={hive.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <HoneycombBg className="mhp-card-cover-hc" id={`hc-cover-${hive.hive_id}`} />}
-        <div className="mhp-card-avatar" aria-hidden="true">{initials(hive.hive_name)}</div>
-      </div>
-
-      {/* Middle — content */}
-      <div className="mhp-card-body">
-        <div className="mhp-card-top-row">
-          <h3 className="mhp-card-name">{hive.hive_name}</h3>
-          <button
-            type="button"
-            className="mhp-dots-btn"
-            aria-label={`More options for ${hive.hive_name}`}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
-            </svg>
-          </button>
-        </div>
-
-        <span className="mhp-owner-pill">Owner</span>
-        {meta && <div className="mhp-card-meta">{meta}</div>}
-        <div className="mhp-card-divider" />
-
-        <div className="mhp-status-block">
-          {isSolo ? (
-            <>
-              <div className="mhp-signal">
-                <span className="mhp-signal-icon" style={{ color: '#c49a28' }}><StarIcon /></span>
-                <span className="mhp-solo-main">Only you are here</span>
-              </div>
-              <div className="mhp-solo-sub">Invite members or explore suggested matches</div>
-            </>
-          ) : (
-            <>
-              <div className="mhp-signal mhp-signal--muted">
-                <span className="mhp-signal-icon"><PeopleIcon size={14} /></span>
-                <span>{memberCount} members</span>
-              </div>
-              {newPosts > 0 ? (
-                <div className="mhp-signal mhp-signal--gold">
-                  <span className="mhp-signal-icon"><MessageIcon size={14} /></span>
-                  <span>{newPosts} unread update{newPosts !== 1 ? 's' : ''}</span>
-                </div>
-              ) : (
-                <div className="mhp-signal mhp-signal--muted">
-                  <span className="mhp-signal-icon"><CheckIcon /></span>
-                  <span>All caught up</span>
-                </div>
-              )}
-            </>
-          )}
-
-          {lastActive && (
-            <div className="mhp-signal mhp-signal--muted">
-              <span className="mhp-signal-icon"><ClockIcon /></span>
-              <span>Last active {lastActive}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="mhp-card-actions">
-          <Link to={`/hive/${hive.hive_id}/members`} className="mhp-btn-invite">
-            <PlusIcon size={13} /> Invite
-          </Link>
-          <Link to={`/hive/${hive.hive_id}`} className="mhp-btn-open">Open Hive →</Link>
-        </div>
-      </div>
-
-      {/* Right — badges */}
-      <BadgeGrid badges={badges} />
-    </div>
-  );
-}
-
-// ── Member Of card ────────────────────────────────────────────────────────────
-
-function MemberHiveCard({ hive }) {
-  const memberCount = Number(hive.member_count ?? 0);
-  const lastActive  = timeAgo(hive.last_activity_at);
-  const meta        = formatMeta(hive);
-
-  return (
-    <Link to={`/hive/${hive.hive_id}`} className="mhp-member-card">
-      <div className="mhp-mc-img">
-        {hive.banner_url
-          ? <img src={hive.banner_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <HoneycombBg className="mhp-mc-hc" id={`hc-mc-${hive.hive_id}`} />}
-      </div>
-      <div className="mhp-mc-body">
-        <div className="mhp-mc-name">{hive.hive_name}</div>
-        <span className="mhp-mc-pill">Member</span>
-        <div className="mhp-mc-meta">
-          {meta}
-          {meta && ' · '}
-          {memberCount} member{memberCount !== 1 ? 's' : ''}
-          {lastActive && ` · ${lastActive}`}
-        </div>
-      </div>
-      <span className="mhp-mc-chevron" aria-hidden="true"><ChevronRight /></span>
-    </Link>
-  );
-}
 
 // ── Section heading ───────────────────────────────────────────────────────────
 
@@ -422,7 +279,9 @@ export default function MyHivePage() {
                 sub="Spaces you create and lead."
               />
               {owned.length > 0 ? (
-                owned.map(h => <OwnedHiveCard key={h.hive_id} hive={h} />)
+                <div className="mhp-card-grid">
+                  {owned.map((h, i) => <HiveCard key={h.hive_id} hive={h} index={i} />)}
+                </div>
               ) : (
                 <div className="mhp-section-empty">
                   <div className="mhp-se-icon" aria-hidden="true"><CrownIcon size={18} /></div>
@@ -450,8 +309,10 @@ export default function MyHivePage() {
                 linkLabel="Explore more Hives →"
               />
               {memberOf.length > 0 ? (
-                <div className="mhp-member-grid">
-                  {memberOf.map(h => <MemberHiveCard key={h.hive_id} hive={h} />)}
+                <div className="mhp-card-grid">
+                  {memberOf.map((h, i) => (
+                    <HiveCard key={h.hive_id} hive={h} index={owned.length + i} />
+                  ))}
                 </div>
               ) : (
                 <div className="mhp-section-empty">

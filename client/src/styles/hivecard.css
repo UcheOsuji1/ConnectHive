@@ -1,0 +1,294 @@
+/* ── HiveCard — elongated hexagon, used in both My Hives sections ───────────── */
+
+.hc {
+  /* Silhouette. Start and end share vertex count AND units so clip-path can
+     tween; the left three vertices are identical in both, so only the right
+     edge travels and the card unfolds rightward. */
+  --clip-end:   polygon(3% 0%, 97% 0%, 100% 50%, 97% 100%, 3% 100%, 0% 50%);
+  --clip-start: polygon(3% 0%, 30% 0%, 34% 50%, 30% 100%, 3% 100%, 0% 50%);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: 34% 1fr;
+  /* Backstop only — the image is out of flow, so height is content-driven. */
+  max-height: 340px;
+  background: #c49a28;                 /* reads as the hairline border */
+  clip-path: var(--clip-end);
+  /* box-shadow is clipped away by clip-path; drop-shadow follows the shape. */
+  filter: drop-shadow(0 4px 14px rgba(35, 31, 28, .10));
+}
+
+/* Near-white fill, inset by the border width. A pseudo-element rather than a
+   positioned child, so the real content still establishes the card's height. */
+.hc::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  background: #fffdf9;
+  clip-path: var(--clip-end);
+  z-index: 0;
+}
+.hc > * { position: relative; z-index: 1; }
+
+/* ── Unfold ──────────────────────────────────────────────────────────────────
+   Only the clip animates. The box is at its final size from frame one, so
+   there is no layout shift and no CLS. */
+@keyframes hc-unfold {
+  from { clip-path: var(--clip-start); }
+  to   { clip-path: var(--clip-end); }
+}
+/* Text visible mid-stretch looks squeezed, so it holds at 0 until 55%. */
+@keyframes hc-content-in {
+  0%, 55% { opacity: 0; }
+  100%    { opacity: 1; }
+}
+
+.hc--anim {
+  animation: hc-unfold 520ms cubic-bezier(.16, .84, .44, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+.hc--anim .hc-content {
+  animation: hc-content-in 520ms cubic-bezier(.16, .84, .44, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+/* Once finished, drop the animation so a later repaint cannot replay it. */
+.hc--done, .hc--done .hc-content { animation: none; }
+
+/* ── Media ───────────────────────────────────────────────────────────────── */
+.hc-media {
+  position: relative;
+  overflow: hidden;
+  /* No aspect-ratio here: as a stretched grid item the media must take the
+     row's full height. An aspect-ratio would SET its height instead and leave
+     white below the cover. The image is out of flow either way, so the card's
+     height still comes only from the content column. */
+  min-height: 140px;
+  background: linear-gradient(135deg, #2d2415 0%, #1e1b18 55%, #3a2a10 100%);
+  /* Chevron right edge cutting into the white. Static, so mixed units are safe. */
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+}
+
+/* Out of flow: whatever the intrinsic size, the image cannot stretch the row. */
+.hc-media-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+.hc-media-hc { position: absolute; inset: 0; width: 100%; height: 100%; opacity: .12; }
+
+.hc-avatar {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #3a2a10, #2d2415);
+  border: 2px solid #c49a28;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .62rem;
+  font-weight: 700;
+  color: #e8c84a;
+  z-index: 2;
+}
+
+/* ── Content ─────────────────────────────────────────────────────────────── */
+.hc-content {
+  padding: 18px 26px 18px 14px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.hc-topright {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.hc-unread {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: rgba(138, 128, 112, .10);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .68rem;
+  font-weight: 500;
+  color: #8a8070;
+  white-space: nowrap;
+}
+.hc-unread--on { background: rgba(196, 154, 40, .14); color: #a97f16; }
+.hc-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+.hc-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  margin: -11px -8px -11px 0;      /* 44px hit area, no added visual bulk */
+  padding: 0;
+  border: none;
+  background: none;
+  color: #8a8070;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.hc-dots:hover { color: #3a3228; }
+.hc-dots:focus-visible { outline: 2px solid #c49a28; outline-offset: -2px; }
+
+.hc-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 1.32rem;
+  font-weight: 600;
+  color: #1e1b18;
+  line-height: 1.15;
+  margin: 0 0 3px;
+  min-width: 0;
+}
+
+.hc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .6rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  background: rgba(138, 128, 112, .13);
+  color: #8a8070;
+  flex-shrink: 0;
+}
+.hc-pill--owner { background: rgba(196, 154, 40, .16); color: #a97f16; }
+
+.hc-meta {
+  font-family: 'DM Sans', sans-serif;
+  font-size: .76rem;
+  color: #8a8070;
+  margin: 0 0 10px;
+}
+
+.hc-status {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(35, 31, 28, .07);
+  margin-bottom: 14px;
+}
+.hc-status-main { display: flex; flex-direction: column; gap: 2px; }
+
+.hc-status-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .8rem;
+  color: #3a3228;
+}
+.hc-status-row--gold  { color: #a97f16; }
+.hc-status-row--muted { color: #8a8070; font-size: .76rem; }
+.hc-status-row strong { font-weight: 600; color: #1e1b18; }
+
+.hc-status-sub {
+  padding-left: 21px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .74rem;
+  color: #8a8070;
+}
+
+/* Separated from the members line, per the design. */
+.hc-last { padding-top: 6px; border-top: 1px dashed rgba(35, 31, 28, .06); }
+
+.hc-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+
+.hc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 44px;
+  padding: 0 13px;
+  border-radius: 999px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: .78rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity .15s, background .15s;
+}
+.hc-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+
+.hc-btn--solid { background: #1e1b18; color: #f5f0e8; }
+.hc-btn--solid:hover { opacity: .86; }
+
+.hc-btn--ghost { border: 1.5px solid rgba(196, 154, 40, .55); color: #a97f16; }
+.hc-btn--ghost:hover { background: rgba(196, 154, 40, .08); }
+
+/* ── 760–900px: one per row, angles reduced ──────────────────────────────── */
+@media (max-width: 900px) {
+  .hc {
+    --clip-end:   polygon(1.5% 0%, 98.5% 0%, 100% 50%, 98.5% 100%, 1.5% 100%, 0% 50%);
+    --clip-start: polygon(1.5% 0%, 30% 0%, 32% 50%, 30% 100%, 1.5% 100%, 0% 50%);
+    grid-template-columns: 30% 1fr;
+  }
+}
+
+/* ── <760px: stacked and squared off ─────────────────────────────────────── */
+@media (max-width: 760px) {
+  .hc {
+    /* Angled edges would eat ~15% of a 390px card, so square them off and
+       unfold downward instead — the stacked layout puts the cover on top,
+       so a downward reveal matches the content order. Same 6 vertices. */
+    --clip-end:   polygon(0% 0%, 100% 0%, 100% 97%, 100% 100%, 0% 100%, 0% 97%);
+    --clip-start: polygon(0% 0%, 100% 0%, 100% 30%, 100% 34%, 0% 34%, 0% 30%);
+    grid-template-columns: 1fr;
+    max-height: none;
+    border-radius: 14px;
+  }
+  .hc::before { border-radius: 13px; }
+
+  .hc-media {
+    aspect-ratio: 16 / 7;
+    clip-path: none;                /* no chevron when stacked */
+    border-radius: 13px 13px 0 0;
+  }
+  .hc-content { padding: 16px; }
+  .hc-actions { flex-direction: column; align-items: stretch; }
+  .hc-btn { width: 100%; }
+  /* Open Hive to the top of the stack. Visual order then leads the DOM order
+     by two buttons within this one group; all three stay focusable and named. */
+  .hc-btn--solid { order: -1; }
+}
+
+/* ── Reduced motion: final clip, content visible, never inert ────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .hc, .hc .hc-content {
+    animation: none !important;
+    clip-path: var(--clip-end);
+    opacity: 1;
+  }
+}

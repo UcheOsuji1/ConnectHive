@@ -1,0 +1,193 @@
+import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import HoneycombBg from './HoneycombBg.jsx';
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+const CrownIcon = ({ size = 11 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M2 18h20l-2-9-5 4-3-7-3 7-5-4z"/>
+  </svg>
+);
+
+const PeopleIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </svg>
+);
+
+const StarIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+  </svg>
+);
+
+const ClockIcon = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+  </svg>
+);
+
+const GearIcon = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+);
+
+const PlusIcon = ({ size = 13 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function timeAgo(dateStr) {
+  if (!dateStr) return null;
+  const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (mins < 2)  return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7)  return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+function initials(name) {
+  if (!name) return '?';
+  return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+}
+
+const prefersReduced = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+//
+// One component for both "Owned by You" and "Member Of". Role pill and the
+// owner-only Manage action are the only differences.
+//
+export default function HiveCard({ hive, index = 0 }) {
+  // Decided synchronously so a reduced-motion user never sees the clipped frame.
+  const [reduced] = useState(prefersReduced);
+  const [unfolded, setUnfolded] = useState(reduced);
+  const ref = useRef(null);
+
+  // A clipped-away button is invisible but still focusable and still in the
+  // a11y tree, so the card is inert until the unfold finishes.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!unfolded) el.setAttribute('inert', '');
+    else el.removeAttribute('inert');
+  }, [unfolded]);
+
+  // Safety net: if the animation never fires (tab backgrounded on mount,
+  // animation stripped), un-inert the card anyway rather than trapping it.
+  useEffect(() => {
+    if (unfolded) return;
+    const t = setTimeout(() => setUnfolded(true), index * 90 + 520 + 400);
+    return () => clearTimeout(t);
+  }, [unfolded, index]);
+
+  const isOwner     = hive.role === 'owner';
+  const memberCount = Number(hive.member_count ?? 0);
+  const newPosts    = Number(hive.new_posts ?? 0);
+  const isSolo      = memberCount <= 1;
+  const lastActive  = timeAgo(hive.last_activity_at);
+  const meta = [hive.category_name, hive.location_type]
+    .filter(Boolean)
+    .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' · ');
+
+  return (
+    <article
+      ref={ref}
+      className={`hc${reduced ? '' : ' hc--anim'}${unfolded ? ' hc--done' : ''}`}
+      style={{ '--i': index }}
+      onAnimationEnd={e => { if (e.animationName === 'hc-unfold') setUnfolded(true); }}
+    >
+      {/* Left — cover. The <img> is absolutely positioned so the image can
+          never contribute to the card's height, whatever its aspect ratio. */}
+      <div className="hc-media">
+        {hive.banner_url
+          ? <img className="hc-media-img" src={hive.banner_url} alt="" />
+          : <HoneycombBg className="hc-media-hc" id={`hc-bg-${hive.hive_id}`} />}
+        <span className="hc-avatar" aria-hidden="true">{initials(hive.hive_name)}</span>
+      </div>
+
+      {/* Right — content */}
+      <div className="hc-content">
+
+        <div className="hc-topright">
+          <span className={`hc-unread${newPosts > 0 ? ' hc-unread--on' : ''}`}>
+            <span className="hc-dot" aria-hidden="true" />
+            {newPosts} unread update{newPosts === 1 ? '' : 's'}
+          </span>
+          <button type="button" className="hc-dots" aria-label={`More options for ${hive.hive_name}`}>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+            </svg>
+          </button>
+        </div>
+
+        <h3 className="hc-name">
+          {hive.hive_name}
+          <span className={`hc-pill${isOwner ? ' hc-pill--owner' : ''}`}>
+            {isOwner && <CrownIcon />}
+            {isOwner ? 'Owner' : 'Member'}
+          </span>
+        </h3>
+
+        {meta && <p className="hc-meta">{meta}</p>}
+
+        <div className="hc-status">
+          {isSolo && isOwner ? (
+            <div className="hc-status-main">
+              <span className="hc-status-row hc-status-row--gold">
+                <StarIcon /> <strong>Only you are here</strong>
+              </span>
+              <span className="hc-status-sub">Invite members or explore suggested matches</span>
+            </div>
+          ) : (
+            <div className="hc-status-main">
+              <span className="hc-status-row">
+                <PeopleIcon /> {memberCount} member{memberCount === 1 ? '' : 's'}
+              </span>
+            </div>
+          )}
+          {lastActive && (
+            <span className="hc-status-row hc-status-row--muted hc-last">
+              <ClockIcon /> Last active {lastActive}
+            </span>
+          )}
+        </div>
+
+        {/* DOM order matches the desktop design (Invite, Manage, Open Hive).
+            Below 760px the solid button is lifted to the top with order:-1. */}
+        <div className="hc-actions">
+          <Link to={`/hive/${hive.hive_id}/members`} className="hc-btn hc-btn--ghost">
+            <PlusIcon /> Invite
+          </Link>
+          {isOwner && (
+            <Link to={`/hive/${hive.hive_id}/settings`} className="hc-btn hc-btn--ghost">
+              <GearIcon /> Manage
+            </Link>
+          )}
+          <Link to={`/hive/${hive.hive_id}`} className="hc-btn hc-btn--solid">Open Hive →</Link>
+        </div>
+
+      </div>
+    </article>
+  );
+}
