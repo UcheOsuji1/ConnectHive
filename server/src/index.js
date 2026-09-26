@@ -12,7 +12,7 @@ import notificationRoutes from './routes/notifications.js';
 import eventRoutes        from './routes/events.js';
 import messageRoutes      from './routes/messages.js';
 import { testConnection } from './db/index.js';
-import { checkSchema, getSchemaState } from './db/schemaGuard.js';
+import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
@@ -71,6 +71,15 @@ app.get('/api/health', (_req, res) => {
       timestamp: new Date().toISOString(),
     });
   }
+  const data = getDataState();
+  if (data.checked && !data.ok) {
+    return res.status(503).json({
+      status: 'degraded',
+      reason: 'Hives exist with no default channel',
+      channellessHives: data.channellessHives,
+      timestamp: new Date().toISOString(),
+    });
+  }
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -110,8 +119,9 @@ server.listen(PORT, async () => {
   await testConnection();
   try {
     await checkSchema();
+    await checkHiveChannels();
   } catch (err) {
     // A guard that throws must not take the process down.
-    console.error('  [startup] schema check could not run:', err.message);
+    console.error('  [startup] startup checks could not run:', err.message);
   }
 });

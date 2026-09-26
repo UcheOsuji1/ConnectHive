@@ -42,9 +42,53 @@ const IMPACT = {
 };
 
 let state = { checked: false, ok: true, missing: [] };
+let dataState = { checked: false, ok: true, channellessHives: [] };
 
 export function getSchemaState() {
   return state;
+}
+
+export function getDataState() {
+  return dataState;
+}
+
+/**
+ * Data-integrity backstop.
+ *
+ * getDefaultChannelId logs loudly when it has to repair a channel-less Hive,
+ * but that only fires when somebody opens that Hive's chat. "Luu and Chuu" sat
+ * channel-less from 24 September precisely because nobody ever did. This
+ * catches the Hive nobody has opened yet.
+ */
+export async function checkHiveChannels() {
+  const { rows } = await query(
+    `SELECT h.hive_id, h.hive_name
+       FROM hives h
+      WHERE NOT EXISTS (
+        SELECT 1 FROM hive_channels c
+         WHERE c.hive_id = h.hive_id AND c.is_default)
+      ORDER BY h.created_at
+      LIMIT 50`,
+  );
+
+  dataState = { checked: true, ok: rows.length === 0, channellessHives: rows };
+
+  if (rows.length) {
+    const line = '!'.repeat(72);
+    console.error(`\n${line}`);
+    console.error(`  DATA FAULT — ${rows.length} Hive(s) have no default channel`);
+    console.error(line);
+    for (const r of rows) console.error(`    ${r.hive_id}  ${r.hive_name}`);
+    console.error('\n  createHive creates #general in-transaction, so these predate that');
+    console.error('  fix or were made another way. Chat will self-repair on first open');
+    console.error('  (and log), but until then these Hives are in a state the code');
+    console.error('  does not expect. /api/health reports 503 while this is non-zero.');
+    console.error(`${line}\n`);
+  } else {
+    console.log('  [startup] data check passed — every Hive has a default channel.');
+  }
+
+  return dataState;
 }
 
 // `schema` is overridable so the guard can be exercised against a scratch
