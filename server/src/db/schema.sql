@@ -117,25 +117,13 @@ $$ LANGUAGE plpgsql;
 
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS hive_code TEXT;
 
--- Backfill existing rows with a unique code. Collision odds are astronomically
--- low at this table size, but the retry loop (plus the unique index below) means
--- we never persist a duplicate even if one happens.
-DO $$
-DECLARE
-  r        RECORD;
-  new_code TEXT;
-BEGIN
-  FOR r IN SELECT hive_id FROM hives WHERE hive_code IS NULL LOOP
-    LOOP
-      new_code := generate_hive_code();
-      EXIT WHEN NOT EXISTS (SELECT 1 FROM hives WHERE hive_code = new_code);
-    END LOOP;
-    UPDATE hives SET hive_code = new_code WHERE hive_id = r.hive_id;
-  END LOOP;
-END $$;
+-- Backfill of existing rows moved to migrations/001_backfill_hive_code.sql
+-- (writes data — must run exactly once).
 
 ALTER TABLE hives ALTER COLUMN hive_code SET DEFAULT generate_hive_code();
-ALTER TABLE hives ALTER COLUMN hive_code SET NOT NULL;
+-- SET NOT NULL lives in migrations/001 because it is only valid once the
+-- backfill has run; asserting it here would fail on a database that has hives
+-- but has not yet been backfilled.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_hives_hive_code ON hives(hive_code);
 
 -- ─── Hive Members ────────────────────────────────────────────────────────────
@@ -314,10 +302,11 @@ CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, crea
 
 -- ─── Join ceremony — first-open welcome flag ────────────────────────────────
 ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS welcome_seen_at TIMESTAMPTZ NULL;
--- Backfill all pre-existing members so they do not see the takeover unexpectedly.
--- New members accepted after this migration will have welcome_seen_at = NULL until
--- they click "Enter Hive" on the takeover.
-UPDATE hive_members SET welcome_seen_at = NOW() WHERE welcome_seen_at IS NULL;
+-- The backfill that used to sit here moved to
+-- migrations/002_backfill_welcome_seen.sql. It must NEVER run on every deploy:
+-- welcome_seen_at IS NULL is also the state of every member who joined since
+-- the last deploy, so repeating it suppresses their welcome takeover silently.
+-- 69 rows were damaged and restored this way on 2026-09-25 — see that file.
 
 -- ─── Hive last-seen tracking ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS hive_last_seen (
@@ -500,13 +489,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_hive_channels_one_default
 CREATE UNIQUE INDEX IF NOT EXISTS idx_hive_channels_name_ci
   ON hive_channels (hive_id, LOWER(name));
 
--- Backfill: seed a default #general channel for every hive that does not have one
-INSERT INTO hive_channels (hive_id, name, channel_type, is_default, position)
-SELECT h.hive_id, 'general', 'text', TRUE, 0
-FROM hives h
-WHERE NOT EXISTS (
-  SELECT 1 FROM hive_channels c WHERE c.hive_id = h.hive_id AND c.is_default
-);
+-- Default #general seeding moved to migrations/003_seed_default_channels.sql
+-- (writes data — must run exactly once).
 
 -- ─── messages.channel_id ──────────────────────────────────────────────────────
 -- Nullable by design: messages written by an older build are never orphaned.
@@ -514,22 +498,15 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS
   channel_id UUID REFERENCES hive_channels(channel_id) ON DELETE CASCADE;
 CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id);
 
--- Backfill existing messages to their hive's default channel
-UPDATE messages m
-SET    channel_id = c.channel_id
-FROM   hive_channels c
-WHERE  c.hive_id   = m.hive_id
-  AND  c.is_default
-  AND  m.channel_id IS NULL;
+-- Backfill of existing messages moved to
+-- migrations/004_backfill_message_channel_id.sql (writes data — runs once).
 
 -- Soft-delete support for channels (idempotent)
 ALTER TABLE hive_channels ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ;
 
 -- ─── Data repair: demote stale elevated roles on non-active rows ──────────────
--- Idempotent. Fixes rows left by removeMember and leaveHive before the role-
--- reset fix was applied. Safe to re-run: no-op once all rows are clean.
-UPDATE hive_members SET role = 'member'
-WHERE membership_status <> 'active' AND role <> 'member';
+-- Moved to migrations/005_repair_stale_member_roles.sql. A repair that runs on
+-- every deploy hides the regression it was written to fix.
 
 -- ─── Auth additions ───────────────────────────────────────────────────────────
 

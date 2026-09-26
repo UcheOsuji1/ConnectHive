@@ -1,0 +1,25 @@
+-- One-time: mark members who predate the join ceremony as having seen it, so
+-- the welcome takeover does not ambush people who joined before it existed.
+--
+-- ============================================================================
+--  DO NOT MOVE THIS BACK INTO schema.sql. DO NOT RUN IT AGAIN.
+-- ============================================================================
+-- This is the statement that made schema.sql unsafe to automate. The
+-- `WHERE welcome_seen_at IS NULL` guard reads as idempotent, but NULL is also
+-- the state of every member who has joined since — someone who joined an hour
+-- ago and has not opened their hive yet looks exactly like a legacy row. Run it
+-- on every deploy and you silently suppress the welcome takeover for everyone
+-- who joined since the previous deploy. It never errors, so nothing surfaces.
+--
+-- This actually happened. On 2026-09-25, running schema.sql to add the consent
+-- columns overwrote 69 hive_members rows that were legitimately still pending
+-- their welcome. They were snapshotted beforehand and reset to NULL afterwards:
+--
+--   before migrate : 69 rows with welcome_seen_at IS NULL
+--   after migrate  :  0  <- backfill had swallowed all of them
+--   after restore  : 69  <- matches the snapshot
+--
+-- Those 69 members are owed their welcome takeover. If a future change makes
+-- this statement run again, they lose it a second time and no error is raised.
+
+UPDATE hive_members SET welcome_seen_at = NOW() WHERE welcome_seen_at IS NULL;
