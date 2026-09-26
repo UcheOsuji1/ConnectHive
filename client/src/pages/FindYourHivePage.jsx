@@ -145,15 +145,7 @@ function QuickFind({ navigate }) {
       setLoading(true);
       try {
         const { hives } = await api.get(`/api/hives/quickfind?q=${encodeURIComponent(q.trim())}`);
-        const enriched = await Promise.all((hives ?? []).map(async (h) => {
-          try {
-            const detail = await api.get(`/api/hives/${h.hive_id}`);
-            return { ...h, logo_url: detail.hive?.logo_url, banner_url: detail.hive?.banner_url };
-          } catch {
-            return h;
-          }
-        }));
-        setResults(enriched);
+        setResults(hives ?? []);
       } catch {
         setResults([]);
       } finally {
