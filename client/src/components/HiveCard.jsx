@@ -132,7 +132,11 @@ export default function HiveCard({ hive, index = 0 }) {
           {hive.banner_url
             ? <img className="hc-media-img" src={hive.banner_url} alt="" />
             : <HoneycombBg className="hc-media-hc" id={`hc-bg-${hive.hive_id}`} />}
-          <span className="hc-avatar" aria-hidden="true">{initials(hive.hive_name)}</span>
+          <span className="hc-avatar" aria-hidden="true">
+            {hive.logo_url
+              ? <img className="hc-avatar-img" src={hive.logo_url} alt="" />
+              : initials(hive.hive_name)}
+          </span>
         </div>
 
         <div className="hc-content">

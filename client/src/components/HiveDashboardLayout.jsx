@@ -12,6 +12,10 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import '../styles/hive-dashboard-layout.css';
 import '../styles/hive-workspace.css';
+// PublicHiveView below uses .dhp-*, .hive-page, .hive-inner and .hive-dark-card,
+// which all live in hive.css. Without this the non-member view of a Hive renders
+// with no styling at all.
+import '../styles/hive.css';
 
 // ── Category hex icon ────────────────────────────────────────────────────────
 const CAT_CFG = {
@@ -48,8 +52,22 @@ function HiveCodeChip({ code }) {
   );
 }
 
-function HexTile({ categoryName, size = 36 }) {
+function HexTile({ categoryName, size = 36, logoUrl = null }) {
   const cfg = CAT_CFG[categoryName] ?? { color: '#8a8070', icon: '✦' };
+  // A Hive with its own logo should show it rather than the generic category
+  // glyph; the hexagon clip keeps the shape consistent either way.
+  if (logoUrl) {
+    return (
+      <img
+        src={logoUrl}
+        alt=""
+        style={{
+          width: size, height: size, flexShrink: 0, objectFit: 'cover',
+          clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+        }}
+      />
+    );
+  }
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg viewBox="0 0 36 36" width={size} height={size} style={{ position: 'absolute', inset: 0 }}>
@@ -229,7 +247,7 @@ function PublicHiveView({ hive, hiveId }) {
         </div>
         <div className="hive-dark-card dhp-header-card">
           <div className="dhp-header-top">
-            <HexTile categoryName={hive.category_name} size={56} />
+            <HexTile categoryName={hive.category_name} size={56} logoUrl={hive.logo_url} />
             <div className="dhp-header-content">
               <div className="dhp-hive-name-row">
                 <span className="dhp-hive-name">{hive.hive_name}</span>

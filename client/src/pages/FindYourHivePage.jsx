@@ -169,6 +169,15 @@ function QuickFind({ navigate }) {
     navigate(`/hive/${hive.hive_id}`);
   };
 
+  // Enter with nothing highlighted goes to the full results page rather than
+  // guessing at the first dropdown row.
+  const submitSearch = () => {
+    const term = q.trim();
+    if (term.length < 2) return;
+    setOpen(false);
+    navigate(`/search?q=${encodeURIComponent(term)}`);
+  };
+
   return (
     <div className="card">
       <div className="lbl">QUICK FIND</div>
@@ -180,6 +189,7 @@ function QuickFind({ navigate }) {
             value={q}
             onChange={(e) => { setQ(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
+            onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
             aria-label="Search Hives by name or code"
           />
         </div>
@@ -190,7 +200,11 @@ function QuickFind({ navigate }) {
             {!loading && results.map(h => (
               <div className="dr" key={h.hive_id} onClick={() => goTo(h)} role="button" tabIndex={0}
                    onKeyDown={(e) => e.key === 'Enter' && goTo(h)}>
-                <div className="dhex" />
+                <div className="dhex">
+                  {(h.logo_url || h.banner_url) && (
+                    <img className="dhex-img" src={h.logo_url || h.banner_url} alt="" />
+                  )}
+                </div>
                 <div>
                   <b>{h.hive_name}</b>
                   <span>{h.category_name || 'Hive'}{h.location ? ` · ${h.location}` : ''}</span>
@@ -198,6 +212,11 @@ function QuickFind({ navigate }) {
                 <div className="dcode">{h.hive_code}</div>
               </div>
             ))}
+            {!loading && results.length > 0 && (
+              <button type="button" className="dr-all" onClick={submitSearch}>
+                See all results for “{q.trim()}” →
+              </button>
+            )}
           </div>
         )}
       </div>

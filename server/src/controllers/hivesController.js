@@ -229,17 +229,27 @@ export const quickFindHives = async (req, res) => {
     const codeGuess    = codeDigits ? `TH-${codeDigits}` : '';
 
     const { rows } = await query(
-      `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type, c.category_name
+    // The results page asks for more than the dropdown does. Capped so the
+    // parameter cannot be used to pull the whole table.
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 50);
+
+    const { rows } = await query(
+      `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type,
+              h.logo_url, h.banner_url, h.description, h.join_policy,
+              c.category_name,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
        FROM hives h
-       LEFT JOIN categories c ON c.category_id = h.category_id
+       LEFT JOIN categories c    ON c.category_id = h.category_id
+       LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.hive_status = 'active'
          AND (
            (h.discoverable = TRUE AND h.hive_name ILIKE $1)
            OR h.hive_code = $2
          )
+       GROUP BY h.hive_id, c.category_name
        ORDER BY (h.hive_code = $2) DESC, h.hive_name ASC
-       LIMIT 8`,
-      [namePattern, codeGuess],
+       LIMIT $3`,
+      [namePattern, codeGuess, limit],
     );
 
     res.json({ hives: rows });
