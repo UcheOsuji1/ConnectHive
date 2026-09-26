@@ -28,6 +28,8 @@
 .qwrap:focus-within .qf { border-color: var(--gold); }
 .qf svg { width: 16px; height: 16px; stroke: #9a9289; fill: none; stroke-width: 2; flex: 0 0 16px; }
 .qf input { border: 0; outline: 0; background: transparent; flex: 1; min-width: 0; font: 400 13.5px 'DM Sans', sans-serif; }
+.qf-submit { border: 0; background: transparent; color: var(--gold-dark); font: 700 11px 'DM Sans', sans-serif; cursor: pointer; padding: 6px 0 6px 6px; }
+.qf-submit:disabled { opacity: .35; cursor: default; }
 .hint { color: #8a8279; font: 400 12px/1.45 'DM Sans', sans-serif; margin-top: 8px; }
 .drop {
   position: absolute; left: 0; right: 0; top: 50px; background: #fff;
@@ -40,7 +42,9 @@
   width: 26px; height: 26px; flex: 0 0 26px;
   clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
   background: linear-gradient(160deg, var(--charcoal-2), var(--charcoal));
+  overflow: hidden;
 }
+.dhex img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .dr b { display: block; font: 600 13.5px 'DM Sans', sans-serif; white-space: nowrap; }
 .dr span { display: block; color: #8a8279; font: 400 11.5px 'DM Sans', sans-serif; }
 .dcode { margin-left: auto; white-space: nowrap; color: var(--gold); font: 600 10.5px 'DM Sans', sans-serif; letter-spacing: .06em; }
