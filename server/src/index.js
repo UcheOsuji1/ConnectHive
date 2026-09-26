@@ -12,6 +12,7 @@ import notificationRoutes from './routes/notifications.js';
 import eventRoutes        from './routes/events.js';
 import messageRoutes      from './routes/messages.js';
 import { testConnection } from './db/index.js';
+import { checkSchema, getSchemaState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
@@ -57,7 +58,19 @@ app.use(express.json());
 app.use(cookieParser());
 
 // ── Health check ──────────────────────────────────────────────────────────────
+// 503 when the database is behind the deployed code, so a deploy that would
+// 500 on signup is visibly unhealthy instead of quietly serving errors.
 app.get('/api/health', (_req, res) => {
+  const schema = getSchemaState();
+  if (schema.checked && !schema.ok) {
+    return res.status(503).json({
+      status: 'degraded',
+      reason: 'database schema is behind the deployed code',
+      missing: schema.missing,
+      fix: 'npm run db:migrate --prefix server',
+      timestamp: new Date().toISOString(),
+    });
+  }
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -95,4 +108,10 @@ server.listen(PORT, async () => {
   console.log(`\n  TrueHive API  →  http://localhost:${PORT}`);
   console.log(`  Health check     →  http://localhost:${PORT}/api/health\n`);
   await testConnection();
+  try {
+    await checkSchema();
+  } catch (err) {
+    // A guard that throws must not take the process down.
+    console.error('  [startup] schema check could not run:', err.message);
+  }
 });
