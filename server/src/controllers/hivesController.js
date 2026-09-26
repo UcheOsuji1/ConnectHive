@@ -228,7 +228,6 @@ export const quickFindHives = async (req, res) => {
     const codeDigits   = qRaw.replace(/^TH-?/i, '').replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     const codeGuess    = codeDigits ? `TH-${codeDigits}` : '';
 
-    const { rows } = await query(
     // The results page asks for more than the dropdown does. Capped so the
     // parameter cannot be used to pull the whole table.
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 8, 1), 50);
