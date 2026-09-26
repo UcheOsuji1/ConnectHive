@@ -145,7 +145,15 @@ function QuickFind({ navigate }) {
       setLoading(true);
       try {
         const { hives } = await api.get(`/api/hives/quickfind?q=${encodeURIComponent(q.trim())}`);
-        setResults(hives);
+        const enriched = await Promise.all((hives ?? []).map(async (h) => {
+          try {
+            const detail = await api.get(`/api/hives/${h.hive_id}`);
+            return { ...h, logo_url: detail.hive?.logo_url, banner_url: detail.hive?.banner_url };
+          } catch {
+            return h;
+          }
+        }));
+        setResults(enriched);
       } catch {
         setResults([]);
       } finally {
@@ -169,6 +177,13 @@ function QuickFind({ navigate }) {
     navigate(`/hive/${hive.hive_id}`);
   };
 
+  const submitSearch = () => {
+    const term = q.trim();
+    if (term.length < 2) return;
+    setOpen(false);
+    navigate(`/hive-search?q=${encodeURIComponent(term)}`);
+  };
+
   return (
     <div className="card">
       <div className="lbl">QUICK FIND</div>
@@ -181,7 +196,11 @@ function QuickFind({ navigate }) {
             onChange={(e) => { setQ(e.target.value); setOpen(true); }}
             onFocus={() => setOpen(true)}
             aria-label="Search Hives by name or code"
+            onKeyDown={(e) => { if (e.key === 'Enter') submitSearch(); }}
           />
+          <button type="button" className="qf-submit" onClick={submitSearch} disabled={q.trim().length < 2} aria-label="Search">
+            Search
+          </button>
         </div>
         {open && q.trim().length >= 2 && (
           <div className="drop">
@@ -190,7 +209,13 @@ function QuickFind({ navigate }) {
             {!loading && results.map(h => (
               <div className="dr" key={h.hive_id} onClick={() => goTo(h)} role="button" tabIndex={0}
                    onKeyDown={(e) => e.key === 'Enter' && goTo(h)}>
-                <div className="dhex" />
+                <div className="dhex">
+                  {h.logo_url
+                    ? <img src={h.logo_url} alt="" />
+                    : h.banner_url
+                      ? <img src={h.banner_url} alt="" />
+                      : null}
+                </div>
                 <div>
                   <b>{h.hive_name}</b>
                   <span>{h.category_name || 'Hive'}{h.location ? ` · ${h.location}` : ''}</span>
