@@ -229,16 +229,21 @@ export const quickFindHives = async (req, res) => {
     const codeGuess    = codeDigits ? `TH-${codeDigits}` : '';
 
     const { rows } = await query(
-      `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type, c.category_name
+      `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type,
+              h.logo_url, h.banner_url, h.description, h.max_members,
+              c.category_name,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
        FROM hives h
        LEFT JOIN categories c ON c.category_id = h.category_id
+       LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
        WHERE h.hive_status = 'active'
          AND (
            (h.discoverable = TRUE AND h.hive_name ILIKE $1)
            OR h.hive_code = $2
          )
+       GROUP BY h.hive_id, c.category_id, c.category_name
        ORDER BY (h.hive_code = $2) DESC, h.hive_name ASC
-       LIMIT 8`,
+       LIMIT 20`,
       [namePattern, codeGuess],
     );
 
