@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import ProfileSetupPage from './pages/ProfileSetupPage';
 import HomePage from './pages/HomePage';
 import FindYourHivePage from './pages/FindYourHivePage';
+import HiveSearchResultsPage from './pages/HiveSearchResultsPage';
 import CategoryDeepDivePage from './pages/CategoryDeepDivePage';
 import ChooseHivePathPage from './pages/ChooseHivePathPage';
 import HiveDiscoveryPage from './pages/HiveDiscoveryPage';
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/profile/edit" element={<ProfileSetupPage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/find-your-hive" element={<FindYourHivePage />} />
+        <Route path="/hive-search" element={<HiveSearchResultsPage />} />
         <Route path="/category-deep-dive" element={<CategoryDeepDivePage />} />
         <Route path="/choose-path" element={<ChooseHivePathPage />} />
         <Route path="/hive-discovery" element={<HiveDiscoveryPage />} />
