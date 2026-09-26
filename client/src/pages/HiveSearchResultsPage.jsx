@@ -19,14 +19,8 @@ export default function HiveSearchResultsPage() {
     let live = true;
     setLoading(true);
     api.get(`/api/hives/quickfind?q=${encodeURIComponent(query.trim())}`)
-      .then(async ({ hives: found }) => {
-        const enriched = await Promise.all((found ?? []).map(async h => {
-          try {
-            const d = await api.get(`/api/hives/${h.hive_id}`);
-            return { ...h, ...d.hive };
-          } catch { return h; }
-        }));
-        if (live) setHives(enriched);
+      .then(({ hives: found }) => {
+        if (live) setHives(found ?? []);
       })
       .catch(() => live && setHives([]))
       .finally(() => live && setLoading(false));
