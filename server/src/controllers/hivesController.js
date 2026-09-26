@@ -721,80 +721,99 @@ export const createHive = async (req, res) => {
 
     const locationType = meetingType ? meetingType.toLowerCase() : null;
 
-    const { rows: [hive] } = await query(
-      `INSERT INTO hives (
-        creator_user_id, category_id, hive_name, description, ideal_members,
-        max_members, activation_threshold, tags, join_policy, discoverable,
-        location_type, location, cadence, pinned_goal, ground_rules, icebreaker,
-        hive_values
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-      RETURNING *`,
-      [
-        userId,
-        categoryId,
-        name.trim(),
-        description || null,
-        idealMembers || null,
-        maxMembers ?? null,
-        activationThreshold || 3,
-        JSON.stringify(Array.isArray(tags) ? tags : []),
-        joinPolicy || 'open',
-        discoverable ?? true,
-        locationType,
-        location || null,
-        cadence || null,
-        pinnedGoal || null,
-        groundRules || null,
-        icebreaker || null,
-        JSON.stringify(Array.isArray(hiveValues) ? hiveValues : []),
-      ],
-    );
-
-    // Add creator as owner; stamp welcome_seen_at so they skip the takeover
+    // Hive, owner membership, default channel and onboarding settings are one
+    // unit of work. Previously these were separate pool queries with a
+    // hand-rolled compensating DELETE for the membership step, and no channel
+    // insert at all — a Hive could exist with no #general, which only ever got
+    // repaired by a backfill or lazily on first chat load.
+    const client = await getClient();
     try {
-      await query(
+      await client.query('BEGIN');
+
+      const { rows: [hive] } = await client.query(
+        `INSERT INTO hives (
+          creator_user_id, category_id, hive_name, description, ideal_members,
+          max_members, activation_threshold, tags, join_policy, discoverable,
+          location_type, location, cadence, pinned_goal, ground_rules, icebreaker,
+          hive_values
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+        RETURNING *`,
+        [
+          userId,
+          categoryId,
+          name.trim(),
+          description || null,
+          idealMembers || null,
+          maxMembers ?? null,
+          activationThreshold || 3,
+          JSON.stringify(Array.isArray(tags) ? tags : []),
+          joinPolicy || 'open',
+          discoverable ?? true,
+          locationType,
+          location || null,
+          cadence || null,
+          pinnedGoal || null,
+          groundRules || null,
+          icebreaker || null,
+          JSON.stringify(Array.isArray(hiveValues) ? hiveValues : []),
+        ],
+      );
+
+      // Add creator as owner; stamp welcome_seen_at so they skip the takeover.
+      // No compensating DELETE needed any more — the transaction covers it.
+      await client.query(
         `INSERT INTO hive_members (hive_id, user_id, role, membership_status, welcome_seen_at)
          VALUES ($1, $2, 'owner', 'active', NOW())`,
         [hive.hive_id, userId],
       );
-    } catch (memberErr) {
-      await query('DELETE FROM hives WHERE hive_id = $1', [hive.hive_id]);
-      throw memberErr;
-    }
 
-    // Create onboarding settings if provided (otherwise lazy-created on first access)
-    if (onboarding) {
-      const joinExp = ['simple', 'standard', 'guided'].includes(onboarding.join_experience)
-        ? onboarding.join_experience : 'standard';
-      // steps_seeded = true when owner chose "blank" — suppresses default step seeding on first GET
-      const stepsSeeded = !!onboarding.skip_default_steps;
-      await query(
-        `INSERT INTO hive_onboarding_settings
-           (hive_id, join_experience, show_welcome_banner, show_owner_note,
-            send_welcome_notif, require_photo, completion_unlocks, steps_seeded)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         ON CONFLICT (hive_id) DO UPDATE SET
-           join_experience     = EXCLUDED.join_experience,
-           show_welcome_banner = EXCLUDED.show_welcome_banner,
-           show_owner_note     = EXCLUDED.show_owner_note,
-           send_welcome_notif  = EXCLUDED.send_welcome_notif,
-           require_photo       = EXCLUDED.require_photo,
-           completion_unlocks  = EXCLUDED.completion_unlocks,
-           steps_seeded        = EXCLUDED.steps_seeded,
-           updated_at          = NOW()`,
-        [
-          hive.hive_id, joinExp,
-          onboarding.show_welcome_banner ?? true,
-          onboarding.show_owner_note ?? true,
-          onboarding.send_welcome_notif ?? true,
-          onboarding.require_photo ?? false,
-          onboarding.completion_unlocks ?? false,
-          stepsSeeded,
-        ],
+      // Every Hive gets its #general from the moment it exists.
+      await client.query(
+        `INSERT INTO hive_channels (hive_id, name, channel_type, is_default, position)
+         VALUES ($1, 'general', 'text', TRUE, 0)`,
+        [hive.hive_id],
       );
-    }
 
-    res.status(201).json({ id: hive.hive_id, hive });
+      // Create onboarding settings if provided (otherwise lazy-created on first access)
+      if (onboarding) {
+        const joinExp = ['simple', 'standard', 'guided'].includes(onboarding.join_experience)
+          ? onboarding.join_experience : 'standard';
+        // steps_seeded = true when owner chose "blank" — suppresses default step seeding on first GET
+        const stepsSeeded = !!onboarding.skip_default_steps;
+        await client.query(
+          `INSERT INTO hive_onboarding_settings
+             (hive_id, join_experience, show_welcome_banner, show_owner_note,
+              send_welcome_notif, require_photo, completion_unlocks, steps_seeded)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (hive_id) DO UPDATE SET
+             join_experience     = EXCLUDED.join_experience,
+             show_welcome_banner = EXCLUDED.show_welcome_banner,
+             show_owner_note     = EXCLUDED.show_owner_note,
+             send_welcome_notif  = EXCLUDED.send_welcome_notif,
+             require_photo       = EXCLUDED.require_photo,
+             completion_unlocks  = EXCLUDED.completion_unlocks,
+             steps_seeded        = EXCLUDED.steps_seeded,
+             updated_at          = NOW()`,
+          [
+            hive.hive_id, joinExp,
+            onboarding.show_welcome_banner ?? true,
+            onboarding.show_owner_note ?? true,
+            onboarding.send_welcome_notif ?? true,
+            onboarding.require_photo ?? false,
+            onboarding.completion_unlocks ?? false,
+            stepsSeeded,
+          ],
+        );
+      }
+
+      await client.query('COMMIT');
+      return res.status(201).json({ id: hive.hive_id, hive });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('[hives/createHive]', err);
     res.status(500).json({ error: 'Failed to create Hive.' });
