@@ -354,10 +354,11 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 }
 @media (min-width: 1024px) { .hero-inner { padding: 80px 56px 80px 32px; } }
 @media (max-width: 900px) {
-  .hero-inner { grid-template-columns: 1fr; gap: 48px; padding: 36px 24px 0; }
+  .hero-inner { grid-template-columns: 1fr; gap: 48px; padding: 26px 24px 0; }
   .hero { flex-direction: column; align-items: stretch; min-height: min(640px, 88svh); }
   .hero-support { display: none; }
-  .hero-ctas { margin-bottom: 0; }
+  /* .hero-ctas margin override moved below its base rule — same specificity
+     means the later rule wins, so it was dead here. See .hero-right. */
 }
 
 .hero-left { max-width: 580px; }
@@ -378,6 +379,14 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
   font-size: .95rem; color: var(--text-light); line-height: 1.75; margin-bottom: 36px;
 }
 .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 44px; }
+/* Must come after the base rule or the 44px wins. Every pixel of hero height
+   narrows the visible slice of the hero photo, so this matters on mobile. */
+@media (max-width: 900px) {
+  .hero-ctas   { margin-bottom: 0; }
+  .hero-eyebrow{ margin-bottom: 14px; }
+  .hero h1     { margin-bottom: 14px; }
+  .hero-sub    { font-size: 1rem; line-height: 1.6; margin-bottom: 12px; }
+}
 
 .hero h1                  { color: #FFFFFF; }
 .hero h1 em               { color: var(--gold); }
@@ -400,13 +409,17 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .hero-floats { display: none; }
 @media (max-width: 900px) {
   .hero-floats {
-    display: flex; flex-direction: column; gap: 10px;
-    margin-top: auto; padding: 0 18px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+    margin-top: auto; padding: 0 18px 14px;
     position: relative; z-index: 2;
   }
+  /* Card 1 is carried by the match pill and the name; the chip row is the
+     cheapest 30px on the page. Card 2 keeps its chips. */
+  .hero-float-wrap:nth-child(1) .hf-chips { display: none; }
+  .hero-float-wrap:nth-child(1) .hf-sub   { margin-bottom: 0; }
 }
 .hero-float {
-  border-radius: 17px; padding: 13px 15px;
+  border-radius: 17px; padding: 10px 14px;
   background: rgba(26,23,20,.60);
   backdrop-filter: blur(16px) saturate(1.15);
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
@@ -421,7 +434,7 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .hero-float-wrap:nth-child(2) { margin-top: -14px; margin-left: 54px; }
 .hero-float-wrap:nth-child(1) .hero-float { rotate: -1.6deg; }
 .hero-float-wrap:nth-child(2) .hero-float { rotate:  1.3deg; }
-.hf-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.hf-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .hf-match-pill {
   background: var(--gold); color: var(--charcoal);
   font-size: .68rem; font-weight: 700; letter-spacing: .04em;
@@ -433,9 +446,9 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 }
 .hf-name {
   font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 600;
-  color: #FFFFFF; line-height: 1.25; margin-bottom: 4px;
+  color: #FFFFFF; line-height: 1.25; margin-bottom: 3px;
 }
-.hf-sub { font-size: .75rem; color: rgba(255,255,255,.62); margin-bottom: 8px; }
+.hf-sub { font-size: .75rem; color: rgba(255,255,255,.62); margin-bottom: 6px; }
 .hf-chips { display: flex; gap: 5px; flex-wrap: wrap; }
 .hf-chip {
   background: rgba(255,255,255,.12); color: rgba(255,255,255,.86);
@@ -477,6 +490,12 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 .fc-bottom    { bottom: 10%; left: 50%; transform: translateX(-50%); }
 
 .fc-match { display: flex; align-items: center; gap: 8px; }
+/* Matches .hf-eyebrow on the mobile float so both tell the same story: these
+   are illustrative cards, not live matches. */
+.fc-eyebrow {
+  font-size: .6rem; font-weight: 500; color: var(--text-light);
+  text-transform: uppercase; letter-spacing: .07em;
+}
 .fc-badge {
   background: linear-gradient(135deg, var(--gold), var(--gold-dark));
   color: var(--white); font-size: .7rem; font-weight: 700;

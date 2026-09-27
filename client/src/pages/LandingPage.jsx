@@ -316,6 +316,7 @@ export default function LandingPage() {
               <div className="float-card fc-top-left" aria-hidden="true">
                 <div className={`card-anim card-${card1.phase}`}>
                   <div className="fc-match">
+                    <span className="fc-eyebrow">Example</span>
                     <span className="fc-badge">{CARD1_DATA[card1.index].match} Match</span>
                   </div>
                   <div className="fc-name">{CARD1_DATA[card1.index].name}</div>
@@ -655,7 +656,10 @@ export default function LandingPage() {
               </p>
               <div className="why-pillars" style={{marginTop:'32px'}}>
                 <div className="pillar reveal reveal-delay-3">
-                  <div className="pillar-num">92%</div>
+                  {/* Sits under "Transparent Match Score", so it reads as a score
+                      the matcher can actually produce. Kept at/below the real
+                      ceiling (~76) like every other demo percentage. */}
+                  <div className="pillar-num">74%</div>
                   <div>
                     <div className="pillar-title">Transparent Match Score</div>
                     <div className="pillar-desc">You see the score and the reason, not just a number.</div>
@@ -770,7 +774,7 @@ export default function LandingPage() {
                     </div>
                     <div className="feed-item-content">
                       <div className="feed-item-title">Suggested Hive: Founders Circle</div>
-                      <div className="feed-item-sub">88% match · Professional Networking</div>
+                      <div className="feed-item-sub">72% match · Professional Networking</div>
                     </div>
                     <div className="feed-dot"></div>
                   </div>
@@ -794,7 +798,7 @@ export default function LandingPage() {
                     </div>
                     <div className="feed-item-content">
                       <div className="feed-item-title">Trending: Startup Builders Hive</div>
-                      <div className="feed-item-sub">91% match · 3 spots remaining</div>
+                      <div className="feed-item-sub">75% match · 3 spots remaining</div>
                     </div>
                     <div className="feed-dot"></div>
                   </div>
