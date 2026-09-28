@@ -23,7 +23,8 @@ const REQUIRED = {
   profiles: ['connection_purposes', 'social_preferences'],
   hives: ['hive_code', 'banner_url', 'logo_url', 'cadence', 'hive_values'],
   hive_members: ['welcome_seen_at', 'onboarding_status'],
-  hive_posts: ['visibility'],
+  hive_posts: ['visibility', 'event_end_at', 'plan_type'],
+  event_rsvps: ['updated_at'],
   messages: ['channel_id', 'edited_at', 'deleted_at'],
   post_comments: ['parent_comment_id'],
 };
@@ -38,6 +39,9 @@ const IMPACT = {
   'users.token_version':        'logout-everywhere and password reset',
   'hives.hive_code':            'hive invite codes and direct hive links',
   'hive_posts.visibility':      'the hive feed — post queries fail',
+  'hive_posts.event_end_at':    'Plans page — plan queries fail',
+  'hive_posts.plan_type':       'Plans page — plan queries fail',
+  'event_rsvps.updated_at':     'RSVPs — every RSVP change fails',
   'messages.channel_id':        'hive chat channels',
 };
 

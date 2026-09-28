@@ -549,3 +549,33 @@ CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);
 ALTER TABLE hive_posts ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'hive'
   CHECK (visibility IN ('hive','public'));
 CREATE INDEX IF NOT EXISTS idx_hive_posts_visibility ON hive_posts(hive_id, visibility);
+
+-- ─── Plans (Phase 1b) ─────────────────────────────────────────────────────────
+-- A "plan" is a hive_posts row with post_type = 'event'. No plans table: these
+-- columns extend the existing event post. Both are nullable and deliberately
+-- NOT backfilled — a NULL plan_type is read as 'other' by the application.
+
+ALTER TABLE hive_posts ADD COLUMN IF NOT EXISTS event_end_at TIMESTAMPTZ;
+ALTER TABLE hive_posts ADD COLUMN IF NOT EXISTS plan_type    TEXT;
+
+-- Drop-then-add so re-running the schema does not error on the CHECK.
+ALTER TABLE hive_posts DROP CONSTRAINT IF EXISTS hive_posts_plan_type_check;
+ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_plan_type_check
+  CHECK (plan_type IS NULL OR plan_type IN
+    ('networking','hangout','food_drinks','outdoors','games','meeting','workshop','trip','other'));
+
+ALTER TABLE hive_posts DROP CONSTRAINT IF EXISTS hive_posts_event_end_check;
+ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_event_end_check
+  CHECK (event_end_at IS NULL OR (event_at IS NOT NULL AND event_end_at > event_at));
+
+-- Widen RSVP states from the original 'going'-only check. Every existing row is
+-- already 'going', so this changes no data.
+ALTER TABLE event_rsvps DROP CONSTRAINT IF EXISTS event_rsvps_rsvp_status_check;
+ALTER TABLE event_rsvps ADD CONSTRAINT event_rsvps_rsvp_status_check
+  CHECK (rsvp_status IN ('going','maybe','not_going'));
+
+ALTER TABLE event_rsvps ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+-- Partial index: the Plans page always filters to event posts within one Hive.
+CREATE INDEX IF NOT EXISTS idx_hive_posts_plans
+  ON hive_posts(hive_id, event_at) WHERE post_type = 'event';

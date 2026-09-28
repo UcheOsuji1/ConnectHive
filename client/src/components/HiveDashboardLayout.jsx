@@ -156,7 +156,7 @@ function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
         <NavItem label="Hive Home" sub="" />
         <NavItem label="Feed"      sub="feed" />
         <NavItem label="Chat"      sub="chat"    badge={chatUnread > 0 ? (chatUnread > 99 ? '99+' : chatUnread) : null} />
-        <NavItem label="Plans"     sub="events"  soon />
+        <NavItem label="Plans"     sub="events" />
         <NavItem label="Members"   sub="members" />
         {/* About was gated behind !isOwner, so owners and admins could not
             reach their own Hive's About page from the nav. Now shown to all. */}

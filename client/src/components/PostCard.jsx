@@ -465,6 +465,13 @@ export default function PostCard({ post: initialPost, variant }) {
         </div>
       )}
 
+      {/* Plans lives inside the Hive dashboard, so only members can follow it. */}
+      {post.post_type === 'event' && post.is_member && (
+        <Link to={`/hive/${post.hive_id}/events`} className="post-event-plans">
+          View in Plans →
+        </Link>
+      )}
+
       {/* ── Reaction summary ── */}
       {reactionCount > 0 && (
         <div className="post-reaction-summary">

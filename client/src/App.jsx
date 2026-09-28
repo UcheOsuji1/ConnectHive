@@ -28,6 +28,7 @@ import HiveSettingsPage from './pages/hive/HiveSettingsPage';
 import HiveAboutPage from './pages/hive/HiveAboutPage';
 import HiveSoonPage from './pages/hive/HiveSoonPage';
 import HiveChatPage from './pages/hive/HiveChatPage';
+import HivePlansPage from './pages/hive/HivePlansPage';
 import HiveOnboardingPage from './pages/HiveOnboardingPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -90,7 +91,7 @@ export default function App() {
           <Route path="about" element={<HiveAboutPage />} />
           <Route path="chat" element={<HiveChatPage />} />
           <Route path="chat/:channelId" element={<HiveChatPage />} />
-          <Route path="events" element={<HiveSoonPage feature="Events" />} />
+          <Route path="events" element={<HivePlansPage />} />
           <Route path="analytics" element={<HiveSoonPage feature="Analytics" />} />
           <Route path="roles" element={<HiveSoonPage feature="Roles & Permissions" />} />
           <Route path="integrations" element={<HiveSoonPage feature="Integrations" />} />

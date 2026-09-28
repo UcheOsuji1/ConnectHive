@@ -144,6 +144,19 @@
 }
 .post-event-meta span { display: flex; align-items: center; gap: 4px; }
 
+.post-event-plans {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-bottom: 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c49a28;
+  text-decoration: none;
+}
+.post-event-plans:hover { text-decoration: underline; }
+
 /* Footer: reaction + comment counts */
 .post-footer {
   display: flex;

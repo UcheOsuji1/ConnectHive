@@ -1528,7 +1528,8 @@ export const getUploadSignature = async (req, res) => {
       return res.status(503).json({ error: 'Image uploads are not configured yet.' });
     }
 
-    const type      = req.body.type === 'logo' ? 'logos' : 'banners';
+    const FOLDERS   = { logo: 'logos', plan: 'plans', banner: 'banners' };
+    const type      = FOLDERS[req.body.type] ?? 'banners';
     const folder    = `hives/${req.params.id}/${type}`;
     const timestamp = Math.round(Date.now() / 1000);
 

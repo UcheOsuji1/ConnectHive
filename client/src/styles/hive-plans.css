@@ -1,0 +1,439 @@
+/* ── Plans page (plans-) ──────────────────────────────────────────────────────
+   Uses the --hdl-* tokens from hive-dashboard-layout.css; no new colours.     */
+
+.plans-page { padding: 4px 0 60px; font-family: 'DM Sans', system-ui, sans-serif; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+.plans-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 16px; flex-wrap: wrap; margin-bottom: 18px;
+}
+/* Lets the subtitle wrap under the title while Create stays on the same row,
+   which is what the mockup does at 390 as well as 1440. */
+.plans-headtext { flex: 1 1 150px; min-width: 0; }
+.plans-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 2.1rem; font-weight: 600; color: var(--hdl-ink);
+  line-height: 1.1; margin: 0 0 4px;
+}
+.plans-sub { font-size: .87rem; color: var(--hdl-muted); margin: 0; max-width: 560px; }
+
+.plans-btn-gold {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 20px; border: none; border-radius: 999px;
+  background: linear-gradient(120deg, #e8c84a 0%, var(--hdl-gold) 100%);
+  color: #17120a; font-size: .86rem; font-weight: 700; cursor: pointer;
+  font-family: inherit; text-decoration: none;
+}
+.plans-btn-gold:hover { opacity: .9; }
+.plans-btn-gold:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+.plans-create { flex-shrink: 0; }
+
+.plans-btn-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 18px; border-radius: 999px;
+  border: 1.5px solid rgba(196,154,40,.5); background: none;
+  color: #a97f16; font-size: .84rem; font-weight: 600; cursor: pointer;
+  font-family: inherit; text-decoration: none;
+}
+.plans-btn-ghost:hover { background: rgba(196,154,40,.08); }
+.plans-btn-ghost:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+
+.plans-btn-text {
+  min-height: 44px; padding: 0 2px; border: none; background: none;
+  color: #a97f16; font-size: .8rem; font-weight: 600; cursor: pointer;
+  font-family: inherit;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.plans-tabs {
+  display: flex; gap: 4px; border-bottom: 1px solid rgba(35,31,28,.1);
+  margin-bottom: 20px; flex-wrap: wrap;
+}
+.plans-tab {
+  min-height: 44px; padding: 0 14px; border: none; background: none;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  font-family: inherit; font-size: .88rem; color: var(--hdl-muted); cursor: pointer;
+}
+.plans-tab--on { color: var(--hdl-ink); font-weight: 600; border-bottom-color: var(--hdl-gold); }
+.plans-tab:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+
+.plans-pillcount {
+  display: inline-block; margin-left: 5px; padding: 1px 7px;
+  border-radius: 999px; background: rgba(35,31,28,.07);
+  font-size: .7rem; font-weight: 600; color: var(--hdl-muted);
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+.plans-layout {
+  display: grid; grid-template-columns: 1fr 280px; gap: 22px; align-items: start;
+}
+.plans-main { min-width: 0; }
+.plans-rail { position: sticky; top: 90px; display: flex; flex-direction: column; gap: 14px; }
+
+/* ── Hero ─────────────────────────────────────────────────────────────────── */
+.plans-hero {
+  position: relative; border-radius: 16px; overflow: hidden;
+  min-height: 300px; display: flex; flex-direction: column;
+  justify-content: space-between; padding: 16px;
+  background-size: cover; background-position: center;
+  margin-bottom: 26px;
+}
+.plans-hero--nocover { background-image: linear-gradient(135deg,#2d200a,#5a4214 60%,#c49a28 140%); }
+.plans-hero-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(20,16,10,.25) 0%, rgba(20,16,10,.88) 72%);
+}
+.plans-hero-top,
+.plans-hero-body { position: relative; z-index: 1; }
+.plans-hero-top { display: flex; justify-content: space-between; gap: 8px; }
+
+.plans-chip {
+  display: inline-flex; align-items: center; border-radius: 999px;
+  padding: 4px 11px; font-size: .68rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; white-space: nowrap;
+}
+.plans-chip--next { background: var(--hdl-gold); color: #17120a; }
+/* Sentence case — "In 3 days" reads as a phrase, not a label. */
+.plans-chip--when {
+  background: rgba(0,0,0,.55); color: #f3ead5;
+  text-transform: none; letter-spacing: 0; font-weight: 600; font-size: .7rem;
+}
+.plans-chip--sm { font-size: .62rem; padding: 3px 9px; text-transform: none; letter-spacing: 0; }
+
+.plans-hero-title {
+  font-family: 'Cormorant Garamond', serif; font-size: 2rem; font-weight: 600;
+  color: #fff; line-height: 1.12; margin: 0 0 8px;
+}
+.plans-hero-meta {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  font-size: .82rem; color: rgba(255,255,255,.88); margin-bottom: 14px;
+}
+.plans-hero-foot {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 18px; flex-wrap: wrap;
+}
+/* Host block shrinks so the RSVP button stays on the same row as the host,
+   as in the mockup, instead of wrapping onto its own line. */
+.plans-host { display: flex; gap: 10px; align-items: flex-start; min-width: 0; flex: 1 1 260px; }
+.plans-host-txt { min-width: 0; }
+.plans-host-name {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  font-size: .84rem; font-weight: 600; color: #fff; margin-bottom: 3px;
+}
+.plans-hero-desc {
+  font-size: .8rem; color: rgba(255,255,255,.78); line-height: 1.5;
+  margin: 0; max-width: 100%;
+}
+.plans-hero-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.plans-role {
+  display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px;
+  background: rgba(196,154,40,.22); color: var(--hdl-gold);
+  font-size: .6rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+}
+
+/* ── Avatar stack + counts ────────────────────────────────────────────────── */
+.plans-people {
+  display: flex; align-items: center; gap: 9px; min-height: 44px;
+  border: none; background: none; cursor: pointer; font-family: inherit;
+  padding: 0; color: inherit;
+}
+.plans-people:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; border-radius: 8px; }
+.plans-avstack { display: flex; }
+.plans-avstack > * { margin-left: -8px; border: 2px solid rgba(255,255,255,.9); border-radius: 50%; }
+.plans-avstack > *:first-child { margin-left: 0; }
+.plans-avmore {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%; margin-left: -8px;
+  background: #3a3228; color: #f3ead5; font-size: .62rem; font-weight: 700;
+  border: 2px solid rgba(255,255,255,.9);
+}
+.plans-avmore--sm { width: 22px; height: 22px; font-size: .58rem; }
+.plans-count { font-size: .8rem; color: #fff; white-space: nowrap; }
+.plans-count--stacked {
+  display: flex; flex-direction: column; line-height: 1.25; color: var(--hdl-ink);
+}
+.plans-count--stacked b { font-size: .8rem; font-weight: 600; }
+.plans-count--stacked em { font-style: normal; font-size: .72rem; color: var(--hdl-muted); }
+
+/* ── Section head ─────────────────────────────────────────────────────────── */
+.plans-secthead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+.plans-secttitle {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.35rem;
+  font-weight: 600; color: var(--hdl-ink); margin: 0;
+}
+.plans-sectmeta { font-size: .76rem; color: var(--hdl-muted); }
+.plans-onlyone { font-size: .82rem; color: var(--hdl-muted); margin: 6px 0 0; }
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+/* 250px, not 268px: the dashboard's content column is ~831px at 1440, and a
+   268px minimum falls five pixels short of the mockup's three-up row. */
+.plans-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;
+}
+.plans-card {
+  background: #fff; border: 1px solid rgba(35,31,28,.09); border-radius: 14px;
+  overflow: hidden; display: flex; flex-direction: column; min-width: 0;
+}
+.plans-card--past .plans-card-cover { filter: grayscale(.75) brightness(.9); }
+
+.plans-card-cover {
+  position: relative; height: 120px; background-size: cover; background-position: center;
+  display: flex; align-items: center; justify-content: center;
+}
+.plans-card-cover--nocover { background-image: linear-gradient(135deg,#2d200a,#5a4214 60%,#c49a28 140%); }
+.plans-cover-word {
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 1.3rem; color: rgba(255,255,255,.92);
+}
+.plans-tag {
+  position: absolute; top: 10px; left: 10px; z-index: 1;
+  background: rgba(255,255,255,.92); color: #3a3228;
+  border-radius: 999px; padding: 3px 9px;
+  font-size: .6rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+}
+.plans-card-cover .plans-chip--when { position: absolute; top: 10px; right: 10px; z-index: 1; }
+
+.plans-card-body { padding: 14px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.plans-card-title {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.15rem;
+  font-weight: 600; color: var(--hdl-ink); margin: 0; line-height: 1.2;
+}
+.plans-card-meta { font-size: .76rem; color: var(--hdl-muted); }
+.plans-card-desc {
+  font-size: .8rem; color: #4a4036; line-height: 1.5; margin: 4px 0 0;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.plans-card-host {
+  display: flex; align-items: center; gap: 7px; margin-top: 8px;
+  padding-top: 9px; border-top: 1px solid rgba(35,31,28,.07);
+  font-size: .76rem; color: var(--hdl-muted);
+}
+.plans-card-foot {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-top: auto; padding-top: 10px; flex-wrap: wrap;
+}
+
+/* ── RSVP ─────────────────────────────────────────────────────────────────── */
+.plans-rsvp { position: relative; }
+.plans-rsvp-btn {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 40px;
+  padding: 0 15px; border-radius: 999px; cursor: pointer; font-family: inherit;
+  font-size: .8rem; font-weight: 600;
+  border: 1.5px solid rgba(196,154,40,.55); background: #fff; color: #a97f16;
+}
+.plans-rsvp-btn--going     { background: var(--hdl-gold); border-color: var(--hdl-gold); color: #17120a; }
+.plans-rsvp-btn--maybe     { background: rgba(196,154,40,.18); border-color: rgba(196,154,40,.4); color: #8a6510; }
+.plans-rsvp-btn--not_going { background: #f5f0e8; border-color: rgba(35,31,28,.16); color: #6b6057; }
+.plans-rsvp-btn:disabled { opacity: .6; cursor: default; }
+.plans-rsvp-btn:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+.plans-rsvp-caret { font-size: .7rem; }
+
+.plans-rsvp-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  min-width: 176px; padding: 5px; border-radius: 12px; background: #fff;
+  border: 1px solid rgba(35,31,28,.1); box-shadow: 0 10px 30px rgba(35,31,28,.16);
+  display: flex; flex-direction: column;
+}
+.plans-rsvp-menu--up { top: auto; bottom: calc(100% + 6px); }
+.plans-rsvp-item {
+  text-align: left; min-height: 40px; padding: 0 11px; border: none; background: none;
+  border-radius: 8px; font-family: inherit; font-size: .82rem; color: #3a3228; cursor: pointer;
+}
+.plans-rsvp-item:hover { background: #f5f0e8; }
+.plans-rsvp-item:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+.plans-rsvp-item--on { color: #a97f16; font-weight: 700; }
+.plans-rsvp-item--clear { color: #8a8070; }
+.plans-rsvp-div { height: 1px; background: rgba(35,31,28,.09); margin: 4px 0; }
+
+/* ── Rail ─────────────────────────────────────────────────────────────────── */
+.plans-panel {
+  background: #fff; border: 1px solid rgba(35,31,28,.09);
+  border-radius: 14px; padding: 15px 16px 17px;
+}
+.plans-panel--dim { opacity: .45; }
+.plans-paneltitle {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.15rem;
+  font-weight: 600; color: var(--hdl-ink); margin: 0 0 11px;
+}
+.plans-panelbody { font-size: .82rem; color: var(--hdl-muted); line-height: 1.55; margin: 0; }
+
+.plans-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.plans-stat {
+  background: #faf6ee; border-radius: 10px; padding: 11px 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.plans-stat--wide { grid-column: 1 / -1; }
+.plans-stat b {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.6rem;
+  font-weight: 700; color: var(--hdl-ink); line-height: 1;
+}
+.plans-stat span { font-size: .72rem; color: var(--hdl-muted); line-height: 1.3; }
+
+.plans-filterlabel {
+  font-size: .64rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--hdl-muted2); margin: 14px 0 7px;
+}
+.plans-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.plans-pill {
+  min-height: 34px; padding: 0 11px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(35,31,28,.14); background: #fff;
+  font-family: inherit; font-size: .76rem; color: #4a4036;
+}
+.plans-pill--on { background: rgba(196,154,40,.16); border-color: rgba(196,154,40,.5); color: #a97f16; font-weight: 600; }
+.plans-pill:disabled { opacity: .4; cursor: default; }
+.plans-pill:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+
+/* ── Empty + states ───────────────────────────────────────────────────────── */
+.plans-empty {
+  background: #fff; border: 1px solid rgba(35,31,28,.09); border-radius: 16px;
+  padding: 52px 26px; text-align: center;
+}
+.plans-hex {
+  width: 52px; height: 52px; margin: 0 auto 14px;
+  background: var(--hdl-gold);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+.plans-empty-title {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.5rem;
+  font-weight: 600; color: var(--hdl-ink); margin: 0 0 8px;
+}
+.plans-empty-sub {
+  font-size: .86rem; color: var(--hdl-muted); line-height: 1.55;
+  max-width: 420px; margin: 0 auto 18px;
+}
+.plans-starters { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.plans-starter {
+  min-height: 40px; padding: 0 14px; border-radius: 999px; cursor: pointer;
+  border: 1px solid rgba(35,31,28,.14); background: #fff;
+  font-family: inherit; font-size: .8rem; color: #4a4036;
+}
+.plans-starter:hover { border-color: rgba(196,154,40,.5); }
+.plans-starter:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+
+.plans-nomatch {
+  border: 1px dashed rgba(196,154,40,.45); border-radius: 14px;
+  padding: 34px 20px; text-align: center; color: var(--hdl-muted); font-size: .86rem;
+}
+.plans-nomatch p { margin: 0 0 14px; }
+.plans-empty-txt { font-size: .84rem; color: var(--hdl-muted); margin: 0; }
+.plans-more { margin: 18px auto 0; display: flex; }
+
+.plans-state { text-align: center; padding: 60px 20px; color: var(--hdl-muted); display: grid; gap: 14px; justify-items: center; }
+
+.plans-skel {
+  border-radius: 14px;
+  background: linear-gradient(90deg,#efe8db 25%,#f7f1e6 50%,#efe8db 75%);
+  background-size: 200% 100%; animation: plans-sh 1.4s infinite;
+}
+.plans-skel--hero { height: 300px; margin-bottom: 26px; }
+.plans-skel--card { height: 260px; }
+@keyframes plans-sh { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Drawer ───────────────────────────────────────────────────────────────── */
+.plans-scrim { position: fixed; inset: 0; background: rgba(20,16,10,.45); z-index: 60; }
+.plans-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; width: 380px; max-width: 100vw;
+  background: #fffdf9; z-index: 61; display: flex; flex-direction: column;
+  box-shadow: -8px 0 30px rgba(35,31,28,.18);
+}
+.plans-drawer-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: 10px; padding: 16px 16px 12px; border-bottom: 1px solid rgba(35,31,28,.08);
+}
+.plans-drawer-title {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.2rem;
+  font-weight: 600; color: var(--hdl-ink);
+}
+.plans-drawer-date { font-size: .76rem; color: var(--hdl-muted); }
+.plans-drawer-x {
+  min-width: 44px; min-height: 44px; border: none; background: none;
+  font-size: 1.3rem; color: var(--hdl-muted); cursor: pointer; line-height: 1;
+}
+.plans-drawer-x:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+.plans-drawer-tabs { display: flex; gap: 2px; padding: 8px 10px; border-bottom: 1px solid rgba(35,31,28,.08); }
+.plans-drawer-tab {
+  min-height: 40px; padding: 0 10px; border: none; background: none; border-radius: 8px;
+  font-family: inherit; font-size: .8rem; color: var(--hdl-muted); cursor: pointer;
+}
+.plans-drawer-tab--on { background: rgba(196,154,40,.14); color: #a97f16; font-weight: 600; }
+.plans-drawer-body { padding: 10px; overflow-y: auto; flex: 1; }
+.plans-att {
+  display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px;
+  text-decoration: none; color: inherit; min-height: 44px;
+}
+.plans-att:hover { background: #f5f0e8; }
+.plans-att:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+.plans-att-txt { display: flex; flex-direction: column; min-width: 0; }
+.plans-att-name { display: flex; align-items: center; gap: 7px; font-size: .85rem; color: var(--hdl-ink); }
+.plans-att-host { font-size: .7rem; color: var(--hdl-muted); }
+.plans-att-outside {
+  padding: 12px 10px 4px; font-size: .78rem; color: var(--hdl-muted);
+  border-top: 1px solid rgba(35,31,28,.08); margin-top: 8px;
+}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+.plans-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
+  overflow-y: auto; background: #fffdf9; border-radius: 16px; z-index: 61;
+  box-shadow: 0 20px 60px rgba(35,31,28,.28);
+}
+.plans-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 18px 10px;
+}
+.plans-modal-title {
+  font-family: 'Cormorant Garamond', serif; font-size: 1.4rem;
+  font-weight: 600; color: var(--hdl-ink); margin: 0;
+}
+.plans-form { padding: 0 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+.plans-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.plans-field > span { font-size: .74rem; font-weight: 600; color: var(--hdl-muted); }
+.plans-field input, .plans-field select, .plans-field textarea {
+  min-height: 42px; padding: 9px 11px; border-radius: 9px;
+  border: 1px solid rgba(35,31,28,.16); background: #fff;
+  font-family: inherit; font-size: .86rem; color: var(--hdl-ink); width: 100%;
+}
+.plans-field textarea { min-height: 74px; resize: vertical; }
+.plans-field input:focus, .plans-field select:focus, .plans-field textarea:focus {
+  outline: 2px solid var(--hdl-gold); outline-offset: -1px; border-color: var(--hdl-gold);
+}
+.plans-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.plans-cover-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.plans-cover-thumb { width: 54px; height: 40px; object-fit: cover; border-radius: 7px; }
+.plans-form-error {
+  background: rgba(192,81,42,.09); border: 1px solid rgba(192,81,42,.28);
+  border-radius: 9px; padding: 8px 11px; font-size: .8rem; color: #c0512a; margin: 0;
+}
+.plans-form-note { font-size: .76rem; color: var(--hdl-muted); margin: 0; }
+.plans-page > .plans-form-error { margin-bottom: 14px; }
+.plans-modal-foot { display: flex; justify-content: flex-end; gap: 9px; margin-top: 4px; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  /* Rail moves above the content so the summary stays visible. */
+  .plans-layout { grid-template-columns: 1fr; }
+  .plans-rail { position: static; order: -1; }
+  .plans-stats { grid-template-columns: repeat(3, 1fr); }
+  .plans-stat--wide { grid-column: auto; }
+}
+@media (max-width: 700px) {
+  .plans-title { font-size: 1.8rem; }
+  .plans-hero { min-height: 0; padding: 12px; }
+  .plans-hero-title { font-size: 1.5rem; }
+  .plans-hero-foot { flex-direction: column; align-items: stretch; gap: 12px; }
+  .plans-hero-actions { justify-content: space-between; }
+  .plans-grid { grid-template-columns: 1fr; }
+  .plans-stats { grid-template-columns: 1fr; }
+  .plans-field-row { grid-template-columns: 1fr; }
+  .plans-drawer { width: 100vw; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plans-skel { animation: none; }
+}
