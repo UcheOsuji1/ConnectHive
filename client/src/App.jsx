@@ -12,6 +12,7 @@ import HiveDiscoveryPage from './pages/HiveDiscoveryPage';
 import CreateHivePage from './pages/CreateHivePage';
 import MyHivePage from './pages/MyHivePage';
 import ProfilePage from './pages/ProfilePage';
+import MemberProfilePage from './pages/MemberProfilePage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import MemberWelcomePage from './pages/MemberWelcomePage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -97,7 +98,7 @@ export default function App() {
         </Route>
 
         <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/profile/:id" element={<ProfilePage />} />
+        <Route path="/profile/:id" element={<MemberProfilePage />} />
         <Route path="/settings" element={<AccountSettingsPage />} />
         <Route path="/welcome/hive/:hiveId" element={<MemberWelcomePage />} />
       </Route>

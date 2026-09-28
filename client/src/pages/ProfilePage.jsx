@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
 import { getInitials } from '../lib/initials.js';
@@ -240,30 +240,11 @@ function activityIcon(type) {
   );
 }
 
-// ── Member placeholder (for /profile/:id) ────────────────────────────────────
-
-function MemberPlaceholder() {
-  return (
-    <>
-      <Navbar />
-      <div style={{ maxWidth: 480, margin: '120px auto', padding: '0 24px', textAlign: 'center', fontFamily: "'DM Sans', sans-serif" }}>
-        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(196,154,40,.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: '#c49a28' }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 1 0-16 0"/>
-          </svg>
-        </div>
-        <p style={{ fontSize: '1rem', fontWeight: 600, color: '#1e1b18', marginBottom: 6 }}>Member Profile</p>
-        <p style={{ fontSize: 13, color: '#8a7a5e', marginBottom: 20 }}>View this member's interests, Hive history, compatibility scores, and shared connections.</p>
-        <Link to="/home" style={{ display: 'inline-block', padding: '10px 22px', background: 'rgba(196,154,40,.12)', borderRadius: 50, fontSize: 13, fontWeight: 600, color: '#c49a28', textDecoration: 'none' }}>Home Feed</Link>
-      </div>
-    </>
-  );
-}
-
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { id } = useParams();
+  // This is the signed-in member's own profile only. /profile/:id now routes
+  // to MemberProfilePage, so there is no id to guard against here.
   const { user } = useAuth();
 
   const [profile,     setProfile]     = useState(undefined);
@@ -276,14 +257,13 @@ export default function ProfilePage() {
 
   // Fetch data
   useEffect(() => {
-    if (id) return;
     Promise.all([
       api.get('/api/users/profile').then(d => setProfile(d.profile)).catch(() => setProfile(null)),
       api.get('/api/hives/mine').then(d => setHives(d.hives ?? [])).catch(() => setHives([])),
       api.get('/api/users/activity').then(d => setActivity(d.activity ?? [])).catch(() => setActivity([])),
       api.get('/api/users/suggestions').then(d => setSuggestions(d.suggestions ?? [])).catch(() => setSuggestions([])),
     ]).catch(err => setError(err?.data?.error ?? 'Failed to load profile.'));
-  }, [id]);
+  }, []);
 
   // Scroll-reveal observer (not for hero — it's above the fold)
   useEffect(() => {
@@ -306,7 +286,6 @@ export default function ProfilePage() {
     return () => observer.disconnect();
   }, [profile, hives, activity]);
 
-  if (id) return <MemberPlaceholder />;
 
   // ── Derived values ────────────────────────────────────────────────────────
 
