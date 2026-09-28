@@ -8,6 +8,14 @@ export const PLAN_TYPES = [
   'games', 'meeting', 'workshop', 'trip', 'other',
 ];
 
+// An end time is optional, so most plans have none. Treating a missing end as
+// the start time made a plan "past" the instant it began: it dropped out of
+// Upcoming, never showed "Happening now", and late RSVPs were rejected. A plan
+// with no end time lasts three hours instead.
+export const DEFAULT_PLAN_HOURS = 3;
+// SQL for a plan's effective end. Always pair it with the `p` alias.
+const PLAN_END = `COALESCE(p.event_end_at, p.event_at + INTERVAL '${DEFAULT_PLAN_HOURS} hours')`;
+
 // ── attachRsvpMeta ────────────────────────────────────────────────────────────
 // going_count must count only 'going'. Before maybe/not_going existed a bare
 // COUNT(*) was equivalent; now it would report a Maybe as Going on the home card.
@@ -120,7 +128,10 @@ export const toggleRsvp = async (req, res) => {
       return res.status(403).json({ error: 'You must be a member of this Hive.' });
     }
 
-    const endsAt = post.event_end_at ?? post.event_at;
+    const endsAt = post.event_end_at
+      ?? (post.event_at
+        ? new Date(new Date(post.event_at).getTime() + DEFAULT_PLAN_HOURS * 3600e3)
+        : null);
     if (endsAt && new Date(endsAt).getTime() < Date.now()) {
       return res.status(400).json({ error: 'This plan has already ended.' });
     }
@@ -192,8 +203,7 @@ const PLAN_SELECT = `
             FROM event_rsvps r WHERE r.post_id = p.post_id)     AS not_going_count,
          (SELECT r.rsvp_status FROM event_rsvps r
            WHERE r.post_id = p.post_id AND r.user_id = $1)      AS viewer_rsvp,
-         (p.event_at <= NOW()
-           AND COALESCE(p.event_end_at, p.event_at) >= NOW())   AS is_live,
+         (p.event_at <= NOW() AND ${PLAN_END} >= NOW())         AS is_live,
          COALESCE((
            SELECT json_agg(x) FROM (
              SELECT pr.user_id, pr.full_name, pr.profile_photo_url
@@ -261,7 +271,7 @@ export const getHivePlans = async (req, res) => {
         `${PLAN_SELECT}
           WHERE p.hive_id = $2 AND p.post_type = 'event'
             AND p.event_at IS NOT NULL
-            AND COALESCE(p.event_end_at, p.event_at) >= NOW()
+            AND ${PLAN_END} >= NOW()
           ORDER BY p.event_at ASC
           LIMIT 200`,
         [req.userId, hiveId],
@@ -271,7 +281,7 @@ export const getHivePlans = async (req, res) => {
         `${PLAN_SELECT}
           WHERE p.hive_id = $2 AND p.post_type = 'event'
             AND p.event_at IS NOT NULL
-            AND COALESCE(p.event_end_at, p.event_at) < NOW()
+            AND ${PLAN_END} < NOW()
           ORDER BY p.event_at DESC
           LIMIT $3 OFFSET $4`,
         [req.userId, hiveId, limit + 1, offset],
@@ -284,15 +294,15 @@ export const getHivePlans = async (req, res) => {
     // here so the page can tell "no plans ever" from "only past plans" without
     // fetching the past list first.
     const { rows: [sum] } = await query(
-      `SELECT COUNT(*) FILTER (WHERE COALESCE(p.event_end_at, p.event_at) >= NOW())::int
+      `SELECT COUNT(*) FILTER (WHERE ${PLAN_END} >= NOW())::int
                 AS upcoming_count,
-              COUNT(*) FILTER (WHERE COALESCE(p.event_end_at, p.event_at) <  NOW())::int
+              COUNT(*) FILTER (WHERE ${PLAN_END} <  NOW())::int
                 AS past_count,
-              COALESCE(SUM(CASE WHEN COALESCE(p.event_end_at, p.event_at) >= NOW()
+              COALESCE(SUM(CASE WHEN ${PLAN_END} >= NOW()
                 THEN (SELECT COUNT(*) FILTER (WHERE r.rsvp_status='going')
                         FROM event_rsvps r WHERE r.post_id = p.post_id)
                 ELSE 0 END), 0)::int AS going_total,
-              COUNT(*) FILTER (WHERE COALESCE(p.event_end_at, p.event_at) >= NOW()
+              COUNT(*) FILTER (WHERE ${PLAN_END} >= NOW()
                 AND EXISTS(SELECT 1 FROM event_rsvps r
                             WHERE r.post_id = p.post_id AND r.user_id = $1))::int
                 AS my_rsvp_count
@@ -303,11 +313,11 @@ export const getHivePlans = async (req, res) => {
     );
 
     const { rows: typeRows } = await query(
-      `SELECT COALESCE(plan_type,'other') AS t, COUNT(*)::int AS n
-         FROM hive_posts
-        WHERE hive_id = $1 AND post_type = 'event'
-          AND event_at IS NOT NULL
-          AND COALESCE(event_end_at, event_at) >= NOW()
+      `SELECT COALESCE(p.plan_type,'other') AS t, COUNT(*)::int AS n
+         FROM hive_posts p
+        WHERE p.hive_id = $1 AND p.post_type = 'event'
+          AND p.event_at IS NOT NULL
+          AND ${PLAN_END} >= NOW()
         GROUP BY 1`,
       [hiveId],
     );
@@ -318,10 +328,33 @@ export const getHivePlans = async (req, res) => {
       [hiveId],
     );
 
+    // The member empty state names the owner rather than saying "the Hive
+    // owner". Prefer the active member holding the owner role; fall back to the
+    // creator's profile for a Hive whose owner has left or gone inactive.
+    const { rows: [ownerRow] } = await query(
+      `SELECT COALESCE(om.full_name, cp.full_name) AS full_name
+         FROM hives h
+         LEFT JOIN LATERAL (
+           SELECT pr.full_name
+             FROM hive_members m
+             JOIN profiles pr ON pr.user_id = m.user_id
+            WHERE m.hive_id = h.hive_id
+              AND m.role = 'owner'
+              AND m.membership_status = 'active'
+            ORDER BY m.joined_at ASC NULLS LAST
+            LIMIT 1
+         ) om ON TRUE
+         LEFT JOIN profiles cp ON cp.user_id = h.creator_user_id
+        WHERE h.hive_id = $1`,
+      [hiveId],
+    );
+    const ownerName = ownerRow?.full_name?.trim() || null;
+
     res.json({
       plans: rows.map(shapePlan),
       hasMore,
       undatedCount: und.n,
+      owner: ownerName ? { full_name: ownerName } : null,
       summary: {
         upcomingCount: sum.upcoming_count,
         pastCount:     sum.past_count,

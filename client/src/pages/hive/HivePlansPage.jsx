@@ -39,11 +39,12 @@ export default function HivePlansPage() {
   const [drawerPlan, setDrawerPlan] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [prefill, setPrefill] = useState(null);
+  const [owner, setOwner]     = useState(null);
 
   const load = useCallback(() => {
     setError(null);
     api.get(`/api/hives/${hiveId}/plans?scope=upcoming`)
-      .then(d => { setUpcoming(d.plans); setSummary(d.summary); })
+      .then(d => { setUpcoming(d.plans); setSummary(d.summary); setOwner(d.owner ?? null); })
       .catch(e => setError(e?.status === 403
         ? 'You must be a member of this Hive.'
         : (e?.data?.error ?? 'Could not load plans.')));
@@ -99,6 +100,8 @@ export default function HivePlansPage() {
     setPrefill(null);
     setUpcoming(u => [...(u ?? []), plan].sort(
       (a, b) => new Date(a.event_at) - new Date(b.event_at)));
+    // pastCount rides through on the spread: a new plan must start in the
+    // future, so it never changes the past count.
     setSummary(s => s && {
       ...s,
       upcomingCount: s.upcomingCount + 1,
@@ -184,7 +187,9 @@ export default function HivePlansPage() {
       <nav className="plans-tabs" role="tablist">
         {[
           { k: 'upcoming', l: 'Upcoming', n: upcoming.length },
-          { k: 'past',     l: 'Past',     n: pastLoaded ? past.length : summary?.pastCount },
+          // Always the summary: past.length is only the pages fetched so far,
+          // so a Hive with 30 past plans would drop to 24 once the tab opens.
+          { k: 'past',     l: 'Past',     n: summary?.pastCount },
           { k: 'mine',     l: 'My RSVPs', n: myRsvps.length },
         ].map(t => (
           <button key={t.k} type="button" role="tab" aria-selected={tab === t.k}
@@ -226,8 +231,8 @@ export default function HivePlansPage() {
               ) : (
                 <>
                   <p className="plans-empty-sub">
-                    When the Hive owner or an admin creates a plan, it'll show up
-                    here and in the Hive Feed.
+                    When {owner?.full_name ?? 'the Hive owner'} or an admin
+                    creates a plan, it'll show up here and in the Hive Feed.
                   </p>
                   <Link to={`/hive/${hiveId}/feed`} className="plans-btn-ghost">Go to Feed</Link>
                 </>
