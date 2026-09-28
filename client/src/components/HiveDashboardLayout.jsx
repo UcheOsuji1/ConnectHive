@@ -129,42 +129,66 @@ function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
     );
   };
 
+  // Owner/admin sections that used to sit as separate top-level sidebar items.
+  // Routes are unchanged, so existing deep links (HiveCard's Requests pill and
+  // Manage button, HiveWorkspace's onboarding jump) keep resolving.
+  const MANAGE_SECTIONS = [
+    { label: 'Join Requests',        sub: 'requests',     badge: requestCount },
+    { label: 'General Settings',     sub: 'settings' },
+    { label: 'Member Onboarding',    sub: 'onboarding' },
+    { label: 'Analytics',            sub: 'analytics',    soon: true },
+    { label: 'Roles & Permissions',  sub: 'roles',        soon: true },
+    { label: 'Integrations',         sub: 'integrations', soon: true },
+    { label: 'Billing',              sub: 'billing',      soon: true },
+  ];
+
+  const inManage = MANAGE_SECTIONS.some(s => active(s.sub));
+  const [manageOpen, setManageOpen] = useState(inManage);
+
+  // A deep link straight into a management section should land with the group
+  // already open rather than looking like it navigated nowhere.
+  useEffect(() => { if (inManage) setManageOpen(true); }, [inManage]);
+
   return (
     <aside className="hdl-sidebar">
       <div className="hdl-nav-group">
         <div className="hdl-nav-section-label">Hive</div>
-        <NavItem label="Overview"  sub="" />
+        <NavItem label="Hive Home" sub="" />
         <NavItem label="Feed"      sub="feed" />
         <NavItem label="Chat"      sub="chat"    badge={chatUnread > 0 ? (chatUnread > 99 ? '99+' : chatUnread) : null} />
-        <NavItem label="Events"    sub="events"  soon />
+        <NavItem label="Plans"     sub="events"  soon />
         <NavItem label="Members"   sub="members" />
-        {isOwner && <NavItem label="Requests" sub="requests" badge={requestCount} />}
-        {!isOwner && <NavItem label="About"   sub="about" />}
+        {/* About was gated behind !isOwner, so owners and admins could not
+            reach their own Hive's About page from the nav. Now shown to all. */}
+        <NavItem label="About"     sub="about" />
       </div>
 
       {isOwner && (
-        <>
-          <div className="hdl-nav-group">
-            <div className="hdl-nav-section-label">Insights</div>
-            <NavItem label="Analytics" sub="analytics" soon />
-          </div>
+        <div className="hdl-nav-group">
+          <button
+            type="button"
+            className={['hdl-manage-toggle', inManage ? 'hdl-manage-toggle--active' : ''].filter(Boolean).join(' ')}
+            aria-expanded={manageOpen}
+            aria-controls="hdl-manage-sections"
+            onClick={() => setManageOpen(o => !o)}
+          >
+            <span className="hdl-nav-label">Manage Hive</span>
+            {!manageOpen && requestCount > 0 && (
+              <span className="hdl-nav-badge">{requestCount}</span>
+            )}
+            <svg className={`hdl-manage-chev${manageOpen ? ' hdl-manage-chev--open' : ''}`}
+                 width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
 
-          <div className="hdl-nav-group">
-            <div className="hdl-nav-section-label">Settings</div>
-            <NavItem label="General"                sub="settings" />
-            <NavItem label="Roles & Permissions"    sub="roles"         soon />
-            <NavItem label="Member Onboarding"      sub="onboarding" />
-            <NavItem label="Integrations"           sub="integrations"  soon />
-            <NavItem label="Billing"                sub="billing"       soon />
+          <div id="hdl-manage-sections" className="hdl-manage-list" hidden={!manageOpen}>
+            {MANAGE_SECTIONS.map(s => (
+              <NavItem key={s.sub} label={s.label} sub={s.sub} badge={s.badge} soon={s.soon} />
+            ))}
           </div>
-
-          <div className="hdl-pro-tip">
-            <div className="hdl-pro-tip-head">💡 Pro Tip</div>
-            <p className="hdl-pro-tip-body">
-              Use <strong>Guided Onboarding</strong> to make sure every new member completes your key steps before joining the conversation.
-            </p>
-          </div>
-        </>
+        </div>
       )}
     </aside>
   );

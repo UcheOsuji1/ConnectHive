@@ -203,8 +203,12 @@ export default function MyHivePage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const owned    = hives.filter(h => h.role === 'owner');
-  const memberOf = hives.filter(h => h.role !== 'owner');
+  // Admins lead a Hive too, and HiveDashboardLayout already treats them as
+  // owners for navigation. Splitting on role === 'owner' alone put an
+  // admin-led Hive under "Member Of" with a MEMBER pill.
+  const LEADS = ['owner', 'admin'];
+  const owned    = hives.filter(h => LEADS.includes(h.role));
+  const memberOf = hives.filter(h => !LEADS.includes(h.role));
 
   const totalUnread = hives.reduce((s, h) => s + Number(h.new_posts ?? 0), 0);
   const totalEvents = hives.reduce((s, h) => s + Number(h.upcoming_events ?? 0), 0);

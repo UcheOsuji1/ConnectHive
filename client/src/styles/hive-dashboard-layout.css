@@ -328,6 +328,52 @@
   transition: background 0.12s, color 0.12s;
   cursor: pointer;
 }
+
+/* ── Manage Hive: owner/admin sections collapsed behind one entry ─────────── */
+.hdl-manage-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  border-radius: 7px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.84rem;
+  color: var(--hdl-muted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+/* Matches .hdl-nav-item:hover / .hdl-nav-active — this sidebar is ivory, not dark. */
+.hdl-manage-toggle:hover { background: #ede7d9; color: var(--hdl-ink); }
+.hdl-manage-toggle:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+.hdl-manage-toggle--active { color: var(--hdl-gold); font-weight: 600; }
+
+.hdl-manage-chev {
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.hdl-manage-chev--open { transform: rotate(90deg); }
+
+/* Indented so the sections read as children of Manage Hive rather than as
+   more top-level destinations. */
+.hdl-manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 10px;
+  padding-left: 8px;
+  border-left: 1px solid #e0d8c6;
+}
+/* An author `display` declaration beats the UA stylesheet's [hidden] rule, so
+   without this the group renders expanded even when hidden={true}. */
+.hdl-manage-list[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hdl-manage-chev { transition: none; }
+}
 .hdl-nav-item:hover:not(.hdl-nav-soon) {
   background: #ede7d9;
   color: var(--hdl-ink);

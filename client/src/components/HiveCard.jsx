@@ -145,9 +145,11 @@ export default function HiveCard({ hive, index = 0 }) {
           <div className="hc-head">
             <h3 className="hc-name">
               {hive.hive_name}
-              <span className={`hc-pill${isOwner ? ' hc-pill--owner' : ''}`}>
-                {isOwner && <CrownIcon />}
-                {isOwner ? 'Owner' : 'Member'}
+              {/* An admin leads the Hive but is not its owner. Labelling them
+                  Owner would be wrong; labelling them Member was the bug. */}
+              <span className={`hc-pill${canReview ? ' hc-pill--owner' : ''}`}>
+                {canReview && <CrownIcon />}
+                {isOwner ? 'Owner' : hive.role === 'admin' ? 'Admin' : 'Member'}
               </span>
             </h3>
 
