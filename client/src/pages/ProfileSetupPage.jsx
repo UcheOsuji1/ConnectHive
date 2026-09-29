@@ -5,6 +5,7 @@ import { api } from '../lib/api.js';
 import { getInitials } from '../lib/initials.js';
 import { SKILL_CATS } from '../data/skillTaxonomy.js';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
+import { MATTERS } from '../data/mattersTaxonomy.js';
 import '../styles/profile-setup.css';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
@@ -43,15 +44,6 @@ const COMM_STYLES = [
   { key: 'regular',  emoji: '📅', name: 'Check in regularly',  desc: 'A few times a week works for me.' },
   { key: 'matters',  emoji: '🔔', name: 'When it matters',     desc: 'I tune in for important moments and events.' },
   { key: 'inperson', emoji: '🎙️', name: 'In-person over text', desc: "I'd rather talk face to face than type." },
-];
-
-const MATTERS = [
-  { key: 'goals',     emoji: '🎯', name: 'Shared Goals' },
-  { key: 'vibes',     emoji: '😂', name: 'Good Vibes & Fun' },
-  { key: 'growth',    emoji: '🌱', name: 'Personal Growth' },
-  { key: 'account',   emoji: '🤝', name: 'Real Accountability' },
-  { key: 'diversity', emoji: '🌍', name: 'Diversity of Thought' },
-  { key: 'action',    emoji: '⚡', name: 'Action & Results' },
 ];
 
 const SIZE_OPTIONS = [
