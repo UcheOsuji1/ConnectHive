@@ -89,6 +89,9 @@ export const getUpcomingEvents = async (req, res) => {
 async function canRsvp(postRow, userId) {
   const member = await getMembership(postRow.hive_id, userId);
   if (member) return true;
+  // A members-only plan is closed to non-members even in a discoverable Hive —
+  // otherwise the Hive being public would quietly make every plan in it public.
+  if (postRow.visibility !== 'public') return false;
   const { rows: [h] } = await query(
     `SELECT 1 FROM hives
       WHERE hive_id = $1 AND discoverable = TRUE AND hive_status = 'active'`,
@@ -116,7 +119,7 @@ export const toggleRsvp = async (req, res) => {
   try {
     const { postId } = req.params;
     const { rows: [post] } = await query(
-      `SELECT post_id, post_type, hive_id, event_at, event_end_at
+      `SELECT post_id, post_type, hive_id, event_at, event_end_at, visibility
          FROM hive_posts WHERE post_id = $1`,
       [postId],
     );

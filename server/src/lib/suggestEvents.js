@@ -39,6 +39,9 @@ export async function suggestEvents(db, userId, { limit = 3 } = {}) {
      LEFT JOIN categories c ON c.category_id = h.category_id
      WHERE p.post_type = 'event'
        AND p.event_at > NOW()
+       -- Suggestions go to people who are not in the Hive, so a members-only
+       -- plan must not appear here: the headline alone leaks it.
+       AND p.visibility = 'public'
        AND h.discoverable = TRUE
        AND h.hive_status = 'active'
        AND NOT EXISTS(
