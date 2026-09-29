@@ -509,7 +509,7 @@ export default function HiveDashboardLayout() {
     setRequestCount,
     refreshHive,
     onMemberAccepted: setCelebrationMember,
-    openPostModal: canPost ? () => setPostModalOpen(true) : null,
+    openPostModal: isOwner ? () => setPostModalOpen(true) : null,
     newPost,
     accessMode,
     canPost,
@@ -613,7 +613,11 @@ export default function HiveDashboardLayout() {
               <button type="button" className="hdl-btn-invite" disabled title="Coming soon">
                 Invite
               </button>
-              {canPost && (
+              {/* isOwner, not canPost: createPost allows only owners and admins,
+                  so canPost showed a full-access member a button the server
+                  answered with 403. canPost still gates the chat composer,
+                  which is a different rule. */}
+              {isOwner && (
                 <button type="button" className="hdl-btn-create" onClick={() => setPostModalOpen(true)}>
                   + Create
                 </button>
