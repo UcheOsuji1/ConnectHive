@@ -94,8 +94,36 @@ function RoleBadge({ role }) {
   );
 }
 
-// ── Management sidebar (role-aware) ──────────────────────────────────────────
-function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
+// ── Rail icons ───────────────────────────────────────────────────────────────
+const I = {
+  home:     <><path d="M3 10.5 12 3l9 7.5" /><path d="M5 9.5V21h14V9.5" /></>,
+  chat:     <><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5a8.4 8.4 0 0 1 8.5-8.4 8.4 8.4 0 0 1 8.5 8.4z" /></>,
+  plans:    <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 11h18" /></>,
+  members:  <><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 20v-2a4 4 0 0 0-3-3.9" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /></>,
+  about:    <><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></>,
+  category: <><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 20v-2a4 4 0 0 0-3-3.9" /></>,
+  pin:      <><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z" /><circle cx="12" cy="10" r="2.6" /></>,
+  globe:    <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z" /></>,
+  pencil:   <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></>,
+};
+
+function Ico({ name, size = 16, className }) {
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+         aria-hidden="true">
+      {I[name]}
+    </svg>
+  );
+}
+
+// ── Identity rail + nav (role-aware) ─────────────────────────────────────────
+// Replaces the old wide cover banner: the Hive's identity now lives at the top
+// of the rail, so every page gets the full content width.
+function HiveSidebar({
+  hive, hiveId, isOwner, requestCount, chatUnread,
+  uploading, uploadError, onEditCover, onEditLogo,
+}) {
   const { pathname } = useLocation();
 
   const base = `/hive/${hiveId}`;
@@ -104,7 +132,7 @@ function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
     return pathname === `${base}/${sub}` || pathname.startsWith(`${base}/${sub}/`);
   };
 
-  const NavItem = ({ label, sub, badge, soon }) => {
+  const NavItem = ({ label, sub, badge, soon, icon }) => {
     if (soon) {
       return (
         <div className="hdl-nav-item hdl-nav-soon">
@@ -121,6 +149,7 @@ function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
           ['hdl-nav-item', (ra || active(sub)) ? 'hdl-nav-active' : ''].filter(Boolean).join(' ')
         }
       >
+        {icon && <Ico name={icon} className="hdl-nav-ico" />}
         <span className="hdl-nav-label">{label}</span>
         {badge != null && Number(badge) > 0 && (
           <span className="hdl-nav-badge">{badge}</span>
@@ -149,22 +178,86 @@ function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
   // already open rather than looking like it navigated nowhere.
   useEffect(() => { if (inManage) setManageOpen(true); }, [inManage]);
 
+  // Sentence case, not `text-transform: capitalize` — that renders the stored
+  // 'in-person' as "In-Person".
+  const sentence = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const metaLines = [
+    hive.category_name && { icon: 'category', text: hive.category_name },
+    hive.location      && { icon: 'pin',      text: hive.location },
+    hive.location_type && { icon: 'globe',    text: sentence(hive.location_type) },
+  ].filter(Boolean);
+
   return (
     <aside className="hdl-sidebar">
+      {/* ── Identity ── */}
+      <div className="hdl-ident">
+        <div className="hdl-ident-coverwrap">
+          <div
+            className={`hdl-ident-cover${hive.banner_url ? '' : ' hdl-ident-cover--fallback'}`}
+            style={hive.banner_url ? { backgroundImage: `url(${hive.banner_url})` } : undefined}
+          >
+            {isOwner && (
+              <button type="button" className="hdl-ident-edit" disabled={uploading !== null}
+                      onClick={onEditCover} title="Change cover image"
+                      aria-label="Change cover image">
+                {uploading === 'banner'
+                  ? <span className="hdl-ident-edit-wait" aria-hidden="true" />
+                  : <Ico name="pencil" size={13} />}
+              </button>
+            )}
+          </div>
+
+          <div className={`hdl-ident-crest${isOwner ? ' hdl-ident-crest--editable' : ''}`}
+               onClick={isOwner ? onEditLogo : undefined}
+               title={isOwner ? 'Change logo' : undefined}>
+            {hive.logo_url
+              ? <img src={hive.logo_url} className="hdl-ident-crest-img" alt={hive.hive_name} />
+              : <HexTile categoryName={hive.category_name} size={40} />}
+            {isOwner && (
+              <span className="hdl-ident-crest-edit" aria-hidden="true">
+                {uploading === 'logo'
+                  ? <span className="hdl-ident-edit-wait" />
+                  : <Ico name="pencil" size={11} />}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {uploadError && <div className="hdl-ident-error">{uploadError}</div>}
+
+        <h1 className="hdl-ident-name">{hive.hive_name}</h1>
+
+        {metaLines.length > 0 && (
+          <div className="hdl-ident-meta">
+            {metaLines.map(m => (
+              <div key={m.icon} className="hdl-ident-meta-row">
+                <Ico name={m.icon} size={13} />
+                <span>{m.text}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="hdl-ident-chips">
+          <RoleBadge role={hive.my_role} />
+          <HiveCodeChip code={hive.hive_code} />
+        </div>
+      </div>
+
       <div className="hdl-nav-group">
         <div className="hdl-nav-section-label">Hive</div>
-        <NavItem label="Hive Home" sub="" />
-        <NavItem label="Feed"      sub="feed" />
-        <NavItem label="Chat"      sub="chat"    badge={chatUnread > 0 ? (chatUnread > 99 ? '99+' : chatUnread) : null} />
-        <NavItem label="Plans"     sub="events" />
-        <NavItem label="Members"   sub="members" />
+        <NavItem label="Hive Home" sub=""        icon="home" />
+        <NavItem label="Chat"      sub="chat"    icon="chat"
+                 badge={chatUnread > 0 ? (chatUnread > 99 ? '99+' : chatUnread) : null} />
+        <NavItem label="Plans"     sub="events"  icon="plans" />
+        <NavItem label="Members"   sub="members" icon="members" />
         {/* About was gated behind !isOwner, so owners and admins could not
             reach their own Hive's About page from the nav. Now shown to all. */}
-        <NavItem label="About"     sub="about" />
+        <NavItem label="About"     sub="about"   icon="about" />
       </div>
 
       {isOwner && (
-        <div className="hdl-nav-group">
+        <div className="hdl-nav-group hdl-nav-group--manage">
           <button
             type="button"
             className={['hdl-manage-toggle', inManage ? 'hdl-manage-toggle--active' : ''].filter(Boolean).join(' ')}
@@ -189,6 +282,13 @@ function HiveSidebar({ hiveId, isOwner, requestCount, chatUnread }) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Fills the rail's empty tail with a heavily darkened cover rather than
+          flat charcoal. Decorative only. */}
+      {hive.banner_url && (
+        <div className="hdl-rail-wash" aria-hidden="true"
+             style={{ backgroundImage: `url(${hive.banner_url})` }} />
       )}
     </aside>
   );
@@ -492,8 +592,6 @@ export default function HiveDashboardLayout() {
 
   // ── Member dashboard ─────────────────────────────────────────────────────────
   const showWelcome = hive.my_role === 'member' && !hive.welcome_seen_at;
-  const meta = [hive.category_name, hive.location, hive.location_type]
-    .filter(Boolean).join(' · ');
 
   // Access gating: owners/admins always have full access
   const isInOnboarding = !isOwner && hive.onboarding_status && hive.onboarding_status !== 'completed';
@@ -546,89 +644,29 @@ export default function HiveDashboardLayout() {
           <span className="hdl-crumb-current">{hive.hive_name}</span>
         </div>
 
-        {/* Cover banner */}
-        <div
-          className="hdl-banner"
-          style={hive.banner_url ? { backgroundImage: `url(${hive.banner_url})` } : undefined}
-        >
-          <div className="hdl-banner-scrim" />
-
-          {/* Hidden file inputs */}
-          {isOwner && (
-            <>
-              <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-                style={{ display: 'none' }} onChange={e => handleFileSelected(e, 'banner')} />
-              <input ref={logoInputRef}   type="file" accept="image/jpeg,image/png,image/webp,image/gif"
-                style={{ display: 'none' }} onChange={e => handleFileSelected(e, 'logo')} />
-            </>
-          )}
-
-          {/* Edit cover button — owner/admin only */}
-          {isOwner && (
-            <button type="button" className="hdl-banner-edit-btn"
-              disabled={uploading !== null}
-              onClick={() => bannerInputRef.current?.click()}>
-              {uploading === 'banner' ? '⏳ Uploading…' : '📷 Edit cover image'}
-            </button>
-          )}
-
-          {/* Upload error */}
-          {uploadError && (
-            <div className="hdl-banner-upload-error">{uploadError}</div>
-          )}
-
-          {/* Bottom row: logo + identity + actions */}
-          <div className="hdl-banner-bottom">
-            {/* Logo */}
-            <div
-              className={`hdl-banner-logo${isOwner ? ' hdl-banner-logo--editable' : ''}`}
-              onClick={isOwner ? () => logoInputRef.current?.click() : undefined}
-              title={isOwner ? 'Change logo' : undefined}
-            >
-              {hive.logo_url ? (
-                <img src={hive.logo_url} className="hdl-banner-logo-img" alt={hive.hive_name} />
-              ) : (
-                <HexTile categoryName={hive.category_name} size={44} />
-              )}
-              {isOwner && (
-                <span className="hdl-banner-logo-cam">
-                  {uploading === 'logo' ? '⏳' : '📷'}
-                </span>
-              )}
-            </div>
-
-            {/* Name + role + meta */}
-            <div className="hdl-banner-identity">
-              <div className="hdl-banner-name-row">
-                <span className="hdl-hive-name">{hive.hive_name}</span>
-                <RoleBadge role={hive.my_role} />
-                <HiveCodeChip code={hive.hive_code} />
-              </div>
-              {meta && <span className="hdl-header-meta">{meta}</span>}
-            </div>
-
-            <div className="hdl-header-spacer" />
-
-            <div className="hdl-header-actions">
-              <button type="button" className="hdl-btn-invite" disabled title="Coming soon">
-                Invite
-              </button>
-              {/* isOwner, not canPost: createPost allows only owners and admins,
-                  so canPost showed a full-access member a button the server
-                  answered with 403. canPost still gates the chat composer,
-                  which is a different rule. */}
-              {isOwner && (
-                <button type="button" className="hdl-btn-create" onClick={() => setPostModalOpen(true)}>
-                  + Create
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        {/* Hidden file inputs — the cover and logo controls now live in the rail */}
+        {isOwner && (
+          <>
+            <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+              style={{ display: 'none' }} onChange={e => handleFileSelected(e, 'banner')} />
+            <input ref={logoInputRef}   type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+              style={{ display: 'none' }} onChange={e => handleFileSelected(e, 'logo')} />
+          </>
+        )}
 
         {/* Body */}
         <div className="hdl-body">
-          <HiveSidebar hiveId={hiveId} isOwner={isOwner} requestCount={requestCount} chatUnread={chatUnread} />
+          <HiveSidebar
+            hive={hive}
+            hiveId={hiveId}
+            isOwner={isOwner}
+            requestCount={requestCount}
+            chatUnread={chatUnread}
+            uploading={uploading}
+            uploadError={uploadError}
+            onEditCover={() => bannerInputRef.current?.click()}
+            onEditLogo={() => logoInputRef.current?.click()}
+          />
 
           <main className="hdl-content">
             {/* Full block: 'none' access mode — replace outlet entirely */}
@@ -682,7 +720,8 @@ export default function HiveDashboardLayout() {
           onCreated={post => {
             setNewPost(post);
             setPostModalOpen(false);
-            navigate(`/hive/${hiveId}/feed`);
+            // Updates now live on Hive Home; /feed only redirects here anyway.
+            navigate(`/hive/${hiveId}`);
           }}
         />
       )}

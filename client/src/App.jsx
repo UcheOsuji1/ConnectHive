@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
@@ -21,7 +21,6 @@ import RequireAuth from './components/RequireAuth';
 import MarketingLayout from './components/MarketingLayout';
 import HiveDashboardLayout from './components/HiveDashboardLayout';
 import HiveOverviewPage from './pages/hive/HiveOverviewPage';
-import HiveFeedPage from './pages/hive/HiveFeedPage';
 import HiveMembersPage from './pages/hive/HiveMembersPage';
 import HiveRequestsPage from './pages/hive/HiveRequestsPage';
 import HiveSettingsPage from './pages/hive/HiveSettingsPage';
@@ -83,7 +82,9 @@ export default function App() {
 
         <Route path="/hive/:id" element={<HiveDashboardLayout />}>
           <Route index element={<HiveOverviewPage />} />
-          <Route path="feed" element={<HiveFeedPage />} />
+          {/* Feed was absorbed into Hive Home; the route stays so existing
+              links and bookmarks keep resolving. */}
+          <Route path="feed" element={<Navigate to=".." replace relative="path" />} />
           <Route path="members" element={<HiveMembersPage />} />
           <Route path="requests" element={<HiveRequestsPage />} />
           <Route path="onboarding" element={<HiveOnboardingPage />} />
