@@ -1280,7 +1280,7 @@
 }
 .dhp-sidebar-view-all:hover { opacity: 0.75; }
 
-/* ── DirectHivePage request score labels ─────────────────────────────────────── */
+/* ── Request score labels (dhp- prefix) ──────────────────────────────────────── */
 .dhp-request-scores {
   display: flex;
   align-items: center;
