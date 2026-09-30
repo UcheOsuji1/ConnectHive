@@ -5,7 +5,7 @@ import { getMembership } from '../lib/hiveMembership.js';
 export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad', 'wave'];
 
 // ── Shared SELECT (userId always = $1; caller appends WHERE/ORDER/LIMIT) ─────
-const FEED_SELECT = `
+export const FEED_SELECT = `
   SELECT
     p.post_id, p.hive_id, p.author_user_id, p.post_type, p.visibility,
     p.headline, p.body, p.media_url, p.event_at, p.event_location, p.created_at,

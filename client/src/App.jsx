@@ -20,7 +20,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import RequireAuth from './components/RequireAuth';
 import MarketingLayout from './components/MarketingLayout';
 import HiveDashboardLayout from './components/HiveDashboardLayout';
-import HiveOverviewPage from './pages/hive/HiveOverviewPage';
+import HiveHomePage from './pages/hive/HiveHomePage';
 import HiveMembersPage from './pages/hive/HiveMembersPage';
 import HiveRequestsPage from './pages/hive/HiveRequestsPage';
 import HiveSettingsPage from './pages/hive/HiveSettingsPage';
@@ -81,7 +81,7 @@ export default function App() {
         <Route path="/my-hive" element={<MyHivePage />} />
 
         <Route path="/hive/:id" element={<HiveDashboardLayout />}>
-          <Route index element={<HiveOverviewPage />} />
+          <Route index element={<HiveHomePage />} />
           {/* Feed was absorbed into Hive Home; the route stays so existing
               links and bookmarks keep resolving. */}
           <Route path="feed" element={<Navigate to=".." replace relative="path" />} />

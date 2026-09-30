@@ -14,7 +14,7 @@ export const PLAN_TYPES = [
 // with no end time lasts three hours instead.
 export const DEFAULT_PLAN_HOURS = 3;
 // SQL for a plan's effective end. Always pair it with the `p` alias.
-const PLAN_END = `COALESCE(p.event_end_at, p.event_at + INTERVAL '${DEFAULT_PLAN_HOURS} hours')`;
+export const PLAN_END = `COALESCE(p.event_end_at, p.event_at + INTERVAL '${DEFAULT_PLAN_HOURS} hours')`;
 
 // ── attachRsvpMeta ────────────────────────────────────────────────────────────
 // going_count must count only 'going'. Before maybe/not_going existed a bare
@@ -189,7 +189,7 @@ export const toggleRsvp = async (req, res) => {
 // One query with aggregate subqueries — never one query per plan. Used by both
 // GET /plans and the 201 response of POST /plans so the client can drop a newly
 // created plan straight into the list.
-const PLAN_SELECT = `
+export const PLAN_SELECT = `
   SELECT p.post_id, p.hive_id, p.headline, p.body, p.media_url,
          p.event_at, p.event_end_at,
          COALESCE(p.plan_type, 'other') AS plan_type,
@@ -227,7 +227,7 @@ const PLAN_SELECT = `
                              AND hm.membership_status = 'active'
 `;
 
-function shapePlan(r) {
+export function shapePlan(r) {
   return {
     post_id: r.post_id,
     hive_id: r.hive_id,

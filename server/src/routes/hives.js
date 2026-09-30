@@ -59,6 +59,7 @@ import {
 import { requireAuth, requireVerifiedEmail } from '../middleware/auth.js';
 import { getHivePosts } from '../controllers/postsController.js';
 import { getHivePlans, createPlan } from '../controllers/eventsController.js';
+import { getHiveHome } from '../controllers/hiveHomeController.js';
 import { getAiFit, getAiMatch } from '../controllers/aiController.js';
 
 const router = Router();
@@ -123,6 +124,7 @@ router.get('/:id/ai-fit/:userId', requireAuth, getAiFit);
 router.get('/:id/ai-match',       requireAuth, getAiMatch);
 
 // ── Plans ─────────────────────────────────────────────────────────────────────
+router.get('/:id/home',   requireAuth, getHiveHome);
 router.get('/:id/plans',  requireAuth, getHivePlans);
 router.post('/:id/plans', requireAuth, createPlan);
 

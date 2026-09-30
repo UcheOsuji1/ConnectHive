@@ -1,0 +1,370 @@
+/* ── Hive Home (hh-) ─────────────────────────────────────────────────────────
+   The `home-` prefix the spec suggested is already taken by home.css (93 rules
+   for the logged-in /home page), and both sheets bundle globally, so this uses
+   hh- instead. Tokens come from hive-dashboard-layout.css.                    */
+
+.hh-page { font-family: 'DM Sans', system-ui, sans-serif; padding-bottom: 60px; }
+
+/* ── Hero ────────────────────────────────────────────────────────────────── */
+.hh-hero {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 218px;
+  display: flex;
+  align-items: flex-end;
+  padding: 26px 28px;
+  margin-bottom: 18px;
+  background-size: cover;
+  background-position: center;
+  background-color: #241a08;
+}
+.hh-hero--fallback {
+  background-image: linear-gradient(135deg, #17120a 0%, #2d200a 55%, #c49a28 190%);
+}
+.hh-hero-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(20,15,8,.92) 0%, rgba(20,15,8,.7) 45%, rgba(20,15,8,.15) 100%);
+}
+.hh-hero-inner {
+  position: relative; z-index: 1;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; width: 100%; flex-wrap: wrap;
+}
+.hh-hero-text { min-width: 0; flex: 1 1 340px; }
+
+.hh-eyebrow {
+  font-size: .66rem; font-weight: 700; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(243,234,213,.66); margin-bottom: 6px;
+}
+.hh-hero-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 3rem; font-weight: 600; line-height: 1.05;
+  color: #fff; margin: 0 0 6px;
+}
+.hh-hero-desc {
+  font-size: .92rem; color: rgba(243,234,213,.8); margin: 0 0 14px;
+  max-width: 560px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hh-hero-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hh-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.16);
+  color: #f3ead5; border-radius: 999px;
+  padding: 6px 13px; font-size: .78rem;
+  backdrop-filter: blur(4px);
+}
+.hh-chip svg { opacity: .8; }
+
+.hh-invite {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 20px; border: none; border-radius: 999px;
+  background: linear-gradient(120deg, #e8c84a 0%, var(--hdl-gold) 100%);
+  color: #17120a; font-family: inherit; font-size: .88rem; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}
+.hh-invite:hover { opacity: .9; }
+.hh-invite:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+.hh-toast {
+  position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%);
+  background: #17120a; color: #f3ead5; border: 1px solid rgba(196,154,40,.5);
+  border-radius: 999px; padding: 10px 20px; font-size: .84rem; z-index: 80;
+  box-shadow: 0 10px 30px rgba(23,18,10,.35);
+}
+
+/* ── Grid ────────────────────────────────────────────────────────────────── */
+.hh-grid {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) 320px;
+  gap: 16px; align-items: start;
+}
+.hh-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* ── Card shell ──────────────────────────────────────────────────────────── */
+.hh-card {
+  background: var(--hdl-surface);
+  border: 1px solid rgba(35,31,28,.09);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.hh-card-head {
+  display: flex; align-items: center; gap: 9px;
+  padding: 14px 16px 10px;
+}
+.hh-card-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.16rem; font-weight: 600; color: var(--hdl-ink); margin: 0;
+}
+.hh-card-head svg { color: var(--hdl-gold); flex-shrink: 0; }
+.hh-card-link {
+  margin-left: auto; font-size: .76rem; font-weight: 600;
+  color: #a97f16; text-decoration: none; white-space: nowrap;
+}
+.hh-card-link:hover { text-decoration: underline; }
+.hh-card-body { padding: 0 16px 16px; }
+
+.hh-empty {
+  padding: 26px 16px 30px; text-align: center;
+  font-size: .85rem; color: var(--hdl-muted); line-height: 1.6;
+}
+.hh-empty-strong {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.2rem; color: var(--hdl-ink); margin-bottom: 6px;
+}
+
+.hh-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 42px; padding: 0 18px; border-radius: 999px; border: none;
+  background: linear-gradient(120deg, #e8c84a 0%, var(--hdl-gold) 100%);
+  color: #17120a; font-family: inherit; font-size: .84rem; font-weight: 700;
+  cursor: pointer; text-decoration: none; margin-top: 12px;
+}
+.hh-btn:hover { opacity: .9; }
+.hh-btn--ghost {
+  background: none; border: 1.5px solid rgba(196,154,40,.5); color: #a97f16;
+}
+.hh-btn--ghost:hover { background: rgba(196,154,40,.08); opacity: 1; }
+.hh-btn:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+
+/* ── Upcoming Plan ───────────────────────────────────────────────────────── */
+.hh-plan-cover {
+  position: relative; height: 210px; margin: 0 16px;
+  border-radius: 12px; overflow: hidden;
+  background-size: cover; background-position: center;
+}
+.hh-plan-cover--fallback {
+  background-image: linear-gradient(135deg, #2d200a, #5a4214 60%, #c49a28 150%);
+}
+.hh-plan-cover-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(20,15,8,.05) 35%, rgba(20,15,8,.85) 100%);
+}
+.hh-datetile {
+  position: absolute; top: 12px; left: 12px; z-index: 1;
+  background: #fdf8ec; border-radius: 10px; padding: 8px 14px;
+  text-align: center; line-height: 1.15; min-width: 74px;
+}
+.hh-datetile-dow {
+  font-size: .62rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: #a97f16;
+}
+.hh-datetile-date {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.3rem; font-weight: 700; color: var(--hdl-ink);
+}
+.hh-datetile-time { font-size: .66rem; color: var(--hdl-muted); }
+
+.hh-plan-title {
+  position: absolute; left: 14px; right: 14px; bottom: 12px; z-index: 1;
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.5rem; font-weight: 600; color: #fff; line-height: 1.15; margin: 0;
+}
+.hh-plan-meta {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+  padding: 12px 16px 0; font-size: .8rem; color: var(--hdl-muted);
+}
+.hh-plan-meta-item { display: inline-flex; align-items: center; gap: 5px; }
+.hh-plan-type {
+  border: 1px solid rgba(196,154,40,.45); color: #a97f16;
+  border-radius: 999px; padding: 2px 10px; font-size: .7rem; font-weight: 600;
+}
+.hh-plan-desc {
+  padding: 8px 16px 0; font-size: .84rem; color: #4a4036; line-height: 1.55;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hh-plan-foot {
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 12px 16px 16px;
+}
+
+/* ── Activity ────────────────────────────────────────────────────────────── */
+.hh-act {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 16px; text-decoration: none; color: inherit;
+}
+.hh-act:hover { background: #faf6ee; }
+.hh-act:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+.hh-act-avatar { position: relative; flex-shrink: 0; }
+.hh-act-kind {
+  position: absolute; right: -4px; bottom: -4px;
+  width: 17px; height: 17px; border-radius: 50%;
+  background: #fdf8ec; border: 1px solid rgba(196,154,40,.4);
+  display: flex; align-items: center; justify-content: center; color: #a97f16;
+}
+.hh-act-body { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.hh-act-text { font-size: .83rem; color: #4a4036; line-height: 1.45; }
+.hh-act-text b { color: var(--hdl-ink); font-weight: 600; }
+.hh-act-time { font-size: .7rem; color: var(--hdl-muted2); margin-top: 2px; }
+
+/* ── At a Glance ─────────────────────────────────────────────────────────── */
+.hh-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; padding: 0 16px 16px; }
+.hh-tile {
+  background: #faf6ee; border-radius: 10px; padding: 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.hh-tile-num {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.62rem; font-weight: 700; color: var(--hdl-ink); line-height: 1;
+}
+.hh-tile-num small { font-size: .9rem; font-weight: 600; color: var(--hdl-muted); }
+.hh-tile-lbl { font-size: .71rem; color: var(--hdl-muted); line-height: 1.3; }
+.hh-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: #5dcaa5; margin-right: 5px; vertical-align: middle;
+}
+
+/* ── Goal ────────────────────────────────────────────────────────────────── */
+.hh-goal-text {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.24rem; font-weight: 600; color: var(--hdl-ink);
+  line-height: 1.3; padding: 0 16px 16px; margin: 0;
+}
+
+/* ── Recent Chat ─────────────────────────────────────────────────────────── */
+.hh-msg {
+  display: flex; gap: 10px; padding: 9px 16px;
+  text-decoration: none; color: inherit;
+}
+.hh-msg:hover { background: #faf6ee; }
+.hh-msg:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+.hh-msg-body { min-width: 0; flex: 1; }
+.hh-msg-top {
+  display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-bottom: 1px;
+}
+.hh-msg-name { font-size: .83rem; font-weight: 600; color: var(--hdl-ink); }
+.hh-msg-time { font-size: .7rem; color: var(--hdl-muted2); }
+.hh-msg-chan { font-size: .68rem; color: #a97f16; }
+.hh-msg-text {
+  font-size: .81rem; color: #4a4036; line-height: 1.45;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hh-unread {
+  background: var(--hdl-gold); color: #17120a;
+  border-radius: 999px; padding: 1px 8px;
+  font-size: .68rem; font-weight: 700; margin-left: 8px;
+}
+.hh-ice {
+  padding: 0 16px 14px; font-size: .78rem; color: var(--hdl-muted); line-height: 1.5;
+}
+.hh-ice b { color: #a97f16; }
+
+/* ── Photo mosaic ────────────────────────────────────────────────────────── */
+.hh-mosaic {
+  display: grid; gap: 6px; padding: 0 16px 16px;
+  grid-template-columns: 2fr 1fr 1fr;
+  grid-auto-rows: 86px;
+}
+.hh-mosaic-tile {
+  display: block; border-radius: 8px; overflow: hidden;
+  background: #efe8db; position: relative;
+}
+/* One large tile plus up to four small ones, as in the concept. With fewer
+   than five photos the remaining tiles simply stretch to fill the row. */
+.hh-mosaic-tile:first-child { grid-row: span 2; grid-column: 1; }
+.hh-mosaic--few { grid-template-columns: 2fr 1fr; }
+.hh-mosaic--one { grid-template-columns: 1fr; }
+.hh-mosaic--one .hh-mosaic-tile:first-child { grid-row: span 2; }
+.hh-mosaic-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hh-mosaic-tile:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+
+/* ── From the hosts ──────────────────────────────────────────────────────── */
+.hh-host-top {
+  display: flex; align-items: center; gap: 9px; padding: 0 16px 8px;
+}
+.hh-host-name {
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  font-size: .84rem; font-weight: 600; color: var(--hdl-ink);
+}
+.hh-host-date { font-size: .7rem; color: var(--hdl-muted2); }
+.hh-host-headline {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.1rem; font-weight: 600; color: var(--hdl-ink);
+  padding: 0 16px 4px; margin: 0;
+}
+.hh-host-body {
+  padding: 0 16px; font-size: .82rem; color: #4a4036; line-height: 1.55;
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+}
+.hh-host-foot {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 16px 16px; font-size: .74rem; color: var(--hdl-muted);
+}
+.hh-host-open { margin-left: auto; color: #a97f16; font-weight: 600; text-decoration: none; }
+.hh-host-open:hover { text-decoration: underline; }
+
+.hh-requests {
+  display: flex; align-items: center; gap: 10px;
+  border: 1.5px solid rgba(196,154,40,.55);
+  background: rgba(196,154,40,.07);
+  border-radius: 12px; padding: 12px 14px;
+  font-size: .82rem; color: #8a6510; text-decoration: none;
+}
+.hh-requests:hover { background: rgba(196,154,40,.14); }
+.hh-requests b { color: var(--hdl-ink); }
+.hh-requests span { margin-left: auto; font-weight: 700; color: #a97f16; white-space: nowrap; }
+
+/* ── Updates ─────────────────────────────────────────────────────────────── */
+.hh-updates { margin-top: 22px; }
+/* HiveFeedPage rendered inside .hw-feed { max-width: 680px }. Full-bleed post
+   cards at 1440 look stretched, so the constraint comes with it. */
+.hh-updates .post-feed, .hh-updates .hh-card { max-width: 680px; }
+.hh-updates-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.hh-updates-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.5rem; font-weight: 600; color: var(--hdl-ink); margin: 0;
+}
+.hh-updates-head .hh-btn { margin: 0 0 0 auto; }
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+.hh-skel {
+  border-radius: 14px;
+  background: linear-gradient(90deg,#efe8db 25%,#f7f1e6 50%,#efe8db 75%);
+  background-size: 200% 100%; animation: hh-sh 1.4s infinite;
+}
+@keyframes hh-sh { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .hh-skel { animation: none; } }
+
+.hh-state {
+  text-align: center; padding: 70px 20px; color: var(--hdl-muted);
+  display: grid; gap: 14px; justify-items: center;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  /* Two columns; the right column's modules move up under the hero. */
+  .hh-grid { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+  .hh-col--c {
+    grid-column: 1 / -1; grid-row: 1;
+    flex-direction: row; flex-wrap: wrap;
+  }
+  .hh-col--c > * { flex: 1 1 260px; min-width: 0; }
+  .hh-col--a, .hh-col--b { grid-row: 2; }
+  .hh-hero-title { font-size: 2.4rem; }
+}
+
+@media (max-width: 768px) {
+  .hh-grid { display: flex; flex-direction: column; gap: 16px; }
+  /* Columns dissolve so each module can be ordered individually. */
+  .hh-col { display: contents; }
+  .hh-m-plan     { order: 1; }
+  .hh-m-chat     { order: 2; }
+  .hh-m-activity { order: 3; }
+  .hh-m-glance   { order: 4; }
+  .hh-m-goal     { order: 5; }
+  .hh-m-host     { order: 6; }
+  .hh-m-photos   { order: 7; }
+
+  .hh-hero { min-height: 0; padding: 18px; }
+  .hh-hero-title { font-size: 1.9rem; }
+  .hh-hero-inner { flex-direction: column; align-items: stretch; }
+  .hh-invite { width: 100%; }
+  .hh-hero-desc { white-space: normal; }
+  .hh-plan-cover { height: 170px; }
+  .hh-plan-title { font-size: 1.25rem; }
+  .hh-tiles { grid-template-columns: 1fr 1fr; }
+}
