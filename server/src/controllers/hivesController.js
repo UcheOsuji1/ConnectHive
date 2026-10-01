@@ -172,7 +172,10 @@ export const matchHives = async (req, res) => {
           req.userId, hive.hive_id,
           purposeFactors.category,    purposeFactors.interests,
           purposeFactors.skills,      purposeFactors.goals,
-          purposeFactors.location,    purposeFactors.availability,
+          // scorePurpose returns `cadence`, never `availability` — that key
+          // belongs to scorePair. Passing the missing key sent NULL into a
+          // NOT NULL column and 500'd every Discovery request.
+          purposeFactors.location,    purposeFactors.cadence,
           purposeFactors.personality, matchScore,
         ],
       );
