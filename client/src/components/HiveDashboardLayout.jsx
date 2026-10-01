@@ -160,7 +160,7 @@ function HiveSidebar({
 
   // Owner/admin sections that used to sit as separate top-level sidebar items.
   // Routes are unchanged, so existing deep links (HiveCard's Requests pill and
-  // Manage button, HiveWorkspace's onboarding jump) keep resolving.
+  // Manage button) keep resolving.
   const MANAGE_SECTIONS = [
     { label: 'Join Requests',        sub: 'requests',     badge: requestCount },
     { label: 'General Settings',     sub: 'settings' },
