@@ -1,8 +1,8 @@
 import crypto from 'crypto';
+import { getPairScore } from '../lib/pairScoreCache.js';
 import { query, getClient } from '../db/index.js';
 import {
   scorePurpose,
-  scorePair,
   aggregatePeopleFit,
   blendScores,
   buildReasons,
@@ -104,42 +104,11 @@ export const matchHives = async (req, res) => {
         [hive.hive_id, req.userId],
       );
 
-      // Pairwise scores with 7-day cache
+      // Pairwise scores via the shared 7-day cache (lib/pairScoreCache.js), so
+      // Discovery, suggestions and the profile page cannot drift apart.
       const pairResults = [];
       for (const mp of memberProfiles) {
-        const [ua, ub] = [req.userId, mp.user_id].sort();
-
-        const { rows: [cached] } = await query(
-          `SELECT total_score FROM user_compatibility
-           WHERE user_a = $1 AND user_b = $2
-             AND calculated_at > NOW() - INTERVAL '7 days'`,
-          [ua, ub],
-        );
-
-        let pairTotal;
-        if (cached) {
-          pairTotal = Number(cached.total_score);
-        } else {
-          const { factors, total } = scorePair(enrichedProfile, mp);
-          pairTotal = total;
-          await query(
-            `INSERT INTO user_compatibility
-               (user_a, user_b, interests_score, goals_score, personality_score,
-                availability_score, age_score, total_score, calculated_at)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW())
-             ON CONFLICT (user_a, user_b) DO UPDATE SET
-               interests_score    = EXCLUDED.interests_score,
-               goals_score        = EXCLUDED.goals_score,
-               personality_score  = EXCLUDED.personality_score,
-               availability_score = EXCLUDED.availability_score,
-               age_score          = EXCLUDED.age_score,
-               total_score        = EXCLUDED.total_score,
-               calculated_at      = NOW()`,
-            [ua, ub,
-             factors.interests, factors.goals, factors.personality,
-             factors.availability, factors.age, pairTotal],
-          );
-        }
+        const { total: pairTotal } = await getPairScore(enrichedProfile, mp);
 
         pairResults.push({
           user_id:           mp.user_id,
@@ -385,13 +354,14 @@ export const getSuggestions = async (req, res) => {
          WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2`,
         [hive.hive_id, req.userId],
       );
-      const pairResults = memberProfiles
-        .map(mp => ({
-          user_id:   mp.user_id,
-          full_name: mp.full_name,
-          pair_score: scorePair(profile, mp).total,
-        }))
-        .sort((a, b) => b.pair_score - a.pair_score);
+      // Was scorePair() fresh on every request, which is exactly how this
+      // surface drifted from Discovery and the profile page.
+      const pairResults = [];
+      for (const mp of memberProfiles) {
+        const { total } = await getPairScore(profile, mp);
+        pairResults.push({ user_id: mp.user_id, full_name: mp.full_name, pair_score: total });
+      }
+      pairResults.sort((a, b) => b.pair_score - a.pair_score);
 
       const peopleFit  = aggregatePeopleFit(pairResults.map(p => p.pair_score));
       const matchScore = blendScores(total, peopleFit);

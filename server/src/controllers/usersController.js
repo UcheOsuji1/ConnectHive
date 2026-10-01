@@ -1,6 +1,7 @@
 import { query } from '../db/index.js';
 import { MIN_AGE } from '../lib/policy.js';
-import { scorePair, flatten, norm } from '../lib/compatibility.js';
+import { flatten, norm } from '../lib/compatibility.js';
+import { getPairScore } from '../lib/pairScoreCache.js';
 
 export const getProfile = async (req, res) => {
   try {
@@ -236,7 +237,6 @@ export const getMemberProfile = async (req, res) => {
     // Read the cache first, then compute and write through — the same pattern
     // as hivesController.js:119-142. getHiveRequests already displays this
     // cached number as "% with you", so reading it keeps the two consistent.
-    const [ua, ub] = viewerId < targetId ? [viewerId, targetId] : [targetId, viewerId];
     let compatibility = null;
 
     if (viewer) {
@@ -250,41 +250,17 @@ export const getMemberProfile = async (req, res) => {
         (flatten(viewer.interests).length > 0 && flatten(target.interests).length > 0) ||
         (flatten(viewer.goals).length     > 0 && flatten(target.goals).length     > 0);
 
-      const { rows: [cached] } = await query(
-        `SELECT total_score, interests_score, goals_score, personality_score,
-                availability_score, age_score
-           FROM user_compatibility WHERE user_a = $1 AND user_b = $2`,
-        [ua, ub],
-      );
-
-      let total, factors;
-      if (cached) {
-        total   = Number(cached.total_score);
-        factors = {
-          interests:    Number(cached.interests_score),
-          goals:        Number(cached.goals_score),
-          personality:  Number(cached.personality_score),
-          availability: Number(cached.availability_score),
-          age:          Number(cached.age_score),
-        };
-      } else {
-        ({ factors, total } = scorePair(viewer, target));
-        await query(
-          `INSERT INTO user_compatibility
-             (user_a, user_b, interests_score, goals_score, personality_score,
-              availability_score, age_score, total_score, calculated_at)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOW())
-           ON CONFLICT (user_a, user_b) DO NOTHING`,
-          [ua, ub, factors.interests, factors.goals, factors.personality,
-           factors.availability, factors.age, total],
-        );
-      }
+      // Shared with Discovery and suggestions (lib/pairScoreCache.js). This
+      // used to read with no freshness filter and write DO NOTHING, so a row
+      // older than the 7-day window lived on here after the other surfaces had
+      // recomputed it.
+      const { total, factors, source } = await getPairScore(viewer, target);
 
       compatibility = {
         total: Math.round(total),
         factors,
         enoughData: enough,
-        source: cached ? 'cache' : 'computed',
+        source,
         sharedInterests: interestsShared,
         sharedSkills:    skillsShared,
       };
