@@ -3,6 +3,7 @@ import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
 import { getDefaultChannelId } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
+import { createNotification } from './notificationsController.js';
 import { PLAN_SELECT, shapePlan } from './eventsController.js';
 import { shapePolls } from './pollsController.js';
 
@@ -110,6 +111,7 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
          WHEN rm.deleted_at IS NOT NULL      THEN '[deleted]'
          ELSE LEFT(rm.message_text, 90)
        END                                AS reply_snippet,
+       COALESCE(mn.mentions, '[]'::json)   AS mentions,
        COALESCE(rxn.reactions, '[]'::json) AS reactions,
        CASE WHEN m.deleted_at IS NOT NULL
             THEN '[]'::json
@@ -153,6 +155,14 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
        FROM message_attachments a
        WHERE a.message_id = m.message_id
      ) att ON true
+     LEFT JOIN LATERAL (
+       SELECT json_agg(
+         json_build_object('user_id', mm.user_id, 'full_name', mpr.full_name)
+       ) AS mentions
+       FROM message_mentions mm
+       LEFT JOIN profiles mpr ON mpr.user_id = mm.user_id
+       WHERE mm.message_id = m.message_id
+     ) mn ON true
      ${extraSQL}`,
     params,
   );
@@ -187,6 +197,7 @@ function _shape(row) {
           snippet:     row.reply_snippet ?? '',
         }
       : null,
+    mentions:    Array.isArray(row.mentions)    ? row.mentions    : [],
     reactions:   Array.isArray(row.reactions)   ? row.reactions   : [],
     attachments: Array.isArray(row.attachments) ? row.attachments : [],
   };
@@ -243,7 +254,7 @@ export const createMessage = async (req, res) => {
     await requireMembership(hiveId, req.userId);
 
     const { message_text, reply_to_message_id, attachments: rawAtts,
-            channel_id: reqChannelId, planPostId } = req.body ?? {};
+            channel_id: reqChannelId, planPostId, mentionUserIds } = req.body ?? {};
     const text        = (message_text ?? '').trim();
     const attachments = Array.isArray(rawAtts) ? rawAtts : [];
 
@@ -331,12 +342,57 @@ export const createMessage = async (req, res) => {
       );
     }
 
+    // ── Mentions ──────────────────────────────────────────────────────────────
+    // Only active members of this Hive are stored; anything else is dropped
+    // silently, so a crafted id cannot notify a stranger or leave a row behind.
+    const wanted = [...new Set((Array.isArray(mentionUserIds) ? mentionUserIds : [])
+      .filter(id => typeof id === 'string' && id))];
+    let mentioned = [];
+    if (wanted.length) {
+      const { rows } = await query(
+        `SELECT hm.user_id, pr.full_name
+           FROM hive_members hm
+           LEFT JOIN profiles pr ON pr.user_id = hm.user_id
+          WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
+            AND hm.user_id = ANY($2)`,
+        [hiveId, wanted],
+      );
+      mentioned = rows;
+      if (mentioned.length) {
+        await query(
+          `INSERT INTO message_mentions (message_id, user_id)
+           SELECT $1, UNNEST($2::uuid[]) ON CONFLICT DO NOTHING`,
+          [ins.message_id, mentioned.map(r => r.user_id)],
+        );
+      }
+    }
+
     const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [ins.message_id], req.userId);
     try {
       const io = getIO();
       io.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
       io.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
     } catch { /* no socket in tests */ }
+
+    // One notification per mentioned member, never to yourself.
+    if (mentioned.length) {
+      const { rows: [ch] } = await query(
+        `SELECT name FROM hive_channels WHERE channel_id = $1`, [channelId]);
+      const who = msg.sender?.full_name ?? 'Someone';
+      await Promise.all(mentioned
+        .filter(r => r.user_id !== req.userId)
+        .map(r => createNotification({
+          userId: r.user_id,
+          type: 'mention',
+          title: `${who} mentioned you in #${ch?.name ?? 'chat'}`,
+          body: text ? text.slice(0, 140) : null,
+          hiveId,
+          actorUserId: req.userId,
+          link: `/hive/${hiveId}/chat/${channelId}`,
+        }))
+        .map(p => p.catch(e => console.error('[messages/mention-notify]', e))));
+    }
+
     res.status(201).json(msg);
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });

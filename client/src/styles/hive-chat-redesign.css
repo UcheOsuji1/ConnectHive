@@ -482,6 +482,32 @@
   .hc-plancard, .hc-pollcard { max-width: 100%; }
 }
 
+/* ── @mentions ───────────────────────────────────────────────────────────── */
+.hc-mention {
+  color: #a97f16; font-weight: 600; text-decoration: none;
+  background: rgba(196,154,40,.12); border-radius: 5px; padding: 0 3px;
+}
+.hc-mention:hover { text-decoration: underline; }
+/* Gold fill when you are the one mentioned. */
+.hc-mention--me { background: rgba(196,154,40,.3); color: #7a5a0c; }
+
+.hc-mention-menu {
+  position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; z-index: 46;
+  max-width: 300px; padding: 5px; border-radius: 12px;
+  background: #fffdf8; border: 1px solid rgba(35,31,28,.12);
+  box-shadow: 0 10px 30px rgba(35,31,28,.18);
+  display: flex; flex-direction: column;
+}
+.hc-mention-item {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  min-height: 38px; padding: 0 9px; border: none; background: none;
+  border-radius: 8px; cursor: pointer;
+  font-family: 'DM Sans', system-ui, sans-serif; font-size: .83rem; color: #3a3228;
+}
+.hc-mention-item--on { background: rgba(196,154,40,.16); }
+.hc-mention-item:focus-visible { outline: 2px solid #c49a28; outline-offset: -2px; }
+.hc-composer { position: relative; }
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
   .hc-context-rail { width: 280px; }

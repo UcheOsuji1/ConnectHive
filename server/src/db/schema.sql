@@ -624,3 +624,12 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS poll_id UUID
 
 CREATE INDEX IF NOT EXISTS idx_poll_options_poll ON hive_poll_options(poll_id, position);
 CREATE INDEX IF NOT EXISTS idx_poll_votes_poll   ON hive_poll_votes(poll_id);
+
+-- ─── @mentions (Prompt 54b) ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS message_mentions (
+  message_id UUID NOT NULL REFERENCES messages(message_id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES users(user_id)       ON DELETE CASCADE,
+  PRIMARY KEY (message_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_mentions_user ON message_mentions(user_id);

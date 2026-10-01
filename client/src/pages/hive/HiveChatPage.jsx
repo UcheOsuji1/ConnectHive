@@ -64,6 +64,41 @@ function statusLabel(s) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Online';
 }
 
+// ── Mention rendering ─────────────────────────────────────────────────────────
+// The stored text holds "@Full Name"; the ids travel beside it, so rendering
+// matches the longest name first and never guesses from the text alone.
+function renderWithMentions(text, mentions, meId) {
+  if (!text) return text ?? null;
+  const list = (mentions ?? []).filter(m => m.full_name);
+  if (!list.length) return text;
+
+  const byLength = [...list].sort((a, b) => b.full_name.length - a.full_name.length);
+  const out = [];
+  let rest = text;
+  let key = 0;
+
+  while (rest.length) {
+    let hit = null;
+    for (const m of byLength) {
+      const i = rest.indexOf('@' + m.full_name);
+      if (i !== -1 && (hit === null || i < hit.i)) hit = { i, m };
+    }
+    if (!hit) { out.push(rest); break; }
+    if (hit.i > 0) out.push(rest.slice(0, hit.i));
+    out.push(
+      <Link
+        key={`mention-${key++}`}
+        to={`/profile/${hit.m.user_id}`}
+        className={`hc-mention${hit.m.user_id === meId ? ' hc-mention--me' : ''}`}
+      >
+        @{hit.m.full_name}
+      </Link>,
+    );
+    rest = rest.slice(hit.i + hit.m.full_name.length + 1);
+  }
+  return out;
+}
+
 // ── AttachmentGrid ────────────────────────────────────────────────────────────
 
 // Images show as a row of up to three rounded thumbnails, with "+N" standing in
@@ -482,7 +517,7 @@ function MessageRow({
               )}
               {isDeleted
                 ? 'Message deleted'
-                : msg.message_text ?? null}
+                : renderWithMentions(msg.message_text, msg.mentions, userId)}
               {!isDeleted && (msg.plan || msg.plan_removed) && (
                 <PlanMessageCard plan={msg.plan} removed={msg.plan_removed}
                                  hiveId={msg.hive_id} onRsvp={onPlanRsvp} />
@@ -851,6 +886,10 @@ export default function HiveChatPage() {
   const [plusOpen,    setPlusOpen]    = useState(false);
   const [planOpen,    setPlanOpen]    = useState(false);
   const [pollOpen,    setPollOpen]    = useState(false);
+  // @mention autocomplete
+  const [mentionQuery, setMentionQuery] = useState(null); // null = closed
+  const [mentionIdx,   setMentionIdx]   = useState(0);
+  const mentionedRef = useRef(new Map());   // full_name → user_id, for this draft
   const [newMsgCount, setNewMsgCount] = useState(0);
 
   // Context rail data for the active room (next plan + this room's images)
@@ -1325,8 +1364,15 @@ export default function HiveChatPage() {
   }
 
   function handleDraftChange(e) {
-    setDraftText(e.target.value);
+    const v = e.target.value;
+    setDraftText(v);
     autoResize(e.target);
+
+    // Open the picker on the "@word" immediately before the caret.
+    const upto = v.slice(0, e.target.selectionStart ?? v.length);
+    const m = /(?:^|\s)@([^\s@]{0,40})$/.exec(upto);
+    setMentionQuery(m ? m[1] : null);
+    setMentionIdx(0);
     if (e.target.value.trim()) emitTypingStart();
     else stopTyping();
   }
@@ -1468,6 +1514,14 @@ export default function HiveChatPage() {
       if (text)                  payload.message_text = text;
       if (capturedAtts.length)   payload.attachments  = capturedAtts;
 
+      // Only the names still present in the sent text — editing one out must
+      // not notify that person.
+      const ids = [...mentionedRef.current.entries()]
+        .filter(([name]) => text.includes('@' + name))
+        .map(([, id]) => id);
+      if (ids.length) payload.mentionUserIds = ids;
+      mentionedRef.current.clear();
+
       const real = await api.post(`/api/hives/${hiveId}/messages`, payload);
       setMessages(prev => prev.map(m =>
         m.message_id === tempId ? { ...real, _status: 'sent' } : m,
@@ -1480,7 +1534,36 @@ export default function HiveChatPage() {
     }
   }
 
+  const mentionMatches = mentionQuery === null ? [] : members
+    .filter(m => m.user_id !== userId)
+    .filter(m => (m.full_name ?? '').toLowerCase().includes(mentionQuery.toLowerCase()))
+    .slice(0, 6);
+
+  function insertMention(member) {
+    const el = composerRef.current;
+    const caret = el?.selectionStart ?? draftText.length;
+    const before = draftText.slice(0, caret);
+    const after  = draftText.slice(caret);
+    const replaced = before.replace(/(^|\s)@([^\s@]{0,40})$/, `$1@${member.full_name} `);
+    mentionedRef.current.set(member.full_name, member.user_id);
+    const next = replaced + after;
+    setDraftText(next);
+    setMentionQuery(null);
+    requestAnimationFrame(() => {
+      el?.focus();
+      const pos = replaced.length;
+      el?.setSelectionRange(pos, pos);
+      autoResize(el);
+    });
+  }
+
   function handleComposerKey(e) {
+    if (mentionQuery !== null && mentionMatches.length) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => (i + 1) % mentionMatches.length); return; }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionIdx(i => (i - 1 + mentionMatches.length) % mentionMatches.length); return; }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(mentionMatches[mentionIdx]); return; }
+      if (e.key === 'Escape')    { e.preventDefault(); setMentionQuery(null); return; }
+    }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
 
@@ -1806,6 +1889,25 @@ export default function HiveChatPage() {
 
             {/* Staged file chips */}
             <StagedFileChips files={stagedFiles} onRemove={removeStagedFile} />
+
+            {mentionQuery !== null && mentionMatches.length > 0 && (
+              <div className="hc-mention-menu" role="listbox" aria-label="Mention a member">
+                {mentionMatches.map((m, i) => (
+                  <button
+                    key={m.user_id}
+                    type="button"
+                    role="option"
+                    aria-selected={i === mentionIdx}
+                    className={`hc-mention-item${i === mentionIdx ? ' hc-mention-item--on' : ''}`}
+                    onMouseEnter={() => setMentionIdx(i)}
+                    onClick={() => insertMention(m)}
+                  >
+                    <Avatar name={m.full_name} src={m.profile_photo_url} size={24} />
+                    {m.full_name ?? 'Member'}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <div className="hc-composer-row">
               <div className="hc-plus-wrap">
