@@ -579,3 +579,12 @@ ALTER TABLE event_rsvps ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL
 -- Partial index: the Plans page always filters to event posts within one Hive.
 CREATE INDEX IF NOT EXISTS idx_hive_posts_plans
   ON hive_posts(hive_id, event_at) WHERE post_type = 'event';
+
+-- ─── Pinned messages (Prompt 54b) ─────────────────────────────────────────────
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_at TIMESTAMPTZ;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by UUID REFERENCES users(user_id);
+
+-- Partial index: the pins list always asks for one room's pinned messages,
+-- newest first, and pinned rows are a tiny fraction of the table.
+CREATE INDEX IF NOT EXISTS idx_messages_pinned
+  ON messages(channel_id, pinned_at DESC) WHERE pinned_at IS NOT NULL;

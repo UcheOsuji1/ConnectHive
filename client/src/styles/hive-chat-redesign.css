@@ -320,6 +320,32 @@
 }
 .hc-room-item--active .hc-room-hash { color: #a97f16; }
 
+/* ── Pinned messages ─────────────────────────────────────────────────────── */
+.hc-pin-mark { font-size: .72rem; line-height: 1; }
+.hc-ctx-pin { font-size: .95rem; line-height: 1; }
+.hc-ctx-more {
+  margin-left: auto; border: none; background: none; cursor: pointer;
+  color: #8a8070; font-size: 1rem; line-height: 1; padding: 2px 6px; border-radius: 6px;
+}
+.hc-ctx-more:hover { background: rgba(35,31,28,.07); color: #2d2416; }
+.hc-ctx-more:focus-visible { outline: 2px solid #c49a28; outline-offset: 1px; }
+
+.hc-ctx-pinned { background: #fdf8ec; border-radius: 10px; padding: 11px 12px; }
+.hc-ctx-pinned-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.hc-ctx-pinned-name {
+  display: block; font-size: .82rem; font-weight: 600; color: #2d2416;
+}
+.hc-ctx-pinned-date { display: block; font-size: .68rem; color: #a09080; }
+.hc-ctx-pinned-text {
+  font-size: .8rem; color: #4a4036; line-height: 1.55; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+}
+
+.hc-pin-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #efe8db; }
+.hc-pin-row:last-child { border-bottom: none; }
+.hc-pin-row-body { min-width: 0; flex: 1; }
+.hc-pin-row-top { display: flex; align-items: baseline; gap: 8px; }
+
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
   .hc-context-rail { width: 280px; }

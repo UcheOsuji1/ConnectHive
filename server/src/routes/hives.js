@@ -61,6 +61,7 @@ import { getHivePosts } from '../controllers/postsController.js';
 import { getHivePlans, createPlan } from '../controllers/eventsController.js';
 import { getHiveHome } from '../controllers/hiveHomeController.js';
 import { getChannelRail } from '../controllers/chatRailController.js';
+import { pinMessage, unpinMessage, listPins } from '../controllers/pinsController.js';
 import { getAiFit, getAiMatch } from '../controllers/aiController.js';
 
 const router = Router();
@@ -116,6 +117,8 @@ router.post('/:id/messages',                         requireAuth, createMessage)
 router.patch('/:id/messages/:messageId',             requireAuth, updateMessage);
 router.delete('/:id/messages/:messageId',            requireAuth, deleteMessage);
 router.post('/:id/messages/:messageId/reactions',    requireAuth, toggleReaction);
+router.post('/:id/messages/:messageId/pin',          requireAuth, pinMessage);
+router.delete('/:id/messages/:messageId/pin',        requireAuth, unpinMessage);
 router.post('/:id/follow',               requireAuth, followHive);
 router.delete('/:id/follow',             requireAuth, unfollowHive);
 router.get('/:id/posts',                 requireAuth, getHivePosts);
@@ -135,6 +138,7 @@ router.patch('/:id/media',           requireAuth, updateHiveMedia);
 
 // ── Channels (rooms) ──────────────────────────────────────────────────────────
 router.get('/:id/channels/:channelId/rail',      requireAuth, getChannelRail);
+router.get('/:id/channels/:channelId/pins',      requireAuth, listPins);
 router.get('/:id/channels',                      requireAuth, listChannels);
 router.post('/:id/channels',                     requireAuth, createChannel);
 router.patch('/:id/channels/:channelId',         requireAuth, updateChannel);

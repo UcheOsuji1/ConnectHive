@@ -18,7 +18,7 @@ export const getChannelRail = async (req, res) => {
     );
     if (!ch) return res.status(404).json({ error: 'Room not found.' });
 
-    const [planRes, mediaRes] = await Promise.all([
+    const [planRes, mediaRes, pinRes] = await Promise.all([
       query(
         `${PLAN_SELECT}
           WHERE p.hive_id = $2 AND p.post_type = 'event'
@@ -39,11 +39,30 @@ export const getChannelRail = async (req, res) => {
           LIMIT ${MEDIA_LIMIT}`,
         [channelId],
       ),
+      query(
+        `SELECT m.message_id, m.channel_id, m.message_text, m.sent_at,
+                m.pinned_at, c.name AS channel_name,
+                pr.user_id AS sender_user_id, pr.full_name, pr.profile_photo_url
+           FROM messages m
+           JOIN hive_channels c ON c.channel_id = m.channel_id
+           LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
+          WHERE m.channel_id = $1 AND m.pinned_at IS NOT NULL AND m.deleted_at IS NULL
+          ORDER BY m.pinned_at DESC
+          LIMIT 1`,
+        [channelId],
+      ),
     ]);
 
+    const p0 = pinRes.rows[0];
     res.json({
       nextPlan: planRes.rows.length ? shapePlan(planRes.rows[0]) : null,
       recentMedia: mediaRes.rows,
+      pin: p0 ? {
+        message_id: p0.message_id, channel_id: p0.channel_id, channel_name: p0.channel_name,
+        text: p0.message_text, sent_at: p0.sent_at, pinned_at: p0.pinned_at,
+        sender: { user_id: p0.sender_user_id, full_name: p0.full_name,
+                  profile_photo_url: p0.profile_photo_url },
+      } : null,
     });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });

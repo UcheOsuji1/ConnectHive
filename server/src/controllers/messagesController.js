@@ -52,6 +52,7 @@ async function _runEnriched(extraSQL, params) {
        CASE WHEN m.deleted_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
        m.sent_at,
        m.edited_at,
+       m.pinned_at,
        (m.deleted_at IS NOT NULL)        AS is_deleted,
        p.full_name                        AS sender_name,
        p.profile_photo_url                AS sender_photo,

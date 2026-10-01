@@ -375,6 +375,7 @@ function MessageSkeleton() {
 // ── MessageRow ────────────────────────────────────────────────────────────────
 
 function MessageRow({
+  onPin,
   msg, isOwn, isLast, members, userId,
   onReply, onEdit, onDelete, onReaction, isOwner,
   editingId, editText, onEditChange, onEditSave, onEditCancel,
@@ -443,6 +444,7 @@ function MessageRow({
               </span>
             )}
             <span className="hc-msg-time">{timeLabel}{isOwn && ' · You'}</span>
+            {msg.pinned_at && <span className="hc-pin-mark" title="Pinned">📌</span>}
           </div>
         )}
         {msg._grouped && isOwn && (
@@ -521,6 +523,11 @@ function MessageRow({
             {!isDeleted && (
               <div className="hc-msg-actions">
                 <button className="hc-action-btn" onClick={() => onReply(msg)}>Reply</button>
+                {isOwner && (
+                  <button className="hc-action-btn" onClick={() => onPin(msg)}>
+                    {msg.pinned_at ? 'Unpin' : 'Pin'}
+                  </button>
+                )}
                 {canSelfEdit   && <button className="hc-action-btn" onClick={() => onEdit(msg)}>Edit</button>}
                 {(canSelfEdit || canModDelete) && (
                   <button className="hc-action-btn hc-action-btn--del" onClick={() => onDelete(msg.message_id)}>Delete</button>
@@ -576,7 +583,7 @@ function DateTile({ iso }) {
 
 function ContextRail({
   members, presenceData, myStatus, onStatusChange,
-  hiveId, hive, nextPlan, recentMedia = [],
+  hiveId, hive, nextPlan, recentMedia = [], pin = null, onOpenPins,
 }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
@@ -684,6 +691,33 @@ function ContextRail({
         </section>
       )}
 
+      {/* ── Pinned Note ── */}
+      {pin && (
+        <section className="hc-ctx-card">
+          <div className="hc-ctx-head">
+            <span aria-hidden="true" className="hc-ctx-pin">📌</span>
+            <h3 className="hc-ctx-title">Pinned Note</h3>
+            {onOpenPins && (
+              <button type="button" className="hc-ctx-more" onClick={onOpenPins}
+                      aria-label="See all pinned messages in this room">···</button>
+            )}
+          </div>
+          <div className="hc-ctx-pinned">
+            <div className="hc-ctx-pinned-top">
+              <Avatar name={pin.sender?.full_name} src={pin.sender?.profile_photo_url} size={28} />
+              <span>
+                <span className="hc-ctx-pinned-name">{pin.sender?.full_name ?? 'Member'}</span>
+                <span className="hc-ctx-pinned-date">
+                  {new Date(pin.sent_at).toLocaleDateString('en-US',
+                    { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </span>
+            </div>
+            <p className="hc-ctx-pinned-text">{pin.text}</p>
+          </div>
+        </section>
+      )}
+
       {/* ── Recent Media ── */}
       {recentMedia.length > 0 && (
         <section className="hc-ctx-card">
@@ -702,6 +736,57 @@ function ContextRail({
         </section>
       )}
     </aside>
+  );
+}
+
+// ── PinsModal ─────────────────────────────────────────────────────────────────
+
+function PinsModal({ hiveId, channelId, channelName, onClose }) {
+  const [pins, setPins]   = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/channels/${channelId}/pins`)
+      .then(d => setPins(d.pins ?? []))
+      .catch(e => setError(e?.data?.error ?? 'Could not load pinned messages.'));
+  }, [hiveId, channelId]);
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div className="hc-modal-overlay" onClick={onClose}>
+      <div className="hc-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true"
+           aria-label={`Pinned messages in ${channelName ?? 'this room'}`}>
+        <div className="hc-modal-header">
+          <span>Pinned in #{channelName}</span>
+          <button className="hc-modal-close" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className="hc-modal-body">
+          {error && <p className="hc-modal-error">{error}</p>}
+          {!error && pins === null && <p className="hc-ctx-empty">Loading…</p>}
+          {pins?.length === 0 && <p className="hc-ctx-empty">Nothing is pinned in this room yet.</p>}
+          {pins?.map(p => (
+            <div key={p.message_id} className="hc-pin-row">
+              <Avatar name={p.sender?.full_name} src={p.sender?.profile_photo_url} size={28} />
+              <div className="hc-pin-row-body">
+                <div className="hc-pin-row-top">
+                  <span className="hc-ctx-pinned-name">{p.sender?.full_name ?? 'Member'}</span>
+                  <span className="hc-ctx-pinned-date">
+                    {new Date(p.sent_at).toLocaleDateString('en-US',
+                      { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
+                </div>
+                <p className="hc-ctx-pinned-text">{p.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -753,10 +838,11 @@ export default function HiveChatPage() {
   // UI
   const [showContext, setShowContext] = useState(true);
   const [showRooms,   setShowRooms]   = useState(false);
+  const [pinsOpen,    setPinsOpen]    = useState(false);
   const [newMsgCount, setNewMsgCount] = useState(0);
 
   // Context rail data for the active room (next plan + this room's images)
-  const [rail, setRail] = useState({ nextPlan: null, recentMedia: [] });
+  const [rail, setRail] = useState({ nextPlan: null, recentMedia: [], pin: null });
 
   // Refs for stable callbacks
   const scrollAreaRef    = useRef(null);
@@ -1019,6 +1105,24 @@ export default function HiveChatPage() {
       }
     };
 
+    const onMessagePinned = ({ pin }) => {
+      if (!pin) return;
+      setMessages(prev => prev.map(m =>
+        m.message_id === pin.message_id ? { ...m, pinned_at: pin.pinned_at } : m));
+      if (pin.channel_id === activeChannelIdRef.current) setRail(r => ({ ...r, pin }));
+    };
+
+    const onMessageUnpinned = ({ message_id, channel_id }) => {
+      setMessages(prev => prev.map(m =>
+        m.message_id === message_id ? { ...m, pinned_at: null } : m));
+      if (channel_id === activeChannelIdRef.current) {
+        // Another message may still be pinned — ask the rail for the newest.
+        api.get(`/api/hives/${hiveId}/channels/${channel_id}/rail`)
+          .then(d => setRail(r => ({ ...r, pin: d.pin ?? null })))
+          .catch(() => setRail(r => ({ ...r, pin: null })));
+      }
+    };
+
     const onChannelActivity = ({ channel_id }) => {
       if (channel_id && channel_id !== activeChannelIdRef.current) {
         setUnreadChannels(prev => new Set([...prev, channel_id]));
@@ -1073,6 +1177,8 @@ export default function HiveChatPage() {
     socket.on('typing_update',        onTypingUpdate);
     socket.on('hive_access_revoked',  onHiveAccessRevoked);
     socket.on('channel_activity',     onChannelActivity);
+    socket.on('message_pinned',       onMessagePinned);
+    socket.on('message_unpinned',     onMessageUnpinned);
 
     return () => {
       socket.off('receive_message',     onReceiveMessage);
@@ -1083,6 +1189,8 @@ export default function HiveChatPage() {
       socket.off('typing_update',       onTypingUpdate);
       socket.off('hive_access_revoked', onHiveAccessRevoked);
       socket.off('channel_activity',    onChannelActivity);
+      socket.off('message_pinned',      onMessagePinned);
+      socket.off('message_unpinned',    onMessageUnpinned);
       Object.values(typingTimers.current).forEach(clearTimeout);
       typingTimers.current = {};
     };
@@ -1112,13 +1220,29 @@ export default function HiveChatPage() {
 
   // ── Context rail data for the active room ──────────────────────────────────
   useEffect(() => {
-    if (!activeChannelId) { setRail({ nextPlan: null, recentMedia: [] }); return; }
+    if (!activeChannelId) { setRail({ nextPlan: null, recentMedia: [], pin: null }); return; }
     let live = true;
     api.get(`/api/hives/${hiveId}/channels/${activeChannelId}/rail`)
-      .then(d => { if (live) setRail({ nextPlan: d.nextPlan ?? null, recentMedia: d.recentMedia ?? [] }); })
-      .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [] }); });
+      .then(d => { if (live) setRail({ nextPlan: d.nextPlan ?? null,
+                                       recentMedia: d.recentMedia ?? [], pin: d.pin ?? null }); })
+      .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [], pin: null }); });
     return () => { live = false; };
   }, [hiveId, activeChannelId]);
+
+  // ── Pin / unpin ────────────────────────────────────────────────────────────
+  async function handlePin(msg) {
+    const pinning = !msg.pinned_at;
+    try {
+      if (pinning) await api.post(`/api/hives/${hiveId}/messages/${msg.message_id}/pin`, {});
+      else         await api.delete(`/api/hives/${hiveId}/messages/${msg.message_id}/pin`);
+      // The socket broadcast updates both the stream and the rail, including
+      // for everyone else in the room.
+    } catch (e) {
+      setSocketError(false);
+      // eslint-disable-next-line no-alert
+      alert(e?.data?.error ?? 'Could not change the pin.');
+    }
+  }
 
   function insertEmoji(emoji) {
     const el = composerRef.current;
@@ -1413,6 +1537,15 @@ export default function HiveChatPage() {
 
   return (
     <div className="hc-root">
+      {pinsOpen && (
+        <PinsModal
+          hiveId={hiveId}
+          channelId={activeChannelId}
+          channelName={activeChannel?.name}
+          onClose={() => setPinsOpen(false)}
+        />
+      )}
+
       {showCreateChannel && (
         <CreateChannelModal
           hiveId={hiveId}
@@ -1525,6 +1658,7 @@ export default function HiveChatPage() {
                 )}
                 <MessageRow
                   msg={msg}
+                  onPin={handlePin}
                   isOwn={msg.sender_user_id === userId}
                   isLast={i === lastConfirmedOwnIdx}
                   members={members}
@@ -1689,6 +1823,8 @@ export default function HiveChatPage() {
           hive={hive}
           nextPlan={rail.nextPlan}
           recentMedia={rail.recentMedia}
+          pin={rail.pin}
+          onOpenPins={() => setPinsOpen(true)}
         />
       )}
     </div>
