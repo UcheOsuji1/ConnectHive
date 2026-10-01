@@ -60,6 +60,7 @@ import { requireAuth, requireVerifiedEmail } from '../middleware/auth.js';
 import { getHivePosts } from '../controllers/postsController.js';
 import { getHivePlans, createPlan } from '../controllers/eventsController.js';
 import { getHiveHome } from '../controllers/hiveHomeController.js';
+import { getChannelRail } from '../controllers/chatRailController.js';
 import { getAiFit, getAiMatch } from '../controllers/aiController.js';
 
 const router = Router();
@@ -133,6 +134,7 @@ router.post('/:id/upload-signature', requireAuth, getUploadSignature);
 router.patch('/:id/media',           requireAuth, updateHiveMedia);
 
 // ── Channels (rooms) ──────────────────────────────────────────────────────────
+router.get('/:id/channels/:channelId/rail',      requireAuth, getChannelRail);
 router.get('/:id/channels',                      requireAuth, listChannels);
 router.post('/:id/channels',                     requireAuth, createChannel);
 router.patch('/:id/channels/:channelId',         requireAuth, updateChannel);

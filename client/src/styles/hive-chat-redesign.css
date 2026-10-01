@@ -1,0 +1,385 @@
+/* ══ Prompt 54 — Chat redesign (spec image2) ═════════════════════════════════
+   Layout widths, the rooms header, the new context rail and the composer pill.
+   Imported after hive-chat.css, so these win on source order.                 */
+
+/* ── Rooms column ────────────────────────────────────────────────────────── */
+.hc-rooms-rail {
+  width: 200px;
+  padding: 14px 0 12px;
+}
+.hc-rooms-head {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 12px 10px;
+}
+.hc-rooms-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.5rem; font-weight: 600; color: #2d2416;
+  margin: 0; flex: 1; line-height: 1.1;
+}
+.hc-rooms-icon-btn {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; border: none; cursor: pointer;
+  background: none; color: #7a6e5e;
+}
+.hc-rooms-icon-btn:hover { background: rgba(35,31,28,.07); color: #2d2416; }
+.hc-rooms-icon-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 1px; }
+.hc-rooms-icon-btn--add {
+  background: #fffdf8; border: 1px solid rgba(140,127,108,.3); color: #a97f16;
+}
+.hc-rooms-icon-btn--add:hover { background: rgba(196,154,40,.14); border-color: #c49a28; }
+
+.hc-rooms-search {
+  margin: 0 12px 8px; padding: 7px 10px;
+  border: 1px solid rgba(140,127,108,.3); border-radius: 8px;
+  background: #fffdf8; font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: .8rem; color: #2d2416; width: calc(100% - 24px);
+}
+.hc-rooms-search:focus { outline: 2px solid #c49a28; outline-offset: -1px; }
+.hc-rooms-none { padding: 6px 14px; font-size: .76rem; color: #8a8070; }
+
+.hc-rail-section-label {
+  font-size: .64rem; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: #a09080; padding: 6px 14px 5px;
+}
+
+.hc-room-item {
+  display: flex; align-items: center; gap: 8px;
+  width: calc(100% - 16px); margin: 1px 8px;
+  padding: 8px 10px; min-height: 38px;
+  border: none; background: none; border-radius: 9px;
+  font-family: 'DM Sans', system-ui, sans-serif; font-size: .85rem;
+  color: #4a4036; cursor: pointer; text-align: left;
+}
+.hc-room-item:hover:not(.hc-room-item--disabled) { background: rgba(35,31,28,.06); }
+.hc-room-item--active {
+  background: rgba(196,154,40,.18); color: #2d2416; font-weight: 600;
+}
+.hc-room-item:focus-visible { outline: 2px solid #c49a28; outline-offset: -2px; }
+.hc-room-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hc-room-unread {
+  width: 7px; height: 7px; border-radius: 50%; background: #c49a28; flex-shrink: 0;
+}
+
+/* ── Conversation header ─────────────────────────────────────────────────── */
+.hc-header { padding: 12px 18px; gap: 10px; align-items: flex-start; }
+.hc-header-hash {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.6rem; color: #a09080; line-height: 1; margin-top: 1px;
+}
+.hc-header-left { flex: 1; min-width: 0; }
+.hc-header-room {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.5rem; font-weight: 600; color: #2d2416;
+  margin: 0; line-height: 1.1;
+}
+.hc-header-desc {
+  font-size: .8rem; color: #7a6e5e; margin: 2px 0 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hc-header-members {
+  flex-shrink: 0; min-height: 38px; padding: 0 12px;
+  border: none; background: none; border-radius: 8px;
+  font-family: 'DM Sans', system-ui, sans-serif; font-size: .82rem;
+  color: #7a6e5e; cursor: pointer; align-self: center;
+}
+.hc-header-members:hover { background: rgba(35,31,28,.06); color: #2d2416; }
+.hc-header-members:focus-visible { outline: 2px solid #c49a28; outline-offset: -2px; }
+.hc-header-rooms-btn { display: none; }
+
+/* ── Typing ──────────────────────────────────────────────────────────────── */
+.hc-typing { display: flex; align-items: center; gap: 8px; }
+.hc-typing-avatars { display: flex; }
+.hc-typing-avatars > * { margin-left: -7px; border: 2px solid #fffdf8; border-radius: 50%; }
+.hc-typing-avatars > *:first-child { margin-left: 0; }
+
+/* ── Composer pill ───────────────────────────────────────────────────────── */
+.hc-composer { padding: 10px 18px 14px; border-top: 1px solid #e9dfcf; }
+.hc-composer-row {
+  display: flex; align-items: flex-end; gap: 8px;
+  background: #fffdf8; border: 1px solid rgba(140,127,108,.3);
+  border-radius: 24px; padding: 5px 6px;
+}
+.hc-composer-row:focus-within { border-color: #c49a28; }
+.hc-plus-btn {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: rgba(35,31,28,.07); color: #4a4036; cursor: pointer;
+}
+.hc-plus-btn:hover:not(:disabled) { background: rgba(196,154,40,.2); color: #a97f16; }
+.hc-plus-btn:disabled { opacity: .45; cursor: default; }
+.hc-plus-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 1px; }
+
+.hc-textarea {
+  flex: 1; min-width: 0; border: none; background: none; resize: none;
+  font-family: 'DM Sans', system-ui, sans-serif; font-size: .88rem;
+  color: #2d2416; padding: 8px 2px; line-height: 1.45; max-height: 120px;
+}
+.hc-textarea:focus { outline: none; }
+
+.hc-composer-tools { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.hc-tool-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: none; background: none;
+  display: flex; align-items: center; justify-content: center;
+  color: #8a8070; cursor: pointer;
+}
+.hc-tool-btn:hover:not(:disabled) { background: rgba(35,31,28,.07); color: #2d2416; }
+.hc-tool-btn:disabled { opacity: .4; cursor: default; }
+.hc-tool-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 1px; }
+
+.hc-send-btn {
+  width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; border: none;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #17120a; cursor: pointer;
+}
+.hc-send-btn:disabled { opacity: .4; cursor: default; }
+.hc-send-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+
+/* ── Context rail ────────────────────────────────────────────────────────── */
+.hc-context-rail {
+  width: 320px;
+  background: #faf6ee;
+  padding: 14px 14px 20px;
+  gap: 12px;
+}
+.hc-ctx-card {
+  background: #fffdf8; border: 1px solid rgba(35,31,28,.09);
+  border-radius: 14px; padding: 13px 14px 14px;
+}
+.hc-ctx-head { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+.hc-ctx-head svg { color: #c49a28; flex-shrink: 0; }
+.hc-ctx-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.08rem; font-weight: 600; color: #2d2416; margin: 0;
+}
+.hc-ctx-meta { margin-left: auto; font-size: .74rem; color: #8a8070; }
+.hc-ctx-link {
+  margin-left: auto; font-size: .74rem; font-weight: 600;
+  color: #a97f16; text-decoration: none; white-space: nowrap;
+}
+.hc-ctx-link:hover { text-decoration: underline; }
+.hc-ctx-dot {
+  width: 9px; height: 9px; border-radius: 50%; background: #5dcaa5; flex-shrink: 0;
+}
+.hc-ctx-empty { font-size: .8rem; color: #8a8070; margin: 0; }
+
+/* Online Now */
+.hc-online-strip {
+  display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.hc-online-person {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  text-decoration: none; flex-shrink: 0; width: 52px;
+}
+.hc-online-avatar { position: relative; display: block; }
+.hc-online-dot {
+  position: absolute; right: 0; bottom: 1px;
+  width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fffdf8;
+}
+.hc-online-name {
+  font-size: .7rem; color: #4a4036; max-width: 52px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hc-online-person:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; border-radius: 8px; }
+
+/* Upcoming Plan */
+.hc-ctx-plan { display: flex; gap: 11px; }
+.hc-datetile {
+  flex-shrink: 0; background: #fdf8ec; border: 1px solid rgba(196,154,40,.3);
+  border-radius: 10px; padding: 8px 10px; text-align: center;
+  display: flex; flex-direction: column; line-height: 1.15; min-width: 66px;
+}
+.hc-datetile-dow {
+  font-size: .6rem; font-weight: 700; letter-spacing: .09em;
+  text-transform: uppercase; color: #a97f16;
+}
+.hc-datetile-date {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.1rem; font-weight: 700; color: #2d2416;
+}
+.hc-datetile-time { font-size: .62rem; color: #7a6e5e; }
+.hc-ctx-plan-body { min-width: 0; flex: 1; }
+.hc-ctx-plan-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.02rem; font-weight: 600; color: #2d2416;
+  line-height: 1.2; margin-bottom: 5px;
+}
+.hc-ctx-plan-row {
+  display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+  font-size: .74rem; color: #7a6e5e; margin-top: 4px;
+}
+.hc-ctx-plan-going { display: inline-flex; align-items: center; gap: 4px; }
+.hc-ctx-chip {
+  display: inline-flex; align-items: center;
+  background: rgba(196,154,40,.14); border: 1px solid rgba(196,154,40,.3);
+  color: #a97f16; border-radius: 999px; padding: 1px 8px;
+  font-size: .68rem; font-weight: 600;
+}
+
+/* Recent Media */
+.hc-ctx-media { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.hc-ctx-media-tile {
+  display: block; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: #efe8db;
+}
+.hc-ctx-media-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hc-ctx-media-tile:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+
+.hc-status-picker { margin-bottom: 2px; }
+.hc-rooms-scrim { display: none; }
+
+/* ── Full height: .hc-root still subtracted 260px for the cover banner that
+      Prompt 53 removed, leaving a dead strip under the composer. ─────────── */
+.hc-root {
+  height: calc(100vh - var(--hdl-nav-h) - 58px);
+  min-height: 520px;
+}
+
+/* ── One left-aligned stream, as in the concept ──────────────────────────── */
+/* Avatar aligns with the top of the name, not the bottom of the group. */
+.hc-msg-row { gap: 11px; padding: 3px 18px; align-items: flex-start; }
+.hc-msg-avatar-col, .hc-msg-avatar-placeholder { align-self: flex-start; }
+.hc-msg-row--first { padding-top: 11px; }
+.hc-msg-row--own { justify-content: flex-start; flex-direction: row; }
+.hc-msg-row--own .hc-msg-body { align-items: flex-start; }
+.hc-msg-row--own .hc-msg-header { justify-content: flex-start; }
+.hc-msg-avatar-placeholder { width: 40px; flex-shrink: 0; }
+.hc-msg-avatar-col { flex-shrink: 0; }
+
+.hc-msg-header { gap: 8px; align-items: baseline; margin-bottom: 1px; }
+.hc-msg-sender { font-size: .86rem; font-weight: 700; color: #2d2416; }
+.hc-msg-time   { font-size: .7rem;  color: #a09080; }
+
+/* Flat text, not bubbles. */
+.hc-bubble,
+.hc-msg-row--own .hc-bubble {
+  background: none; border: none; box-shadow: none;
+  padding: 0; border-radius: 0;
+  color: #3a3228; font-size: .88rem; line-height: 1.5;
+  max-width: 640px;
+}
+.hc-bubble--deleted { color: #a09080; font-style: italic; }
+.hc-msg-body { max-width: 100%; }
+
+/* ── Image attachments: a row of up to three ─────────────────────────────── */
+.hc-att-row { display: flex; gap: 8px; margin-top: 7px; flex-wrap: wrap; }
+.hc-att-row .hc-att-img-wrap {
+  position: relative; display: block;
+  width: 164px; height: 104px; border-radius: 10px; overflow: hidden;
+  background: #efe8db; flex-shrink: 0;
+}
+.hc-att-row .hc-att-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hc-att-more {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: rgba(20,15,8,.58); color: #fff;
+  font-size: 1.1rem; font-weight: 700;
+}
+.hc-att-row .hc-att-img-wrap:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+
+/* ── Reaction chips ──────────────────────────────────────────────────────── */
+.hc-reactions { gap: 5px; margin-top: 6px; }
+.hc-reaction-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #fdf8ec; border: 1px solid rgba(140,127,108,.26);
+  border-radius: 999px; padding: 3px 10px; min-height: 26px;
+  font-size: .76rem; color: #4a4036; cursor: pointer;
+}
+.hc-reaction-chip:hover { border-color: #c49a28; }
+.hc-reaction-chip--mine {
+  background: rgba(196,154,40,.18); border-color: #c49a28; color: #8a6510; font-weight: 600;
+}
+
+/* The add-reaction panel (z-index 100) opens upward and can overlap the rooms
+   rail. Both rails sat in the same stacking context with no z-index, so the
+   rail won the hit test and swallowed clicks on the panel's left edge. */
+.hc-rooms-rail, .hc-context-rail { position: relative; z-index: 1; }
+/* The conversation column sits above both rails, so a popover that opens from
+   a message (the add-reaction panel) stays clickable where it overlaps them. */
+.hc-center { position: relative; z-index: 3; }
+.hc-reactions { position: relative; z-index: 2; }
+/* .ep-wrap had no positioning, so the panel's `left: 0` resolved against a
+   distant ancestor and opened ~60px left of the message column, under the
+   rooms rail. Anchor it to its own trigger. */
+.hc-reactions .ep-wrap { position: relative; }
+/* post.css centres the panel on its trigger with translateX(-50%). In chat that
+   put its left half outside .hc-messages, which clips (overflow:auto) — the
+   emoji there were unclickable. Open it from the trigger instead. */
+.hc-reactions .ep-grid { z-index: 120; transform: none; left: 0; right: auto; }
+
+/* Rooms list uses a # glyph. */
+.hc-room-hash {
+  font-size: .95rem; color: #a09080; width: 12px; flex-shrink: 0; text-align: center;
+}
+.hc-room-item--active .hc-room-hash { color: #a97f16; }
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .hc-context-rail { width: 280px; }
+}
+
+@media (max-width: 1000px) {
+  .hc-rooms-rail { width: 170px; }
+}
+
+/* hive-chat.css hides the rooms rail entirely below 900px. Between 769 and 900
+   there is still room for it; below that it becomes the drawer. */
+@media (max-width: 900px) {
+  .hc-rooms-rail { display: flex; }
+}
+
+@media (max-width: 768px) {
+  .hc-header-rooms-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex-shrink: 0; align-self: center;
+    border: none; background: none; border-radius: 8px;
+    color: #4a4036; cursor: pointer;
+  }
+  .hc-header-rooms-btn:hover { background: rgba(35,31,28,.07); }
+
+  /* Rooms become a drawer. */
+  .hc-rooms-rail {
+    display: flex;
+    position: fixed; left: 0; top: 0; bottom: 0; z-index: 60;
+    width: 76vw; max-width: 280px;
+    transform: translateX(-100%); transition: transform .2s ease;
+    box-shadow: 4px 0 24px rgba(35,31,28,.18);
+  }
+  .hc-rooms-rail--open { transform: translateX(0); }
+  .hc-rooms-scrim {
+    display: block; position: fixed; inset: 0;
+    background: rgba(20,15,8,.4); z-index: 59;
+  }
+
+  /* Context rail becomes a bottom sheet. */
+  .hc-context-rail {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 58;
+    width: 100%; max-height: 62vh; border-left: none;
+    border-top: 1px solid rgba(140,127,108,.3);
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -8px 30px rgba(35,31,28,.18);
+  }
+
+  /* No negative horizontal margin on phones. It was tuned to the desktop
+     32px gutter, and any value here makes .hc-root wider than the content box,
+     which pushes .hdl-content past the viewport. Keep the page gutter instead. */
+  .hc-root {
+    margin: -8px 0 -100px;
+    /* The identity strip and tab row sit above the chat on phones, so the
+       desktop calc leaves the composer below the fold. Subtract the real
+       offset instead and keep the composer on screen. */
+    height: calc(100vh - 340px);
+    height: calc(100dvh - 340px);
+    min-height: 360px;
+  }
+
+  .hc-header { padding: 10px 12px; }
+  .hc-header-room { font-size: 1.2rem; }
+  .hc-header-hash { font-size: 1.3rem; }
+  .hc-composer { padding: 8px 10px 12px; }
+  .hc-ctx-media { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-rooms-rail { transition: none; }
+}

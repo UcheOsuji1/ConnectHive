@@ -6,6 +6,7 @@ import EmojiPicker from '../../components/EmojiPicker.jsx';
 import { api } from '../../lib/api.js';
 import { socket } from '../../lib/socket.js';
 import '../../styles/hive-chat.css';
+import '../../styles/hive-chat-redesign.css';
 
 const MAX_ATTACHMENTS       = 6;
 const MAX_ATTACHMENT_BYTES  = 25 * 1024 * 1024;
@@ -63,19 +64,42 @@ function statusLabel(s) {
 
 // ── AttachmentGrid ────────────────────────────────────────────────────────────
 
+// Images show as a row of up to three rounded thumbnails, with "+N" standing in
+// for the rest — the concept's layout. Video and files keep their own cards.
+const IMG_VISIBLE = 3;
+
 function AttachmentGrid({ attachments }) {
   if (!attachments?.length) return null;
+  const images = attachments.filter(a => a.resource_type === 'image');
+  const others = attachments.filter(a => a.resource_type !== 'image');
+  const shown  = images.slice(0, IMG_VISIBLE);
+  const extra  = images.length - shown.length;
+
+  return (
+    <>
+      {shown.length > 0 && (
+        <div className="hc-att-row">
+          {shown.map((att, i) => (
+            <a key={`img-${i}`} href={att.url} target="_blank" rel="noopener noreferrer"
+               className="hc-att-img-wrap">
+              <img src={att.url} alt={att.file_name ?? 'Image'} className="hc-att-img" loading="lazy" />
+              {i === shown.length - 1 && extra > 0 && (
+                <span className="hc-att-more">+{extra}</span>
+              )}
+            </a>
+          ))}
+        </div>
+      )}
+      {others.length > 0 && <AttachmentRest attachments={others} />}
+    </>
+  );
+}
+
+function AttachmentRest({ attachments }) {
   const count = Math.min(attachments.length, 4);
   return (
     <div className={`hc-att-grid hc-att-grid--${count}`}>
       {attachments.map((att, i) => {
-        if (att.resource_type === 'image') {
-          return (
-            <a key={i} href={att.url} target="_blank" rel="noopener noreferrer" className="hc-att-img-wrap">
-              <img src={att.url} alt={att.file_name ?? 'Image'} className="hc-att-img" loading="lazy" />
-            </a>
-          );
-        }
         if (att.resource_type === 'video') {
           return (
             <video key={i} className="hc-att-video" controls preload="metadata">
@@ -118,20 +142,68 @@ function StagedFileChips({ files, onRemove }) {
 
 // ── RoomsRail ─────────────────────────────────────────────────────────────────
 
-const CHANNEL_ICON = (
-  <svg className="hc-room-icon" width="11" height="11" viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-    <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
-  </svg>
-);
+const CHANNEL_ICON = <span className="hc-room-hash" aria-hidden="true">#</span>;
 
-function RoomsRail({ channels, activeChannelId, unreadChannels, onSelect, onAddRoom, canManage }) {
-  const textChannels  = channels.filter(c => ['text', 'announcement', 'resource', 'planning'].includes(c.channel_type));
-  const voiceChannels = channels.filter(c => ['voice', 'video'].includes(c.channel_type));
+function RoomsRail({ channels, activeChannelId, unreadChannels, onSelect, onAddRoom, canManage, open }) {
+  const [filter, setFilter] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+
+  const q = filter.trim().toLowerCase();
+  const match = (c) => !q || c.name.toLowerCase().includes(q);
+  const textChannels  = channels
+    .filter(c => ['text', 'announcement', 'resource', 'planning'].includes(c.channel_type))
+    .filter(match);
+  const voiceChannels = channels.filter(c => ['voice', 'video'].includes(c.channel_type)).filter(match);
+
+  useEffect(() => { if (searchOpen) searchRef.current?.focus(); }, [searchOpen]);
 
   return (
-    <aside className="hc-rooms-rail" aria-label="Rooms">
-      <div className="hc-rail-section-label">Rooms</div>
+    <aside className={`hc-rooms-rail${open ? ' hc-rooms-rail--open' : ''}`} aria-label="Rooms">
+      <div className="hc-rooms-head">
+        <h2 className="hc-rooms-title">Chat</h2>
+        <button
+          type="button"
+          className="hc-rooms-icon-btn"
+          onClick={() => { setSearchOpen(v => !v); if (searchOpen) setFilter(''); }}
+          aria-label={searchOpen ? 'Close room search' : 'Search rooms'}
+          aria-expanded={searchOpen}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" />
+          </svg>
+        </button>
+        {/* Creating a room is owner/admin only, so the + is too. */}
+        {canManage && (
+          <button type="button" className="hc-rooms-icon-btn hc-rooms-icon-btn--add"
+                  onClick={onAddRoom} aria-label="Create a room">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
+        )}
+      </div>
+
+      {searchOpen && (
+        <input
+          ref={searchRef}
+          className="hc-rooms-search"
+          type="search"
+          placeholder="Find a room…"
+          value={filter}
+          onChange={e => setFilter(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Escape') { setFilter(''); setSearchOpen(false); } }}
+          aria-label="Filter rooms by name"
+        />
+      )}
+
+      <div className="hc-rail-section-label">Channels</div>
+
+      {textChannels.length === 0 && q && (
+        <div className="hc-rooms-none">No rooms match “{filter.trim()}”.</div>
+      )}
 
       {textChannels.map(ch => (
         <button
@@ -163,11 +235,6 @@ function RoomsRail({ channels, activeChannelId, unreadChannels, onSelect, onAddR
         </>
       )}
 
-      {canManage && (
-        <button className="hc-add-room" onClick={onAddRoom}>
-          + Add room
-        </button>
-      )}
     </aside>
   );
 }
@@ -260,20 +327,27 @@ function CreateChannelModal({ hiveId, onClose, onCreated }) {
 
 // ── TypingIndicator ───────────────────────────────────────────────────────────
 
-function TypingIndicator({ typingUsers, currentUserId }) {
-  const others = Object.entries(typingUsers)
-    .filter(([id]) => id !== currentUserId)
-    .map(([, name]) => name ?? 'Someone');
+function TypingIndicator({ typingUsers, currentUserId, members }) {
+  const others = Object.entries(typingUsers).filter(([id]) => id !== currentUserId);
 
   if (others.length === 0) return <div className="hc-typing" />;
 
+  const names = others.map(([, name]) => name ?? 'Someone');
   let text;
-  if (others.length === 1)      text = `${others[0]} is typing`;
-  else if (others.length === 2) text = `${others[0]} and ${others[1]} are typing`;
-  else                          text = 'Several members are typing…';
+  if (names.length === 1)      text = `${names[0]} is typing…`;
+  else if (names.length === 2) text = `${names[0]} and ${names[1]} are typing…`;
+  else                         text = 'Several members are typing…';
+
+  const byId = Object.fromEntries((members ?? []).map(m => [m.user_id, m]));
 
   return (
     <div className="hc-typing">
+      <span className="hc-typing-avatars">
+        {others.slice(0, 3).map(([id, name]) => (
+          <Avatar key={id} name={byId[id]?.full_name ?? name}
+                  src={byId[id]?.profile_photo_url} size={22} />
+        ))}
+      </span>
       <span>{text}</span>
       <span className="hc-typing-dots"><span /><span /><span /></span>
     </div>
@@ -353,18 +427,16 @@ function MessageRow({
   return (
     <div className={['hc-msg-row', msg._grouped ? '' : 'hc-msg-row--first', isOwn ? 'hc-msg-row--own' : ''].filter(Boolean).join(' ')}>
 
-      {!isOwn && (
-        msg._grouped
-          ? <div className="hc-msg-avatar-placeholder" />
-          : <div className="hc-msg-avatar-col">
-              <Avatar name={senderName} src={msg.sender?.profile_photo_url} size={32} />
-            </div>
-      )}
+      {msg._grouped
+        ? <div className="hc-msg-avatar-placeholder" />
+        : <div className="hc-msg-avatar-col">
+            <Avatar name={senderName} src={msg.sender?.profile_photo_url} size={40} />
+          </div>}
 
       <div className="hc-msg-body">
         {!msg._grouped && (
           <div className="hc-msg-header">
-            {!isOwn && <span className="hc-msg-sender">{senderName}</span>}
+            <span className="hc-msg-sender">{senderName}</span>
             {showBadge && (
               <span className={`hc-msg-badge hc-msg-badge--${senderRole}`}>
                 {senderRole.charAt(0).toUpperCase() + senderRole.slice(1)}
@@ -467,17 +539,60 @@ function MessageRow({
 const STATUS_OPTIONS = ['online', 'away', 'busy', 'invisible'];
 const STATUS_HINTS   = { invisible: ' — appear offline' };
 
-function ContextRail({ members, presenceData, myStatus, onStatusChange, pinnedGoal }) {
+const firstNameOf = (n) => (n ?? 'Member').trim().split(/\s+/)[0];
+
+const RAIL_ICONS = {
+  calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 11h18" /></>,
+  pin:      <><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z" /><circle cx="12" cy="10" r="2.6" /></>,
+  users:    <><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 20v-2a4 4 0 0 0-3-3.9" /></>,
+  image:    <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.8" /><path d="m21 16-5-5L5 20" /></>,
+  note:     <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6" /></>,
+};
+
+function Ico({ name, size = 15 }) {
+  if (!RAIL_ICONS[name]) return null;
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {RAIL_ICONS[name]}
+    </svg>
+  );
+}
+
+function DateTile({ iso }) {
+  const d = new Date(iso);
+  return (
+    <div className="hc-datetile">
+      <span className="hc-datetile-dow">{d.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+      <span className="hc-datetile-date">
+        {d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} {d.getDate()}
+      </span>
+      <span className="hc-datetile-time">
+        {d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+      </span>
+    </div>
+  );
+}
+
+function ContextRail({
+  members, presenceData, myStatus, onStatusChange,
+  hiveId, hive, nextPlan, recentMedia = [],
+}) {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
   const statusMap = Object.fromEntries((presenceData ?? []).map(p => [p.user_id, p.status]));
+  const byId = Object.fromEntries((members ?? []).map(m => [m.user_id, m]));
 
+  // Online = whoever presence reports, in the server's order. Invisible users
+  // are already absent from presenceData, so they stay invisible here.
   const statusOrder = { online: 0, away: 1, busy: 2 };
-  const sorted = [...members].sort((a, b) => {
-    const as = statusOrder[statusMap[a.user_id]] ?? 3;
-    const bs = statusOrder[statusMap[b.user_id]] ?? 3;
-    return as - bs;
-  });
+  const online = (presenceData ?? [])
+    .map(p => byId[p.user_id] ?? { user_id: p.user_id, full_name: 'Member' })
+    .sort((a, b) => (statusOrder[statusMap[a.user_id]] ?? 3) - (statusOrder[statusMap[b.user_id]] ?? 3));
+
+  const locationType = hive?.location_type
+    ? hive.location_type.charAt(0).toUpperCase() + hive.location_type.slice(1)
+    : null;
 
   return (
     <aside className="hc-context-rail" aria-label="Context">
@@ -513,35 +628,79 @@ function ContextRail({ members, presenceData, myStatus, onStatusChange, pinnedGo
         )}
       </div>
 
-      <div className="hc-ctx-section">
-        <div className="hc-ctx-label">Active Now</div>
-        {sorted.map(m => {
-          const status = statusMap[m.user_id] ?? 'offline';
-          return (
-            <div key={m.user_id} className="hc-member-row">
-              <Avatar name={m.full_name} src={m.profile_photo_url} size={22} />
-              <span className="hc-member-name">{m.full_name ?? 'Member'}</span>
-              <span
-                className="hc-presence-indicator"
-                style={{ background: presenceColor(status) }}
-                title={statusLabel(status)}
-              />
-            </div>
-          );
-        })}
-      </div>
-
-      {pinnedGoal && (
-        <div className="hc-pinned-card">
-          <div className="hc-pinned-label">Pinned Goal</div>
-          <p className="hc-pinned-text">{pinnedGoal}</p>
+      {/* ── Online Now ── */}
+      {/* presenceData already excludes invisible users: the server drops them
+          from _buildPresence, so they never reach this list. */}
+      <section className="hc-ctx-card">
+        <div className="hc-ctx-head">
+          <span className="hc-ctx-dot" />
+          <h3 className="hc-ctx-title">Online Now</h3>
+          <span className="hc-ctx-meta">{online.length} online</span>
         </div>
+        {online.length === 0 ? (
+          <p className="hc-ctx-empty">Nobody else is here right now.</p>
+        ) : (
+          <div className="hc-online-strip">
+            {online.map(m => (
+              <Link key={m.user_id} to={`/profile/${m.user_id}`} className="hc-online-person">
+                <span className="hc-online-avatar">
+                  <Avatar name={m.full_name} src={m.profile_photo_url} size={44} />
+                  <span className="hc-online-dot"
+                        style={{ background: presenceColor(statusMap[m.user_id] ?? 'online') }}
+                        title={statusLabel(statusMap[m.user_id] ?? 'online')} />
+                </span>
+                <span className="hc-online-name">{firstNameOf(m.full_name)}</span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* ── Upcoming Plan ── */}
+      {nextPlan && (
+        <section className="hc-ctx-card">
+          <div className="hc-ctx-head">
+            <Ico name="calendar" />
+            <h3 className="hc-ctx-title">Upcoming Plan</h3>
+            <Link to={`/hive/${hiveId}/events`} className="hc-ctx-link">View all →</Link>
+          </div>
+          <div className="hc-ctx-plan">
+            <DateTile iso={nextPlan.event_at} />
+            <div className="hc-ctx-plan-body">
+              <div className="hc-ctx-plan-title">{nextPlan.headline}</div>
+              {nextPlan.event_location && (
+                <div className="hc-ctx-plan-row">
+                  <Ico name="pin" size={12} /> {nextPlan.event_location}
+                </div>
+              )}
+              <div className="hc-ctx-plan-row">
+                <span className="hc-ctx-plan-going">
+                  <Ico name="users" size={12} /> {nextPlan.going_count} going
+                </span>
+                {locationType && <span className="hc-ctx-chip">{locationType}</span>}
+              </div>
+            </div>
+          </div>
+        </section>
       )}
 
-      <div className="hc-upcoming-slot">
-        <span>Upcoming Event</span>
-        <span className="hc-upcoming-slot-soon">Soon</span>
-      </div>
+      {/* ── Recent Media ── */}
+      {recentMedia.length > 0 && (
+        <section className="hc-ctx-card">
+          <div className="hc-ctx-head">
+            <Ico name="image" />
+            <h3 className="hc-ctx-title">Recent Media</h3>
+          </div>
+          <div className="hc-ctx-media">
+            {recentMedia.slice(0, 6).map(a => (
+              <a key={a.attachment_id} href={a.url} target="_blank" rel="noopener noreferrer"
+                 className="hc-ctx-media-tile">
+                <img src={a.url} alt="" loading="lazy" />
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
     </aside>
   );
 }
@@ -593,12 +752,17 @@ export default function HiveChatPage() {
 
   // UI
   const [showContext, setShowContext] = useState(true);
+  const [showRooms,   setShowRooms]   = useState(false);
   const [newMsgCount, setNewMsgCount] = useState(0);
+
+  // Context rail data for the active room (next plan + this room's images)
+  const [rail, setRail] = useState({ nextPlan: null, recentMedia: [] });
 
   // Refs for stable callbacks
   const scrollAreaRef    = useRef(null);
   const composerRef      = useRef(null);
   const fileInputRef     = useRef(null);
+  const imageInputRef    = useRef(null);
   const isNearBottomRef  = useRef(true);
   const hasMoreRef       = useRef(false);
   const loadingOlderRef  = useRef(false);
@@ -816,15 +980,21 @@ export default function HiveChatPage() {
   useEffect(() => {
     if (!socket.connected) socket.connect();
 
-    socket.emit('join_hive_room', { hiveId }, (ack) => {
+    // Joined on every connect, not just on mount. The cleanup emits
+    // leave_hive_room, so a remount (or a reconnect) otherwise left the room
+    // behind and "Online Now" went empty with no way back.
+    const joinRoom = () => socket.emit('join_hive_room', { hiveId }, (ack) => {
       if (ack?.ok) {
         setOnlineUserIds(ack.online_user_ids ?? []);
         setPresenceData(ack.presence ?? []);
         setMyStatus(ack.your_status ?? 'online');
+        setSocketError(false);
       } else {
         setSocketError(true);
       }
     });
+    joinRoom();
+    socket.on('connect', joinRoom);
 
     const onReceiveMessage = (msg) => {
       // receive_message arrives from channel room — always the active channel
@@ -901,6 +1071,7 @@ export default function HiveChatPage() {
 
     return () => {
       socket.emit('leave_hive_room', { hiveId });
+      socket.off('connect', joinRoom);
       socket.off('receive_message',     onReceiveMessage);
       socket.off('message_updated',     onMessageUpdated);
       socket.off('message_deleted',     onMessageDeleted);
@@ -934,6 +1105,29 @@ export default function HiveChatPage() {
   function stopTyping() {
     if (typingIdleTimer.current) clearTimeout(typingIdleTimer.current);
     socket.emit('typing_stop', { hiveId });
+  }
+
+  // ── Context rail data for the active room ──────────────────────────────────
+  useEffect(() => {
+    if (!activeChannelId) { setRail({ nextPlan: null, recentMedia: [] }); return; }
+    let live = true;
+    api.get(`/api/hives/${hiveId}/channels/${activeChannelId}/rail`)
+      .then(d => { if (live) setRail({ nextPlan: d.nextPlan ?? null, recentMedia: d.recentMedia ?? [] }); })
+      .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [] }); });
+    return () => { live = false; };
+  }, [hiveId, activeChannelId]);
+
+  function insertEmoji(emoji) {
+    const el = composerRef.current;
+    if (!el) { setDraftText(t => t + emoji); return; }
+    const start = el.selectionStart ?? el.value.length;
+    const end   = el.selectionEnd   ?? start;
+    setDraftText(t => t.slice(0, start) + emoji + t.slice(end));
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + emoji.length, start + emoji.length);
+      autoResize(el);
+    });
   }
 
   // ── Textarea auto-resize ───────────────────────────────────────────────────
@@ -1205,35 +1399,51 @@ export default function HiveChatPage() {
         />
       )}
 
+      {/* On phones this is a drawer; showRooms only matters there. */}
+      {showRooms && <div className="hc-rooms-scrim" onClick={() => setShowRooms(false)} />}
       <RoomsRail
         channels={channels}
         activeChannelId={activeChannelId}
         unreadChannels={unreadChannels}
-        onSelect={handleChannelSelect}
-        onAddRoom={() => setShowCreateChannel(true)}
+        onSelect={(id) => { handleChannelSelect(id); setShowRooms(false); }}
+        onAddRoom={() => { setShowCreateChannel(true); setShowRooms(false); }}
         canManage={canManageChannels}
+        open={showRooms}
       />
 
       {/* Center */}
       <div className="hc-center">
         {/* Header */}
         <div className="hc-header">
-          <div className="hc-header-left">
-            <div className="hc-header-room">
-              {activeChannel ? activeChannel.name : '…'}
-            </div>
-            <div className="hc-header-meta">
-              <span className="hc-presence-dot" />
-              <span>{onlineUserIds.length} online · {memberCount} members</span>
-            </div>
-          </div>
           <button
             type="button"
-            className="hc-header-toggle"
-            onClick={() => setShowContext(v => !v)}
-            aria-label="Toggle context rail"
+            className="hc-header-rooms-btn"
+            onClick={() => setShowRooms(v => !v)}
+            aria-label="Show rooms"
+            aria-expanded={showRooms}
           >
-            {showContext ? '⟩' : '⟨'}
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+
+          <span className="hc-header-hash" aria-hidden="true">#</span>
+          <div className="hc-header-left">
+            <h1 className="hc-header-room">{activeChannel ? activeChannel.name : '…'}</h1>
+            {activeChannel?.description && (
+              <p className="hc-header-desc">{activeChannel.description}</p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="hc-header-members"
+            onClick={() => setShowContext(v => !v)}
+            aria-label={showContext ? 'Hide the context rail' : 'Show the context rail'}
+            aria-expanded={showContext}
+          >
+            {memberCount} members <span aria-hidden="true">›</span>
           </button>
         </div>
 
@@ -1321,7 +1531,7 @@ export default function HiveChatPage() {
           )}
         </div>
 
-        <TypingIndicator typingUsers={typingUsers} currentUserId={userId} />
+        <TypingIndicator typingUsers={typingUsers} currentUserId={userId} members={members} />
 
         {/* Composer */}
         {!canPost ? (
@@ -1345,16 +1555,18 @@ export default function HiveChatPage() {
             <StagedFileChips files={stagedFiles} onRemove={removeStagedFile} />
 
             <div className="hc-composer-row">
-              {/* Attach file button */}
               <button
                 type="button"
-                className="hc-attach-btn"
+                className="hc-plus-btn"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={stagedFiles.length >= MAX_ATTACHMENTS}
-                aria-label="Attach file"
-                title="Attach file (max 6, 25 MB each)"
+                aria-label="Add to this message"
+                title="Add a photo or file"
               >
-                📎
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
               </button>
               <input
                 ref={fileInputRef}
@@ -1365,11 +1577,21 @@ export default function HiveChatPage() {
                 aria-hidden="true"
                 tabIndex={-1}
               />
+              <input
+                ref={imageInputRef}
+                type="file"
+                multiple
+                accept="image/*,video/*"
+                className="hc-file-input"
+                onChange={handleFileSelect}
+                aria-hidden="true"
+                tabIndex={-1}
+              />
 
               <textarea
                 ref={composerRef}
                 className="hc-textarea"
-                placeholder={activeChannel ? `Message ${activeChannel.name}…` : 'Select a room…'}
+                placeholder={activeChannel ? `Message #${activeChannel.name}…` : 'Select a room…'}
                 value={draftText}
                 onChange={handleDraftChange}
                 onKeyDown={handleComposerKey}
@@ -1377,6 +1599,38 @@ export default function HiveChatPage() {
                 maxLength={2050}
                 aria-label="Message input"
               />
+
+              <div className="hc-composer-tools">
+                <EmojiPicker onSelect={insertEmoji} />
+                <button
+                  type="button"
+                  className="hc-tool-btn"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={stagedFiles.length >= MAX_ATTACHMENTS}
+                  aria-label="Add a photo or video"
+                  title="Photo or video"
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <circle cx="8.5" cy="9.5" r="1.8" /><path d="m21 16-5-5L5 20" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  className="hc-tool-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={stagedFiles.length >= MAX_ATTACHMENTS}
+                  aria-label="Attach a file"
+                  title="Attach file (max 6, 25 MB each)"
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21.4 11.1 12.3 20a5.5 5.5 0 0 1-7.8-7.8l9.2-9.1a3.7 3.7 0 1 1 5.2 5.2l-9.2 9.1a1.8 1.8 0 1 1-2.6-2.6l8.5-8.4" />
+                  </svg>
+                </button>
+              </div>
+
               <button
                 className="hc-send-btn"
                 onClick={handleSend}
@@ -1384,7 +1638,9 @@ export default function HiveChatPage() {
                 aria-label="Send message"
                 title="Send"
               >
-                ➤
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M3.2 20.3 21 12 3.2 3.7 3.2 10l12 2-12 2z" />
+                </svg>
               </button>
             </div>
             <div className="hc-composer-meta">
@@ -1407,7 +1663,10 @@ export default function HiveChatPage() {
           presenceData={presenceData}
           myStatus={myStatus}
           onStatusChange={handleStatusChange}
-          pinnedGoal={hive?.pinned_goal ?? null}
+          hiveId={hiveId}
+          hive={hive}
+          nextPlan={rail.nextPlan}
+          recentMedia={rail.recentMedia}
         />
       )}
     </div>

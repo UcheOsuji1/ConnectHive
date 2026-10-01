@@ -434,7 +434,10 @@
    Hive navigation at all. The rail now collapses into a top identity strip
    with a horizontally scrollable tab row. */
 @media (max-width: 768px) {
-  .hdl-body { flex-direction: column; }
+  /* Column layout: align-items:flex-start would shrink-to-fit each item on the
+     cross axis (width), letting a wide child push .hdl-content past the
+     viewport. Stretch is what a single column wants. */
+  .hdl-body { flex-direction: column; align-items: stretch; }
 
   .hdl-sidebar {
     width: 100%;
