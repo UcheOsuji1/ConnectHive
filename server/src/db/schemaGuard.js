@@ -25,7 +25,8 @@ const REQUIRED = {
   hive_members: ['welcome_seen_at', 'onboarding_status'],
   hive_posts: ['visibility', 'event_end_at', 'plan_type'],
   event_rsvps: ['updated_at'],
-  messages: ['channel_id', 'edited_at', 'deleted_at', 'pinned_at', 'pinned_by'],
+  messages: ['channel_id', 'edited_at', 'deleted_at', 'pinned_at', 'pinned_by',
+             'plan_post_id', 'poll_id'],
   post_comments: ['parent_comment_id'],
 };
 
@@ -45,6 +46,8 @@ const IMPACT = {
   'messages.channel_id':        'hive chat channels',
   'messages.pinned_at':         'pinned messages in chat — pin queries fail',
   'messages.pinned_by':         'pinned messages in chat — pin queries fail',
+  'messages.plan_post_id':      'plan cards in chat — the message list fails',
+  'messages.poll_id':           'polls in chat — the message list fails',
 };
 
 let state = { checked: false, ok: true, missing: [] };

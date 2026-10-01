@@ -2,6 +2,7 @@ import * as db from '../db/index.js';
 import { query, getClient } from '../db/index.js';
 import { suggestEvents } from '../lib/suggestEvents.js';
 import { getMembership } from '../lib/hiveMembership.js';
+import { getIO } from '../realtime/socket.js';
 
 export const PLAN_TYPES = [
   'networking', 'hangout', 'food_drinks', 'outdoors',
@@ -172,6 +173,19 @@ export const toggleRsvp = async (req, res) => {
     }
 
     const c = await rsvpCounts(postId);
+
+    // Plan cards in chat show a live "N going". Broadcast the counts only —
+    // one member's viewer_rsvp is theirs, and each client keeps its own.
+    try {
+      getIO()?.to(`hive:${post.hive_id}`).emit('plan_rsvp_updated', {
+        hive_id: post.hive_id,
+        post_id: postId,
+        going_count:     c.going,
+        maybe_count:     c.maybe,
+        not_going_count: c.not_going,
+      });
+    } catch { /* no socket in tests */ }
+
     res.json({
       status,
       going: status === 'going',

@@ -3,6 +3,8 @@ import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
 import { getDefaultChannelId } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
+import { PLAN_SELECT, shapePlan } from './eventsController.js';
+import { shapePolls } from './pollsController.js';
 
 // ── Rate limiting (8 messages per 10 s per user, in-memory) ──────────────────
 const _rateMap = new Map();
@@ -42,7 +44,49 @@ function _validateAttachment(att) {
 
 // ── Enriched message query ────────────────────────────────────────────────────
 // Runs the full enrichment join for any WHERE/ORDER/LIMIT clause you append.
-async function _runEnriched(extraSQL, params) {
+// Attaches the plan and poll a message carries. viewerId decides viewer_rsvp
+// and my_votes, so this is computed per reader — never broadcast from one.
+async function _attachPlansAndPolls(rows, viewerId) {
+  const planIds = [...new Set(rows.map(r => r.plan_post_id).filter(Boolean))];
+  const pollIds = [...new Set(rows.map(r => r.poll_id).filter(Boolean))];
+  if (!planIds.length && !pollIds.length) return rows;
+
+  const [plans, polls] = await Promise.all([
+    planIds.length
+      ? query(`${PLAN_SELECT} WHERE p.post_id = ANY($2)`, [viewerId, planIds])
+          .then(({ rows: pr }) => Object.fromEntries(pr.map(r => [r.post_id, shapePlan(r)])))
+      : {},
+    pollIds.length ? shapePolls(pollIds, viewerId) : {},
+  ]);
+
+  return rows.map(r => ({
+    ...r,
+    // A plan deleted after the message was posted leaves plan_post_id NULL via
+    // ON DELETE SET NULL; a row that still points at a missing plan is shown as
+    // removed rather than silently dropped.
+    plan: r.plan_post_id ? (plans[r.plan_post_id] ?? null) : null,
+    plan_removed: Boolean(r.plan_post_id && !plans[r.plan_post_id]),
+    poll: r.poll_id ? (polls[r.poll_id] ?? null) : null,
+  }));
+}
+
+// One enriched message, for callers that insert a message outside createMessage
+// (the poll flow) and still need to broadcast and return the real shape.
+export async function getEnrichedMessage(messageId, viewerId) {
+  const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [messageId], viewerId);
+  return msg ?? null;
+}
+
+// Strips everything that belongs to one reader, for socket broadcasts.
+export function depersonalise(msg) {
+  if (!msg) return msg;
+  const out = { ...msg };
+  if (out.plan) out.plan = { ...out.plan, viewer_rsvp: null };
+  if (out.poll) out.poll = { ...out.poll, my_votes: [] };
+  return out;
+}
+
+async function _runEnriched(extraSQL, params, viewerId = null) {
   const { rows } = await query(
     `SELECT
        m.message_id,
@@ -53,6 +97,8 @@ async function _runEnriched(extraSQL, params) {
        m.sent_at,
        m.edited_at,
        m.pinned_at,
+       m.plan_post_id,
+       m.poll_id,
        (m.deleted_at IS NOT NULL)        AS is_deleted,
        p.full_name                        AS sender_name,
        p.profile_photo_url                AS sender_photo,
@@ -110,7 +156,7 @@ async function _runEnriched(extraSQL, params) {
      ${extraSQL}`,
     params,
   );
-  return rows.map(_shape);
+  return _attachPlansAndPolls(rows.map(_shape), viewerId);
 }
 
 function _shape(row) {
@@ -123,6 +169,11 @@ function _shape(row) {
     sent_at:        row.sent_at,
     edited_at:      row.edited_at ?? null,
     is_deleted:     Boolean(row.is_deleted),
+    pinned_at:      row.pinned_at ?? null,
+    // Kept on the shaped row so _attachPlansAndPolls can resolve them; the
+    // attach step replaces them with the enriched `plan` / `poll` objects.
+    plan_post_id:   row.plan_post_id ?? null,
+    poll_id:        row.poll_id ?? null,
     sender: {
       user_id:           row.sender_user_id,
       full_name:         row.sender_name ?? null,
@@ -174,6 +225,7 @@ export const listMessages = async (req, res) => {
          AND m.sent_at < $3
        ORDER BY m.sent_at DESC LIMIT $4`,
       [hiveId, channelId, before, limit + 1],
+      req.userId,
     );
 
     const has_more = msgs.length > limit;
@@ -190,12 +242,29 @@ export const createMessage = async (req, res) => {
     const hiveId = req.params.id;
     await requireMembership(hiveId, req.userId);
 
-    const { message_text, reply_to_message_id, attachments: rawAtts, channel_id: reqChannelId } = req.body ?? {};
+    const { message_text, reply_to_message_id, attachments: rawAtts,
+            channel_id: reqChannelId, planPostId } = req.body ?? {};
     const text        = (message_text ?? '').trim();
     const attachments = Array.isArray(rawAtts) ? rawAtts : [];
 
-    // Need text, attachments, or both — but not neither
-    if (!text && attachments.length === 0) {
+    // A plan message carries the card instead of text, so it needs neither.
+    let planId = null;
+    if (planPostId) {
+      const member = await getMembership(hiveId, req.userId);
+      if (!member || !['owner', 'admin'].includes(member.role)) {
+        return res.status(403).json({ error: 'Only Hive owners and admins can share a plan.' });
+      }
+      const { rows: [plan] } = await query(
+        `SELECT post_id FROM hive_posts
+          WHERE post_id = $1 AND hive_id = $2 AND post_type = 'event'`,
+        [planPostId, hiveId],
+      );
+      if (!plan) return res.status(400).json({ error: 'That plan does not belong to this Hive.' });
+      planId = plan.post_id;
+    }
+
+    // Need text, attachments, a plan, or some combination — but not none.
+    if (!text && attachments.length === 0 && !planId) {
       return res.status(400).json({ error: 'Message must have text or at least one attachment.' });
     }
     if (text.length > 2000) {
@@ -227,10 +296,11 @@ export const createMessage = async (req, res) => {
     const channelId = await _resolveChannelId(hiveId, reqChannelId);
 
     const { rows: [ins] } = await query(
-      `INSERT INTO messages (hive_id, sender_user_id, message_text, reply_to_message_id, channel_id)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO messages (hive_id, sender_user_id, message_text, reply_to_message_id,
+                             channel_id, plan_post_id)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING message_id`,
-      [hiveId, req.userId, text, reply_to_message_id ?? null, channelId],
+      [hiveId, req.userId, text, reply_to_message_id ?? null, channelId, planId],
     );
 
     // Insert all attachments in a single multi-row INSERT so a partial set can never persist
@@ -261,10 +331,10 @@ export const createMessage = async (req, res) => {
       );
     }
 
-    const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [ins.message_id]);
+    const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [ins.message_id], req.userId);
     try {
       const io = getIO();
-      io.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', msg);
+      io.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
       io.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
     } catch { /* no socket in tests */ }
     res.status(201).json(msg);
@@ -298,7 +368,7 @@ export const updateMessage = async (req, res) => {
       [text, messageId],
     );
 
-    const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [messageId]);
+    const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [messageId], req.userId);
     try {
       const room = existing.channel_id
         ? `hive:${existing.hive_id}:ch:${existing.channel_id}`

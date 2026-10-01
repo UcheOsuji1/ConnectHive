@@ -588,3 +588,39 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS pinned_by UUID REFERENCES users(us
 -- newest first, and pinned rows are a tiny fraction of the table.
 CREATE INDEX IF NOT EXISTS idx_messages_pinned
   ON messages(channel_id, pinned_at DESC) WHERE pinned_at IS NOT NULL;
+
+-- ─── Plan messages and polls in chat (Prompt 54b) ─────────────────────────────
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS plan_post_id UUID
+  REFERENCES hive_posts(post_id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS hive_polls (
+  poll_id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id         UUID        NOT NULL REFERENCES hives(hive_id)        ON DELETE CASCADE,
+  channel_id      UUID        NOT NULL REFERENCES hive_channels(channel_id) ON DELETE CASCADE,
+  created_by      UUID        NOT NULL REFERENCES users(user_id),
+  question        TEXT        NOT NULL CHECK (char_length(question) BETWEEN 1 AND 200),
+  allows_multiple BOOLEAN     NOT NULL DEFAULT FALSE,
+  closes_at       TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS hive_poll_options (
+  option_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  poll_id   UUID NOT NULL REFERENCES hive_polls(poll_id) ON DELETE CASCADE,
+  label     TEXT NOT NULL CHECK (char_length(label) BETWEEN 1 AND 80),
+  position  INT  NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS hive_poll_votes (
+  poll_id   UUID        NOT NULL REFERENCES hive_polls(poll_id)        ON DELETE CASCADE,
+  option_id UUID        NOT NULL REFERENCES hive_poll_options(option_id) ON DELETE CASCADE,
+  user_id   UUID        NOT NULL REFERENCES users(user_id)             ON DELETE CASCADE,
+  voted_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (poll_id, option_id, user_id)
+);
+
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS poll_id UUID
+  REFERENCES hive_polls(poll_id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_poll_options_poll ON hive_poll_options(poll_id, position);
+CREATE INDEX IF NOT EXISTS idx_poll_votes_poll   ON hive_poll_votes(poll_id);

@@ -62,6 +62,7 @@ import { getHivePlans, createPlan } from '../controllers/eventsController.js';
 import { getHiveHome } from '../controllers/hiveHomeController.js';
 import { getChannelRail } from '../controllers/chatRailController.js';
 import { pinMessage, unpinMessage, listPins } from '../controllers/pinsController.js';
+import { createPoll, votePoll, clearVote, listVoters } from '../controllers/pollsController.js';
 import { getAiFit, getAiMatch } from '../controllers/aiController.js';
 
 const router = Router();
@@ -119,6 +120,10 @@ router.delete('/:id/messages/:messageId',            requireAuth, deleteMessage)
 router.post('/:id/messages/:messageId/reactions',    requireAuth, toggleReaction);
 router.post('/:id/messages/:messageId/pin',          requireAuth, pinMessage);
 router.delete('/:id/messages/:messageId/pin',        requireAuth, unpinMessage);
+router.post('/:id/polls',                            requireAuth, createPoll);
+router.post('/:id/polls/:pollId/vote',               requireAuth, votePoll);
+router.delete('/:id/polls/:pollId/vote',             requireAuth, clearVote);
+router.get('/:id/polls/:pollId/voters',              requireAuth, listVoters);
 router.post('/:id/follow',               requireAuth, followHive);
 router.delete('/:id/follow',             requireAuth, unfollowHive);
 router.get('/:id/posts',                 requireAuth, getHivePosts);

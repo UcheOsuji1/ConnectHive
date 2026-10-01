@@ -3,6 +3,8 @@ import { useOutletContext, useParams, Link, useNavigate } from 'react-router-dom
 import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import EmojiPicker from '../../components/EmojiPicker.jsx';
+import CreatePlanModal from '../../components/plans/CreatePlanModal.jsx';
+import { PlanMessageCard, PollMessageCard, CreatePollModal } from '../../components/chat/ChatCards.jsx';
 import { api } from '../../lib/api.js';
 import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
 import '../../styles/hive-chat.css';
@@ -375,7 +377,7 @@ function MessageSkeleton() {
 // ── MessageRow ────────────────────────────────────────────────────────────────
 
 function MessageRow({
-  onPin,
+  onPin, onPlanRsvp, onPollVote,
   msg, isOwn, isLast, members, userId,
   onReply, onEdit, onDelete, onReaction, isOwner,
   editingId, editText, onEditChange, onEditSave, onEditCancel,
@@ -481,6 +483,13 @@ function MessageRow({
               {isDeleted
                 ? 'Message deleted'
                 : msg.message_text ?? null}
+              {!isDeleted && (msg.plan || msg.plan_removed) && (
+                <PlanMessageCard plan={msg.plan} removed={msg.plan_removed}
+                                 hiveId={msg.hive_id} onRsvp={onPlanRsvp} />
+              )}
+              {!isDeleted && msg.poll && (
+                <PollMessageCard poll={msg.poll} hiveId={msg.hive_id} onVote={onPollVote} />
+              )}
               {!isDeleted && hasAttachments && (
                 <AttachmentGrid attachments={msg.attachments} />
               )}
@@ -839,6 +848,9 @@ export default function HiveChatPage() {
   const [showContext, setShowContext] = useState(true);
   const [showRooms,   setShowRooms]   = useState(false);
   const [pinsOpen,    setPinsOpen]    = useState(false);
+  const [plusOpen,    setPlusOpen]    = useState(false);
+  const [planOpen,    setPlanOpen]    = useState(false);
+  const [pollOpen,    setPollOpen]    = useState(false);
   const [newMsgCount, setNewMsgCount] = useState(0);
 
   // Context rail data for the active room (next plan + this room's images)
@@ -1105,6 +1117,21 @@ export default function HiveChatPage() {
       }
     };
 
+    const onPollUpdated = ({ poll_id, results, total_votes }) => {
+      setMessages(prev => prev.map(m => {
+        if (m.poll?.poll_id !== poll_id) return m;
+        const byId = Object.fromEntries((results ?? []).map(r => [r.option_id, r.count]));
+        return { ...m, poll: { ...m.poll, total_votes,
+          options: m.poll.options.map(o => ({ ...o, count: byId[o.option_id] ?? o.count })) } };
+      }));
+    };
+
+    const onPlanRsvpUpdated = ({ post_id, going_count }) => {
+      // Counts only — viewer_rsvp stays whatever this reader set.
+      setMessages(prev => prev.map(m => m.plan?.post_id === post_id
+        ? { ...m, plan: { ...m.plan, going_count } } : m));
+    };
+
     const onMessagePinned = ({ pin }) => {
       if (!pin) return;
       setMessages(prev => prev.map(m =>
@@ -1177,6 +1204,8 @@ export default function HiveChatPage() {
     socket.on('typing_update',        onTypingUpdate);
     socket.on('hive_access_revoked',  onHiveAccessRevoked);
     socket.on('channel_activity',     onChannelActivity);
+    socket.on('poll_updated',         onPollUpdated);
+    socket.on('plan_rsvp_updated',    onPlanRsvpUpdated);
     socket.on('message_pinned',       onMessagePinned);
     socket.on('message_unpinned',     onMessageUnpinned);
 
@@ -1189,6 +1218,8 @@ export default function HiveChatPage() {
       socket.off('typing_update',       onTypingUpdate);
       socket.off('hive_access_revoked', onHiveAccessRevoked);
       socket.off('channel_activity',    onChannelActivity);
+      socket.off('poll_updated',        onPollUpdated);
+      socket.off('plan_rsvp_updated',   onPlanRsvpUpdated);
       socket.off('message_pinned',      onMessagePinned);
       socket.off('message_unpinned',    onMessageUnpinned);
       Object.values(typingTimers.current).forEach(clearTimeout);
@@ -1228,6 +1259,35 @@ export default function HiveChatPage() {
       .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [], pin: null }); });
     return () => { live = false; };
   }, [hiveId, activeChannelId]);
+
+  // ── Plan RSVP from a card in the stream ────────────────────────────────────
+  // Only this reader's own viewer_rsvp is touched locally; the counts arrive
+  // for everyone through plan_rsvp_updated.
+  async function handlePlanRsvp(plan, status) {
+    try {
+      const r = await api.post(`/api/events/${plan.post_id}/rsvp`, { status: status ?? 'clear' });
+      setMessages(prev => prev.map(m => m.plan?.post_id === plan.post_id
+        ? { ...m, plan: { ...m.plan, viewer_rsvp: r.status, going_count: r.goingCount } }
+        : m));
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(e?.data?.error ?? 'Could not update your RSVP.');
+    }
+  }
+
+  // ── Poll voting ────────────────────────────────────────────────────────────
+  async function handlePollVote(poll, optionIds) {
+    try {
+      const d = optionIds.length
+        ? await api.post(`/api/hives/${hiveId}/polls/${poll.poll_id}/vote`, { optionIds })
+        : await api.delete(`/api/hives/${hiveId}/polls/${poll.poll_id}/vote`);
+      setMessages(prev => prev.map(m => m.poll?.poll_id === poll.poll_id
+        ? { ...m, poll: d.poll } : m));
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(e?.data?.error ?? 'Could not record your vote.');
+    }
+  }
 
   // ── Pin / unpin ────────────────────────────────────────────────────────────
   async function handlePin(msg) {
@@ -1537,6 +1597,41 @@ export default function HiveChatPage() {
 
   return (
     <div className="hc-root">
+      {planOpen && (
+        <CreatePlanModal
+          hiveId={hiveId}
+          onClose={() => setPlanOpen(false)}
+          onCreated={async (plan) => {
+            setPlanOpen(false);
+            // Posting the plan as a message is what puts the card in the room.
+            try {
+              // Use the REST response locally. The socket broadcast is
+              // depersonalised on purpose, so the creator would otherwise see
+              // their own auto-RSVP as unset until a reload.
+              const msg = await api.post(`/api/hives/${hiveId}/messages`,
+                { channel_id: activeChannelId, planPostId: plan.post_id });
+              setMessages(prev => prev.some(m => m.message_id === msg.message_id)
+                ? prev.map(m => m.message_id === msg.message_id ? msg : m)
+                : [...prev, msg]);
+            } catch (e) {
+              // eslint-disable-next-line no-alert
+              alert(e?.data?.error ?? 'The plan was created but could not be posted here.');
+            }
+          }}
+        />
+      )}
+
+      {pollOpen && (
+        <CreatePollModal
+          hiveId={hiveId}
+          channelId={activeChannelId}
+          channelName={activeChannel?.name}
+          onClose={() => setPollOpen(false)}
+          onCreated={() => setPollOpen(false)}
+          /* the poll's message arrives over the socket like any other */
+        />
+      )}
+
       {pinsOpen && (
         <PinsModal
           hiveId={hiveId}
@@ -1659,6 +1754,8 @@ export default function HiveChatPage() {
                 <MessageRow
                   msg={msg}
                   onPin={handlePin}
+                  onPlanRsvp={handlePlanRsvp}
+                  onPollVote={handlePollVote}
                   isOwn={msg.sender_user_id === userId}
                   isLast={i === lastConfirmedOwnIdx}
                   members={members}
@@ -1711,19 +1808,47 @@ export default function HiveChatPage() {
             <StagedFileChips files={stagedFiles} onRemove={removeStagedFile} />
 
             <div className="hc-composer-row">
+              <div className="hc-plus-wrap">
               <button
                 type="button"
                 className="hc-plus-btn"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={stagedFiles.length >= MAX_ATTACHMENTS}
+                onClick={() => setPlusOpen(o => !o)}
                 aria-label="Add to this message"
-                title="Add a photo or file"
+                aria-haspopup="menu"
+                aria-expanded={plusOpen}
+                title="Add a photo, file, plan or poll"
               >
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                      strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                   <path d="M12 5v14M5 12h14" />
                 </svg>
               </button>
+              {plusOpen && (
+                <>
+                  <div className="hc-plus-scrim" onClick={() => setPlusOpen(false)} />
+                  <div className="hc-plus-menu" role="menu" aria-label="Add to this message">
+                    <button type="button" role="menuitem" className="hc-plus-item"
+                            onClick={() => { setPlusOpen(false); imageInputRef.current?.click(); }}>
+                      🖼 Photo or video
+                    </button>
+                    <button type="button" role="menuitem" className="hc-plus-item"
+                            onClick={() => { setPlusOpen(false); fileInputRef.current?.click(); }}>
+                      📎 File
+                    </button>
+                    {isOwner && (
+                      <button type="button" role="menuitem" className="hc-plus-item"
+                              onClick={() => { setPlusOpen(false); setPlanOpen(true); }}>
+                        📅 Create a plan
+                      </button>
+                    )}
+                    <button type="button" role="menuitem" className="hc-plus-item"
+                            onClick={() => { setPlusOpen(false); setPollOpen(true); }}>
+                      📊 Poll
+                    </button>
+                  </div>
+                </>
+              )}
+              </div>
               <input
                 ref={fileInputRef}
                 type="file"
