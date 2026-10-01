@@ -120,7 +120,7 @@ export function initSocket(httpServer, clientUrl) {
     }
   });
 
-  io.on('connection', async (socket) => {
+  io.on('connection', (socket) => {
     const userId = socket.data.userId;
 
     // Personal room — used for targeted events (access revocation, DMs, etc.)
@@ -128,20 +128,31 @@ export function initSocket(httpServer, clientUrl) {
 
     // Lazy-load display name and stored presence status once per connection.
     // LEFT JOIN profiles so presence_status loads even before profile setup.
-    try {
-      const { rows: [p] } = await query(
-        `SELECT p.full_name, u.presence_status
-         FROM users u LEFT JOIN profiles p ON p.user_id = u.user_id
-         WHERE u.user_id = $1`,
-        [userId],
-      );
+    //
+    // This must NOT be awaited before the handlers below are registered. This
+    // callback used to be `async` and awaited this query first, so for the
+    // 80-600ms it took, the socket had no 'join_hive_room' listener at all —
+    // and socket.io drops packets that arrive with no listener. The client
+    // emits its first join the instant the connection opens, which landed
+    // squarely in that window, so the very first join was silently lost: the
+    // socket never entered the hive room, presence stayed empty, typing was
+    // dropped by the room guard, and set_status had no room to rebroadcast to.
+    query(
+      `SELECT p.full_name, u.presence_status
+       FROM users u LEFT JOIN profiles p ON p.user_id = u.user_id
+       WHERE u.user_id = $1`,
+      [userId],
+    ).then(({ rows: [p] }) => {
       socket.data.fullName = p?.full_name ?? null;
       if (p?.presence_status) userStatus.set(userId, p.presence_status);
-    } catch { /* non-fatal */ }
+    }).catch(() => { /* non-fatal */ });
 
     // ── join_hive_room ───────────────────────────────────────────────────────
+    // Idempotent: joining a room the socket is already in is a no-op, and the
+    // presence Set keys on socket.id so a repeat add changes nothing.
     socket.on('join_hive_room', async ({ hiveId } = {}, ack) => {
       try {
+        if (!hiveId) throw Object.assign(new Error('hiveId is required.'), { status: 400 });
         await requireMembership(hiveId, userId);
 
         const room = `hive:${hiveId}`;
@@ -166,7 +177,10 @@ export function initSocket(httpServer, clientUrl) {
     });
 
     // ── leave_hive_room ──────────────────────────────────────────────────────
+    // Harmless when the socket is not in the room: socket.leave is a no-op and
+    // _removePresence only touches entries that exist.
     socket.on('leave_hive_room', ({ hiveId } = {}) => {
+      if (!hiveId) return;
       socket.leave(`hive:${hiveId}`);
       _removePresence(hiveId, userId, socket.id);
     });
@@ -199,10 +213,15 @@ export function initSocket(httpServer, clientUrl) {
       query(`UPDATE users SET presence_status = $1 WHERE user_id = $2`, [status, userId])
         .catch(e => console.error('[socket/set_status] DB write failed:', e));
 
-      // Rebroadcast updated presence to every hive this socket has joined
+      // Rebroadcast updated presence to every hive this socket has joined.
+      // Channel rooms are named hive:<hiveId>:ch:<channelId> and so also start
+      // with "hive:". Treating one as a hive room sliced a bogus id, built an
+      // empty presence from it and broadcast that to everyone in the channel —
+      // which is why one user changing status emptied everybody's Online Now.
       for (const room of socket.rooms) {
         if (!room.startsWith('hive:')) continue;
         const hiveId = room.slice(5);
+        if (hiveId.includes(':')) continue;      // a channel room, not a hive room
         const payload = _buildPresence(hiveId);
         io.to(room).emit('presence_update', { hive_id: hiveId, ...payload });
       }

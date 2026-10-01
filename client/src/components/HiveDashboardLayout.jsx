@@ -10,6 +10,7 @@ import WelcomeTakeover from './WelcomeTakeover.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
+import { joinHive, leaveHive } from '../lib/socket.js';
 import '../styles/hive-dashboard-layout.css';
 import '../styles/hive-workspace.css';
 // PublicHiveView below uses .dhp-*, .hive-page, .hive-inner and .hive-dark-card,
@@ -541,6 +542,16 @@ export default function HiveDashboardLayout() {
       .catch(err => setHiveError(err.status === 404 ? 'not_found' : 'error'))
       .finally(() => setLoading(false));
   }, [hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Hold the Hive room for as long as the member is anywhere in this Hive.
+  // Chat and Hive Home each take their own claim on top of this one; because
+  // the claims are reference counted, moving between Hive pages never releases
+  // the room, so other members never see you blink offline mid-navigation.
+  useEffect(() => {
+    if (!hiveId || !hive?.my_role) return;
+    joinHive(hiveId);
+    return () => leaveHive(hiveId);
+  }, [hiveId, hive?.my_role]);
 
   const isOwner  = ['owner', 'admin'].includes(hive?.my_role);
   const isMember = Boolean(hive?.my_role);

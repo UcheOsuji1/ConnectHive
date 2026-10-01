@@ -8,7 +8,7 @@ import {
 } from '../../components/home/HomeModules.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
-import { socket } from '../../lib/socket.js';
+import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
 import '../../styles/hive-home.css';
 
 function Skeleton() {
@@ -66,20 +66,20 @@ export default function HiveHomePage() {
 
   // ── Live presence ────────────────────────────────────────────────────────
   // Same shared socket singleton HiveChatPage uses — never a second connection.
+  // joinHive reference counts, so Chat unmounting no longer pulls this page's
+  // socket out of the room; rejoining on reconnect is handled in lib/socket.js.
   useEffect(() => {
-    if (!socket.connected) socket.connect();
-    // The room is joined on every connect, not just on mount: a reconnect
-    // otherwise leaves the tile frozen at its last value.
-    const join = () => socket.emit('join_hive_room', { hiveId }, (ack) => {
+    if (!hiveId) return;
+    const offAck = onHiveJoinAck(hiveId, (ack) => {
       if (ack?.ok) setOnline((ack.online_user_ids ?? []).length);
     });
-    join();
+    joinHive(hiveId);
     const onPresence = ({ online_user_ids }) => setOnline((online_user_ids ?? []).length);
     socket.on('presence_update', onPresence);
-    socket.on('connect', join);
     return () => {
       socket.off('presence_update', onPresence);
-      socket.off('connect', join);
+      offAck();
+      leaveHive(hiveId);
     };
   }, [hiveId]);
 

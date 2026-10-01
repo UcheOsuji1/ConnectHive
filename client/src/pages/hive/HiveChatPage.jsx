@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import EmojiPicker from '../../components/EmojiPicker.jsx';
 import { api } from '../../lib/api.js';
-import { socket } from '../../lib/socket.js';
+import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
 import '../../styles/hive-chat.css';
 import '../../styles/hive-chat-redesign.css';
 
@@ -976,14 +976,14 @@ export default function HiveChatPage() {
     }
   }, [loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Socket ─────────────────────────────────────────────────────────────────
+  // ── Hive room membership ───────────────────────────────────────────────────
+  // Keyed on hiveId alone. It used to live in the listener effect below, whose
+  // dependencies included markSeen, so any churn there would leave and rejoin
+  // the shared room. joinHive/leaveHive reference count, so Hive Home holding
+  // the same room is not disturbed by Chat unmounting.
   useEffect(() => {
-    if (!socket.connected) socket.connect();
-
-    // Joined on every connect, not just on mount. The cleanup emits
-    // leave_hive_room, so a remount (or a reconnect) otherwise left the room
-    // behind and "Online Now" went empty with no way back.
-    const joinRoom = () => socket.emit('join_hive_room', { hiveId }, (ack) => {
+    if (!hiveId) return;
+    const offAck = onHiveJoinAck(hiveId, (ack) => {
       if (ack?.ok) {
         setOnlineUserIds(ack.online_user_ids ?? []);
         setPresenceData(ack.presence ?? []);
@@ -993,8 +993,13 @@ export default function HiveChatPage() {
         setSocketError(true);
       }
     });
-    joinRoom();
-    socket.on('connect', joinRoom);
+    joinHive(hiveId);
+    return () => { offAck(); leaveHive(hiveId); };
+  }, [hiveId]);
+
+  // ── Socket listeners ───────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!socket.connected) socket.connect();
 
     const onReceiveMessage = (msg) => {
       // receive_message arrives from channel room — always the active channel
@@ -1070,8 +1075,6 @@ export default function HiveChatPage() {
     socket.on('channel_activity',     onChannelActivity);
 
     return () => {
-      socket.emit('leave_hive_room', { hiveId });
-      socket.off('connect', joinRoom);
       socket.off('receive_message',     onReceiveMessage);
       socket.off('message_updated',     onMessageUpdated);
       socket.off('message_deleted',     onMessageDeleted);

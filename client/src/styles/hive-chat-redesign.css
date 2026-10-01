@@ -227,12 +227,19 @@
 .hc-ctx-media-tile:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
 
 .hc-status-picker { margin-bottom: 2px; }
+/* The picker now sits at the very top of the rail, and the menu opened upward
+   (bottom: 100%), which put its options under the fixed navbar — clicks landed
+   on the navbar instead, so choosing a status appeared to do nothing. Open it
+   downward. */
+.hc-status-menu { bottom: auto; top: calc(100% + 4px); z-index: 40; }
 .hc-rooms-scrim { display: none; }
 
 /* ── Full height: .hc-root still subtracted 260px for the cover banner that
       Prompt 53 removed, leaving a dead strip under the composer. ─────────── */
 .hc-root {
-  height: calc(100vh - var(--hdl-nav-h) - 58px);
+  /* Sized so the dashboard page itself does not scroll: anything that scrolls
+     slides the rail's top under the fixed navbar. */
+  height: calc(100vh - var(--hdl-nav-h) - 100px);
   min-height: 520px;
 }
 
