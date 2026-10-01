@@ -235,9 +235,12 @@ export default function HiveHomePage() {
           </div>
         ) : (
           <div className="post-feed">
+            {/* variant="light": the Hive surface is cream, and the default
+                (dark) card paints its headline #f3ecdd — 1.11:1 against the
+                page. HomePage already passes this on the same background. */}
             {posts.map(post => (
               <div key={post.post_id} id={`post-${post.post_id}`}>
-                <PostCard post={post} />
+                <PostCard post={post} variant="light" />
               </div>
             ))}
           </div>
