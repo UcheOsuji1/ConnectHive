@@ -1171,7 +1171,11 @@ export default function HiveChatPage() {
       if (entry.file.size > MAX_ATTACHMENT_BYTES) {
         throw new Error('File exceeds 25 MB limit.');
       }
-      const sig  = await api.get(`/api/hives/${hiveId}/messages/upload-signature`);
+      // POST, not GET: the route is registered with router.post, so a GET fell
+      // through to the 404 handler and every chat upload failed with
+      // "Not found" before Cloudinary was ever reached. The Hive banner and
+      // plan-cover uploads already POST their signature requests.
+      const sig  = await api.post(`/api/hives/${hiveId}/messages/upload-signature`, {});
       const form = new FormData();
       form.append('file',      entry.file);
       form.append('api_key',   sig.api_key);
@@ -1185,6 +1189,21 @@ export default function HiveChatPage() {
       );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error?.message ?? 'Upload failed.');
+
+      // Cloudinary accounts have a "Allow delivery of PDF and ZIP files"
+      // security setting that is off by default. The upload succeeds either
+      // way, but delivery of those two types then returns 401 with an empty
+      // body — an attachment that looks fine and is silently broken. Check the
+      // delivery URL once for those types and surface it instead.
+      if (/\.(pdf|zip)$/i.test(entry.file.name)) {
+        const probe = await fetch(data.secure_url, { method: 'GET' }).catch(() => null);
+        if (!probe || !probe.ok) {
+          throw new Error(
+            `${entry.file.name.split('.').pop().toUpperCase()} delivery is blocked on this ` +
+            `Cloudinary account (returned ${probe ? probe.status : 'no response'}). ` +
+            `A Hive admin needs to enable "Allow delivery of PDF and ZIP files".`);
+        }
+      }
 
       setStagedFiles(prev => prev.map(f =>
         f.id === entry.id
