@@ -94,9 +94,15 @@ export async function evictUserFromHive(hiveId, userId) {
   io.to(`user:${userId}`).emit('hive_access_revoked', { hive_id: hiveId });
 }
 
-export function initSocket(httpServer, clientUrl) {
+export function initSocket(httpServer, allowedOrigins) {
   io = new Server(httpServer, {
-    cors: { origin: clientUrl, credentials: true },
+    cors: {
+      origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error('Not allowed by CORS'));
+      },
+      credentials: true,
+    },
   });
 
   // JWT auth via cookie on every connection — also checks token_version so revoked

@@ -31,6 +31,14 @@ const app        = express();
 const PORT       = process.env.PORT       || 5000;
 const CLIENT_URL = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
 
+// Extra allowed origins beyond CLIENT_URL — e.g. both the apex and www
+// hosts of the frontend. Comma-separated, same trailing-slash handling.
+const EXTRA_CLIENT_ORIGINS = (process.env.EXTRA_CLIENT_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+const ALLOWED_ORIGINS = [CLIENT_URL, ...EXTRA_CLIENT_ORIGINS];
+
 // ── Optional feature flags (warn once, never fatal) ───────────────────────────
 {
   const flags = [
@@ -53,7 +61,14 @@ const CLIENT_URL = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.set('trust proxy', 1);  // required for secure cookies behind Render/Heroku/Fly
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+app.use(cors({
+  origin(origin, callback) {
+    // No Origin header (curl, server-to-server, same-origin) — allow.
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -111,7 +126,7 @@ app.use((err, _req, res, _next) => {
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 const server = http.createServer(app);
-initSocket(server, CLIENT_URL);
+initSocket(server, ALLOWED_ORIGINS);
 
 server.listen(PORT, async () => {
   console.log(`\n  TrueHive API  →  http://localhost:${PORT}`);

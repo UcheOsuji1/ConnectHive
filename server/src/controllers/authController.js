@@ -21,9 +21,13 @@ const COOKIE_TTL  = 7 * 24 * 60 * 60 * 1000; // 7 days in ms
 const isProd       = process.env.NODE_ENV === 'production';
 const CLIENT_URL   = process.env.CLIENT_URL;
 
+// sameSite is 'lax' in every environment — the API is first-party at
+// api.truehive.app (same site as truehive.app), so it doesn't need 'none'.
+// 'none' was only ever needed for a cross-site API origin, and iOS Safari
+// in particular refuses cross-site SameSite=None cookies in several cases.
 const COOKIE_OPTS = {
   httpOnly: true,
-  sameSite: isProd ? 'none' : 'lax',
+  sameSite: 'lax',
   secure:   isProd,
   maxAge:   COOKIE_TTL,
   path:     '/',
@@ -32,7 +36,7 @@ const COOKIE_OPTS = {
 // Short-lived cookie used only during the OAuth redirect round-trip.
 const STATE_COOKIE_OPTS = {
   httpOnly: true,
-  sameSite: isProd ? 'none' : 'lax',
+  sameSite: 'lax',
   secure:   isProd,
   maxAge:   10 * 60 * 1000, // 10 minutes
   path:     '/',
@@ -198,12 +202,9 @@ export async function logout(req, res) {
         .catch(e => console.error('[auth/logout] version bump failed:', e.message));
     } catch { /* expired/invalid token — no bump needed */ }
   }
-  res.clearCookie('token', {
-    httpOnly: true,
-    sameSite: isProd ? 'none' : 'lax',
-    secure:   isProd,
-    path:     '/',
-  });
+  // Reuse COOKIE_OPTS directly — a clearCookie with options that don't match
+  // the cookie's original attributes silently fails to clear it.
+  res.clearCookie('token', COOKIE_OPTS);
   return res.json({ message: 'Logged out.' });
 }
 
