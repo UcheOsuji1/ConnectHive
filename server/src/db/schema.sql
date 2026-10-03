@@ -690,3 +690,39 @@ CREATE TABLE IF NOT EXISTS hive_links (
 );
 CREATE INDEX IF NOT EXISTS idx_hive_links_hive
   ON hive_links(hive_id, created_at DESC) WHERE deleted_at IS NULL;
+
+-- ─── Guided member onboarding sequence (Prompt 57) ─────────────────────────────
+-- Per-screen enabled/required flags for the 5-screen sequence. Screen 1 ("You're
+-- in") has no entry here — it's always on, per spec. Keyed by screen number as
+-- a JSONB object rather than 8 booleans so adding a screen later is a data
+-- change, not a migration.
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS screen_config JSONB NOT NULL DEFAULT
+  '{"2":{"enabled":true,"required":false},"3":{"enabled":true,"required":false},"4":{"enabled":true,"required":false},"5":{"enabled":true,"required":false}}';
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS rules_acceptance_required  BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS category_questions_enabled BOOLEAN NOT NULL DEFAULT TRUE;
+-- Ordered [{id, prompt, type:'text'|'choice', options?}], prefilled per category
+-- on first open of the builder (Part 2.3), editable up to 6. Guarded by its own
+-- seeded flag, same idiom as steps_seeded, so an owner who deliberately clears
+-- every question doesn't get them silently reseeded.
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS intro_questions JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE hive_onboarding_settings ADD COLUMN IF NOT EXISTS intro_questions_seeded BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Resume position in the 5-screen sequence, so a refresh on screen 3 reopens
+-- on screen 3 rather than restarting.
+ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS onboarding_screen SMALLINT NOT NULL DEFAULT 1;
+ALTER TABLE hive_members DROP CONSTRAINT IF EXISTS hive_members_onboarding_screen_check;
+ALTER TABLE hive_members ADD CONSTRAINT hive_members_onboarding_screen_check
+  CHECK (onboarding_screen BETWEEN 1 AND 5);
+
+-- Screen 3 ("Make yourself known") writes here — Hive-local only, never the
+-- member's global profile.
+CREATE TABLE IF NOT EXISTS hive_member_intros (
+  intro_id   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id    UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  intro      TEXT        CHECK (intro IS NULL OR char_length(intro) <= 280),
+  interests  JSONB       NOT NULL DEFAULT '[]',
+  answers    JSONB       NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (hive_id, user_id)
+);

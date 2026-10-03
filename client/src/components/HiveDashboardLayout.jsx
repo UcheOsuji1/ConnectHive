@@ -6,7 +6,7 @@ import Navbar from './Navbar.jsx';
 import Avatar from './Avatar.jsx';
 import FollowButton from './FollowButton.jsx';
 import CreatePostModal from './CreatePostModal.jsx';
-import WelcomeTakeover from './WelcomeTakeover.jsx';
+import MemberOnboardingSequence from './MemberOnboardingSequence.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
@@ -127,6 +127,20 @@ function HiveSidebar({
   uploading, uploadError, onEditCover, onEditLogo,
 }) {
   const { pathname } = useLocation();
+
+  // "Finish setting up (N of M)" — the hive_onboarding_steps checklist stays
+  // reachable from the rail until every required step is done, independent of
+  // the one-time 5-screen welcome sequence.
+  const isInOnboarding = !isOwner && hive.onboarding_status && hive.onboarding_status !== 'completed';
+  const [stepProgress, setStepProgress] = useState(null);
+  useEffect(() => {
+    if (!isInOnboarding) { setStepProgress(null); return; }
+    let live = true;
+    api.get(`/api/hives/${hiveId}/onboarding/me`)
+      .then(d => { if (live) setStepProgress(d.progress ?? null); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [isInOnboarding, hiveId]);
 
   const base = `/hive/${hiveId}`;
   const active = (sub) => {
@@ -258,6 +272,13 @@ function HiveSidebar({
             reach their own Hive's About page from the nav. Now shown to all. */}
         <NavItem label="About"     sub="about"   icon="about" />
       </div>
+
+      {isInOnboarding && stepProgress && stepProgress.total > 0 && (
+        <Link to={`/welcome/hive/${hiveId}`} className="hdl-finish-setup">
+          <span className="hdl-finish-setup-icon" aria-hidden="true">🗺️</span>
+          <span>Finish setting up ({stepProgress.done} of {stepProgress.total})</span>
+        </Link>
+      )}
 
       {isOwner && (
         <div className="hdl-nav-group hdl-nav-group--manage">
@@ -632,10 +653,9 @@ export default function HiveDashboardLayout() {
       <Navbar />
 
       {showWelcome && (
-        <WelcomeTakeover
-          hive={hive}
+        <MemberOnboardingSequence
           hiveId={hiveId}
-          onEnter={() => refreshHive({ welcome_seen_at: new Date().toISOString() })}
+          onComplete={() => refreshHive({ welcome_seen_at: new Date().toISOString() })}
         />
       )}
 

@@ -69,6 +69,7 @@ import {
   getMediaUploadSignature, recordUpload, deleteUpload,
   addLink, deleteLink,
 } from '../controllers/mediaController.js';
+import { getSequence, saveScreen, saveIntro } from '../controllers/onboardingSequenceController.js';
 
 const router = Router();
 
@@ -173,5 +174,10 @@ router.put('/:id/onboarding/steps/:stepId',                  requireAuth, update
 router.delete('/:id/onboarding/steps/:stepId/complete',      requireAuth, uncompleteStep);
 router.post('/:id/onboarding/steps/:stepId/complete',        requireAuth, completeStep);
 router.delete('/:id/onboarding/steps/:stepId',               requireAuth, deleteStep);
+
+// ── Guided member sequence (Prompt 57) ───────────────────────────────────────
+router.get('/:id/onboarding/sequence',           requireAuth, getSequence);
+router.post('/:id/onboarding/sequence/screen',   requireAuth, saveScreen);
+router.post('/:id/onboarding/intro',             requireAuth, saveIntro);
 
 export default router;

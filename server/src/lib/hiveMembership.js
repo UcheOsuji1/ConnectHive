@@ -2,7 +2,7 @@ import { query } from '../db/index.js';
 
 export async function getMembership(hiveId, userId) {
   const { rows: [row] } = await query(
-    `SELECT role, membership_status, onboarding_status
+    `SELECT role, membership_status, onboarding_status, onboarding_screen
      FROM hive_members
      WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
     [hiveId, userId],

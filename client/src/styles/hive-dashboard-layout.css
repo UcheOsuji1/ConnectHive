@@ -233,6 +233,24 @@
 }
 .hdl-nav-ico { flex-shrink: 0; opacity: .85; }
 
+/* ── "Finish setting up" — reachable until the onboarding checklist is done ── */
+.hdl-finish-setup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 14px 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: rgba(196, 154, 40, 0.14);
+  border: 1px solid rgba(196, 154, 40, 0.35);
+  color: #e8c84a;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.hdl-finish-setup:hover { background: rgba(196, 154, 40, 0.22); }
+.hdl-finish-setup-icon { flex-shrink: 0; }
+
 /* ── Manage Hive: owner/admin sections collapsed behind one entry ─────────── */
 .hdl-manage-toggle {
   display: flex;

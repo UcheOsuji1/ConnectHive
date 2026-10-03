@@ -1,6 +1,50 @@
 import { query } from '../db/index.js';
 import { createNotification } from './notificationsController.js';
 
+// ── Category intro-question templates (spec §13) ──────────────────────────────
+// Lazy-seeded per hive on first GET, same idiom as DEFAULT_STEPS below. Keyed
+// by the category's display name (categories.category_name), since that's
+// what the hive row joins to.
+function templateQuestions(categoryName) {
+  const mk = (id, prompt, type, options) => (options ? { id, prompt, type, options } : { id, prompt, type });
+  const TEMPLATES = {
+    'Social Groups': [
+      mk('q1', 'What kind of hangouts are you most excited for?', 'text'),
+      mk('q2', 'How do you like to spend a weekend?', 'choice', ['Low-key at home', 'Out and about', 'A mix of both']),
+      mk('q3', 'What brought you to this Hive?', 'text'),
+    ],
+    'Professional Networking': [
+      mk('q1', 'What do you do, and what are you hoping to get from this Hive?', 'text'),
+      mk('q2', 'What stage is your career at?', 'choice', ['Just starting out', 'Mid-career', 'Senior / leadership', 'Between roles']),
+      mk('q3', 'What could you offer to help someone else here?', 'text'),
+    ],
+    'Travel Buddies': [
+      mk('q1', "Where's your next dream trip?", 'text'),
+      mk('q2', "What's your travel style?", 'choice', ['Budget backpacker', 'Comfort traveler', 'Luxury', 'Adventure-first']),
+      mk('q3', 'Favorite trip you’ve ever taken?', 'text'),
+    ],
+    'Project Collaboration': [
+      mk('q1', 'What skills or experience do you bring?', 'text'),
+      mk('q2', 'How much time can you commit weekly?', 'choice', ['A few hours', 'Several hours', 'Nearly full-time']),
+      mk('q3', 'What kind of project excites you most?', 'text'),
+    ],
+    'Event Buddies': [
+      mk('q1', 'What kind of events do you love most?', 'text'),
+      mk('q2', 'How far will you travel for a great event?', 'choice', ['Local only', 'Within the city', "I'll travel for it"]),
+      mk('q3', 'Any upcoming events you’re hoping to find people for?', 'text'),
+    ],
+    'Specialized Groups': [
+      mk('q1', 'What brings you to this community?', 'text'),
+      mk('q2', 'How experienced are you in this area?', 'choice', ['New to this', 'Some experience', 'Very experienced']),
+      mk('q3', 'What would make this Hive valuable to you?', 'text'),
+    ],
+  };
+  return TEMPLATES[categoryName] ?? [
+    mk('q1', 'What brings you to this Hive?', 'text'),
+    mk('q2', 'What are you hoping to get out of it?', 'text'),
+  ];
+}
+
 // ── Default step templates (lazy-seeded per hive on first GET) ────────────────
 const DEFAULT_STEPS = [
   { title: 'Read mission & values',        description: 'Learn what this Hive stands for and what brings us together.',  is_required: true,  step_type: 'read' },
@@ -69,6 +113,27 @@ async function ensureOnboarding(hiveId) {
     settings.steps_seeded = true;
   }
 
+  // Lazy-seed category intro questions the same way, guarded by its own flag
+  // so an owner who clears every question doesn't get them silently reseeded.
+  if (!settings.intro_questions_seeded) {
+    const { rows: [catRow] } = await query(
+      `SELECT c.category_name FROM hives h
+         LEFT JOIN categories c ON c.category_id = h.category_id
+        WHERE h.hive_id = $1`,
+      [hiveId],
+    );
+    const questions = templateQuestions(catRow?.category_name);
+    const { rows: [updated] } = await query(
+      `UPDATE hive_onboarding_settings
+          SET intro_questions = $2, intro_questions_seeded = TRUE
+        WHERE hive_id = $1
+        RETURNING intro_questions, intro_questions_seeded`,
+      [hiveId, JSON.stringify(questions)],
+    );
+    settings.intro_questions = updated.intro_questions;
+    settings.intro_questions_seeded = true;
+  }
+
   const steps = await fetchSteps(hiveId);
   return { settings, steps };
 }
@@ -87,7 +152,8 @@ export const getOnboarding = async (req, res) => {
     if (!mem) return res.status(403).json({ error: 'Not a member of this Hive.' });
 
     const { settings, steps } = await ensureOnboarding(hiveId);
-    res.json({ settings, steps });
+    const { rows: [hiveRow] } = await query(`SELECT join_policy FROM hives WHERE hive_id = $1`, [hiveId]);
+    res.json({ settings: { ...settings, join_policy: hiveRow?.join_policy ?? 'open' }, steps });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error('[onboarding/getOnboarding]', err);
@@ -112,33 +178,59 @@ export const updateOnboarding = async (req, res) => {
       deadline_days, access_mode,
       trigger_welcome_msg, trigger_welcome_text, trigger_assign_role,
       trigger_default_role, trigger_unlock_access,
+      // Guided sequence (Prompt 57)
+      join_policy, screen_config, rules_acceptance_required,
+      category_questions_enabled, intro_questions,
     } = req.body;
+
+    if (join_policy != null && !['open', 'request'].includes(join_policy)) {
+      return res.status(400).json({ error: 'join_policy must be "open" or "request".' });
+    }
+    if (intro_questions != null) {
+      if (!Array.isArray(intro_questions) || intro_questions.length > 6) {
+        return res.status(400).json({ error: 'intro_questions must be an array of at most 6 questions.' });
+      }
+      for (const q of intro_questions) {
+        if (!q?.prompt?.trim() || !['text', 'choice'].includes(q.type)) {
+          return res.status(400).json({ error: 'Each question needs a prompt and type "text" or "choice".' });
+        }
+      }
+    }
 
     // Ensure row exists first
     await ensureOnboarding(hiveId);
 
-    const { rows: [settings] } = await query(
+    if (join_policy != null) {
+      await query(`UPDATE hives SET join_policy = $2, updated_at = NOW() WHERE hive_id = $1`, [hiveId, join_policy]);
+    }
+
+    const { rows: [settingsRow] } = await query(
       `UPDATE hive_onboarding_settings SET
-         join_experience       = COALESCE($2,  join_experience),
-         welcome_message       = COALESCE($3,  welcome_message),
-         show_welcome_banner   = COALESCE($4,  show_welcome_banner),
-         show_owner_note       = COALESCE($5,  show_owner_note),
-         require_photo         = COALESCE($6,  require_photo),
-         send_welcome_notif    = COALESCE($7,  send_welcome_notif),
-         completion_unlocks    = COALESCE($8,  completion_unlocks),
-         notify_hive_on_join   = COALESCE($9,  notify_hive_on_join),
-         generate_certificate  = COALESCE($10, generate_certificate),
-         auto_welcome_post     = COALESCE($11, auto_welcome_post),
-         notify_owner_start    = COALESCE($12, notify_owner_start),
-         show_activity_badge   = COALESCE($13, show_activity_badge),
-         deadline_days         = COALESCE($14, deadline_days),
-         access_mode           = COALESCE($15, access_mode),
-         trigger_welcome_msg   = COALESCE($16, trigger_welcome_msg),
-         trigger_welcome_text  = COALESCE($17, trigger_welcome_text),
-         trigger_assign_role   = COALESCE($18, trigger_assign_role),
-         trigger_default_role  = COALESCE($19, trigger_default_role),
-         trigger_unlock_access = COALESCE($20, trigger_unlock_access),
-         updated_at            = NOW()
+         join_experience             = COALESCE($2,  join_experience),
+         welcome_message             = COALESCE($3,  welcome_message),
+         show_welcome_banner         = COALESCE($4,  show_welcome_banner),
+         show_owner_note             = COALESCE($5,  show_owner_note),
+         require_photo               = COALESCE($6,  require_photo),
+         send_welcome_notif          = COALESCE($7,  send_welcome_notif),
+         completion_unlocks          = COALESCE($8,  completion_unlocks),
+         notify_hive_on_join         = COALESCE($9,  notify_hive_on_join),
+         generate_certificate        = COALESCE($10, generate_certificate),
+         auto_welcome_post           = COALESCE($11, auto_welcome_post),
+         notify_owner_start          = COALESCE($12, notify_owner_start),
+         show_activity_badge         = COALESCE($13, show_activity_badge),
+         deadline_days               = COALESCE($14, deadline_days),
+         access_mode                 = COALESCE($15, access_mode),
+         trigger_welcome_msg         = COALESCE($16, trigger_welcome_msg),
+         trigger_welcome_text        = COALESCE($17, trigger_welcome_text),
+         trigger_assign_role         = COALESCE($18, trigger_assign_role),
+         trigger_default_role        = COALESCE($19, trigger_default_role),
+         trigger_unlock_access       = COALESCE($20, trigger_unlock_access),
+         screen_config               = COALESCE($21, screen_config),
+         rules_acceptance_required   = COALESCE($22, rules_acceptance_required),
+         category_questions_enabled  = COALESCE($23, category_questions_enabled),
+         intro_questions             = COALESCE($24, intro_questions),
+         intro_questions_seeded      = CASE WHEN $24 IS NOT NULL THEN TRUE ELSE intro_questions_seeded END,
+         updated_at                  = NOW()
        WHERE hive_id = $1
        RETURNING *`,
       [
@@ -155,8 +247,15 @@ export const updateOnboarding = async (req, res) => {
         trigger_welcome_msg   ?? null, trigger_welcome_text   ?? null,
         trigger_assign_role   ?? null, trigger_default_role   ?? null,
         trigger_unlock_access ?? null,
+        screen_config                ? JSON.stringify(screen_config) : null,
+        rules_acceptance_required    ?? null,
+        category_questions_enabled   ?? null,
+        intro_questions               ? JSON.stringify(intro_questions) : null,
       ],
     );
+
+    const { rows: [hiveRow] } = await query(`SELECT join_policy FROM hives WHERE hive_id = $1`, [hiveId]);
+    const settings = { ...settingsRow, join_policy: hiveRow?.join_policy ?? 'open' };
 
     const steps = await fetchSteps(hiveId);
     res.json({ settings, steps });
