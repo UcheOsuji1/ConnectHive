@@ -22,6 +22,7 @@ import MarketingLayout from './components/MarketingLayout';
 import HiveDashboardLayout from './components/HiveDashboardLayout';
 import HiveHomePage from './pages/hive/HiveHomePage';
 import HiveMembersPage from './pages/hive/HiveMembersPage';
+import HiveMediaPage from './pages/hive/HiveMediaPage';
 import HiveRequestsPage from './pages/hive/HiveRequestsPage';
 import HiveSettingsPage from './pages/hive/HiveSettingsPage';
 import HiveAboutPage from './pages/hive/HiveAboutPage';
@@ -86,6 +87,7 @@ export default function App() {
               links and bookmarks keep resolving. */}
           <Route path="feed" element={<Navigate to=".." replace relative="path" />} />
           <Route path="members" element={<HiveMembersPage />} />
+          <Route path="media" element={<HiveMediaPage />} />
           <Route path="requests" element={<HiveRequestsPage />} />
           <Route path="onboarding" element={<HiveOnboardingPage />} />
           <Route path="settings" element={<HiveSettingsPage />} />

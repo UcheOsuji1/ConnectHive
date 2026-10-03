@@ -101,6 +101,7 @@ const I = {
   chat:     <><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.6-.7L3 21l1.9-5A8.2 8.2 0 0 1 4 11.5a8.4 8.4 0 0 1 8.5-8.4 8.4 8.4 0 0 1 8.5 8.4z" /></>,
   plans:    <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 11h18" /></>,
   members:  <><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 20v-2a4 4 0 0 0-3-3.9" /><path d="M16 3.1a4 4 0 0 1 0 7.8" /></>,
+  image:    <><rect x="3" y="4" width="18" height="16" rx="2" /><circle cx="8.5" cy="9.5" r="1.8" /><path d="m21 16-5-5L5 20" /></>,
   about:    <><circle cx="12" cy="12" r="9" /><path d="M12 16v-4M12 8h.01" /></>,
   category: <><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 20v-2a4 4 0 0 0-3-3.9" /></>,
   pin:      <><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z" /><circle cx="12" cy="10" r="2.6" /></>,
@@ -252,6 +253,7 @@ function HiveSidebar({
                  badge={chatUnread > 0 ? (chatUnread > 99 ? '99+' : chatUnread) : null} />
         <NavItem label="Plans"     sub="events"  icon="plans" />
         <NavItem label="Members"   sub="members" icon="members" />
+        <NavItem label="Media & Files" sub="media" icon="image" />
         {/* About was gated behind !isOwner, so owners and admins could not
             reach their own Hive's About page from the nav. Now shown to all. */}
         <NavItem label="About"     sub="about"   icon="about" />

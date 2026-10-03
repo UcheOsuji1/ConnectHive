@@ -193,8 +193,9 @@ export function RecentChat({ messages, unreadCount, hiveId, icebreaker }) {
 }
 
 /* ── Recent Photos ───────────────────────────────────────────────────────── */
-// Hidden entirely when there are none — there is no Media & Files page yet, so
-// an empty state here would point nowhere.
+// Hidden entirely when there are none — an empty state here would need
+// somewhere to point, and this card is about recent activity, not an upload
+// entry point.
 export function Photos({ photos, hiveId }) {
   if (!photos.length) return null;
   const shown = photos.slice(0, 5);
@@ -203,7 +204,7 @@ export function Photos({ photos, hiveId }) {
   const mod = shown.length === 1 ? ' hh-mosaic--one'
             : shown.length <= 3  ? ' hh-mosaic--few' : '';
   return (
-    <Card icon="image" title="Recent Photos" className="hh-m-photos">
+    <Card icon="image" title="Recent Photos" className="hh-m-photos" link="View all →" linkTo={`/hive/${hiveId}/media`}>
       <div className={`hh-mosaic${mod}`}>
         {shown.map(p => (
           <Link key={p.attachment_id} to={`/hive/${hiveId}/chat/${p.channel_id}`}

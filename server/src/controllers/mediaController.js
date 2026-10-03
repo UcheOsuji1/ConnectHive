@@ -237,7 +237,7 @@ export const getHiveMedia = async (req, res) => {
 
     const planBranch = isPhotos ? `
         UNION ALL
-        SELECT 'plan'::text AS source, p.media_url AS url, 'image'::text AS resource_type,
+        SELECT 'plan'::text AS source, p.post_id AS id, p.media_url AS url, 'image'::text AS resource_type,
                NULL::text AS file_name, NULL::text AS mime_type, NULL::bigint AS bytes,
                NULL::int AS width, NULL::int AS height,
                p.headline AS title, NULL::text AS description,
@@ -249,7 +249,7 @@ export const getHiveMedia = async (req, res) => {
     params.push(limit + 1);
     const sql = `
       WITH combined AS (
-        SELECT 'chat'::text AS source, a.url, a.resource_type,
+        SELECT 'chat'::text AS source, a.attachment_id AS id, a.url, a.resource_type,
                a.file_name, a.mime_type, a.bytes, a.width, a.height,
                NULL::text AS title, NULL::text AS description,
                m.sender_user_id AS added_by_id, a.created_at,
@@ -259,7 +259,7 @@ export const getHiveMedia = async (req, res) => {
           JOIN hive_channels c ON c.channel_id = m.channel_id
          WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND ${chatTypeFilter}
         UNION ALL
-        SELECT 'upload'::text AS source, u.url, u.resource_type,
+        SELECT 'upload'::text AS source, u.upload_id AS id, u.url, u.resource_type,
                u.file_name, u.mime_type, u.bytes, u.width, u.height,
                u.title, u.description,
                u.uploaded_by AS added_by_id, u.created_at,
@@ -281,7 +281,7 @@ export const getHiveMedia = async (req, res) => {
 
     res.json({
       items: page.map(r => ({
-        source: r.source, url: r.url, resource_type: r.resource_type,
+        id: r.id, source: r.source, url: r.url, resource_type: r.resource_type,
         file_name: r.file_name, mime_type: r.mime_type, bytes: r.bytes,
         width: r.width, height: r.height, title: r.title, description: r.description,
         added_by: { user_id: r.added_by_id, full_name: r.added_by_name, profile_photo_url: r.added_by_photo },

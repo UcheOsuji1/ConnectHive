@@ -777,6 +777,7 @@ function ContextRail({
           <div className="hc-ctx-head">
             <Ico name="image" />
             <h3 className="hc-ctx-title">Recent Media</h3>
+            <Link to={`/hive/${hiveId}/media`} className="hc-ctx-link">View all →</Link>
           </div>
           <div className="hc-ctx-media">
             {recentMedia.slice(0, 6).map(a => (
