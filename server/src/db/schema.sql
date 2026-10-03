@@ -650,3 +650,43 @@ ALTER TABLE hives ADD CONSTRAINT hives_purpose_check
 ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_founder_note_check;
 ALTER TABLE hives ADD CONSTRAINT hives_founder_note_check
   CHECK (founder_note IS NULL OR char_length(founder_note) <= 2000);
+
+-- ─── Media & Files library (Prompt 56) ─────────────────────────────────────────
+-- Direct uploads made from the Media & Files page itself. Chat attachments and
+-- plan covers already have their own tables/columns — this is only for files
+-- that don't belong to a message or a plan.
+CREATE TABLE IF NOT EXISTS hive_uploads (
+  upload_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id       UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  uploaded_by   UUID        NOT NULL REFERENCES users(user_id),
+  url           TEXT        NOT NULL,
+  resource_type TEXT        CHECK (resource_type IN ('image','video','raw')),
+  file_name     TEXT,
+  mime_type     TEXT,
+  bytes         BIGINT,
+  width         INT,
+  height        INT,
+  title         TEXT        CHECK (title IS NULL OR char_length(title) <= 120),
+  description   TEXT        CHECK (description IS NULL OR char_length(description) <= 300),
+  plan_post_id  UUID        REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_uploads_hive
+  ON hive_uploads(hive_id, created_at DESC) WHERE deleted_at IS NULL;
+
+-- Links and resources shared from the Media & Files page. Previews are title +
+-- domain only — nothing is ever fetched server-side (SSRF-safe by construction).
+CREATE TABLE IF NOT EXISTS hive_links (
+  link_id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id       UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  added_by      UUID        NOT NULL REFERENCES users(user_id),
+  url           TEXT        NOT NULL CHECK (char_length(url) <= 2000),
+  title         TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  description   TEXT        CHECK (description IS NULL OR char_length(description) <= 300),
+  plan_post_id  UUID        REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_links_hive
+  ON hive_links(hive_id, created_at DESC) WHERE deleted_at IS NULL;

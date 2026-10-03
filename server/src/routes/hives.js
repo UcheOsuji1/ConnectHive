@@ -64,6 +64,11 @@ import { getChannelRail } from '../controllers/chatRailController.js';
 import { pinMessage, unpinMessage, listPins } from '../controllers/pinsController.js';
 import { createPoll, votePoll, clearVote, listVoters } from '../controllers/pollsController.js';
 import { getAiFit, getAiMatch } from '../controllers/aiController.js';
+import {
+  getMediaSummary, getHiveMedia,
+  getMediaUploadSignature, recordUpload, deleteUpload,
+  addLink, deleteLink,
+} from '../controllers/mediaController.js';
 
 const router = Router();
 
@@ -140,6 +145,15 @@ router.post('/:id/plans', requireAuth, createPlan);
 // ── Media (banner / logo) ─────────────────────────────────────────────────────
 router.post('/:id/upload-signature', requireAuth, getUploadSignature);
 router.patch('/:id/media',           requireAuth, updateHiveMedia);
+
+// ── Media & Files page (Prompt 56) ───────────────────────────────────────────
+router.get('/:id/media',                   requireAuth, getHiveMedia);
+router.get('/:id/media/summary',           requireAuth, getMediaSummary);
+router.post('/:id/uploads/signature',      requireAuth, getMediaUploadSignature);
+router.post('/:id/uploads',                requireAuth, recordUpload);
+router.delete('/:id/uploads/:uploadId',    requireAuth, deleteUpload);
+router.post('/:id/links',                  requireAuth, addLink);
+router.delete('/:id/links/:linkId',        requireAuth, deleteLink);
 
 // ── Channels (rooms) ──────────────────────────────────────────────────────────
 router.get('/:id/channels/:channelId/rail',      requireAuth, getChannelRail);
