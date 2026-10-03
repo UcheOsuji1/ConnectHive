@@ -503,8 +503,8 @@ export const getHiveMembers = async (req, res) => {
 
     const { rows } = await query(
       `SELECT hm.role, hm.joined_at, hm.onboarding_status,
-              u.user_id, u.member_id,
-              p.full_name, p.profile_photo_url, p.bio, p.location, p.interests,
+              u.user_id, u.member_id, u.presence_status,
+              p.full_name, p.profile_photo_url, p.bio, p.location, p.interests, p.skills,
               CASE WHEN p.bio IS NOT NULL
                     AND p.profile_photo_url IS NOT NULL
                     AND p.interests IS NOT NULL
@@ -522,8 +522,8 @@ export const getHiveMembers = async (req, res) => {
               ON mop.user_id = hm.user_id AND mop.hive_id = hm.hive_id
        WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
        GROUP BY hm.hive_id, hm.role, hm.joined_at, hm.onboarding_status,
-                u.user_id, u.member_id,
-                p.full_name, p.profile_photo_url, p.bio, p.location, p.interests,
+                u.user_id, u.member_id, u.presence_status,
+                p.full_name, p.profile_photo_url, p.bio, p.location, p.interests, p.skills,
                 hls.last_seen_at
        ORDER BY
          CASE hm.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
