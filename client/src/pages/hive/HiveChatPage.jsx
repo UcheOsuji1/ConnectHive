@@ -627,9 +627,18 @@ function DateTile({ iso }) {
 
 function ContextRail({
   members, presenceData, myStatus, onStatusChange,
-  hiveId, hive, nextPlan, recentMedia = [], pin = null, onOpenPins,
+  hiveId, hive, nextPlan, recentMedia = [], pin = null, onOpenPins, onClose,
 }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+
+  // Escape closes it, matching every other overlay in this page (pins modal,
+  // create-plan/poll modals). Matters most on phones, where it's a sheet.
+  useEffect(() => {
+    if (!onClose) return;
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const statusMap = Object.fromEntries((presenceData ?? []).map(p => [p.user_id, p.status]));
   const byId = Object.fromEntries((members ?? []).map(m => [m.user_id, m]));
@@ -880,7 +889,13 @@ export default function HiveChatPage() {
   const [editSaving, setEditSaving] = useState(false);
 
   // UI
-  const [showContext, setShowContext] = useState(true);
+  // The context rail collapses behind the header's "N members" toggle at
+  // <=1200px (spec), so it starts closed there and open above it — otherwise
+  // every visit on a laptop-width screen would open already "expanded" with
+  // nothing to toggle.
+  const [showContext, setShowContext] = useState(
+    () => typeof window === 'undefined' || window.innerWidth > 1200,
+  );
   const [showRooms,   setShowRooms]   = useState(false);
   const [pinsOpen,    setPinsOpen]    = useState(false);
   const [plusOpen,    setPlusOpen]    = useState(false);
@@ -1562,7 +1577,10 @@ export default function HiveChatPage() {
       if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => (i + 1) % mentionMatches.length); return; }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionIdx(i => (i - 1 + mentionMatches.length) % mentionMatches.length); return; }
       if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(mentionMatches[mentionIdx]); return; }
-      if (e.key === 'Escape')    { e.preventDefault(); setMentionQuery(null); return; }
+      // stopPropagation: ContextRail also listens for Escape on document,
+      // and would otherwise close behind the mention picker it had nothing
+      // to do with.
+      if (e.key === 'Escape')    { e.preventDefault(); e.stopPropagation(); setMentionQuery(null); return; }
     }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   }
@@ -2039,7 +2057,12 @@ export default function HiveChatPage() {
         )}
       </div>
 
-      {/* Context rail */}
+      {/* Context rail. On phones it's a bottom sheet over a non-sticky header
+          (the whole page scrolls there, including the Hive identity rail
+          above it), so the "N members" toggle that opened it can end up
+          covered by the sheet itself. The scrim is how it closes regardless —
+          same pattern as the rooms drawer. */}
+      {showContext && <div className="hc-context-scrim" onClick={() => setShowContext(false)} />}
       {showContext && (
         <ContextRail
           members={members}
@@ -2052,6 +2075,7 @@ export default function HiveChatPage() {
           recentMedia={rail.recentMedia}
           pin={rail.pin}
           onOpenPins={() => setPinsOpen(true)}
+          onClose={() => setShowContext(false)}
         />
       )}
     </div>

@@ -233,6 +233,7 @@
    downward. */
 .hc-status-menu { bottom: auto; top: calc(100% + 4px); z-index: 40; }
 .hc-rooms-scrim { display: none; }
+.hc-context-scrim { display: none; }
 
 /* ── Full height: .hc-root still subtracted 260px for the cover banner that
       Prompt 53 removed, leaving a dead strip under the composer. ─────────── */
@@ -510,7 +511,13 @@
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1200px) {
-  .hc-context-rail { width: 280px; }
+  /* hive-chat.css has `.hc-context-rail { display: none }` at <=1100px, a
+     leftover from before the rail had a toggle at all. Now that showContext
+     controls mounting (React) and a header button controls it, display:none
+     here would make that toggle permanently non-functional on any screen
+     <=1100px wide, mobile included. Override it back to visible — the toggle
+     itself decides whether the component is in the tree at all. */
+  .hc-context-rail { width: 280px; display: flex; }
 }
 
 @media (max-width: 1000px) {
@@ -553,6 +560,14 @@
     border-top: 1px solid rgba(140,127,108,.3);
     border-radius: 18px 18px 0 0;
     box-shadow: 0 -8px 30px rgba(35,31,28,.18);
+    overflow-y: auto;
+  }
+  /* The sheet can cover the header that opened it (the page isn't sticky-
+     headered, so a tall identity rail above the chat can push the header
+     down into the sheet's own footprint) — the scrim is the reliable close. */
+  .hc-context-scrim {
+    display: block; position: fixed; inset: 0;
+    background: rgba(20,15,8,.4); z-index: 57;
   }
 
   /* No negative horizontal margin on phones. It was tuned to the desktop
