@@ -15,6 +15,9 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
     location:      hive.location      ?? '',
     location_type: hive.location_type ?? '',
     cadence:       hive.cadence       ?? '',
+    tagline:       hive.tagline       ?? '',
+    purpose:       hive.purpose       ?? '',
+    founder_note:  hive.founder_note  ?? '',
   });
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState(null);
@@ -34,6 +37,16 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
 
   async function handleSave(e) {
     e.preventDefault();
+    const tagline = fields.tagline.trim();
+    if (tagline && (tagline.length < 1 || tagline.length > 90)) {
+      return setError('Tagline must be 1–90 characters.');
+    }
+    if (fields.purpose.trim().length > 500) {
+      return setError('Purpose must be 500 characters or fewer.');
+    }
+    if (fields.founder_note.trim().length > 2000) {
+      return setError('The founders’ note must be 2000 characters or fewer.');
+    }
     setSaving(true);
     setError(null);
     setSuccess(false);
@@ -46,6 +59,9 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
         location_type: fields.location_type || null,
         cadence:       fields.cadence      || null,
         max_members:   fields.max_members ? Number(fields.max_members) : null,
+        tagline:       tagline || null,
+        purpose:       fields.purpose.trim()      || null,
+        founder_note:  fields.founder_note.trim() || null,
       };
       const result = await api.patch(`/api/hives/${hiveId}`, payload);
       setSuccess(true);
@@ -123,6 +139,65 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
             onChange={e => set('description', e.target.value)}
             placeholder="Describe what this Hive is about…"
           />
+        </div>
+
+        {/* Hive identity */}
+        <div className="hw-settings-card">
+          <div className="hw-card-label">Hive Identity</div>
+
+          <div className="hw-settings-field">
+            <div className="hw-settings-field-head">
+              <label className="hw-settings-label">Tagline</label>
+              <span className={['hw-settings-charcount', fields.tagline.length > 90 ? 'hw-settings-charcount--over' : ''].filter(Boolean).join(' ')}>
+                {fields.tagline.length}/90
+              </span>
+            </div>
+            <div className="hw-settings-hint">One line under your Hive's name</div>
+            <input
+              type="text"
+              className="hw-settings-input"
+              value={fields.tagline}
+              maxLength={90}
+              onChange={e => set('tagline', e.target.value)}
+              placeholder="A short line that captures your Hive"
+            />
+          </div>
+
+          <div className="hw-settings-field">
+            <div className="hw-settings-field-head">
+              <label className="hw-settings-label">Purpose</label>
+              <span className={['hw-settings-charcount', fields.purpose.length > 500 ? 'hw-settings-charcount--over' : ''].filter(Boolean).join(' ')}>
+                {fields.purpose.length}/500
+              </span>
+            </div>
+            <div className="hw-settings-hint">Why this Hive exists</div>
+            <textarea
+              className="hw-settings-textarea"
+              rows={3}
+              value={fields.purpose}
+              maxLength={500}
+              onChange={e => set('purpose', e.target.value)}
+              placeholder="What this Hive is here to do…"
+            />
+          </div>
+
+          <div className="hw-settings-field">
+            <div className="hw-settings-field-head">
+              <label className="hw-settings-label">A note from the founders</label>
+              <span className={['hw-settings-charcount', fields.founder_note.length > 2000 ? 'hw-settings-charcount--over' : ''].filter(Boolean).join(' ')}>
+                {fields.founder_note.length}/2000
+              </span>
+            </div>
+            <div className="hw-settings-hint">Shown at the top of About</div>
+            <textarea
+              className="hw-settings-textarea"
+              rows={4}
+              value={fields.founder_note}
+              maxLength={2000}
+              onChange={e => set('founder_note', e.target.value)}
+              placeholder="A word from you to your members…"
+            />
+          </div>
         </div>
 
         {/* Access */}

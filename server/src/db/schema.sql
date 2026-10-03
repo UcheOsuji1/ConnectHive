@@ -633,3 +633,20 @@ CREATE TABLE IF NOT EXISTS message_mentions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_message_mentions_user ON message_mentions(user_id);
+
+-- ─── Hive identity: tagline, purpose, founder note (Prompt 55) ────────────────
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS tagline      TEXT NULL;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS purpose      TEXT NULL;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS founder_note TEXT NULL;
+
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_tagline_check;
+ALTER TABLE hives ADD CONSTRAINT hives_tagline_check
+  CHECK (tagline IS NULL OR char_length(tagline) BETWEEN 1 AND 90);
+
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_purpose_check;
+ALTER TABLE hives ADD CONSTRAINT hives_purpose_check
+  CHECK (purpose IS NULL OR char_length(purpose) <= 500);
+
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_founder_note_check;
+ALTER TABLE hives ADD CONSTRAINT hives_founder_note_check
+  CHECK (founder_note IS NULL OR char_length(founder_note) <= 2000);

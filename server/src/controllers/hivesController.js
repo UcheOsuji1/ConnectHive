@@ -818,7 +818,7 @@ export const updateHive = async (req, res) => {
     const WHITELIST = [
       'description', 'pinned_goal', 'ground_rules', 'icebreaker',
       'cadence', 'location', 'location_type', 'max_members',
-      'join_policy', 'discoverable',
+      'join_policy', 'discoverable', 'tagline', 'purpose', 'founder_note',
     ];
     const updates = {};
     for (const key of WHITELIST) {
@@ -828,6 +828,25 @@ export const updateHive = async (req, res) => {
     }
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update.' });
+    }
+
+    // Nullable identity fields: trim, turn blank into NULL (clears the field),
+    // and enforce the same length limits as the hives_*_check constraints.
+    const LENGTH_LIMITS = { tagline: { min: 1, max: 90 }, purpose: { max: 500 }, founder_note: { max: 2000 } };
+    for (const key of Object.keys(LENGTH_LIMITS)) {
+      if (!(key in updates)) continue;
+      const raw = updates[key];
+      if (raw === null || raw === undefined) { updates[key] = null; continue; }
+      const trimmed = String(raw).trim();
+      if (trimmed === '') { updates[key] = null; continue; }
+      const { min, max } = LENGTH_LIMITS[key];
+      if (min && trimmed.length < min) {
+        return res.status(400).json({ error: `${key} must be at least ${min} character${min === 1 ? '' : 's'}.` });
+      }
+      if (trimmed.length > max) {
+        return res.status(400).json({ error: `${key} must be ${max} characters or fewer.` });
+      }
+      updates[key] = trimmed;
     }
 
     const keys = Object.keys(updates);

@@ -157,7 +157,9 @@ export default function HiveHomePage() {
           <div className="hh-hero-text">
             <div className="hh-eyebrow">Hive Home</div>
             <h1 className="hh-hero-title">Welcome back, {firstName}</h1>
-            {hive.description && <p className="hh-hero-desc">{hive.description}</p>}
+            {(hive.tagline || hive.description) && (
+              <p className="hh-hero-desc">{hive.tagline || hive.description}</p>
+            )}
             {chips.length > 0 && (
               <div className="hh-hero-chips">
                 {chips.map(c => (

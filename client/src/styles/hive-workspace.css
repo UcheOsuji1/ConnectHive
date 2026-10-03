@@ -578,6 +578,19 @@
   gap: 12px;
 }
 
+.hw-settings-field-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.hw-settings-charcount {
+  font-size: 0.72rem;
+  color: var(--hw-text-muted);
+  white-space: nowrap;
+}
+.hw-settings-charcount--over { color: #c0392b; }
+
 /* Toggle */
 .hw-settings-toggle-row {
   flex-direction: row;
