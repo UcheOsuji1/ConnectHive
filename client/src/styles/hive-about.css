@@ -1,0 +1,190 @@
+/* ── About page (hab-) ──────────────────────────────────────────────────── */
+
+.hab-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #17120a;
+  padding-bottom: 60px;
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.hab-hero {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  align-items: flex-end;
+  padding: 26px 28px;
+  background-size: cover;
+  background-position: center;
+  background-color: #241a08;
+}
+.hab-hero--fallback {
+  background-image: linear-gradient(135deg, #17120a 0%, #2d200a 55%, #c49a28 190%);
+}
+.hab-hero-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, rgba(20,15,8,.92) 0%, rgba(20,15,8,.7) 45%, rgba(20,15,8,.15) 100%);
+}
+.hab-hero-inner {
+  position: relative; z-index: 1;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 20px; width: 100%; flex-wrap: wrap;
+}
+.hab-hero-text { min-width: 0; flex: 1 1 340px; }
+.hab-eyebrow {
+  font-size: .66rem; font-weight: 700; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(243,234,213,.66); margin-bottom: 6px;
+}
+.hab-hero-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 2.8rem; font-weight: 600; line-height: 1.05;
+  color: #fff; margin: 0 0 6px;
+}
+.hab-hero-desc { font-size: .92rem; color: rgba(243,234,213,.8); margin: 0 0 14px; }
+.hab-hero-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.hab-herochip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.16);
+  color: #f3ead5; border-radius: 999px;
+  padding: 6px 13px; font-size: .78rem;
+  backdrop-filter: blur(4px);
+}
+.hab-herochip svg { opacity: .8; }
+
+.hab-invite {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 20px; border: none; border-radius: 999px;
+  background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
+  color: #17120a; font-family: inherit; font-size: .88rem; font-weight: 700;
+  cursor: pointer; flex-shrink: 0;
+}
+.hab-invite:hover { opacity: .9; }
+
+.hab-toast {
+  padding: 10px 16px;
+  background: #17120a;
+  color: #f3ecdd;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  align-self: flex-start;
+}
+
+/* ── Placeholder (owner/admin, empty field) ────────────────────────────── */
+.hab-placeholder {
+  display: inline-block;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #ad7f16;
+  text-decoration: none;
+  border-bottom: 1px dashed #d9b654;
+  padding-bottom: 1px;
+}
+.hab-placeholder:hover { color: #8a6510; }
+
+/* ── Cards ──────────────────────────────────────────────────────────────── */
+.hab-card {
+  background: #fffdf8;
+  border: 1.5px solid #e9dfcf;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hab-card--empty {
+  background: transparent;
+  border-style: dashed;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 70px;
+}
+.hab-card-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #8a8070;
+}
+.hab-card-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hab-card-body { font-size: 0.88rem; color: #3a3028; line-height: 1.55; margin: 0; }
+.hab-edit-link { font-size: 0.78rem; font-weight: 600; color: #ad7f16; text-decoration: none; }
+.hab-edit-link:hover { text-decoration: underline; }
+
+/* Founder note */
+.hab-note-card { gap: 12px; }
+.hab-note-body { display: flex; gap: 16px; align-items: flex-start; }
+.hab-note-text { display: flex; flex-direction: column; gap: 8px; }
+.hab-note-text p { margin: 0; font-size: 0.9rem; color: #3a3028; line-height: 1.6; }
+.hab-note-sign { font-style: italic; color: #6b5c3e; margin-top: 4px !important; }
+
+/* Grids */
+.hab-grid4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.hab-grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+
+/* Location-over-photo card */
+.hab-card--photo {
+  position: relative;
+  min-height: 150px;
+  justify-content: flex-end;
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  overflow: hidden;
+}
+.hab-card--photo-fallback { background-image: linear-gradient(135deg, #17120a 0%, #2d200a 100%); }
+.hab-card-photo-scrim { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(20,15,8,.85) 0%, rgba(20,15,8,.2) 70%); }
+.hab-card-photo-content { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 4px; }
+.hab-card-label--onphoto { color: rgba(243,234,213,.8); }
+.hab-card-body--onphoto { color: #fff; }
+
+/* Tags */
+.hab-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hab-chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: #f5f0e8;
+  border: 1px solid #e9dfcf;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #6b5c3e;
+}
+
+/* Rules */
+.hab-rules-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.hab-rules-list li { font-size: 0.86rem; color: #3a3028; line-height: 1.5; }
+
+/* Glance */
+.hab-glance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 4px; }
+.hab-glance-stat { display: flex; flex-direction: column; gap: 2px; }
+.hab-glance-num { font-size: 1.4rem; font-weight: 700; color: #17120a; }
+.hab-glance-num--sm { font-size: 0.92rem; }
+.hab-glance-label { font-size: 0.74rem; color: #8a8070; }
+
+/* Owners & admins */
+.hab-leaders-list { display: flex; flex-direction: column; gap: 10px; }
+.hab-leader {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; color: #17120a; font-size: 0.86rem; font-weight: 600;
+}
+.hab-leader:hover { text-decoration: underline; }
+.hab-leader-role { margin-left: auto; font-size: 0.72rem; font-weight: 600; color: #ad7f16; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.hab-icebreaker-card { background: #f6ecd1; border-color: #d9b654; }
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .hab-hero-title { font-size: 2.1rem; }
+  .hab-hero-inner { flex-direction: column; align-items: stretch; }
+  .hab-invite { width: 100%; justify-content: center; }
+  .hab-note-body { flex-direction: column; }
+  .hab-grid4, .hab-grid3 { grid-template-columns: 1fr; }
+  .hab-glance-grid { grid-template-columns: 1fr 1fr; }
+}
