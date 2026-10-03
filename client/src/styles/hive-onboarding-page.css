@@ -798,6 +798,42 @@
 .hop-btn-gold:hover:not(:disabled) { background: var(--hop-gold-dk); color: #fff; }
 .hop-btn-gold:disabled { opacity: 0.45; cursor: default; }
 
+/* ── Guided sequence: screen toggles (Prompt 57) ────────────────────────── */
+.hop-screens-list { display: flex; flex-direction: column; gap: 8px; }
+.hop-screen-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--hop-ivory); border: 1.5px solid var(--hop-border); border-radius: 10px;
+}
+.hop-screen-row--locked { opacity: 0.75; }
+.hop-screen-num {
+  font-size: 0.72rem; font-weight: 700; color: var(--hop-gold-dk); background: var(--hop-gold-bg);
+  border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.hop-screen-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hop-screen-title { font-size: 0.82rem; font-weight: 600; color: var(--hop-ink); }
+.hop-screen-sub { font-size: 0.7rem; color: var(--hop-muted2); }
+.hop-screen-always-on { font-size: 0.7rem; font-weight: 600; color: var(--hop-muted); flex-shrink: 0; }
+.hop-screen-req-select {
+  font-size: 0.72rem; color: var(--hop-muted); background: transparent; border: 1px solid var(--hop-border2);
+  border-radius: 6px; padding: 3px 6px; cursor: pointer; flex-shrink: 0;
+}
+.hop-screen-req-select:disabled { opacity: 0.5; cursor: default; }
+
+.hop-questions-editor { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.hop-questions-header { display: flex; align-items: center; justify-content: space-between; }
+.hop-question-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hop-question-row .hop-field-input { flex: 1; min-width: 140px; }
+.hop-question-move { display: flex; gap: 4px; flex-shrink: 0; }
+.hop-question-options { flex-basis: 100%; }
+
+.hop-preview-run-btn {
+  width: 100%; padding: 12px; border-radius: 10px; border: none;
+  background: linear-gradient(120deg, #e8c84a 0%, var(--hop-gold) 100%); color: #17120a;
+  font-family: inherit; font-size: 0.88rem; font-weight: 700; cursor: pointer; margin-bottom: 6px;
+}
+.hop-preview-run-btn:hover { opacity: 0.92; }
+.hop-preview-run-hint { font-size: 0.72rem; color: var(--hop-muted2); margin: 0 0 16px; text-align: center; }
+
 /* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
   .hop-grid {

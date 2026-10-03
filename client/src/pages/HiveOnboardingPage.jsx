@@ -1,14 +1,30 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useOutletContext, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import MemberOnboardingSequence from '../components/MemberOnboardingSequence.jsx';
 import '../styles/hive-onboarding-page.css';
 
-// ── Join experience options (4) ──────────────────────────────────────────────
-const JOIN_EXPERIENCES = [
-  { value: 'simple',      icon: '⚡', label: 'Instant Join',              desc: 'Members join instantly with no waiting or steps.' },
-  { value: 'standard',    icon: '✅', label: 'Approved Join',             desc: 'You review and approve each member request.' },
-  { value: 'guided',      icon: '🗺️', label: 'Guided Onboarding',        desc: 'Members complete optional steps after joining.' },
-  { value: 'application', icon: '🎓', label: 'Application + Orientation', desc: 'Full application flow with required orientation steps.' },
+// ── Join mode (spec §13) — one selector, but it writes two fields: the
+// hive's join_policy (open/request) and hive_onboarding_settings.join_experience.
+// Mapping: Open→open/simple, Approval Required→request/standard,
+// Guided Entry→open/guided, Application + Orientation→request/application.
+const JOIN_MODES = [
+  { value: 'simple',      joinPolicy: 'open',    icon: '⚡', label: 'Open',                       desc: 'Anyone can join instantly, no approval or steps.' },
+  { value: 'standard',    joinPolicy: 'request', icon: '✅', label: 'Approval Required',           desc: 'You review and approve each member request.' },
+  { value: 'guided',      joinPolicy: 'open',    icon: '🗺️', label: 'Guided Entry',               desc: 'Members join instantly, then walk through the 5-screen welcome.' },
+  { value: 'application', joinPolicy: 'request', icon: '🎓', label: 'Application + Orientation',   desc: 'You approve first; the welcome sequence and orientation steps are required.' },
+];
+// Kept as an alias so the rest of this file (which still reads `JOIN_EXPERIENCES`
+// in a couple of places below) doesn't need a second rename pass.
+const JOIN_EXPERIENCES = JOIN_MODES;
+
+// ── The 5 screens of the guided member sequence (Part 1) ────────────────────
+const SEQUENCE_SCREENS = [
+  { num: 1, title: "You're in.",            sub: 'Crest, Hive name and category · location · type.' },
+  { num: 2, title: 'Get to know the vibe',  sub: "Founder's note and community principles." },
+  { num: 3, title: 'Make yourself known',   sub: 'Intro, interests, first rooms, category questions.' },
+  { num: 4, title: 'Meet your people',      sub: 'Up to 6 members, say hello, RSVP, browse.' },
+  { num: 5, title: 'Welcome home',          sub: 'The dashboard reveal and hand-off.' },
 ];
 
 // ── Welcome & Celebration toggles ──────────────────────────────────────────
@@ -190,6 +206,7 @@ export default function HiveOnboardingPage() {
   const [stepSaving,    setStepSaving]    = useState(false);
   const [saving,        setSaving]        = useState(false);
   const [saveStatus,    setSaveStatus]    = useState(null);
+  const [previewOpen,   setPreviewOpen]   = useState(false);
 
   const dragIdx  = useRef(null);
   const [dragOver, setDragOver] = useState(null);
@@ -207,15 +224,31 @@ export default function HiveOnboardingPage() {
 
   function setField(key, val) { setDraft(p => ({ ...p, [key]: val })); }
 
+  // The join-mode selector writes two underlying fields at once so they can
+  // never drift apart (spec §13.1: "write both underlying fields consistently").
+  function setJoinMode(mode) {
+    setDraft(p => ({ ...p, join_experience: mode.value, join_policy: mode.joinPolicy }));
+  }
+
+  function setScreenConfig(screenNum, patch) {
+    setDraft(p => ({
+      ...p,
+      screen_config: { ...p.screen_config, [screenNum]: { ...p.screen_config?.[screenNum], ...patch } },
+    }));
+  }
+
   const isDirty = useMemo(() => {
     if (!draft || !savedSettings) return false;
     const keys = [
-      'join_experience', 'show_welcome_banner', 'show_owner_note', 'send_welcome_notif',
+      'join_experience', 'join_policy', 'show_welcome_banner', 'show_owner_note', 'send_welcome_notif',
       'require_photo', 'completion_unlocks', 'welcome_message',
       'notify_hive_on_join', 'generate_certificate', 'auto_welcome_post',
       'notify_owner_start', 'show_activity_badge', 'deadline_days', 'access_mode',
       'trigger_welcome_msg', 'trigger_assign_role', 'trigger_default_role', 'trigger_unlock_access',
+      'rules_acceptance_required', 'category_questions_enabled',
     ];
+    if (JSON.stringify(draft.screen_config) !== JSON.stringify(savedSettings.screen_config)) return true;
+    if (JSON.stringify(draft.intro_questions) !== JSON.stringify(savedSettings.intro_questions)) return true;
     return keys.some(k => draft[k] !== savedSettings[k]);
   }, [draft, savedSettings]);
 
@@ -319,7 +352,7 @@ export default function HiveOnboardingPage() {
               {JOIN_EXPERIENCES.map(exp => (
                 <button key={exp.value} type="button"
                   className={['hop-join-card', draft.join_experience === exp.value ? 'hop-join-card--active' : ''].filter(Boolean).join(' ')}
-                  onClick={() => setField('join_experience', exp.value)}>
+                  onClick={() => setJoinMode(exp)}>
                   <div className="hop-join-card-top">
                     <div className="hop-join-radio">
                       {draft.join_experience === exp.value && <div className="hop-join-radio-dot" />}
@@ -337,8 +370,118 @@ export default function HiveOnboardingPage() {
             </div>
           </SectionCard>
 
-          {/* Section 2 */}
-          <SectionCard number="2" title="Welcome & Celebration"
+          {/* Section 2 — the 5-screen guided sequence (Prompt 57, Part 2.2/2.3) */}
+          <SectionCard number="2" title="Guided Welcome Sequence"
+            hint="The five full-screen steps a new member sees on first open. Screen 1 is always on.">
+            <div className="hop-screens-list">
+              {SEQUENCE_SCREENS.map(s => {
+                const cfg = s.num === 1 ? { enabled: true, required: true } : (draft.screen_config?.[s.num] ?? { enabled: true, required: false });
+                return (
+                  <div key={s.num} className={['hop-screen-row', s.num === 1 ? 'hop-screen-row--locked' : ''].filter(Boolean).join(' ')}>
+                    <span className="hop-screen-num">{s.num}</span>
+                    <div className="hop-screen-body">
+                      <span className="hop-screen-title">{s.title}</span>
+                      <span className="hop-screen-sub">{s.sub}</span>
+                    </div>
+                    {s.num === 1 ? (
+                      <span className="hop-screen-always-on">Always on</span>
+                    ) : (
+                      <>
+                        <Toggle on={cfg.enabled !== false} onToggle={() => setScreenConfig(s.num, { enabled: !(cfg.enabled !== false) })} />
+                        <select className="hop-screen-req-select"
+                          value={cfg.required ? 'required' : 'optional'}
+                          disabled={cfg.enabled === false}
+                          onChange={e => setScreenConfig(s.num, { required: e.target.value === 'required' })}>
+                          <option value="optional">Optional</option>
+                          <option value="required">Required</option>
+                        </select>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hop-rules-divider" />
+
+            <div className="hop-toggle-row">
+              <div className="hop-toggle-text">
+                <div className="hop-toggle-label">Require rules acceptance</div>
+                <div className="hop-toggle-desc">Screen 2 shows an "I agree" checkbox that blocks Continue until checked</div>
+              </div>
+              <Toggle on={!!draft.rules_acceptance_required} onToggle={() => setField('rules_acceptance_required', !draft.rules_acceptance_required)} />
+            </div>
+            <div className="hop-toggle-row">
+              <div className="hop-toggle-text">
+                <div className="hop-toggle-label">Show category questions</div>
+                <div className="hop-toggle-desc">Screen 3 includes the questions below, prefilled for your Hive's category</div>
+              </div>
+              <Toggle on={draft.category_questions_enabled !== false} onToggle={() => setField('category_questions_enabled', draft.category_questions_enabled === false)} />
+            </div>
+
+            <div className="hop-questions-editor">
+              <div className="hop-questions-header">
+                <span className="hop-field-label" style={{ margin: 0 }}>Intro questions ({(draft.intro_questions ?? []).length}/6)</span>
+                {(draft.intro_questions ?? []).length < 6 && (
+                  <button type="button" className="hop-add-step-btn" onClick={() => {
+                    const qs = draft.intro_questions ?? [];
+                    setField('intro_questions', [...qs, { id: `q${Date.now()}`, prompt: '', type: 'text' }]);
+                  }}>+ Add question</button>
+                )}
+              </div>
+              {(draft.intro_questions ?? []).map((q, idx) => (
+                <div key={q.id} className="hop-question-row">
+                  <input className="hop-field-input" value={q.prompt} placeholder="Question prompt"
+                    onChange={e => {
+                      const qs = [...draft.intro_questions];
+                      qs[idx] = { ...qs[idx], prompt: e.target.value };
+                      setField('intro_questions', qs);
+                    }} />
+                  <select className="hop-step-req-select" value={q.type}
+                    onChange={e => {
+                      const qs = [...draft.intro_questions];
+                      const type = e.target.value;
+                      qs[idx] = { ...qs[idx], type, options: type === 'choice' ? (qs[idx].options ?? ['', '']) : undefined };
+                      setField('intro_questions', qs);
+                    }}>
+                    <option value="text">Text</option>
+                    <option value="choice">Choice</option>
+                  </select>
+                  <div className="hop-question-move">
+                    <button type="button" className="hop-step-action-btn" disabled={idx === 0}
+                      onClick={() => {
+                        const qs = [...draft.intro_questions];
+                        [qs[idx - 1], qs[idx]] = [qs[idx], qs[idx - 1]];
+                        setField('intro_questions', qs);
+                      }}>↑</button>
+                    <button type="button" className="hop-step-action-btn" disabled={idx === draft.intro_questions.length - 1}
+                      onClick={() => {
+                        const qs = [...draft.intro_questions];
+                        [qs[idx + 1], qs[idx]] = [qs[idx], qs[idx + 1]];
+                        setField('intro_questions', qs);
+                      }}>↓</button>
+                    <button type="button" className="hop-step-action-btn hop-step-action-btn--del"
+                      onClick={() => setField('intro_questions', draft.intro_questions.filter((_, i) => i !== idx))}>✕</button>
+                  </div>
+                  {q.type === 'choice' && (
+                    <input className="hop-field-input hop-question-options" value={(q.options ?? []).join(', ')}
+                      placeholder="Options, comma-separated"
+                      onChange={e => {
+                        const qs = [...draft.intro_questions];
+                        qs[idx] = { ...qs[idx], options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) };
+                        setField('intro_questions', qs);
+                      }} />
+                  )}
+                </div>
+              ))}
+              {(draft.intro_questions ?? []).length === 0 && (
+                <div className="hop-steps-empty">No questions yet — add up to 6, or leave empty to skip this part of screen 3.</div>
+              )}
+            </div>
+          </SectionCard>
+
+          {/* Section 3 */}
+          <SectionCard number="3" title="Welcome & Celebration"
             hint="Control the new-member experience from the moment they join.">
             <div className="hop-toggles-grid">
               {WELCOME_TOGGLES.map(t => (
@@ -353,8 +496,8 @@ export default function HiveOnboardingPage() {
             </div>
           </SectionCard>
 
-          {/* Section 3 */}
-          <SectionCard number="3" title="Onboarding Steps"
+          {/* Section 4 */}
+          <SectionCard number="4" title="Onboarding Steps"
             hint="Drag to reorder · Click to edit · Toggle required"
             headerRight={
               <button type="button" className="hop-add-step-btn"
@@ -399,7 +542,7 @@ export default function HiveOnboardingPage() {
 
         {/* ══ MIDDLE COLUMN ══ */}
         <div className="hop-col-mid">
-          <SectionCard number="4" title="Rules & Completion"
+          <SectionCard number="5" title="Rules & Completion"
             hint="Define how and when members complete onboarding.">
 
             <div className="hop-rules-field">
@@ -500,8 +643,16 @@ export default function HiveOnboardingPage() {
 
         {/* ══ RIGHT COLUMN ══ */}
         <div className="hop-col-right">
-          <SectionCard number="5" title="New Member Preview"
+          <SectionCard number="6" title="New Member Preview"
             hint="Live preview of what a new member sees.">
+
+            <button type="button" className="hop-preview-run-btn" onClick={() => setPreviewOpen(true)}>
+              ▶ Preview as a new member
+            </button>
+            <p className="hop-preview-run-hint">
+              Runs the real 5-screen sequence with your own profile. Nothing is saved — no intro row, no
+              screen progress, no post.
+            </p>
 
             <div className="hop-preview-card">
               <div className="hop-preview-crest-wrap">
@@ -620,6 +771,16 @@ export default function HiveOnboardingPage() {
           saving={stepSaving}
           onSave={handleStepSave}
           onCancel={() => setStepModal(null)}
+        />
+      )}
+
+      {/* Preview as a new member — real sequence, owner's own profile, 0 writes */}
+      {previewOpen && (
+        <MemberOnboardingSequence
+          hiveId={hiveId}
+          previewMode
+          onClose={() => setPreviewOpen(false)}
+          onComplete={() => setPreviewOpen(false)}
         />
       )}
     </div>
