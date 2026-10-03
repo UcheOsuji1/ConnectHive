@@ -228,12 +228,6 @@
   letter-spacing: 0.04em;
 }
 
-.hmv2-member-id {
-  font-size: 0.7rem;
-  color: #a09080;
-  font-family: 'DM Mono', 'Courier New', monospace;
-}
-
 /* ── Chips (interests / skills on cards) ───────────────────────────────── */
 .hmv2-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .hmv2-chip {

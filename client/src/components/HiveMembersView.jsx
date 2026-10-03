@@ -272,7 +272,6 @@ function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps,
             <RoleChip role={member.role} />
             {status && <PresenceTag status={status} />}
           </div>
-          {member.member_id && <span className="hmv2-member-id">{member.member_id}</span>}
         </div>
         <CardMenu member={member} actions={actions} onPromote={onPromote} onDemote={onDemote} onRemove={onRemove} onNotify={onNotify} />
       </div>
@@ -341,7 +340,6 @@ function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills,
         <span className="hmv2-member-role-icon" aria-hidden="true">👤</span> Member
         {status && <PresenceTag status={status} />}
       </div>
-      {member.member_id && <span className="hmv2-member-id">{member.member_id}</span>}
 
       {member.bio && <p className="hmv2-member-bio">{member.bio}</p>}
 
