@@ -481,7 +481,7 @@ export const completeStep = async (req, res) => {
           for (const m of ownerAdmins) {
             await createNotification({
               userId: m.user_id,
-              type: 'onboarding_started',
+              type: 'onboarding_started', category: 'system',
               title: `${memberName} started onboarding in ${hiveRow?.hive_name ?? 'your Hive'}`,
               hiveId,
               actorUserId: req.userId,
@@ -557,7 +557,7 @@ export const completeStep = async (req, res) => {
           if (obs.trigger_welcome_msg) {
             await createNotification({
               userId: req.userId,
-              type: 'onboarding_complete',
+              type: 'onboarding_complete', category: 'system',
               title: obs.trigger_welcome_text?.trim() || `Welcome! You've completed onboarding in ${hiveName} 🎉`,
               hiveId,
               link: `/hive/${hiveId}`,

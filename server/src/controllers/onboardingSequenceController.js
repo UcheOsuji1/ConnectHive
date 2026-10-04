@@ -5,6 +5,7 @@ import { getDefaultChannelId } from '../lib/hiveChannels.js';
 import { getEnrichedMessage, depersonalise } from './messagesController.js';
 import { PLAN_SELECT, PLAN_END, shapePlan } from './eventsController.js';
 import { getIO } from '../realtime/socket.js';
+import { createNotification } from './notificationsController.js';
 
 const MAX_PEOPLE = 6;
 
@@ -203,6 +204,28 @@ export const saveIntro = async (req, res) => {
               io.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
               io.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
             } catch { /* no socket in tests */ }
+
+            // New member introduction notification (spec §14) — best-effort.
+            try {
+              const [{ rows: [me] }, { rows: hiveRow }, { rows: members }] = await Promise.all([
+                query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
+                query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]),
+                query(
+                  `SELECT user_id FROM hive_members WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
+                  [hiveId, req.userId],
+                ),
+              ]);
+              const introName = me?.full_name ?? 'A new member';
+              for (const m of members) {
+                await createNotification({
+                  userId: m.user_id, type: 'member_intro', category: 'new_members',
+                  title: `${introName} introduced themselves in ${hiveRow[0]?.hive_name ?? 'your Hive'}`,
+                  body: introText, hiveId, actorUserId: req.userId, link: `/hive/${hiveId}/chat/${channelId}`,
+                });
+              }
+            } catch (notifErr) {
+              console.error('[onboardingSequence/saveIntro] member_intro notify failed (non-fatal):', notifErr);
+            }
           }
         } catch (postErr) {
           console.error('[onboardingSequence/saveIntro] auto_welcome_post failed (non-fatal):', postErr);

@@ -383,7 +383,7 @@ export const createMessage = async (req, res) => {
         .filter(r => r.user_id !== req.userId)
         .map(r => createNotification({
           userId: r.user_id,
-          type: 'mention',
+          type: 'mention', category: 'mentions',
           title: `${who} mentioned you in #${ch?.name ?? 'chat'}`,
           body: text ? text.slice(0, 140) : null,
           hiveId,

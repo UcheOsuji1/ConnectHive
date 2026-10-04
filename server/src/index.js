@@ -14,6 +14,7 @@ import messageRoutes      from './routes/messages.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
+import { startRsvpReminderJob } from './jobs/rsvpReminderJob.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -139,4 +140,5 @@ server.listen(PORT, async () => {
     // A guard that throws must not take the process down.
     console.error('  [startup] startup checks could not run:', err.message);
   }
+  startRsvpReminderJob();
 });

@@ -329,7 +329,7 @@ export const toggleReaction = async (req, res) => {
           } else {
             await createNotification({
               userId:      postMeta.author_user_id,
-              type:        'welcomed',
+              type:        'welcomed', category: 'new_members',
               title,
               body:        'Open the Hive to see who greeted you.',
               hiveId:      postMeta.hive_id,

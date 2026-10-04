@@ -188,6 +188,34 @@
   border-radius: 6px; padding: 3px 7px; font-size: .6rem; white-space: nowrap; z-index: 5;
 }
 
+/* ── Per-Hive notification preferences bell (Prompt 58) ──────────────────── */
+.hnp-wrap { position: relative; display: inline-flex; }
+.hnp-bell {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 999px;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+  color: rgba(212,198,168,.85); cursor: pointer; padding: 0;
+}
+.hnp-bell:hover { background: rgba(255,255,255,.14); color: #fff; }
+.hnp-bell:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+
+.hnp-panel {
+  position: absolute; top: calc(100% + 8px); left: 0; z-index: 60;
+  width: 280px; background: #fffdf8; border: 1.5px solid #e9dfcf; border-radius: 12px;
+  box-shadow: 0 16px 44px rgba(23,18,10,.3); padding: 14px;
+  color: #17120a; font-family: 'DM Sans', system-ui, sans-serif;
+}
+.hnp-panel-title { font-size: .84rem; font-weight: 700; margin-bottom: 10px; }
+.hnp-loading { font-size: .8rem; color: #8a8070; }
+.hnp-error { font-size: .76rem; color: #c0392b; margin-bottom: 8px; }
+.hnp-list { display: flex; flex-direction: column; gap: 10px; }
+.hnp-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; cursor: pointer; }
+.hnp-row-text { display: flex; flex-direction: column; gap: 1px; }
+.hnp-row-label { font-size: .8rem; font-weight: 600; color: #17120a; }
+.hnp-row-desc { font-size: .7rem; color: #8a8070; }
+.hnp-row input { accent-color: #c49a28; width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
+.hnp-hint { font-size: .68rem; color: #a09080; margin: 12px 0 0; line-height: 1.5; }
+
 /* Decorative tail — a heavily darkened cover instead of flat charcoal. */
 .hdl-rail-wash {
   position: absolute; left: 0; right: 0; bottom: 0; height: 190px;

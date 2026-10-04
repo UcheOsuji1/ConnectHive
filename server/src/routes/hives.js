@@ -70,6 +70,7 @@ import {
   addLink, deleteLink,
 } from '../controllers/mediaController.js';
 import { getSequence, saveScreen, saveIntro } from '../controllers/onboardingSequenceController.js';
+import { getHiveNotificationPrefs, updateHiveNotificationPrefs } from '../controllers/notificationsController.js';
 
 const router = Router();
 
@@ -179,5 +180,9 @@ router.delete('/:id/onboarding/steps/:stepId',               requireAuth, delete
 router.get('/:id/onboarding/sequence',           requireAuth, getSequence);
 router.post('/:id/onboarding/sequence/screen',   requireAuth, saveScreen);
 router.post('/:id/onboarding/intro',             requireAuth, saveIntro);
+
+// ── Per-Hive notification preferences (Prompt 58) ────────────────────────────
+router.get('/:id/notification-prefs', requireAuth, getHiveNotificationPrefs);
+router.put('/:id/notification-prefs', requireAuth, updateHiveNotificationPrefs);
 
 export default router;

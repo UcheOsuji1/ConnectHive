@@ -936,14 +936,14 @@ export const requestToJoin = async (req, res) => {
         ]);
         const memberName = profile?.full_name ?? 'A new member';
         await createNotification({
-          userId: req.userId, type: 'request_accepted',
+          userId: req.userId, type: 'request_accepted', category: 'system',
           title: `You're in! Welcome to ${hive.hive_name}`,
           body: 'Open your Hive to see your welcome.',
           hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
         });
         for (const m of existingMembers) {
           await createNotification({
-            userId: m.user_id, type: 'member_joined',
+            userId: m.user_id, type: 'member_joined', category: 'new_members',
             title: `${memberName} joined ${hive.hive_name}`,
             body: 'Give them a warm welcome 👋',
             hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
@@ -1010,7 +1010,7 @@ export const requestToJoin = async (req, res) => {
       for (const m of ownerAdmins) {
         await createNotification({
           userId: m.user_id,
-          type: 'join_request',
+          type: 'join_request', category: 'system',
           title: `${name} requested to join ${hive.hive_name}`,
           hiveId,
           actorUserId: req.userId,
@@ -1206,7 +1206,7 @@ export const reviewRequest = async (req, res) => {
         // 1. Welcome the new member — notification links to the Hive (takeover shows there)
         await createNotification({
           userId: request.user_id,
-          type: 'request_accepted',
+          type: 'request_accepted', category: 'system',
           title: `You're in! Welcome to ${hiveName}`,
           body: `Open your Hive to see your welcome.`,
           hiveId,
@@ -1218,7 +1218,7 @@ export const reviewRequest = async (req, res) => {
         for (const m of existingMembers) {
           await createNotification({
             userId: m.user_id,
-            type: 'member_joined',
+            type: 'member_joined', category: 'new_members',
             title: `${requesterName} joined ${hiveName}`,
             body: 'Give them a warm welcome 👋',
             hiveId,
@@ -1484,7 +1484,7 @@ export const notifyMember = async (req, res) => {
 
     await createNotification({
       userId:      targetId,
-      type:        'owner_message',
+      type:        'owner_message', category: 'announcements',
       title:       `Message from ${hiveRow?.hive_name ?? 'your Hive'}`,
       body:        message.trim(),
       hiveId,

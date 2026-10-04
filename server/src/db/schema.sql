@@ -726,3 +726,30 @@ CREATE TABLE IF NOT EXISTS hive_member_intros (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (hive_id, user_id)
 );
+
+-- ─── Per-Hive notification preferences (Prompt 58) ─────────────────────────────
+-- No row = all defaults (mentions/plans/announcements/rsvp_reminders on;
+-- new_members/all_messages off). A column left NULL within an existing row
+-- falls back to that same per-category default — see shouldNotify().
+CREATE TABLE IF NOT EXISTS hive_notification_prefs (
+  hive_id        UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  user_id        UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  mentions       BOOLEAN,
+  plans          BOOLEAN,
+  rsvp_reminders BOOLEAN,
+  new_members    BOOLEAN,
+  announcements  BOOLEAN,
+  all_messages   BOOLEAN,
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (hive_id, user_id)
+);
+
+-- Idempotency ledger for the 24h-before RSVP reminder job — one row per
+-- (plan, recipient) ever sent, so re-running the job (every 15 min, or after
+-- a restart) never double-sends.
+CREATE TABLE IF NOT EXISTS plan_reminders_sent (
+  post_id    UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES users(user_id)      ON DELETE CASCADE,
+  sent_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (post_id, user_id)
+);

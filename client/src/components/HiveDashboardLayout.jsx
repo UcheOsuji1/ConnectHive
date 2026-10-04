@@ -7,6 +7,7 @@ import Avatar from './Avatar.jsx';
 import FollowButton from './FollowButton.jsx';
 import CreatePostModal from './CreatePostModal.jsx';
 import MemberOnboardingSequence from './MemberOnboardingSequence.jsx';
+import HiveNotificationPrefsBell from './HiveNotificationPrefsBell.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
@@ -257,6 +258,7 @@ function HiveSidebar({
         <div className="hdl-ident-chips">
           <RoleBadge role={hive.my_role} />
           <HiveCodeChip code={hive.hive_code} />
+          <HiveNotificationPrefsBell hiveId={hiveId} />
         </div>
       </div>
 

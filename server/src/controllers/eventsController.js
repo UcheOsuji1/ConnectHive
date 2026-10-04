@@ -3,6 +3,7 @@ import { query, getClient } from '../db/index.js';
 import { suggestEvents } from '../lib/suggestEvents.js';
 import { getMembership } from '../lib/hiveMembership.js';
 import { getIO } from '../realtime/socket.js';
+import { createNotification } from './notificationsController.js';
 
 export const PLAN_TYPES = [
   'networking', 'hangout', 'food_drinks', 'outdoors',
@@ -536,7 +537,28 @@ export const createPlan = async (req, res) => {
     const { rows } = await query(
       `${PLAN_SELECT} WHERE p.post_id = $2`, [req.userId, postId],
     );
-    res.status(201).json({ plan: shapePlan(rows[0]) });
+    const plan = shapePlan(rows[0]);
+    res.status(201).json({ plan });
+
+    // New Plan notification (spec §14) — best-effort, after the response so a
+    // slow fan-out never delays the creator's own confirmation.
+    try {
+      const { rows: hiveRow } = await query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]);
+      const { rows: members } = await query(
+        `SELECT user_id FROM hive_members WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
+        [hiveId, req.userId],
+      );
+      for (const m of members) {
+        await createNotification({
+          userId: m.user_id, type: 'plan_created', category: 'plans',
+          title: `New plan in ${hiveRow[0]?.hive_name ?? 'your Hive'}: ${t}`,
+          body: plan.event_location || null,
+          hiveId, actorUserId: req.userId, link: `/hive/${hiveId}/events`,
+        });
+      }
+    } catch (notifErr) {
+      console.error('[events/createPlan] plan_created notify failed (non-fatal):', notifErr);
+    }
   } catch (err) {
     console.error('[events/createPlan]', err);
     res.status(500).json({ error: 'Failed to create plan.' });
