@@ -212,6 +212,12 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
             >
               <option value="open">Open — anyone can join</option>
               <option value="request">Request — must be approved</option>
+              {/* Invite-only is set at creation and has no card here — but the
+                  select must still show it truthfully, so an owner who saves
+                  an unrelated field doesn't silently land on "Open" instead. */}
+              {fields.join_policy === 'invite' && (
+                <option value="invite">Invite-only — members join by invite link</option>
+              )}
             </select>
           </div>
           <div className="hw-settings-field hw-settings-toggle-row">

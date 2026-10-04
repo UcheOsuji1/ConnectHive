@@ -33,8 +33,10 @@ export default function HiveHomePage() {
 
   const [data, setData]       = useState(null);
   const [error, setError]     = useState(null);
+  const [forbidden, setForbidden] = useState(false);
   const [posts, setPosts]     = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState(null);
   const [online, setOnline]   = useState(null);
   const [toast, setToast]     = useState(null);
   const [planOpen, setPlanOpen] = useState(false);
@@ -42,23 +44,32 @@ export default function HiveHomePage() {
 
   const load = useCallback(() => {
     setError(null);
+    setForbidden(false);
     api.get(`/api/hives/${hiveId}/home`)
       .then(setData)
-      .catch(e => setError(e?.status === 403
-        ? 'You must be a member of this Hive.'
-        : (e?.data?.error ?? 'Could not load Hive Home.')));
+      .catch(e => {
+        if (e?.status === 403) {
+          setForbidden(true);
+          setError('You must be a member of this Hive.');
+        } else {
+          setError(e?.data?.error ?? 'Could not load Hive Home.');
+        }
+      });
   }, [hiveId]);
 
   useEffect(() => { load(); }, [load]);
 
   // Updates absorbs the Feed — same endpoint and rendering it used.
-  useEffect(() => {
+  const loadPosts = useCallback(() => {
     setPostsLoading(true);
+    setPostsError(null);
     api.get(`/api/hives/${hiveId}/posts`)
       .then(d => setPosts(d.posts ?? []))
-      .catch(() => setPosts([]))
+      .catch(e => setPostsError(e?.data?.error ?? 'Could not load updates.'))
       .finally(() => setPostsLoading(false));
   }, [hiveId]);
+
+  useEffect(() => { loadPosts(); }, [loadPosts]);
 
   useEffect(() => {
     if (newPost) setPosts(prev => [newPost, ...prev.filter(p => p.post_id !== newPost.post_id)]);
@@ -129,7 +140,9 @@ export default function HiveHomePage() {
       <div className="hh-page">
         <div className="hh-state">
           <p>{error}</p>
-          <button type="button" className="hh-btn" onClick={load}>Retry</button>
+          {forbidden
+            ? <Link to="/my-hive" className="hh-btn">← Back to My Hives</Link>
+            : <button type="button" className="hh-btn" onClick={load}>Retry</button>}
         </div>
       </div>
     );
@@ -227,6 +240,13 @@ export default function HiveHomePage() {
         {postsLoading ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {[1, 2].map(i => <div key={i} className="hh-skel" style={{ height: 130 }} />)}
+          </div>
+        ) : postsError ? (
+          <div className="hh-card">
+            <div className="hh-empty">
+              <div className="hh-empty-strong">{postsError}</div>
+              <button type="button" className="hh-btn" onClick={loadPosts}>Retry</button>
+            </div>
           </div>
         ) : posts.length === 0 ? (
           <div className="hh-card">

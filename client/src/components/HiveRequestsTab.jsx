@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from './Avatar.jsx';
 import { api } from '../lib/api.js';
@@ -51,6 +51,7 @@ function SkeletonCards() {
 // ── Candidate card ────────────────────────────────────────────────────────────
 function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
   const [action,       setAction]       = useState(null);
+  const [reviewError,  setReviewError]  = useState(null);
   const [tagsExpanded, setTagsExpanded] = useState(false);
   const [aiStatus,     setAiStatus]     = useState('loading'); // 'loading' | 'done'
   const [aiData,       setAiData]       = useState(null);
@@ -74,6 +75,7 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
 
   async function handleReview(act) {
     setAction(act);
+    setReviewError(null);
     try {
       const result = await api.post(
         `/api/hives/${hiveId}/requests/${req.request_id}`,
@@ -90,6 +92,7 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
       }
     } catch (err) {
       console.error('[CandidateCard]', err);
+      setReviewError(err?.data?.error ?? `Could not ${act === 'accepting' ? 'accept' : 'decline'} this request.`);
       setAction(null);
     }
   }
@@ -191,6 +194,7 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
       </div>
 
       {/* Footer */}
+      {reviewError && <p className="hrt-review-error" role="status">{reviewError}</p>}
       <div className="hrt-card-footer">
         <div className="hrt-footer-meta">
           Requested {timeAgo(req.requested_at)}
@@ -244,13 +248,17 @@ function CollapsedRow({ req, onExpand }) {
 export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onMemberAccepted }) {
   const [requests,    setRequests]    = useState([]);
   const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(null);
+  const [forbidden,   setForbidden]   = useState(false);
   const [memberCount, setMemberCount] = useState(null);
   const [maxMembers,  setMaxMembers]  = useState(null);
   const [sortBy,      setSortBy]      = useState('fit');
   const [expandedIds, setExpandedIds] = useState(new Set());
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true);
+    setError(null);
+    setForbidden(false);
     api.get(`/api/hives/${hiveId}/requests`)
       .then(d => {
         const reqs = d.requests ?? [];
@@ -259,9 +267,18 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
         setMaxMembers(d.max_members   ?? null);
         if (onCountChange) onCountChange(reqs.length);
       })
-      .catch(() => setRequests([]))
+      .catch(e => {
+        if (e?.status === 403) {
+          setForbidden(true);
+          setError('Only owners and admins can review join requests.');
+        } else {
+          setError(e?.data?.error ?? 'Could not load join requests.');
+        }
+      })
       .finally(() => setLoading(false));
   }, [hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { load(); }, [load]);
 
   function removeRequest(requestId) {
     setRequests(prev => {
@@ -278,6 +295,20 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
 
   if (loading) {
     return <div className="hrt-wrap"><SkeletonCards /></div>;
+  }
+
+  if (error) {
+    return (
+      <div className="hrt-wrap">
+        <div className="hrt-empty">
+          <div className="hrt-empty-icon">{forbidden ? '🔒' : '⚠️'}</div>
+          <div className="hrt-empty-title">{error}</div>
+          {!forbidden && (
+            <button type="button" className="hrt-sort-btn" onClick={load}>Retry</button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (!requests.length) {

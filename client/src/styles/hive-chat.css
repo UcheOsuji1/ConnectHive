@@ -42,7 +42,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #a09080;
+  color: #685e54;
   padding: 0 12px 6px;
   margin-top: 8px;
 }
@@ -113,7 +113,7 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   background: #e6dcc9;
-  color: #a09080;
+  color: #685e54;
   border-radius: 99px;
   padding: 1px 5px;
   flex-shrink: 0;
@@ -127,7 +127,7 @@
   border: 1px dashed rgba(140, 127, 108, 0.4);
   border-radius: 6px;
   font-size: 0.78rem;
-  color: #a09080;
+  color: #685e54;
   background: none;
   cursor: pointer;
   text-align: center;
@@ -177,7 +177,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #a09080;
+  color: #685e54;
   font-size: 0.9rem;
   padding: 4px 8px;
   border-radius: 4px;
@@ -328,7 +328,7 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #a09080;
+  color: #685e54;
   font-size: 0.82rem;
   padding: 4px 8px;
   border-radius: 6px;
@@ -361,7 +361,7 @@
 .hc-load-older {
   text-align: center;
   font-size: 0.76rem;
-  color: #a09080;
+  color: #685e54;
   padding: 8px 16px 4px;
   flex-shrink: 0;
 }
@@ -464,7 +464,7 @@
 }
 .hc-msg-time {
   font-size: 0.70rem;
-  color: #a09080;
+  color: #685e54;
 }
 
 /* ── Bubble ───────────────────────────────────────────────────────────────── */
@@ -492,7 +492,7 @@
   background: transparent;
   border: none;
   font-style: italic;
-  color: #a09080;
+  color: #685e54;
   padding-left: 0;
 }
 
@@ -542,7 +542,7 @@
 .hc-reply-quote-name {
   font-size: 0.72rem;
   font-weight: 700;
-  color: #ad7f16;
+  color: #78580f;
   margin-bottom: 1px;
 }
 .hc-reply-quote-text {
@@ -607,7 +607,7 @@
 .hc-reaction-chip--mine {
   background: rgba(196, 154, 40, 0.18);
   border-color: rgba(196, 154, 40, 0.55);
-  color: #ad7f16;
+  color: #78580f;
 }
 
 /* EmojiPicker trigger inside reactions */
@@ -674,7 +674,7 @@
   background: none;
   border: none;
   font-size: 0.72rem;
-  color: #a09080;
+  color: #685e54;
   cursor: pointer;
   padding: 0;
   font-family: 'DM Sans', system-ui, sans-serif;
@@ -741,7 +741,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #ad7f16;
+  color: #78580f;
   margin-bottom: 4px;
 }
 .hc-icebreaker-text { font-size: 0.84rem; color: #2d2416; margin: 0 0 8px; }
@@ -756,7 +756,7 @@
   cursor: pointer;
   font-family: 'DM Sans', system-ui, sans-serif;
 }
-.hc-icebreaker-btn:hover { background: #ad7f16; }
+.hc-icebreaker-btn:hover { background: #78580f; }
 
 /* ── New messages pill ────────────────────────────────────────────────────── */
 .hc-new-pill {
@@ -777,7 +777,7 @@
   white-space: nowrap;
   z-index: 10;
 }
-.hc-new-pill:hover { background: #ad7f16; }
+.hc-new-pill:hover { background: #78580f; }
 
 /* Wrapper for messages + pill (relative positioning) */
 .hc-messages-wrap {
@@ -793,7 +793,7 @@
   min-height: 20px;
   padding: 2px 16px 0;
   font-size: 0.76rem;
-  color: #a09080;
+  color: #685e54;
   font-style: italic;
   flex-shrink: 0;
   display: flex;
@@ -809,7 +809,7 @@
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #a09080;
+  background: #685e54;
   animation: hc-dot-pulse 1.2s infinite ease-in-out;
 }
 .hc-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
@@ -840,7 +840,7 @@
   margin-bottom: 8px;
 }
 .hc-reply-strip-body { flex: 1; min-width: 0; }
-.hc-reply-strip-name { font-size: 0.72rem; font-weight: 700; color: #ad7f16; }
+.hc-reply-strip-name { font-size: 0.72rem; font-weight: 700; color: #78580f; }
 .hc-reply-strip-text {
   font-size: 0.74rem;
   color: #7a6e5e;
@@ -853,7 +853,7 @@
   border: none;
   font-size: 0.9rem;
   cursor: pointer;
-  color: #a09080;
+  color: #685e54;
   padding: 0;
   line-height: 1;
   flex-shrink: 0;
@@ -885,7 +885,7 @@
   overflow-y: hidden;
 }
 .hc-textarea:focus { border-color: #c49a28; }
-.hc-textarea::placeholder { color: #a09080; }
+.hc-textarea::placeholder { color: #685e54; }
 
 .hc-send-btn {
   width: 38px;
@@ -902,7 +902,7 @@
   color: #fff;
   font-size: 1rem;
 }
-.hc-send-btn:hover:not(:disabled)  { background: #ad7f16; }
+.hc-send-btn:hover:not(:disabled)  { background: #78580f; }
 .hc-send-btn:disabled { background: #e6dcc9; cursor: default; }
 
 /* Below textarea: hint + counter */
@@ -949,7 +949,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #a09080;
+  color: #685e54;
   margin-bottom: 8px;
 }
 
@@ -989,7 +989,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #ad7f16;
+  color: #78580f;
   margin-bottom: 4px;
 }
 .hc-pinned-text {
@@ -1006,7 +1006,7 @@
   border: 1px dashed rgba(140, 127, 108, 0.35);
   border-radius: 8px;
   font-size: 0.72rem;
-  color: #a09080;
+  color: #685e54;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1017,7 +1017,7 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   background: #e6dcc9;
-  color: #a09080;
+  color: #685e54;
   border-radius: 99px;
   padding: 1px 5px;
 }
@@ -1099,7 +1099,7 @@
   max-width: 220px;
   display: block;
 }
-.hc-att-file-size { font-size: 0.68rem; color: #a09080; }
+.hc-att-file-size { font-size: 0.68rem; color: #685e54; }
 
 /* Transparent bubble for attachment-only messages */
 .hc-bubble--transparent {
@@ -1146,7 +1146,7 @@
 .hc-staged-chip--uploading {
   background: #f5f0e8;
   border-color: #e9dfcf;
-  color: #a09080;
+  color: #685e54;
 }
 .hc-staged-chip--done {
   background: #eafaf4;
@@ -1246,7 +1246,7 @@
 }
 .hc-status-option:hover          { background: #f5f0e8; }
 .hc-status-option--active        { background: #fdf5e2; }
-.hc-status-hint { color: #a09080; font-size: 0.68rem; }
+.hc-status-hint { color: #685e54; font-size: 0.68rem; }
 
 /* Smaller presence dot for status picker */
 .hc-presence-dot-sm {

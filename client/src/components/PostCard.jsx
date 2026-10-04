@@ -655,7 +655,7 @@ export default function PostCard({ post: initialPost, variant }) {
           <div className="post-reactors-modal" onClick={e => e.stopPropagation()}>
             <div className="post-reactors-header">
               <span className="post-reactors-title">Reactions</span>
-              <button type="button" className="post-reactors-close" onClick={() => setReactorsOpen(false)}>×</button>
+              <button type="button" className="post-reactors-close" onClick={() => setReactorsOpen(false)} aria-label="Close">×</button>
             </div>
             <div className="post-reactors-list">
               {reactorsLoading ? (

@@ -43,7 +43,7 @@
 .post-cat-badge {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.68rem;
-  color: #8a8070;
+  color: #665e53;
   white-space: nowrap;
 }
 
@@ -136,7 +136,7 @@
 .post-event-meta {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.8rem;
-  color: #8a8070;
+  color: #665e53;
   margin-bottom: 10px;
   display: flex;
   flex-wrap: wrap;
@@ -176,7 +176,7 @@
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.82rem;
-  color: #8a8070;
+  color: #665e53;
   padding: 4px 0;
   transition: color 0.15s;
 }
@@ -197,7 +197,7 @@
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.82rem;
-  color: #8a8070;
+  color: #665e53;
   padding: 4px 0;
   transition: color 0.15s;
 }
@@ -223,7 +223,7 @@
 .post-top-comment-body {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.8rem;
-  color: #8a8070;
+  color: #665e53;
   line-height: 1.45;
 }
 
@@ -384,7 +384,7 @@
   background: none;
   border: none;
   font-size: 1.3rem;
-  color: #8a8070;
+  color: #8f8576;
   cursor: pointer;
   padding: 2px 6px;
   line-height: 1;
@@ -449,7 +449,7 @@
   transition: all 0.15s;
   background: rgba(255,255,255,0.04);
   border: 1px solid rgba(51, 41, 21, 0.55);
-  color: #8a8070;
+  color: #8f8576;
 }
 .cpm-type-btn.active {
   background: rgba(196, 154, 40, 0.14);
@@ -496,7 +496,7 @@
 }
 .cpm-visibility-sub {
   font-size: 0.77rem;
-  color: #8a8070;
+  color: #8f8576;
 }
 
 .cpm-error {
@@ -520,11 +520,11 @@
   padding: 10px 22px;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.85rem;
-  color: #8a8070;
+  color: #8f8576;
   cursor: pointer;
   transition: border-color 0.15s, color 0.15s;
 }
-.cpm-cancel-btn:hover { border-color: #8a8070; color: #d4c9b2; }
+.cpm-cancel-btn:hover { border-color: #8f8576; color: #d4c9b2; }
 
 .cpm-submit-btn {
   background: linear-gradient(120deg, #e8c84a 0%, #c49a28 100%);
@@ -653,7 +653,7 @@
   cursor: pointer;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.78rem;
-  color: #8a8070;
+  color: #665e53;
   padding: 0 4px;
   margin-left: 5px;
   transition: color 0.15s;
@@ -851,7 +851,7 @@
   margin: 8px 0 4px;
   font-family: 'DM Sans', sans-serif;
   font-size: 0.76rem;
-  color: #8a8070;
+  color: #665e53;
   font-style: italic;
 }
 
@@ -934,29 +934,29 @@
 }
 
 /* Hive / category labels */
-.post-card--light .post-cat-badge   { color: #8a7d5e; }
+.post-card--light .post-cat-badge   { color: #70654c; }
 
 /* Author row */
 .post-card--light .post-author-name { color: #2f2a1c; }
-.post-card--light .post-time        { color: #8a7d5e; }
+.post-card--light .post-time        { color: #70654c; }
 
 /* Content */
 .post-card--light .post-headline    { color: #17120a; }
 .post-card--light .post-body        { color: #2f2a1c; }
-.post-card--light .post-event-meta  { color: #8a7d5e; }
+.post-card--light .post-event-meta  { color: #70654c; }
 
 /* Footer divider */
 .post-card--light .post-footer      { border-top-color: #efe8d8; }
 
 /* Reaction / comment buttons */
-.post-card--light .post-react-btn               { color: #8a7d5e; }
+.post-card--light .post-react-btn               { color: #70654c; }
 .post-card--light .post-react-btn:hover,
 .post-card--light .post-react-btn.reacted       { color: #c49a28; }
-.post-card--light .post-comment-btn             { color: #8a7d5e; }
+.post-card--light .post-comment-btn             { color: #70654c; }
 .post-card--light .post-comment-btn:hover       { color: #17120a; }
 
 /* Reaction summary */
-.post-card--light .post-summary-count           { color: #8a7d5e; }
+.post-card--light .post-summary-count           { color: #70654c; }
 
 /* Top-comment preview */
 .post-card--light .post-top-comment             { background: rgba(0, 0, 0, 0.03); }
@@ -966,7 +966,7 @@
 .post-card--light .post-comment-bubble          { background: #f0e8d8; }
 .post-card--light .post-comment-bubble-author   { color: #c49a28; }
 .post-card--light .post-comment-bubble-body     { color: #3a3428; }
-.post-card--light .post-comment-meta            { color: #8a7d5e; }
+.post-card--light .post-comment-meta            { color: #70654c; }
 
 /* Comment input */
 .post-card--light .post-comment-input {
@@ -974,14 +974,14 @@
   border-color: #e4dccb;
   color: #17120a;
 }
-.post-card--light .post-comment-input::placeholder { color: #b0a88c; }
+.post-card--light .post-comment-input::placeholder { color: #6c6756; }
 .post-card--light .post-comment-input:focus        { border-color: rgba(196, 154, 40, 0.5); }
 
 /* Reply affordances */
-.post-card--light .post-reply-cancel           { color: #8a7d5e; }
+.post-card--light .post-reply-cancel           { color: #70654c; }
 .post-card--light .post-reply-cancel:hover     { color: #17120a; }
 .post-card--light .post-reply-thread-line      { background: #e4dccb; }
-.post-card--light .post-comment-delete         { color: #a09070; }
+.post-card--light .post-comment-delete         { color: #6f644e; }
 .post-card--light .post-comment-delete:hover   { color: #c06050; }
 
 /* Light feed: gaps between cards (no merged-border-list look) */
@@ -1046,10 +1046,10 @@
 .pc-ms-meta {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.74rem;
-  color: #8a8070;
+  color: #665e53;
   margin-left: auto;
 }
-.post-card--light .pc-ms-meta { color: #8a7d5e; }
+.post-card--light .pc-ms-meta { color: #70654c; }
 
 .pc-ms-headline {
   font-family: 'Cormorant Garamond', serif;
@@ -1112,10 +1112,10 @@
 .pc-nm-meta {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.74rem;
-  color: #8a8070;
+  color: #665e53;
   margin-left: auto;
 }
-.post-card--light .pc-nm-meta { color: #8a7d5e; }
+.post-card--light .pc-nm-meta { color: #70654c; }
 
 .pc-nm-body-row {
   display: flex;
@@ -1187,7 +1187,7 @@
   color: #8a7060;
   margin-left: auto;
 }
-.post-card--light .pc-wl-meta { color: #8a7d5e; }
+.post-card--light .pc-wl-meta { color: #70654c; }
 
 .pc-wl-body-row {
   display: flex;
@@ -1254,7 +1254,7 @@
   text-decoration: none;
   transition: color 0.15s;
 }
-.post-card--light .pc-wl-profile-link { color: #8a7d5e; }
+.post-card--light .pc-wl-profile-link { color: #70654c; }
 .pc-wl-profile-link:hover { color: #c49a28; }
 
 /* Light skeleton cards */

@@ -39,7 +39,7 @@
 .mp-meta {
   display: flex; flex-wrap: wrap; gap: 14px;
   font-family: 'DM Sans', sans-serif; font-size: .82rem;
-  color: #8a8070; margin-bottom: 10px;
+  color: #665e53; margin-bottom: 10px;
 }
 .mp-meta span { display: inline-flex; align-items: center; gap: 5px; }
 
@@ -81,7 +81,7 @@
 .mp-score-num span { font-size: 1.4rem; margin-left: 2px; }
 .mp-score-label {
   font-family: 'DM Sans', sans-serif; font-size: .72rem;
-  color: #8a8070; margin-top: 4px;
+  color: #665e53; margin-top: 4px;
 }
 
 .mp-factors { list-style: none; display: flex; flex-direction: column; gap: 9px; }
@@ -90,7 +90,7 @@
   font-family: 'DM Sans', sans-serif; font-size: .76rem;
   color: #3a3228; margin-bottom: 3px;
 }
-.mp-factor-val { color: #8a8070; font-variant-numeric: tabular-nums; }
+.mp-factor-val { color: #665e53; font-variant-numeric: tabular-nums; }
 .mp-bar { height: 5px; border-radius: 3px; background: rgba(35,31,28,.08); overflow: hidden; }
 .mp-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #e8c84a, #c49a28); }
 
@@ -101,7 +101,7 @@
 }
 .mp-shared-label {
   font-family: 'DM Sans', sans-serif; font-size: .72rem; font-weight: 600;
-  letter-spacing: .04em; color: #8a8070; margin-bottom: 6px;
+  letter-spacing: .04em; color: #665e53; margin-bottom: 6px;
 }
 
 /* Sparse-data state */
@@ -117,7 +117,7 @@
 }
 .mp-thin-sub {
   font-family: 'DM Sans', sans-serif; font-size: .82rem;
-  color: #8a8070; line-height: 1.5; margin: 0;
+  color: #665e53; line-height: 1.5; margin: 0;
 }
 
 /* ── Shared Hives ─────────────────────────────────────────────────────────── */
@@ -149,7 +149,7 @@
   font-family: 'Cormorant Garamond', serif; font-size: 1rem; font-weight: 600;
   color: #1e1b18; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.mp-hive-meta { font-family: 'DM Sans', sans-serif; font-size: .74rem; color: #8a8070; }
+.mp-hive-meta { font-family: 'DM Sans', sans-serif; font-size: .74rem; color: #665e53; }
 
 /* ── Activity ─────────────────────────────────────────────────────────────── */
 .mp-act-list { list-style: none; display: flex; flex-direction: column; gap: 12px; }
@@ -162,7 +162,7 @@
 .mp-act-head {
   font-family: 'DM Sans', sans-serif; font-size: .85rem; color: #3a3228;
 }
-.mp-act-meta { font-family: 'DM Sans', sans-serif; font-size: .73rem; color: #8a8070; }
+.mp-act-meta { font-family: 'DM Sans', sans-serif; font-size: .73rem; color: #665e53; }
 
 /* ── Hive history ─────────────────────────────────────────────────────────── */
 .mp-hist-list { list-style: none; display: flex; flex-direction: column; gap: 11px; }
@@ -171,7 +171,7 @@
   font-family: 'DM Sans', sans-serif; font-size: .85rem; font-weight: 600; color: #1e1b18;
 }
 .mp-hist-meta {
-  font-family: 'DM Sans', sans-serif; font-size: .73rem; color: #8a8070;
+  font-family: 'DM Sans', sans-serif; font-size: .73rem; color: #665e53;
   display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
 }
 .mp-private {
@@ -183,12 +183,12 @@
 /* ── Shared ───────────────────────────────────────────────────────────────── */
 .mp-empty {
   font-family: 'DM Sans', sans-serif; font-size: .82rem;
-  color: #8a8070; line-height: 1.5; margin: 0;
+  color: #665e53; line-height: 1.5; margin: 0;
 }
 
 .mp-dl { display: grid; grid-template-columns: auto 1fr; gap: 7px 14px; margin: 0; }
 .mp-dl dt {
-  font-family: 'DM Sans', sans-serif; font-size: .73rem; color: #8a8070; white-space: nowrap;
+  font-family: 'DM Sans', sans-serif; font-size: .73rem; color: #665e53; white-space: nowrap;
 }
 .mp-dl dd {
   font-family: 'DM Sans', sans-serif; font-size: .8rem; color: #3a3228; margin: 0;

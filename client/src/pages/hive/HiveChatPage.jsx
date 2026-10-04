@@ -873,9 +873,9 @@ export default function HiveChatPage() {
   // Real-time
   const [onlineUserIds, setOnlineUserIds] = useState([]);
   const [presenceData,  setPresenceData]  = useState([]); // [{ user_id, status }]
+  const [reconnecting,  setReconnecting]  = useState(!socket.connected);
   const [myStatus,      setMyStatus]      = useState('online');
   const [typingUsers,   setTypingUsers]   = useState({});
-  const [socketError,   setSocketError]   = useState(false);
 
   // Attachments
   const [stagedFiles, setStagedFiles] = useState([]);
@@ -1251,6 +1251,19 @@ export default function HiveChatPage() {
       if (hive_id === hiveId) navigate('/app');
     };
 
+    // Offline/reconnecting banner (spec §16). socket.io-client already
+    // retries on its own — this just surfaces that state and, once back,
+    // auto-retries anything that was mid-flight when the connection dropped
+    // (a message caught 'sending' never got a response either way).
+    const onDisconnect = () => setReconnecting(true);
+    const onConnect = () => {
+      setReconnecting(false);
+      const stuck = messagesRef.current.filter(m => m._status === 'sending' || m._status === 'failed');
+      for (const m of stuck) handleRetry(m.message_id);
+    };
+    socket.on('disconnect', onDisconnect);
+    socket.on('connect',    onConnect);
+
     socket.on('receive_message',      onReceiveMessage);
     socket.on('message_updated',      onMessageUpdated);
     socket.on('message_deleted',      onMessageDeleted);
@@ -1277,6 +1290,8 @@ export default function HiveChatPage() {
       socket.off('plan_rsvp_updated',   onPlanRsvpUpdated);
       socket.off('message_pinned',      onMessagePinned);
       socket.off('message_unpinned',    onMessageUnpinned);
+      socket.off('disconnect',          onDisconnect);
+      socket.off('connect',             onConnect);
       Object.values(typingTimers.current).forEach(clearTimeout);
       typingTimers.current = {};
     };
@@ -1799,9 +1814,9 @@ export default function HiveChatPage() {
           </button>
         </div>
 
-        {socketError && (
-          <div className="hc-socket-error">
-            Live updates unavailable — messages still send normally
+        {reconnecting && (
+          <div className="hc-socket-error" role="status">
+            Reconnecting…
           </div>
         )}
 

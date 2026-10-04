@@ -33,7 +33,9 @@ export default function HivePlansPage() {
   const [past, setPast]       = useState([]);
   const [pastMore, setPastMore] = useState(false);
   const [pastLoaded, setPastLoaded] = useState(false);
+  const [pastError, setPastError] = useState(null);
   const [error, setError]     = useState(null);
+  const [forbidden, setForbidden] = useState(false);
   const [typeFilter, setTypeFilter] = useState('all');
   const [whenFilter, setWhenFilter] = useState('any');
   const [drawerPlan, setDrawerPlan] = useState(null);
@@ -43,21 +45,32 @@ export default function HivePlansPage() {
 
   const load = useCallback(() => {
     setError(null);
+    setForbidden(false);
     api.get(`/api/hives/${hiveId}/plans?scope=upcoming`)
       .then(d => { setUpcoming(d.plans); setSummary(d.summary); setOwner(d.owner ?? null); })
-      .catch(e => setError(e?.status === 403
-        ? 'You must be a member of this Hive.'
-        : (e?.data?.error ?? 'Could not load plans.')));
+      .catch(e => {
+        if (e?.status === 403) {
+          setForbidden(true);
+          setError('You must be a member of this Hive.');
+        } else {
+          setError(e?.data?.error ?? 'Could not load plans.');
+        }
+      });
   }, [hiveId]);
 
   useEffect(() => { load(); }, [load]);
 
-  useEffect(() => {
-    if (tab !== 'past' || pastLoaded) return;
+  const loadPast = useCallback(() => {
+    setPastError(null);
     api.get(`/api/hives/${hiveId}/plans?scope=past&limit=24&offset=0`)
       .then(d => { setPast(d.plans); setPastMore(d.hasMore); setPastLoaded(true); })
-      .catch(() => setPastLoaded(true));
-  }, [tab, pastLoaded, hiveId]);
+      .catch(e => setPastError(e?.data?.error ?? 'Could not load past plans.'));
+  }, [hiveId]);
+
+  useEffect(() => {
+    if (tab !== 'past' || pastLoaded || pastError) return;
+    loadPast();
+  }, [tab, pastLoaded, pastError, loadPast]);
 
   function loadMorePast() {
     api.get(`/api/hives/${hiveId}/plans?scope=past&limit=24&offset=${past.length}`)
@@ -145,7 +158,9 @@ export default function HivePlansPage() {
       <div className="plans-page">
         <div className="plans-state">
           <p>{error}</p>
-          <button type="button" className="plans-btn-gold" onClick={load}>Retry</button>
+          {forbidden
+            ? <Link to="/my-hive" className="plans-btn-gold">← Back to My Hives</Link>
+            : <button type="button" className="plans-btn-gold" onClick={load}>Retry</button>}
         </div>
       </div>
     );
@@ -270,7 +285,13 @@ export default function HivePlansPage() {
               </>
             )
           ) : tab === 'past' ? (
-            !pastLoaded ? <div className="plans-skel plans-skel--card" />
+            pastError ? (
+              <div className="plans-nomatch">
+                <p>{pastError}</p>
+                <button type="button" className="plans-btn-ghost" onClick={loadPast}>Retry</button>
+              </div>
+            )
+            : !pastLoaded ? <div className="plans-skel plans-skel--card" />
             : past.length === 0 ? <p className="plans-empty-txt">No past plans yet.</p>
             : (
               <>

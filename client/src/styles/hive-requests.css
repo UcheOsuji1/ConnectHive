@@ -34,7 +34,7 @@
 .hrt-capacity {
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.82rem;
-  color: #8a8070;
+  color: #665e53;
 }
 
 /* ── Sort ───────────────────────────────────────────────────────────────── */
@@ -52,7 +52,7 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.76rem;
   font-weight: 500;
-  color: #8a8070;
+  color: #665e53;
   padding: 5px 14px;
   cursor: pointer;
   transition: border-color 0.14s, color 0.14s;
@@ -106,7 +106,7 @@
 .hrt-meta {
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.75rem;
-  color: #8a8070;
+  color: #665e53;
   margin-top: 3px;
 }
 
@@ -142,7 +142,7 @@
   font-size: 0.73rem;
   font-weight: 600;
   background: #f6ecd1;
-  color: #ad7f16;
+  color: #78580f;
   border: 1px solid #d9b654;
   white-space: nowrap;
 }
@@ -163,7 +163,7 @@
 }
 
 .hrt-no-message {
-  color: #8a8070;
+  color: #665e53;
   font-style: italic;
   padding: 0;
   background: none;
@@ -194,7 +194,7 @@
 .hrt-chip-more {
   background: transparent;
   border-color: #d9b654;
-  color: #ad7f16;
+  color: #78580f;
   cursor: pointer;
   font-family: inherit;
   transition: background 0.12s;
@@ -226,7 +226,7 @@
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.78rem;
   font-weight: 700;
-  color: #ad7f16;
+  color: #78580f;
 }
 
 .hrt-ai-soon {
@@ -239,13 +239,13 @@
   font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #ad7f16;
+  color: #78580f;
 }
 
 .hrt-ai-desc {
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.75rem;
-  color: #8a8070;
+  color: #665e53;
   line-height: 1.45;
 }
 
@@ -332,6 +332,12 @@
   border-radius: 0 4px 4px 0;
 }
 
+.hrt-review-error {
+  margin: 0; padding: 8px 12px; border-radius: 8px;
+  background: #fef2f2; border: 1px solid #fbbaba; color: #7a2020;
+  font-size: 0.8rem;
+}
+
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 .hrt-card-footer {
   display: flex;
@@ -346,7 +352,7 @@
 .hrt-footer-meta {
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.76rem;
-  color: #8a8070;
+  color: #665e53;
 }
 
 .hrt-profile-link {
@@ -417,7 +423,7 @@
 .hrt-collapsed-age {
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.78rem;
-  color: #8a8070;
+  color: #665e53;
 }
 
 .hrt-expand-btn {
@@ -470,7 +476,7 @@
 .hrt-empty-sub {
   font-family: 'DM Sans', system-ui, sans-serif;
   font-size: 0.84rem;
-  color: #8a8070;
+  color: #665e53;
   max-width: 260px;
 }
 

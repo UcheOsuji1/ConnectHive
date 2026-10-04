@@ -79,7 +79,7 @@
   display: inline-block;
   font-size: 0.86rem;
   font-weight: 600;
-  color: #ad7f16;
+  color: #78580f;
   text-decoration: none;
   border-bottom: 1px dashed #d9b654;
   padding-bottom: 1px;
@@ -111,11 +111,11 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #8a8070;
+  color: #665e53;
 }
 .hab-card-label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .hab-card-body { font-size: 0.88rem; color: #3a3028; line-height: 1.55; margin: 0; }
-.hab-edit-link { font-size: 0.78rem; font-weight: 600; color: #ad7f16; text-decoration: none; }
+.hab-edit-link { font-size: 0.78rem; font-weight: 600; color: #78580f; text-decoration: none; }
 .hab-edit-link:hover { text-decoration: underline; }
 
 /* Founder note */
@@ -166,7 +166,7 @@
 .hab-glance-stat { display: flex; flex-direction: column; gap: 2px; }
 .hab-glance-num { font-size: 1.4rem; font-weight: 700; color: #17120a; }
 .hab-glance-num--sm { font-size: 0.92rem; }
-.hab-glance-label { font-size: 0.74rem; color: #8a8070; }
+.hab-glance-label { font-size: 0.74rem; color: #665e53; }
 
 /* Owners & admins */
 .hab-leaders-list { display: flex; flex-direction: column; gap: 10px; }
@@ -175,7 +175,7 @@
   text-decoration: none; color: #17120a; font-size: 0.86rem; font-weight: 600;
 }
 .hab-leader:hover { text-decoration: underline; }
-.hab-leader-role { margin-left: auto; font-size: 0.72rem; font-weight: 600; color: #ad7f16; text-transform: uppercase; letter-spacing: 0.04em; }
+.hab-leader-role { margin-left: auto; font-size: 0.72rem; font-weight: 600; color: #78580f; text-transform: uppercase; letter-spacing: 0.04em; }
 
 .hab-icebreaker-card { background: #f6ecd1; border-color: #d9b654; }
 

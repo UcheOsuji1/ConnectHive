@@ -25,6 +25,14 @@ export default function AttendeesDrawer({ plan, past = false, onClose }) {
       .catch(e => setError(e?.data?.error ?? 'Could not load attendees.'));
   }, [plan]);
 
+  function retry() {
+    if (!plan) return;
+    setData(null); setError(null);
+    api.get(`/api/events/${plan.post_id}/attendees`)
+      .then(setData)
+      .catch(e => setError(e?.data?.error ?? 'Could not load attendees.'));
+  }
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -72,7 +80,11 @@ export default function AttendeesDrawer({ plan, past = false, onClose }) {
         </div>
 
         <div className="plans-drawer-body">
-          {error && <p className="plans-empty-txt">{error}</p>}
+          {error && (
+            <p className="plans-empty-txt">
+              {error} <button type="button" className="plans-btn-text" onClick={retry}>Retry</button>
+            </p>
+          )}
           {!error && !data && <p className="plans-empty-txt">Loading…</p>}
 
           {data && list.length === 0 && outside === 0 && (

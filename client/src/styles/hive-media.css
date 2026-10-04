@@ -73,11 +73,11 @@
 .hmf-tab {
   padding: 10px 18px; font-size: 0.88rem; font-weight: 600; font-family: inherit;
   background: none; border: none; border-bottom: 2px solid transparent;
-  color: #8a8070; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  color: #665e53; cursor: pointer; display: flex; align-items: center; gap: 6px;
 }
 .hmf-tab--active { color: #17120a; border-bottom-color: #c49a28; }
-.hmf-tab-count { font-size: 0.72rem; color: #a09080; }
-.hmf-tab--active .hmf-tab-count { color: #ad7f16; }
+.hmf-tab-count { font-size: 0.72rem; color: #685e54; }
+.hmf-tab--active .hmf-tab-count { color: #78580f; }
 
 /* ── Overview grid ──────────────────────────────────────────────────────── */
 .hmf-overview-grid { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
@@ -94,11 +94,12 @@
 .hmf-section-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hmf-link-btn {
   background: none; border: none; font-family: inherit; font-size: 0.8rem;
-  font-weight: 600; color: #ad7f16; cursor: pointer; padding: 0;
+  font-weight: 600; color: #78580f; cursor: pointer; padding: 0;
 }
 .hmf-link-btn:hover { text-decoration: underline; }
-.hmf-loading { padding: 24px; text-align: center; color: #8a8070; font-size: 0.86rem; }
-.hmf-empty { padding: 24px; text-align: center; color: #8a8070; font-size: 0.86rem; background: #fffdf8; border: 1.5px dashed #e9dfcf; border-radius: 12px; }
+.hmf-loading { padding: 24px; text-align: center; color: #665e53; font-size: 0.86rem; }
+.hmf-empty { padding: 24px; text-align: center; color: #665e53; font-size: 0.86rem; background: #fffdf8; border: 1.5px dashed #e9dfcf; border-radius: 12px; }
+.hmf-error-row { background: #fef2f2; border-color: #fbbaba; color: #7a2020; }
 
 /* ── Mosaic ─────────────────────────────────────────────────────────────── */
 .hmf-mosaic {
@@ -127,7 +128,7 @@
 .hmf-table { width: 100%; border-collapse: collapse; background: #fffdf8; border: 1.5px solid #e9dfcf; border-radius: 12px; overflow: hidden; }
 .hmf-table th {
   text-align: left; padding: 10px 14px; font-size: 0.66rem; font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase; color: #8a8070; border-bottom: 1.5px solid #e9dfcf;
+  letter-spacing: 0.06em; text-transform: uppercase; color: #665e53; border-bottom: 1.5px solid #e9dfcf;
 }
 .hmf-table td { padding: 10px 14px; border-bottom: 1px solid #f0ebe0; font-size: 0.84rem; vertical-align: middle; }
 .hmf-table tr:last-child td { border-bottom: none; }
@@ -135,7 +136,7 @@
 .hmf-ft { font-size: 1.3rem; flex-shrink: 0; }
 .hmf-file-name-text { display: flex; flex-direction: column; min-width: 0; }
 .hmf-file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
-.hmf-file-sub { font-size: 0.74rem; color: #8a8070; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.hmf-file-sub { font-size: 0.74rem; color: #665e53; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
 .hmf-addedby { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #3a3028; white-space: nowrap; }
 
 /* ── Links list ─────────────────────────────────────────────────────────── */
@@ -152,16 +153,16 @@
 .hmf-link-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .hmf-link-title { font-size: 0.88rem; font-weight: 700; color: #17120a; text-decoration: none; overflow-wrap: anywhere; }
 .hmf-link-title:hover { text-decoration: underline; }
-.hmf-link-url { font-size: 0.76rem; color: #4b7bbf; text-decoration: none; word-break: break-all; }
+.hmf-link-url { font-size: 0.76rem; color: #4575b9; text-decoration: none; word-break: break-all; }
 .hmf-link-desc { font-size: 0.8rem; color: #6b5c3e; }
 .hmf-link-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-.hmf-link-date { font-size: 0.74rem; color: #a09080; }
+.hmf-link-date { font-size: 0.74rem; color: #685e54; }
 
 /* ── Row "…" menu (shared by files/links) ──────────────────────────────── */
 .hmf-rowmenu { position: relative; flex-shrink: 0; }
 .hmf-rowmenu-btn {
   width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-  border-radius: 7px; border: 1px solid transparent; background: transparent; color: #8a8070;
+  border-radius: 7px; border: 1px solid transparent; background: transparent; color: #665e53;
   font-size: 1rem; cursor: pointer;
 }
 .hmf-rowmenu-btn:hover { background: #f5f0e8; border-color: #e9dfcf; color: #17120a; }
@@ -184,12 +185,12 @@
 .hmf-contrib-card { background: #fffdf8; border: 1.5px solid #e9dfcf; border-radius: 14px; padding: 16px; }
 .hmf-contrib-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .hmf-contrib-head h3 { font-size: 0.92rem; font-weight: 700; margin: 0; flex: 1; }
-.hmf-contrib-viewall { font-size: 0.76rem; font-weight: 600; color: #ad7f16; text-decoration: none; }
+.hmf-contrib-viewall { font-size: 0.76rem; font-weight: 600; color: #78580f; text-decoration: none; }
 .hmf-contrib-list { display: flex; flex-direction: column; gap: 14px; }
 .hmf-contrib-row { display: flex; align-items: center; gap: 10px; }
 .hmf-contrib-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .hmf-contrib-info span:first-child { font-size: 0.82rem; color: #3a3028; }
-.hmf-contrib-time { font-size: 0.72rem; color: #a09080; }
+.hmf-contrib-time { font-size: 0.72rem; color: #685e54; }
 .hmf-contrib-thumbs { display: flex; gap: 4px; flex-shrink: 0; }
 .hmf-contrib-thumbs img { width: 30px; height: 30px; border-radius: 6px; object-fit: cover; }
 
@@ -230,7 +231,7 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 20px; border-bottom: 1px solid #e9dfcf; font-weight: 700;
 }
-.hmf-modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: #8a8070; }
+.hmf-modal-close { background: none; border: none; font-size: 1rem; cursor: pointer; color: #665e53; }
 .hmf-modal-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
 .hmf-modal-field { display: flex; flex-direction: column; gap: 5px; font-size: 0.8rem; font-weight: 600; color: #6b5c3e; }
 .hmf-modal-field input, .hmf-modal-field textarea, .hmf-modal-field select {
@@ -248,7 +249,7 @@
 .hmf-modal-btn:disabled { opacity: 0.5; cursor: default; }
 .hmf-modal-pick-btn {
   padding: 14px; border: 1.5px dashed #d9b654; border-radius: 10px; background: #f6ecd1;
-  color: #ad7f16; font-weight: 700; font-family: inherit; cursor: pointer;
+  color: #78580f; font-weight: 700; font-family: inherit; cursor: pointer;
 }
 
 .hmf-upload-list { display: flex; flex-direction: column; gap: 10px; }

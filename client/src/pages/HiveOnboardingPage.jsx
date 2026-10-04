@@ -100,7 +100,7 @@ function StepModal({ step, onSave, onCancel, saving }) {
       <div className="hop-modal">
         <div className="hop-modal-header">
           <span className="hop-modal-title">{isNew ? 'Add step' : 'Edit step'}</span>
-          <button type="button" className="hop-modal-close" onClick={onCancel}>✕</button>
+          <button type="button" className="hop-modal-close" onClick={onCancel} aria-label="Close">✕</button>
         </div>
         <div className="hop-modal-body">
           <label className="hop-field-label">Title <span className="hop-req-star">*</span></label>
@@ -327,9 +327,24 @@ export default function HiveOnboardingPage() {
   }
   function onDragEnd() { dragIdx.current = null; setDragOver(null); }
 
+  // Keyboard-operable equivalent of the drag handle — native HTML5
+  // drag-and-drop has no keyboard path at all, so Up/Down buttons are the
+  // only way a keyboard-only owner can reorder steps.
+  async function moveStep(idx, delta) {
+    const to = idx + delta;
+    if (to < 0 || to >= steps.length) return;
+    const next = [...steps];
+    [next[idx], next[to]] = [next[to], next[idx]];
+    setSteps(next);
+    try {
+      const res = await api.post(`/api/hives/${hiveId}/onboarding/steps/reorder`, { order: next.map(s => s.step_id) });
+      setSteps(res.steps);
+    } catch { /* rollback silently */ }
+  }
+
   if (loading) {
     return (
-      <div style={{ padding: 40, color: '#8a8070', fontSize: '0.9rem' }}>Loading onboarding settings…</div>
+      <div style={{ padding: 40, color: '#665e53', fontSize: '0.9rem' }}>Loading onboarding settings…</div>
     );
   }
   if (!draft) return null;
@@ -479,18 +494,21 @@ export default function HiveOnboardingPage() {
                   </select>
                   <div className="hop-question-move">
                     <button type="button" className="hop-step-action-btn" disabled={idx === 0}
+                      aria-label="Move question up"
                       onClick={() => {
                         const qs = [...draft.intro_questions];
                         [qs[idx - 1], qs[idx]] = [qs[idx], qs[idx - 1]];
                         setField('intro_questions', qs);
                       }}>↑</button>
                     <button type="button" className="hop-step-action-btn" disabled={idx === draft.intro_questions.length - 1}
+                      aria-label="Move question down"
                       onClick={() => {
                         const qs = [...draft.intro_questions];
                         [qs[idx + 1], qs[idx]] = [qs[idx], qs[idx + 1]];
                         setField('intro_questions', qs);
                       }}>↓</button>
                     <button type="button" className="hop-step-action-btn hop-step-action-btn--del"
+                      aria-label="Remove question"
                       onClick={() => setField('intro_questions', draft.intro_questions.filter((_, i) => i !== idx))}>✕</button>
                   </div>
                   {q.type === 'choice' && (
@@ -558,10 +576,14 @@ export default function HiveOnboardingPage() {
                       <option value="optional">Optional</option>
                     </select>
                     <div className="hop-step-actions">
+                      <button type="button" className="hop-step-action-btn" disabled={idx === 0}
+                        onClick={() => moveStep(idx, -1)} aria-label={`Move step up: ${step.title}`}>↑</button>
+                      <button type="button" className="hop-step-action-btn" disabled={idx === steps.length - 1}
+                        onClick={() => moveStep(idx, 1)} aria-label={`Move step down: ${step.title}`}>↓</button>
                       <button type="button" className="hop-step-action-btn"
-                        onClick={() => setStepModal({ step })} title="Edit">✎</button>
+                        onClick={() => setStepModal({ step })} title="Edit" aria-label={`Edit step: ${step.title}`}>✎</button>
                       <button type="button" className="hop-step-action-btn hop-step-action-btn--del"
-                        onClick={() => handleDeleteStep(step.step_id)} title="Delete">✕</button>
+                        onClick={() => handleDeleteStep(step.step_id)} title="Delete" aria-label={`Delete step: ${step.title}`}>✕</button>
                     </div>
                   </div>
                 ))}

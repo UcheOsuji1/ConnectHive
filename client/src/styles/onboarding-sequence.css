@@ -69,11 +69,15 @@
 .mos-h1 {
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: 3.2rem; font-weight: 600; color: #fff; margin: 6px 0; line-height: 1.08;
-  outline: none;
 }
-.mos-h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 2.2rem; font-weight: 600; color: #17120a; margin: 4px 0 18px; outline: none; }
+.mos-h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 2.2rem; font-weight: 600; color: #17120a; margin: 4px 0 18px; }
+/* Each screen's heading takes programmatic focus on mount (tabIndex={-1} in
+   MemberOnboardingSequence.jsx) — a visible ring is the only cue a sighted
+   keyboard user gets that focus actually moved. */
+.mos-h1:focus-visible { outline: 2px solid #e8c84a; outline-offset: 4px; }
+.mos-h2:focus-visible { outline: 2px solid #c49a28; outline-offset: 4px; }
 .mos-gold { color: #e8c84a; }
-.mos-card .mos-gold { color: #ad7f16; }
+.mos-card .mos-gold { color: #78580f; }
 
 .mos-sub-lg { font-size: 1.3rem; color: #fff; margin: 0 0 4px; }
 .mos-sub { font-size: .95rem; color: rgba(255,255,255,.8); margin: 0 0 16px; }
@@ -97,7 +101,7 @@
   background: none; border: none; color: rgba(255,255,255,.75); font-family: inherit; font-size: .85rem;
   cursor: pointer; padding: 6px 10px; text-decoration: underline;
 }
-.mos-card .mos-btn-link { color: #8a8070; }
+.mos-card .mos-btn-link { color: #665e53; }
 
 .mos-actions { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 22px; }
 .mos-actions-row { display: flex; gap: 18px; }
@@ -113,9 +117,9 @@
 .mos-card .mos-dot-line { background: #e9dfcf; }
 .mos-dot-line--done { background: rgba(196,154,40,.6); }
 .mos-step-label { font-size: .85rem; font-weight: 700; color: #e8c84a; }
-.mos-card .mos-step-label { color: #ad7f16; }
+.mos-card .mos-step-label { color: #78580f; }
 .mos-step-caption { font-size: .78rem; color: rgba(255,255,255,.6); }
-.mos-card .mos-step-caption { color: #8a8070; }
+.mos-card .mos-step-caption { color: #665e53; }
 
 /* ── Cream card (screen 2) ── */
 .mos-card {
@@ -123,7 +127,7 @@
   border: 1px solid rgba(196,154,40,.3); padding: 36px 40px; box-shadow: 0 24px 70px rgba(0,0,0,.35);
   display: flex; flex-direction: column; align-items: center; text-align: center;
 }
-.mos-card-eyebrow { font-size: .68rem; font-weight: 700; letter-spacing: .18em; color: #ad7f16; margin-bottom: 4px; }
+.mos-card-eyebrow { font-size: .68rem; font-weight: 700; letter-spacing: .18em; color: #78580f; margin-bottom: 4px; }
 .mos-centered .mos-card-eyebrow { color: rgba(255,255,255,.6); }
 
 .mos-note-row { display: flex; align-items: flex-start; gap: 16px; text-align: left; background: #f6ecd1; border-radius: 14px; padding: 18px; width: 100%; box-sizing: border-box; margin-bottom: 18px; }
@@ -131,11 +135,11 @@
 .mos-note-text { font-size: .88rem; color: #3a3028; line-height: 1.55; margin: 0 0 6px; }
 .mos-note-sign { font-size: .8rem; font-style: italic; color: #6b5c3e; }
 
-.mos-divider-label { font-size: .68rem; font-weight: 700; letter-spacing: .1em; color: #ad7f16; margin: 6px 0 14px; display: flex; align-items: center; gap: 10px; }
+.mos-divider-label { font-size: .68rem; font-weight: 700; letter-spacing: .1em; color: #78580f; margin: 6px 0 14px; display: flex; align-items: center; gap: 10px; }
 .mos-divider-label::before, .mos-divider-label::after { content: ''; flex: 1; height: 1px; background: #e9dfcf; }
 .mos-principles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; width: 100%; margin-bottom: 18px; }
 .mos-principle { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: .82rem; color: #3a3028; }
-.mos-principle-icon { width: 36px; height: 36px; border-radius: 50%; background: #f6ecd1; display: flex; align-items: center; justify-content: center; color: #ad7f16; }
+.mos-principle-icon { width: 36px; height: 36px; border-radius: 50%; background: #f6ecd1; display: flex; align-items: center; justify-content: center; color: #78580f; }
 
 .mos-agree-row { display: flex; align-items: center; gap: 10px; font-size: .84rem; color: #3a3028; margin-bottom: 8px; }
 .mos-agree-row input { width: 16px; height: 16px; accent-color: #c49a28; }

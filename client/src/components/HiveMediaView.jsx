@@ -61,6 +61,7 @@ function canManageItem(item, myUserId, myRole) {
 // ── Lightbox ──────────────────────────────────────────────────────────────────
 function Lightbox({ items, index, onClose, onNav }) {
   const item = items[index];
+  const panelRef = useRef(null);
 
   useEffect(() => {
     function onKey(e) {
@@ -72,11 +73,17 @@ function Lightbox({ items, index, onClose, onNav }) {
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, onNav]);
 
+  // Opened by Enter on a grid thumbnail — without this, focus stays on the
+  // (now-hidden) thumbnail and a keyboard/screen-reader user gets no cue
+  // that a lightbox opened on top of it.
+  useEffect(() => { panelRef.current?.focus(); }, [index]);
+
   if (!item) return null;
   const isVideo = item.resource_type === 'video';
 
   return (
-    <div className="hmf-lightbox-overlay" onClick={onClose}>
+    <div className="hmf-lightbox-overlay" onClick={onClose} role="dialog" aria-modal="true"
+         aria-label="Photo viewer" ref={panelRef} tabIndex={-1}>
       <button type="button" className="hmf-lightbox-close" onClick={onClose} aria-label="Close">✕</button>
       {index > 0 && (
         <button type="button" className="hmf-lightbox-nav hmf-lightbox-nav--prev"
@@ -465,6 +472,15 @@ function EmptyRow({ label, action }) {
   return <div className="hmf-empty">{label}{action}</div>;
 }
 
+// ── Error state — distinct from "genuinely empty" ───────────────────────────────
+function ErrorRow({ onRetry }) {
+  return (
+    <div className="hmf-empty hmf-error-row">
+      Couldn't load this. <button type="button" className="hmf-link-btn" onClick={onRetry}>Retry →</button>
+    </div>
+  );
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUpload }) {
   const [tab, setTab] = useState('all'); // all | photos | files | links
@@ -482,13 +498,19 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
   const [linkModal, setLinkModal]     = useState(false);
   const [plans, setPlans]             = useState([]);
   const [toast, setToast]             = useState(null);
+  const [overviewError, setOverviewError] = useState(false);
+  const [fullError, setFullError]     = useState(false);
   const toastTimer = useRef(null);
 
+  // overview*Items stay null (unknown — still loading, or errored) until a
+  // fetch actually succeeds; only a successful empty response becomes [],
+  // so a failed request never gets mistaken for "no photos yet".
   const loadOverview = useCallback(() => {
-    api.get(`/api/hives/${hiveId}/media/summary`).then(setSummary).catch(() => {});
-    api.get(`/api/hives/${hiveId}/media?kind=photos&limit=${OVERVIEW_PHOTOS}`).then(d => setOverviewPhotos(d.items)).catch(() => setOverviewPhotos([]));
-    api.get(`/api/hives/${hiveId}/media?kind=files&limit=${OVERVIEW_ROWS}`).then(d => setOverviewFiles(d.items)).catch(() => setOverviewFiles([]));
-    api.get(`/api/hives/${hiveId}/media?kind=links&limit=${OVERVIEW_ROWS}`).then(d => setOverviewLinks(d.items)).catch(() => setOverviewLinks([]));
+    setOverviewError(false);
+    api.get(`/api/hives/${hiveId}/media/summary`).then(setSummary).catch(() => setOverviewError(true));
+    api.get(`/api/hives/${hiveId}/media?kind=photos&limit=${OVERVIEW_PHOTOS}`).then(d => setOverviewPhotos(d.items)).catch(() => setOverviewError(true));
+    api.get(`/api/hives/${hiveId}/media?kind=files&limit=${OVERVIEW_ROWS}`).then(d => setOverviewFiles(d.items)).catch(() => setOverviewError(true));
+    api.get(`/api/hives/${hiveId}/media?kind=links&limit=${OVERVIEW_ROWS}`).then(d => setOverviewLinks(d.items)).catch(() => setOverviewError(true));
   }, [hiveId]);
 
   useEffect(() => { loadOverview(); }, [loadOverview]);
@@ -499,6 +521,7 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
 
   const loadFullPage = useCallback((kind, cursor) => {
     setFullLoading(true);
+    setFullError(false);
     const q = cursor ? `&cursor=${encodeURIComponent(cursor)}` : '';
     return api.get(`/api/hives/${hiveId}/media?kind=${kind}${q}`)
       .then(d => {
@@ -506,6 +529,7 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
         setFullCursor(d.next_cursor);
         setFullDone(!d.next_cursor);
       })
+      .catch(() => setFullError(true))
       .finally(() => setFullLoading(false));
   }, [hiveId]);
 
@@ -622,7 +646,9 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
                   {canUpload && <button type="button" className="hmf-upload-btn hmf-upload-btn--sm" onClick={() => setUploadModal({ accept: 'image/*,video/*' })}>📷 Upload Photos</button>}
                 </div>
               </div>
-              {overviewPhotos === null ? (
+              {overviewError && overviewPhotos === null ? (
+                <ErrorRow onRetry={loadOverview} />
+              ) : overviewPhotos === null ? (
                 <div className="hmf-loading">Loading…</div>
               ) : overviewPhotos.length === 0 ? (
                 <EmptyRow label="No photos yet. " action={canUpload && <button type="button" className="hmf-link-btn" onClick={() => setUploadModal({ accept: 'image/*,video/*' })}>Share the first one →</button>} />
@@ -639,7 +665,9 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
                   {canUpload && <button type="button" className="hmf-upload-btn hmf-upload-btn--sm" onClick={() => setUploadModal({ accept: undefined })}>⬆ Upload File</button>}
                 </div>
               </div>
-              {overviewFiles === null ? (
+              {overviewError && overviewFiles === null ? (
+                <ErrorRow onRetry={loadOverview} />
+              ) : overviewFiles === null ? (
                 <div className="hmf-loading">Loading…</div>
               ) : overviewFiles.length === 0 ? (
                 <EmptyRow label="No files yet. " action={canUpload && <button type="button" className="hmf-link-btn" onClick={() => setUploadModal({ accept: undefined })}>Share the first one →</button>} />
@@ -660,7 +688,9 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
                   <button type="button" className="hmf-upload-btn hmf-upload-btn--sm" onClick={() => setLinkModal(true)}>+ Add Link</button>
                 </div>
               </div>
-              {overviewLinks === null ? (
+              {overviewError && overviewLinks === null ? (
+                <ErrorRow onRetry={loadOverview} />
+              ) : overviewLinks === null ? (
                 <div className="hmf-loading">Loading…</div>
               ) : overviewLinks.length === 0 ? (
                 <EmptyRow label="No links yet. " action={<button type="button" className="hmf-link-btn" onClick={() => setLinkModal(true)}>Add the first one →</button>} />
@@ -679,7 +709,9 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
             <h2>Photos {summary && `(${summary.photos})`}</h2>
             {canUpload && <button type="button" className="hmf-upload-btn hmf-upload-btn--sm" onClick={() => setUploadModal({ accept: 'image/*,video/*' })}>📷 Upload Photos</button>}
           </div>
-          {fullItems.length === 0 && !fullLoading ? (
+          {fullError && fullItems.length === 0 && !fullLoading ? (
+            <ErrorRow onRetry={() => loadFullPage('photos', null)} />
+          ) : fullItems.length === 0 && !fullLoading ? (
             <EmptyRow label="No photos yet. " action={canUpload && <button type="button" className="hmf-link-btn" onClick={() => setUploadModal({ accept: 'image/*,video/*' })}>Share the first one →</button>} />
           ) : (
             <PhotoMosaic items={fullItems} moreCount={0} onOpen={i => openLightbox(fullItems, i)} />
@@ -695,7 +727,9 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
             <h2>Files {summary && `(${summary.files})`}</h2>
             {canUpload && <button type="button" className="hmf-upload-btn hmf-upload-btn--sm" onClick={() => setUploadModal({ accept: undefined })}>⬆ Upload File</button>}
           </div>
-          {fullItems.length === 0 && !fullLoading ? (
+          {fullError && fullItems.length === 0 && !fullLoading ? (
+            <ErrorRow onRetry={() => loadFullPage('files', null)} />
+          ) : fullItems.length === 0 && !fullLoading ? (
             <EmptyRow label="No files yet. " action={canUpload && <button type="button" className="hmf-link-btn" onClick={() => setUploadModal({ accept: undefined })}>Share the first one →</button>} />
           ) : (
             <FilesTable items={fullItems} myUserId={myUserId} myRole={myRole} onDelete={handleDelete} />
@@ -711,7 +745,9 @@ export default function HiveMediaView({ hive, hiveId, myRole, myUserId, canUploa
             <h2>Links &amp; Resources {summary && `(${summary.links})`}</h2>
             <button type="button" className="hmf-upload-btn hmf-upload-btn--sm" onClick={() => setLinkModal(true)}>+ Add Link</button>
           </div>
-          {fullItems.length === 0 && !fullLoading ? (
+          {fullError && fullItems.length === 0 && !fullLoading ? (
+            <ErrorRow onRetry={() => loadFullPage('links', null)} />
+          ) : fullItems.length === 0 && !fullLoading ? (
             <EmptyRow label="No links yet. " action={<button type="button" className="hmf-link-btn" onClick={() => setLinkModal(true)}>Add the first one →</button>} />
           ) : (
             <LinksTable items={fullItems} myUserId={myUserId} myRole={myRole} onDelete={handleDelete} />

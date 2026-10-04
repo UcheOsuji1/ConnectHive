@@ -44,6 +44,7 @@
   color: #a97f16; font-size: .8rem; font-weight: 600; cursor: pointer;
   font-family: inherit;
 }
+.plans-btn-text:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
 .plans-tabs {
@@ -247,7 +248,7 @@
 .plans-rsvp-item:hover { background: #f5f0e8; }
 .plans-rsvp-item:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
 .plans-rsvp-item--on { color: #a97f16; font-weight: 700; }
-.plans-rsvp-item--clear { color: #8a8070; }
+.plans-rsvp-item--clear { color: #665e53; }
 .plans-rsvp-div { height: 1px; background: rgba(35,31,28,.09); margin: 4px 0; }
 
 /* ── Rail ─────────────────────────────────────────────────────────────────── */

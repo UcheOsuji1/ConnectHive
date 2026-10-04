@@ -48,7 +48,7 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
       <div className="cpm-modal">
         <div className="cpm-header">
           <div className="cpm-title">New Post</div>
-          <button type="button" className="cpm-close" onClick={onClose}>×</button>
+          <button type="button" className="cpm-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
         <form onSubmit={handleSubmit}>

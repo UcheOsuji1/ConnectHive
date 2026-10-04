@@ -66,7 +66,22 @@
   border-radius: 10px;
   font-size: 0.83rem;
   color: #7a2020;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
+.hmv2-error-retry {
+  padding: 3px 12px;
+  border-radius: 6px;
+  border: 1px solid #e05252;
+  background: #fff;
+  color: #b93636;
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+.hmv2-error-retry:hover { background: #fef2f2; }
 
 /* ── Stats bar ──────────────────────────────────────────────────────────── */
 .hmv2-stats-bar {
@@ -88,7 +103,7 @@
   white-space: nowrap;
 }
 .hmv2-stat-num { font-size: 1.1rem; font-weight: 700; color: #17120a; }
-.hmv2-stat-sub { font-size: 0.8rem; color: #a09080; }
+.hmv2-stat-sub { font-size: 0.8rem; color: #685e54; }
 .hmv2-stat--online { align-items: center; }
 .hmv2-stat-dot {
   width: 8px; height: 8px; border-radius: 50%;
@@ -96,7 +111,7 @@
 }
 
 .hmv2-search-wrap { position: relative; display: flex; align-items: center; flex: 1 1 220px; min-width: 0; }
-.hmv2-search-icon { position: absolute; left: 11px; color: #a09080; font-size: 0.85rem; pointer-events: none; }
+.hmv2-search-icon { position: absolute; left: 11px; color: #685e54; font-size: 0.85rem; pointer-events: none; }
 .hmv2-search {
   width: 100%;
   box-sizing: border-box;
@@ -109,7 +124,7 @@
   color: #17120a;
 }
 .hmv2-search:focus { outline: none; border-color: #d9b654; box-shadow: 0 0 0 3px rgba(196,154,40,0.1); }
-.hmv2-search::placeholder { color: #a09080; }
+.hmv2-search::placeholder { color: #685e54; }
 
 .hmv2-filter-wrap { position: relative; }
 .hmv2-filter-btn {
@@ -126,7 +141,7 @@
 }
 .hmv2-filter-btn:hover { background: #f5f0e8; }
 
-.hmv2-filtered-count { font-size: 0.8rem; color: #8a8070; white-space: nowrap; }
+.hmv2-filtered-count { font-size: 0.8rem; color: #665e53; white-space: nowrap; }
 
 .hmv2-filter-panel {
   position: absolute;
@@ -149,7 +164,7 @@
 .hmv2-filter-group + .hmv2-filter-group { border-top: 1px solid #f0ebe0; padding-top: 10px; }
 .hmv2-filter-label {
   font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em;
-  text-transform: uppercase; color: #a09080;
+  text-transform: uppercase; color: #685e54;
 }
 .hmv2-filter-row {
   display: flex; align-items: center; gap: 8px;
@@ -157,7 +172,7 @@
 }
 .hmv2-filter-row input { accent-color: #c49a28; cursor: pointer; }
 .hmv2-filter-row span:nth-of-type(1) { flex: 1; }
-.hmv2-filter-count { font-size: 0.74rem; color: #a09080; }
+.hmv2-filter-count { font-size: 0.74rem; color: #685e54; }
 .hmv2-filter-clear {
   align-self: flex-start;
   padding: 0;
@@ -165,7 +180,7 @@
   border: none;
   font-size: 0.78rem;
   font-family: inherit;
-  color: #ad7f16;
+  color: #78580f;
   cursor: pointer;
   text-decoration: underline;
 }
@@ -184,7 +199,7 @@
   padding: 48px 24px;
   text-align: center;
   font-size: 0.92rem;
-  color: #8a8070;
+  color: #665e53;
   background: #fffdf8;
   border: 1.5px dashed #e9dfcf;
   border-radius: 14px;
@@ -202,7 +217,7 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-.hmv2-rolechip--owner  { background: #f6ecd1; color: #ad7f16; border: 1px solid #d9b654; }
+.hmv2-rolechip--owner  { background: #f6ecd1; color: #78580f; border: 1px solid #d9b654; }
 .hmv2-rolechip--admin  { background: rgba(52,122,97,0.1); color: #347a61; border: 1px solid rgba(52,122,97,0.3); }
 .hmv2-rolechip--member { background: #f5f0e8; color: #6b5c3e; border: 1px solid #e9dfcf; }
 
@@ -239,7 +254,7 @@
   font-weight: 500;
   color: #6b5c3e;
 }
-.hmv2-shared { font-size: 0.74rem; color: #ad7f16; font-weight: 600; }
+.hmv2-shared { font-size: 0.74rem; color: #78580f; font-weight: 600; }
 
 .hmv2-card-foot {
   display: flex;
@@ -249,17 +264,17 @@
   padding-top: 8px;
   border-top: 1px solid #f0ebe0;
 }
-.hmv2-joined { font-size: 0.72rem; color: #a09080; }
+.hmv2-joined { font-size: 0.72rem; color: #685e54; }
 .hmv2-ops { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .hmv2-ob-pill {
   font-size: 0.7rem;
   font-weight: 600;
-  color: #ad7f16;
+  color: #78580f;
   background: #f6ecd1;
   border-radius: 6px;
   padding: 1px 7px;
 }
-.hmv2-last-seen { font-size: 0.72rem; color: #a09080; }
+.hmv2-last-seen { font-size: 0.72rem; color: #685e54; }
 
 /* ── Founders grid ──────────────────────────────────────────────────────── */
 .hmv2-founders-grid {
@@ -334,7 +349,7 @@
 .hmv2-member-name { font-size: 0.92rem; font-weight: 700; color: #17120a; }
 .hmv2-member-rolerow {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  font-size: 0.76rem; color: #8a8070;
+  font-size: 0.76rem; color: #665e53;
 }
 .hmv2-member-role-icon { font-size: 0.76rem; }
 
@@ -357,7 +372,7 @@
   border-radius: 7px;
   border: 1px solid transparent;
   background: transparent;
-  color: #8a8070;
+  color: #665e53;
   font-size: 1rem;
   cursor: pointer;
 }

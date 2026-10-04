@@ -206,15 +206,15 @@
   color: #17120a; font-family: 'DM Sans', system-ui, sans-serif;
 }
 .hnp-panel-title { font-size: .84rem; font-weight: 700; margin-bottom: 10px; }
-.hnp-loading { font-size: .8rem; color: #8a8070; }
+.hnp-loading { font-size: .8rem; color: #665e53; }
 .hnp-error { font-size: .76rem; color: #c0392b; margin-bottom: 8px; }
 .hnp-list { display: flex; flex-direction: column; gap: 10px; }
 .hnp-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; cursor: pointer; }
 .hnp-row-text { display: flex; flex-direction: column; gap: 1px; }
 .hnp-row-label { font-size: .8rem; font-weight: 600; color: #17120a; }
-.hnp-row-desc { font-size: .7rem; color: #8a8070; }
+.hnp-row-desc { font-size: .7rem; color: #665e53; }
 .hnp-row input { accent-color: #c49a28; width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; }
-.hnp-hint { font-size: .68rem; color: #a09080; margin: 12px 0 0; line-height: 1.5; }
+.hnp-hint { font-size: .68rem; color: #685e54; margin: 12px 0 0; line-height: 1.5; }
 
 /* Decorative tail — a heavily darkened cover instead of flat charcoal. */
 .hdl-rail-wash {
@@ -380,7 +380,7 @@
 .hdl-pro-tip-head {
   font-size: 0.73rem;
   font-weight: 700;
-  color: #ad7f16;
+  color: #78580f;
   margin-bottom: 5px;
 }
 .hdl-pro-tip-body {

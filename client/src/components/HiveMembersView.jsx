@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from './Avatar.jsx';
 import { Icon } from './home/HomeBits.jsx';
@@ -261,7 +261,11 @@ function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps,
         <div className="hmv2-founder-avatar-wrap">
           <Avatar name={member.full_name} src={member.profile_photo_url} size={72} />
           {member.role === 'owner' && <span className="hmv2-crown" aria-label="Owner">👑</span>}
-          {status && <span className="hmv2-presence-dot hmv2-presence-dot--corner" style={{ background: presenceColor(status) }} />}
+          {status && (
+            <span className="hmv2-presence-dot hmv2-presence-dot--corner" role="img"
+                  aria-label={presenceLabel(status)} title={presenceLabel(status)}
+                  style={{ background: presenceColor(status) }} />
+          )}
         </div>
         <div className="hmv2-founder-identity">
           <div className="hmv2-founder-namerow">
@@ -327,7 +331,11 @@ function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills,
       <div className="hmv2-member-top">
         <div className="hmv2-member-avatar-wrap">
           <Avatar name={member.full_name} src={member.profile_photo_url} size={52} />
-          {status && <span className="hmv2-presence-dot hmv2-presence-dot--corner" style={{ background: presenceColor(status) }} />}
+          {status && (
+            <span className="hmv2-presence-dot hmv2-presence-dot--corner" role="img"
+                  aria-label={presenceLabel(status)} title={presenceLabel(status)}
+                  style={{ background: presenceColor(status) }} />
+          )}
         </div>
         <CardMenu member={member} actions={actions} onPromote={onPromote} onDemote={onDemote} onRemove={onRemove} onNotify={onNotify} />
       </div>
@@ -478,13 +486,16 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
   const [presenceList, setPresenceList] = useState([]); // [{ user_id, status }]
   const toastTimer = useRef(null);
 
-  useEffect(() => {
+  const loadMembers = useCallback(() => {
     setLoading(true);
-    api.get(`/api/hives/${hiveId}/members`)
+    setError(null);
+    return api.get(`/api/hives/${hiveId}/members`)
       .then(d => setMembers(d.members ?? []))
       .catch(() => setError('Failed to load members.'))
       .finally(() => setLoading(false));
   }, [hiveId]);
+
+  useEffect(() => { loadMembers(); }, [loadMembers]);
 
   useEffect(() => {
     if (!hiveId) return;
@@ -631,7 +642,11 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
       </header>
 
       {toast && <div className="hmv2-toast">{toast}</div>}
-      {error && <div className="hmv2-error">{error}</div>}
+      {error && (
+        <div className="hmv2-error">
+          {error} <button type="button" className="hmv2-error-retry" onClick={loadMembers}>Retry</button>
+        </div>
+      )}
 
       {/* ── Stats bar ── */}
       <div className="hmv2-stats-bar">
