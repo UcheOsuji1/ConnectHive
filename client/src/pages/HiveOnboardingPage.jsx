@@ -207,6 +207,11 @@ export default function HiveOnboardingPage() {
   const [saving,        setSaving]        = useState(false);
   const [saveStatus,    setSaveStatus]    = useState(null);
   const [previewOpen,   setPreviewOpen]   = useState(false);
+  // True only once the owner has actually clicked a join-mode card this
+  // session. An invite-only Hive's draft carries join_policy:'invite' just
+  // from loading the page — echoing that back unexamined is how saving used
+  // to break for those Hives (Prompt 57 only ever wrote 'open'/'request').
+  const [joinPolicyTouched, setJoinPolicyTouched] = useState(false);
 
   const dragIdx  = useRef(null);
   const [dragOver, setDragOver] = useState(null);
@@ -227,6 +232,7 @@ export default function HiveOnboardingPage() {
   // The join-mode selector writes two underlying fields at once so they can
   // never drift apart (spec §13.1: "write both underlying fields consistently").
   function setJoinMode(mode) {
+    setJoinPolicyTouched(true);
     setDraft(p => ({ ...p, join_experience: mode.value, join_policy: mode.joinPolicy }));
   }
 
@@ -256,9 +262,15 @@ export default function HiveOnboardingPage() {
     if (saving) return;
     setSaving(true); setSaveStatus(null);
     try {
-      const res = await api.put(`/api/hives/${hiveId}/onboarding`, draft);
+      // Only send join_policy when the owner actually picked a card this
+      // session — never echo back whatever the Hive's policy happened to be
+      // when the page loaded (see joinPolicyTouched above).
+      const { join_policy, ...rest } = draft;
+      const payload = joinPolicyTouched ? draft : rest;
+      const res = await api.put(`/api/hives/${hiveId}/onboarding`, payload);
       setSavedSettings(res.settings);
       setDraft({ ...res.settings });
+      setJoinPolicyTouched(false);
       setSaveStatus('saved');
       setTimeout(() => setSaveStatus(null), 4000);
     } catch { setSaveStatus('error'); }
@@ -268,6 +280,7 @@ export default function HiveOnboardingPage() {
   function handleReset() {
     if (!savedSettings) return;
     setDraft({ ...savedSettings });
+    setJoinPolicyTouched(false);
     setSaveStatus(null);
   }
 
@@ -325,6 +338,9 @@ export default function HiveOnboardingPage() {
   const optSteps    = steps.filter(s => !s.is_required);
   const selectedExp = JOIN_EXPERIENCES.find(e => e.value === draft.join_experience) ?? JOIN_EXPERIENCES[1];
   const hiveName    = hive?.hive_name ?? '';
+  // None of the 4 cards represent 'invite' — until the owner picks one, show
+  // the Hive's real state instead of letting some unrelated card look active.
+  const isInviteOnly = draft.join_policy === 'invite' && !joinPolicyTouched;
 
   return (
     <div className="hop-page">
@@ -348,26 +364,40 @@ export default function HiveOnboardingPage() {
           {/* Section 1 */}
           <SectionCard number="1" title="Choose Join Experience"
             hint="Select how new members will enter your Hive.">
+            {isInviteOnly && (
+              <div className="hop-invite-banner">
+                🔒 Invite-only: people join only when you bring them in.
+              </div>
+            )}
             <div className="hop-join-exp-grid">
-              {JOIN_EXPERIENCES.map(exp => (
-                <button key={exp.value} type="button"
-                  className={['hop-join-card', draft.join_experience === exp.value ? 'hop-join-card--active' : ''].filter(Boolean).join(' ')}
-                  onClick={() => setJoinMode(exp)}>
-                  <div className="hop-join-card-top">
-                    <div className="hop-join-radio">
-                      {draft.join_experience === exp.value && <div className="hop-join-radio-dot" />}
+              {JOIN_EXPERIENCES.map(exp => {
+                const active = !isInviteOnly && draft.join_experience === exp.value && draft.join_policy === exp.joinPolicy;
+                return (
+                  <button key={exp.value} type="button"
+                    className={['hop-join-card', active ? 'hop-join-card--active' : ''].filter(Boolean).join(' ')}
+                    onClick={() => setJoinMode(exp)}>
+                    <div className="hop-join-card-top">
+                      <div className="hop-join-radio">
+                        {active && <div className="hop-join-radio-dot" />}
+                      </div>
+                      <span className={['hop-join-icon', active ? 'hop-join-icon--active' : ''].filter(Boolean).join(' ')}>
+                        {exp.icon}
+                      </span>
                     </div>
-                    <span className={['hop-join-icon', draft.join_experience === exp.value ? 'hop-join-icon--active' : ''].filter(Boolean).join(' ')}>
-                      {exp.icon}
-                    </span>
-                  </div>
-                  <div className={['hop-join-label', draft.join_experience === exp.value ? 'hop-join-label--active' : ''].filter(Boolean).join(' ')}>
-                    {exp.label}
-                  </div>
-                  <div className="hop-join-desc">{exp.desc}</div>
-                </button>
-              ))}
+                    <div className={['hop-join-label', active ? 'hop-join-label--active' : ''].filter(Boolean).join(' ')}>
+                      {exp.label}
+                    </div>
+                    <div className="hop-join-desc">{exp.desc}</div>
+                  </button>
+                );
+              })}
             </div>
+            {savedSettings?.join_policy === 'invite' && joinPolicyTouched && (
+              <p className="hop-invite-confirm">
+                This will make your Hive joinable by {JOIN_MODES.find(m => m.value === draft.join_experience)?.label.toLowerCase()}.
+                It's currently invite-only.
+              </p>
+            )}
           </SectionCard>
 
           {/* Section 2 — the 5-screen guided sequence (Prompt 57, Part 2.2/2.3) */}

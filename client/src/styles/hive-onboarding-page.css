@@ -105,6 +105,19 @@
 .hop-section-header-right { flex-shrink: 0; }
 .hop-section-body { padding: 18px 20px; }
 
+/* ── Invite-only state (Prompt 58, Part 0) ─────────────────────────────── */
+.hop-invite-banner {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; margin-bottom: 14px;
+  background: var(--hop-gold-bg); border: 1px solid var(--hop-gold);
+  border-radius: 9px; font-size: 0.82rem; font-weight: 600; color: var(--hop-gold-dk);
+}
+.hop-invite-confirm {
+  margin: 12px 0 0; padding: 9px 12px;
+  background: var(--hop-ivory); border: 1px dashed var(--hop-border2); border-radius: 8px;
+  font-size: 0.78rem; color: var(--hop-muted); line-height: 1.5;
+}
+
 /* ── Join experience radio grid ──────────────────────────────────────── */
 .hop-join-exp-grid {
   display: grid;

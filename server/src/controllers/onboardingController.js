@@ -183,8 +183,11 @@ export const updateOnboarding = async (req, res) => {
       category_questions_enabled, intro_questions,
     } = req.body;
 
-    if (join_policy != null && !['open', 'request'].includes(join_policy)) {
-      return res.status(400).json({ error: 'join_policy must be "open" or "request".' });
+    // 'invite' is a valid policy a Hive can already be in (set at creation,
+    // CreateHivePage.jsx) — the builder doesn't offer a card for it, but it
+    // must still be an acceptable value when the owner isn't changing it.
+    if (join_policy != null && !['open', 'request', 'invite'].includes(join_policy)) {
+      return res.status(400).json({ error: 'join_policy must be "open", "request" or "invite".' });
     }
     if (intro_questions != null) {
       if (!Array.isArray(intro_questions) || intro_questions.length > 6) {
