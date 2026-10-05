@@ -3,15 +3,19 @@
   --hw-ivory-50:    #FBF8F1;
   --hw-ivory-100:   #F5EFE3;
   --hw-sand-200:    #E6DCC9;
-  --hw-taupe:       #8C7F6C;
+  --hw-taupe:       #756a5a;
   --hw-charcoal:    #191510;
   --hw-gold:        #C89B2C;
   --hw-gold-dim:    rgba(200, 155, 44, 0.18);
+  /* --hw-gold fails AA as text on every background it's used over (2.2–2.6:1) —
+     fine as a border/fill color, not as text. Pure color: declarations use
+     this darker value instead; background/border-color: declarations don't. */
+  --hw-gold-text:   #8a6510;
   --hw-border:      rgba(140, 127, 108, 0.25);
   --hw-dark-header: #191510;
   --hw-text-primary:   #1A1610;
   --hw-text-secondary: #5c5347;
-  --hw-text-muted:     #8C7F6C;
+  --hw-text-muted:     #756a5a;
 }
 
 /* ─── Shell layout ───────────────────────────────────────────────────────── */
@@ -35,7 +39,7 @@
   border-bottom: 1px solid var(--hw-border);
 }
 .hw-crumb-link {
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   text-decoration: none;
 }
 .hw-crumb-link:hover { text-decoration: underline; }
@@ -89,7 +93,7 @@
 }
 .hw-role-owner {
   background: var(--hw-gold-dim);
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   border: 1px solid rgba(200, 155, 44, 0.35);
 }
 .hw-role-admin {
@@ -120,7 +124,7 @@
   border-radius: 6px;
   border: 1px solid var(--hw-gold);
   background: var(--hw-gold-dim);
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   cursor: pointer;
   transition: background 0.15s;
 }
@@ -182,7 +186,7 @@
 }
 .hw-nav-item.active {
   background: var(--hw-gold-dim);
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   font-weight: 600;
 }
 .hw-nav-item:disabled { cursor: not-allowed; opacity: 0.55; }
@@ -267,7 +271,7 @@
   color: var(--hw-text-primary);
   letter-spacing: -0.01em;
 }
-.hw-metric-highlight .hw-metric-value { color: var(--hw-gold); }
+.hw-metric-highlight .hw-metric-value { color: var(--hw-gold-text); }
 .hw-metric-label {
   font-size: 0.74rem;
   color: var(--hw-text-muted);
@@ -303,7 +307,7 @@
 .hw-action-link {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -353,7 +357,7 @@
 .hw-org-edit-btn {
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   background: none;
   border: none;
   cursor: pointer;
@@ -408,7 +412,7 @@
   border-radius: 6px;
   border: 1px solid var(--hw-gold);
   background: var(--hw-gold-dim);
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
@@ -441,7 +445,7 @@
   padding: 5px 14px;
   border-radius: 6px;
   background: var(--hw-gold-dim);
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   border: 1px solid rgba(200, 155, 44, 0.3);
 }
 
@@ -838,7 +842,7 @@
 }
 .hmv-role-owner {
   background: var(--hw-gold-dim);
-  color: var(--hw-gold);
+  color: var(--hw-gold-text);
   border: 1px solid rgba(200, 155, 44, 0.35);
 }
 .hmv-role-admin {

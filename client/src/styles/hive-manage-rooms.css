@@ -1,0 +1,59 @@
+/* ── Manage Hive > Rooms (hmr-) ──────────────────────────────────────────── */
+.hmr-wrap { max-width: 700px; display: flex; flex-direction: column; gap: 18px; }
+
+.hmr-suggest-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  background: var(--hw-gold-dim); border: 1px solid rgba(200,155,44,0.35);
+  border-radius: 10px; padding: 14px 18px;
+}
+
+.hmr-list {
+  background: #fff; border: 1px solid var(--hw-border); border-radius: 10px; overflow: visible;
+}
+.hmr-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border-bottom: 1px solid var(--hw-sand-200);
+}
+.hmr-row:last-child { border-bottom: none; }
+.hmr-row--over { background: var(--hw-ivory-100); }
+.hmr-row--archived { opacity: 0.75; }
+
+.hmr-drag { cursor: grab; color: var(--hw-taupe); font-size: 1rem; flex-shrink: 0; touch-action: none; }
+
+.hmr-move-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+.hmr-move-btn {
+  width: 20px; height: 16px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--hw-border); background: #fff; color: var(--hw-text-secondary);
+  font-size: 0.68rem; cursor: pointer; border-radius: 3px; padding: 0; font-family: inherit;
+}
+.hmr-move-btn:disabled { opacity: 0.35; cursor: default; }
+.hmr-move-btn:hover:not(:disabled) { background: var(--hw-sand-200); }
+.hmr-move-btn:focus-visible { outline: 2px solid var(--hw-gold); outline-offset: 1px; }
+
+.hmr-identity { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hmr-name { font-size: 0.9rem; font-weight: 600; color: var(--hw-text-primary); }
+.hmr-default-tag {
+  margin-left: 8px; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--hw-taupe); background: var(--hw-sand-200);
+  border-radius: 99px; padding: 1px 7px;
+}
+.hmr-desc { font-size: 0.78rem; color: var(--hw-text-muted); }
+
+.hmr-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.hmr-edit-form { flex: 1; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hmr-edit-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.hmr-create-form {
+  background: #fff; border: 1px solid var(--hw-border); border-radius: 10px;
+  padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+}
+.hmr-create-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.hmr-create-row .hw-settings-input { flex: 1 1 160px; }
+
+.hmr-archived { display: flex; flex-direction: column; gap: 10px; }
+
+@media (max-width: 600px) {
+  .hmr-row { flex-wrap: wrap; }
+  .hmr-create-row { flex-direction: column; align-items: stretch; }
+}

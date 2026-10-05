@@ -1,0 +1,50 @@
+/* ── Manage Hive > Analytics (han-) ──────────────────────────────────────── */
+.han-wrap { max-width: 720px; display: flex; flex-direction: column; gap: 18px; }
+
+.han-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+
+.han-toggle {
+  display: inline-flex; background: var(--hw-ivory-100); border: 1px solid var(--hw-border);
+  border-radius: 8px; padding: 2px; flex-shrink: 0;
+}
+.han-toggle-btn {
+  font-size: 0.8rem; font-weight: 600; padding: 6px 14px; border: none; border-radius: 6px;
+  background: none; color: var(--hw-text-secondary); cursor: pointer; font-family: inherit;
+}
+.han-toggle-btn--on { background: #fff; color: var(--hw-gold-text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.han-toggle-btn:focus-visible { outline: 2px solid var(--hw-gold); outline-offset: 1px; }
+
+.han-card {
+  background: #fff; border: 1px solid var(--hw-border); border-radius: 10px;
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.han-caption { font-size: 0.78rem; color: var(--hw-text-muted); margin: 0; line-height: 1.5; }
+
+.han-chart {
+  display: flex; align-items: flex-end; gap: 6px; height: 140px;
+  padding-top: 10px; overflow-x: auto;
+}
+.han-bar-col { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1 1 24px; min-width: 24px; height: 100%; }
+.han-bar-track { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+.han-bar { width: 100%; background: var(--hw-gold); border-radius: 3px 3px 0 0; min-height: 2px; }
+.han-bar-value { font-size: 0.68rem; font-weight: 700; color: var(--hw-text-primary); }
+.han-bar-label { font-size: 0.62rem; color: var(--hw-text-muted); white-space: nowrap; }
+
+.han-dual-chart { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.han-legend { display: flex; gap: 16px; font-size: 0.76rem; color: var(--hw-text-secondary); }
+.han-legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.han-legend-dot--plans { background: var(--hw-gold); }
+.han-legend-dot--rsvps { background: #5dcaa5; }
+.han-bar--rsvps { background: #5dcaa5; }
+
+.han-room-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.han-room-row { display: flex; align-items: center; gap: 10px; }
+.han-room-name { font-size: 0.84rem; font-weight: 600; color: var(--hw-text-primary); flex: 0 0 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.han-room-bar-track { flex: 1; height: 8px; background: var(--hw-ivory-100); border-radius: 4px; overflow: hidden; }
+.han-room-bar { height: 100%; background: var(--hw-gold); border-radius: 4px; }
+.han-room-count { font-size: 0.78rem; color: var(--hw-text-muted); flex-shrink: 0; width: 30px; text-align: right; }
+
+@media (max-width: 600px) {
+  .han-dual-chart { grid-template-columns: 1fr; }
+  .han-room-name { flex-basis: 80px; }
+}

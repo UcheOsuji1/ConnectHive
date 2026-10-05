@@ -175,17 +175,21 @@ function HiveSidebar({
     );
   };
 
-  // Owner/admin sections that used to sit as separate top-level sidebar items.
-  // Routes are unchanged, so existing deep links (HiveCard's Requests pill and
-  // Manage button) keep resolving.
+  // Manage Hive console (spec §10). Existing sections keep their routes so
+  // old deep links (HiveCard's Requests pill, the Manage button) still
+  // resolve. Roles & Permissions, Integrations and Billing are removed from
+  // the nav — each needs a product decision from Uche first (what's
+  // granular, which integrations, what's charged) — but their routes still
+  // point at HiveSoonPage so a bookmarked/shared link doesn't 404.
   const MANAGE_SECTIONS = [
-    { label: 'Join Requests',        sub: 'requests',     badge: requestCount },
-    { label: 'General Settings',     sub: 'settings' },
+    { label: 'Overview',             sub: 'overview' },
+    { label: 'Join Requests',        sub: 'requests',      badge: requestCount },
+    { label: 'Members & Roles',      sub: 'members-roles' },
+    { label: 'Rooms',                sub: 'rooms' },
+    { label: 'Appearance',           sub: 'appearance' },
     { label: 'Member Onboarding',    sub: 'onboarding' },
-    { label: 'Analytics',            sub: 'analytics',    soon: true },
-    { label: 'Roles & Permissions',  sub: 'roles',        soon: true },
-    { label: 'Integrations',         sub: 'integrations', soon: true },
-    { label: 'Billing',              sub: 'billing',      soon: true },
+    { label: 'Analytics',            sub: 'analytics' },
+    { label: 'General Settings',     sub: 'settings' },
   ];
 
   const inManage = MANAGE_SECTIONS.some(s => active(s.sub));
@@ -477,6 +481,21 @@ function PublicHiveView({ hive, hiveId }) {
   );
 }
 
+// The 6 categories' config never changes per-Hive — fetched once per page
+// load and shared by every Hive this tab visits, instead of every page under
+// the layout (Home, Chat, Plans, Manage > Rooms) re-fetching the same thing.
+let categoryConfigCache = null;
+let categoryConfigPromise = null;
+function loadCategoryConfig() {
+  if (categoryConfigCache) return Promise.resolve(categoryConfigCache);
+  if (!categoryConfigPromise) {
+    categoryConfigPromise = api.get('/api/categories/config')
+      .then(d => { categoryConfigCache = d.config ?? {}; return categoryConfigCache; })
+      .catch(() => ({}));
+  }
+  return categoryConfigPromise;
+}
+
 // ── Main layout ───────────────────────────────────────────────────────────────
 export default function HiveDashboardLayout() {
   const { id: hiveId } = useParams();
@@ -484,6 +503,7 @@ export default function HiveDashboardLayout() {
   const { user }       = useAuth();
 
   const [hive,              setHive]              = useState(null);
+  const [categoryConfig,    setCategoryConfig]     = useState(categoryConfigCache ?? {});
   const [loading,           setLoading]           = useState(true);
   const [hiveError,         setHiveError]         = useState(null);
   const [requestCount,      setRequestCount]      = useState(null);
@@ -496,6 +516,11 @@ export default function HiveDashboardLayout() {
 
   const bannerInputRef = useRef(null);
   const logoInputRef   = useRef(null);
+
+  useEffect(() => {
+    if (categoryConfigCache) return;
+    loadCategoryConfig().then(setCategoryConfig);
+  }, []);
 
   const handleFileSelected = useCallback(async (e, type) => {
     const file = e.target.files?.[0];
@@ -635,6 +660,8 @@ export default function HiveDashboardLayout() {
   // canPost: owners always can; members blocked by 'limited' or 'none' access during onboarding
   const canPost = isOwner || accessMode === 'full';
 
+  const catConfig = categoryConfig[hive.category_name] ?? null;
+
   const outletCtx = {
     hive,
     hiveId,
@@ -647,7 +674,14 @@ export default function HiveDashboardLayout() {
     newPost,
     accessMode,
     canPost,
+    catConfig,
     setChatUnread,
+    // Manage > Appearance reuses the exact same cover/logo upload flow the
+    // identity rail already uses, instead of a second implementation.
+    onEditCover: () => bannerInputRef.current?.click(),
+    onEditLogo: () => logoInputRef.current?.click(),
+    uploading,
+    uploadError,
   };
 
   return (

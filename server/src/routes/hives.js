@@ -12,6 +12,7 @@ import {
   joinWaitlist,
   updateHive,
   getHiveOverview,
+  getHiveAnalytics,
   requestToJoin,
   getHiveRequests,
   reviewRequest,
@@ -44,6 +45,10 @@ import {
   createChannel,
   updateChannel,
   archiveChannel,
+  restoreChannel,
+  reorderChannels,
+  getSuggestedRooms,
+  addSuggestedRooms,
 } from '../controllers/channelsController.js';
 import {
   getOnboarding,
@@ -110,6 +115,7 @@ router.patch('/:id',           requireAuth, updateHive);
 router.post('/:id/seen',                 requireAuth, markHiveSeen);
 router.post('/:id/welcome-seen',         requireAuth, markWelcomeSeen);
 router.get('/:id/overview',              requireAuth, getHiveOverview);
+router.get('/:id/analytics',             requireAuth, getHiveAnalytics);
 router.get('/:id/members',                requireAuth, getHiveMembers);
 router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
 router.post('/:id/members/:userId/notify', requireAuth, notifyMember);
@@ -162,8 +168,12 @@ router.get('/:id/channels/:channelId/rail',      requireAuth, getChannelRail);
 router.get('/:id/channels/:channelId/pins',      requireAuth, listPins);
 router.get('/:id/channels',                      requireAuth, listChannels);
 router.post('/:id/channels',                     requireAuth, createChannel);
+router.post('/:id/channels/reorder',             requireAuth, reorderChannels);
+router.get('/:id/channels/suggested',            requireAuth, getSuggestedRooms);
+router.post('/:id/channels/suggested',           requireAuth, addSuggestedRooms);
 router.patch('/:id/channels/:channelId',         requireAuth, updateChannel);
 router.delete('/:id/channels/:channelId',        requireAuth, archiveChannel);
+router.post('/:id/channels/:channelId/restore',  requireAuth, restoreChannel);
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 router.get('/:id/onboarding',                                requireAuth, getOnboarding);

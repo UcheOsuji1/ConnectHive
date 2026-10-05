@@ -30,6 +30,11 @@ import HiveSoonPage from './pages/hive/HiveSoonPage';
 import HiveChatPage from './pages/hive/HiveChatPage';
 import HivePlansPage from './pages/hive/HivePlansPage';
 import HiveOnboardingPage from './pages/HiveOnboardingPage';
+import HiveManageOverviewPage from './pages/hive/HiveManageOverviewPage';
+import HiveManageMembersPage from './pages/hive/HiveManageMembersPage';
+import HiveManageRoomsPage from './pages/hive/HiveManageRoomsPage';
+import HiveManageAppearancePage from './pages/hive/HiveManageAppearancePage';
+import HiveAnalyticsPage from './pages/hive/HiveAnalyticsPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -95,7 +100,11 @@ export default function App() {
           <Route path="chat" element={<HiveChatPage />} />
           <Route path="chat/:channelId" element={<HiveChatPage />} />
           <Route path="events" element={<HivePlansPage />} />
-          <Route path="analytics" element={<HiveSoonPage feature="Analytics" />} />
+          <Route path="overview" element={<HiveManageOverviewPage />} />
+          <Route path="members-roles" element={<HiveManageMembersPage />} />
+          <Route path="rooms" element={<HiveManageRoomsPage />} />
+          <Route path="appearance" element={<HiveManageAppearancePage />} />
+          <Route path="analytics" element={<HiveAnalyticsPage />} />
           <Route path="roles" element={<HiveSoonPage feature="Roles & Permissions" />} />
           <Route path="integrations" element={<HiveSoonPage feature="Integrations" />} />
           <Route path="billing" element={<HiveSoonPage feature="Billing" />} />

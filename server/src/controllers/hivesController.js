@@ -10,6 +10,8 @@ import {
 } from '../lib/compatibility.js';
 import { createNotification } from './notificationsController.js';
 import { evictUserFromHive } from '../realtime/socket.js';
+import { getCategoryConfig } from '../lib/categoryConfig.js';
+import { PLAN_END } from './eventsController.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -763,6 +765,20 @@ export const createHive = async (req, res) => {
         [hive.hive_id],
       );
 
+      // The category's other default rooms (spec §11) — same transaction as
+      // #general, so a Hive can never exist with only some of its starting
+      // rooms. #general itself is skipped: every category's list leads with
+      // it, and it's already inserted above as the one TRUE is_default room.
+      const catConfig = categoryName ? getCategoryConfig(categoryName) : null;
+      const extraRooms = (catConfig?.defaultRooms ?? []).filter(r => r !== 'general');
+      for (let i = 0; i < extraRooms.length; i++) {
+        await client.query(
+          `INSERT INTO hive_channels (hive_id, name, channel_type, is_default, position)
+           VALUES ($1, $2, 'text', FALSE, $3)`,
+          [hive.hive_id, extraRooms[i], i + 1],
+        );
+      }
+
       // Create onboarding settings if provided (otherwise lazy-created on first access)
       if (onboarding) {
         const joinExp = ['simple', 'standard', 'guided'].includes(onboarding.join_experience)
@@ -1344,6 +1360,31 @@ export const getHiveOverview = async (req, res) => {
     );
     const incompleteCount = Number(incRow?.cnt ?? 0);
 
+    // Manage Hive > Overview metrics (spec §10) — each links to where an
+    // owner would act on it.
+    const { rows: [recent] } = await query(
+      `SELECT
+         COUNT(*) FILTER (WHERE hm.joined_at >= NOW() - INTERVAL '30 days')::int AS members_30d,
+         COUNT(*) FILTER (WHERE hm.onboarding_status = 'completed')::int        AS onboarding_completed,
+         COUNT(*)::int                                                          AS onboarding_total
+       FROM hive_members hm
+       WHERE hm.hive_id = $1 AND hm.membership_status = 'active'`,
+      [hiveId],
+    );
+    const { rows: [msgRow] } = await query(
+      `SELECT COUNT(*)::int AS n FROM messages
+        WHERE hive_id = $1 AND sent_at >= NOW() - INTERVAL '7 days' AND deleted_at IS NULL`,
+      [hiveId],
+    );
+    const { rows: [planRow] } = await query(
+      `SELECT COUNT(*)::int AS n FROM hive_posts p
+        WHERE p.hive_id = $1 AND p.post_type = 'event' AND p.event_at IS NOT NULL
+          AND ${PLAN_END} >= NOW()`,
+      [hiveId],
+    );
+    const onboardingTotal = Number(recent?.onboarding_total ?? 0);
+    const onboardingCompleted = Number(recent?.onboarding_completed ?? 0);
+
     // Build action items
     const action_items = [];
     if (pendingCount > 0) {
@@ -1379,12 +1420,125 @@ export const getHiveOverview = async (req, res) => {
       max_members:     metrics?.max_members ? Number(metrics.max_members) : null,
       hive_status:     metrics?.hive_status ?? 'active',
       pending_count:   pendingCount,
+      members_last_30d:   Number(recent?.members_30d ?? 0),
+      messages_last_7d:   Number(msgRow?.n ?? 0),
+      upcoming_plans:      Number(planRow?.n ?? 0),
+      // null (not 0%) when there are no active members at all — nothing to
+      // divide by, which is a different state than "everyone's at 0%".
+      onboarding_completion_rate: onboardingTotal > 0
+        ? Math.round((onboardingCompleted / onboardingTotal) * 100) : null,
       action_items,
       recent_activity,
     });
   } catch (err) {
     console.error('[hives/getHiveOverview]', err);
     res.status(500).json({ error: 'Failed to load overview.' });
+  }
+};
+
+// ── getHiveAnalytics — GET /api/hives/:id/analytics?days=30|90 ───────────────
+// Real charts over time (spec §10): member count by week (cumulative — a
+// member who left is removed from hive_members' active rows, so weeks after
+// they joined can't be "corrected" down; the client caption says this, it's
+// not hidden), messages per week, plans+RSVPs per month, most active rooms.
+export const getHiveAnalytics = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    const days = [30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+    const weeks = Math.ceil(days / 7);
+    const months = days === 90 ? 3 : 2;
+
+    // One series of week-start buckets for the window, so a week with zero
+    // activity still shows as a 0 point instead of a gap in the chart.
+    const [memberRes, messageRes, planRes, roomRes] = await Promise.all([
+      query(
+        `WITH weeks AS (
+           SELECT date_trunc('week', NOW()) - (n || ' weeks')::interval AS week_start
+             FROM generate_series(${weeks - 1}, 0, -1) n
+         ),
+         joins AS (
+           SELECT date_trunc('week', joined_at) AS week_start, COUNT(*)::int AS n
+             FROM hive_members
+            WHERE hive_id = $1 AND membership_status = 'active'
+            GROUP BY 1
+         ),
+         -- Members already active at the start of the window, so the first
+         -- bar isn't a misleadingly small slice of the Hive's real total.
+         base AS (
+           SELECT COUNT(*)::int AS n FROM hive_members
+            WHERE hive_id = $1 AND membership_status = 'active'
+              AND joined_at < (SELECT MIN(week_start) FROM weeks)
+         )
+         SELECT w.week_start,
+                (SELECT n FROM base) + SUM(COALESCE(j.n, 0))
+                  OVER (ORDER BY w.week_start ROWS UNBOUNDED PRECEDING) AS cumulative_count
+           FROM weeks w
+           LEFT JOIN joins j ON j.week_start = w.week_start
+          ORDER BY w.week_start`,
+        [hiveId],
+      ),
+      query(
+        `WITH weeks AS (
+           SELECT date_trunc('week', NOW()) - (n || ' weeks')::interval AS week_start
+             FROM generate_series(${weeks - 1}, 0, -1) n
+         )
+         SELECT w.week_start, COUNT(m.message_id)::int AS count
+           FROM weeks w
+           LEFT JOIN messages m ON date_trunc('week', m.sent_at) = w.week_start
+                               AND m.hive_id = $1 AND m.deleted_at IS NULL
+          GROUP BY w.week_start
+          ORDER BY w.week_start`,
+        [hiveId],
+      ),
+      query(
+        `WITH mo AS (
+           SELECT date_trunc('month', NOW()) - (n || ' months')::interval AS month_start
+             FROM generate_series(${months - 1}, 0, -1) n
+         )
+         SELECT mo.month_start,
+                COUNT(DISTINCT p.post_id)::int AS plans,
+                COUNT(r.rsvp_id)::int           AS rsvps
+           FROM mo
+           LEFT JOIN hive_posts p ON date_trunc('month', p.created_at) = mo.month_start
+                                  AND p.hive_id = $1 AND p.post_type = 'event'
+           LEFT JOIN event_rsvps r ON r.post_id = p.post_id AND r.rsvp_status = 'going'
+          GROUP BY mo.month_start
+          ORDER BY mo.month_start`,
+        [hiveId],
+      ),
+      query(
+        `SELECT c.channel_id, c.name, COUNT(m.message_id)::int AS message_count
+           FROM hive_channels c
+           LEFT JOIN messages m ON m.channel_id = c.channel_id
+                               AND m.sent_at >= NOW() - ($2 || ' days')::interval
+                               AND m.deleted_at IS NULL
+          WHERE c.hive_id = $1 AND c.archived_at IS NULL
+          GROUP BY c.channel_id, c.name
+          ORDER BY message_count DESC, c.position ASC
+          LIMIT 5`,
+        [hiveId, days],
+      ),
+    ]);
+
+    res.json({
+      days,
+      memberCountByWeek: memberRes.rows.map(r => ({ week: r.week_start, count: Number(r.cumulative_count) })),
+      messagesByWeek: messageRes.rows.map(r => ({ week: r.week_start, count: r.count })),
+      plansByMonth: planRes.rows.map(r => ({ month: r.month_start, plans: r.plans, rsvps: r.rsvps })),
+      activeRooms: roomRes.rows.map(r => ({ channel_id: r.channel_id, name: r.name, messageCount: r.message_count })),
+    });
+  } catch (err) {
+    console.error('[hives/getHiveAnalytics]', err);
+    res.status(500).json({ error: 'Failed to load analytics.' });
   }
 };
 
