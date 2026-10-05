@@ -753,3 +753,74 @@ CREATE TABLE IF NOT EXISTS plan_reminders_sent (
   sent_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (post_id, user_id)
 );
+
+-- ─── Plan rules — owner-only, suggestions, Hive votes (Prompt 60) ──────────────
+-- Every existing Hive keeps today's behaviour (owners-only, owner-approved)
+-- via these defaults — deliberately NOT backfilled, there is nothing to fix.
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS plan_proposers TEXT NOT NULL DEFAULT 'owners';
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_plan_proposers_check;
+ALTER TABLE hives ADD CONSTRAINT hives_plan_proposers_check
+  CHECK (plan_proposers IN ('owners','members'));
+
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS plan_approval TEXT NOT NULL DEFAULT 'owner';
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_plan_approval_check;
+ALTER TABLE hives ADD CONSTRAINT hives_plan_approval_check
+  CHECK (plan_approval IN ('owner','vote'));
+
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS vote_min_yes INT NOT NULL DEFAULT 3;
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_vote_min_yes_check;
+ALTER TABLE hives ADD CONSTRAINT hives_vote_min_yes_check
+  CHECK (vote_min_yes BETWEEN 1 AND 50);
+
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS vote_window_hours INT NOT NULL DEFAULT 48;
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_vote_window_hours_check;
+ALTER TABLE hives ADD CONSTRAINT hives_vote_window_hours_check
+  CHECK (vote_window_hours BETWEEN 6 AND 168);
+
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS suggestions_per_day INT NOT NULL DEFAULT 3;
+ALTER TABLE hives DROP CONSTRAINT IF EXISTS hives_suggestions_per_day_check;
+ALTER TABLE hives ADD CONSTRAINT hives_suggestions_per_day_check
+  CHECK (suggestions_per_day BETWEEN 1 AND 20);
+
+-- A pending suggestion holds the same plan fields createPlan validates and
+-- inserts into hive_posts; on approval they're copied across verbatim by
+-- insertPlan, inside the same transaction that resolves the suggestion.
+CREATE TABLE IF NOT EXISTS hive_plan_suggestions (
+  suggestion_id   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id         UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  channel_id      UUID        NOT NULL REFERENCES hive_channels(channel_id) ON DELETE CASCADE,
+  suggested_by    UUID        NOT NULL REFERENCES users(user_id),
+  title           TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  plan_type       TEXT        CHECK (plan_type IS NULL OR plan_type IN
+                    ('networking','hangout','food_drinks','outdoors','games','meeting','workshop','trip','other')),
+  event_at        TIMESTAMPTZ NOT NULL,
+  event_end_at    TIMESTAMPTZ CHECK (event_end_at IS NULL OR event_end_at > event_at),
+  event_location  TEXT        CHECK (event_location IS NULL OR char_length(event_location) <= 200),
+  description     TEXT        CHECK (description IS NULL OR char_length(description) <= 2000),
+  media_url       TEXT,
+  visibility      TEXT        NOT NULL DEFAULT 'hive' CHECK (visibility IN ('hive','public')),
+  status          TEXT        NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','approved','declined','expired','withdrawn')),
+  closes_at       TIMESTAMPTZ NOT NULL,
+  resolved_at     TIMESTAMPTZ,
+  -- NULL for a vote outcome (the deadline/threshold resolved it); set to the
+  -- overriding owner/admin's user_id when they approved, declined, or the
+  -- suggester when they withdrew — so "who closed this" is always answerable.
+  resolved_by     UUID        REFERENCES users(user_id),
+  plan_post_id    UUID        REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_plan_suggestions_status  ON hive_plan_suggestions(hive_id, status, closes_at);
+CREATE INDEX IF NOT EXISTS idx_plan_suggestions_by_user ON hive_plan_suggestions(suggested_by, created_at);
+
+CREATE TABLE IF NOT EXISTS hive_plan_suggestion_votes (
+  suggestion_id UUID        NOT NULL REFERENCES hive_plan_suggestions(suggestion_id) ON DELETE CASCADE,
+  user_id       UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  vote          TEXT        NOT NULL CHECK (vote IN ('yes','no')),
+  voted_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (suggestion_id, user_id)
+);
+
+-- The suggestion's chat card — same pattern as messages.plan_post_id / poll_id.
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS suggestion_id UUID
+  REFERENCES hive_plan_suggestions(suggestion_id) ON DELETE SET NULL;

@@ -22,12 +22,13 @@ const REQUIRED = {
           'email_verified', 'token_version', 'presence_status'],
   profiles: ['connection_purposes', 'social_preferences'],
   hives: ['hive_code', 'banner_url', 'logo_url', 'cadence', 'hive_values',
-          'tagline', 'purpose', 'founder_note'],
+          'tagline', 'purpose', 'founder_note',
+          'plan_proposers', 'plan_approval', 'vote_min_yes', 'vote_window_hours', 'suggestions_per_day'],
   hive_members: ['welcome_seen_at', 'onboarding_status', 'onboarding_screen'],
   hive_posts: ['visibility', 'event_end_at', 'plan_type'],
   event_rsvps: ['updated_at'],
   messages: ['channel_id', 'edited_at', 'deleted_at', 'pinned_at', 'pinned_by',
-             'plan_post_id', 'poll_id'],
+             'plan_post_id', 'poll_id', 'suggestion_id'],
   post_comments: ['parent_comment_id'],
 };
 
@@ -53,6 +54,12 @@ const IMPACT = {
   'messages.pinned_by':         'pinned messages in chat — pin queries fail',
   'messages.plan_post_id':      'plan cards in chat — the message list fails',
   'messages.poll_id':           'polls in chat — the message list fails',
+  'messages.suggestion_id':     'suggested-plan cards in chat — the message list fails',
+  'hives.plan_proposers':       'plan rules — who may suggest plans',
+  'hives.plan_approval':        'plan rules — owner-approve vs Hive vote',
+  'hives.vote_min_yes':         'plan rules — vote threshold',
+  'hives.vote_window_hours':    'plan rules — vote deadline',
+  'hives.suggestions_per_day':  'plan rules — suggestion spam guard',
 };
 
 let state = { checked: false, ok: true, missing: [] };
