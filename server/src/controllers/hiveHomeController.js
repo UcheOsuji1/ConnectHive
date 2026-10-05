@@ -3,6 +3,7 @@ import { getMembership } from '../lib/hiveMembership.js';
 import { PLAN_SELECT, PLAN_END, shapePlan } from './eventsController.js';
 import { FEED_SELECT } from './postsController.js';
 import { getMediaCounts } from './mediaController.js';
+import { getCategoryConfig } from '../lib/categoryConfig.js';
 
 const ACTIVITY_LIMIT = 8;
 const MESSAGE_LIMIT  = 4;
@@ -147,10 +148,12 @@ export const getHiveHome = async (req, res) => {
       ),
 
       // pinned_goal plus the owner's name, which the member empty states use
-      // instead of a generic "the Hive owner".
+      // instead of a generic "the Hive owner" — and the category name, which
+      // decides the featured module fetched separately below.
       query(
-        `SELECT h.pinned_goal, COALESCE(om.full_name, cp.full_name) AS owner_name
+        `SELECT h.pinned_goal, c.category_name, COALESCE(om.full_name, cp.full_name) AS owner_name
            FROM hives h
+           LEFT JOIN categories c ON c.category_id = h.category_id
            LEFT JOIN LATERAL (
              SELECT pr.full_name
                FROM hive_members m
@@ -191,9 +194,92 @@ export const getHiveHome = async (req, res) => {
     ]);
 
     const st = statsRes.rows[0];
+    const nextPlan = planRes.rows.length ? shapePlan(planRes.rows[0]) : null;
+
+    // ── Category featured module (spec §11) — one targeted query once we
+    // know which kind this category wants. recentMedia and nextPlanAttendees
+    // reuse data already fetched above; only pinnedItinerary/recentFiles/
+    // opportunities need their own. Hidden entirely (null) when there's no
+    // real data to show, never an invented placeholder.
+    const categoryName = hiveRes.rows[0]?.category_name ?? null;
+    const railKind = categoryName ? getCategoryConfig(categoryName)?.railModule ?? null : null;
+    let featuredModule = null;
+
+    if (railKind === 'recentMedia') {
+      featuredModule = photosRes.rows.length
+        ? { kind: 'recentMedia', photos: photosRes.rows } : null;
+    } else if (railKind === 'nextPlanAttendees') {
+      featuredModule = (nextPlan && nextPlan.going_count > 0)
+        ? { kind: 'nextPlanAttendees', plan: { headline: nextPlan.headline, event_at: nextPlan.event_at },
+            attendees: nextPlan.going_preview, goingCount: nextPlan.going_count }
+        : null;
+    } else if (railKind === 'pinnedItinerary') {
+      const { rows } = await query(
+        `SELECT m.message_id, m.message_text, m.pinned_at, m.channel_id,
+                pr.user_id, pr.full_name, pr.profile_photo_url
+           FROM messages m
+           JOIN hive_channels c ON c.channel_id = m.channel_id
+           LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
+          WHERE m.hive_id = $1 AND LOWER(c.name) = 'trip-planning'
+            AND c.archived_at IS NULL AND m.deleted_at IS NULL AND m.pinned_at IS NOT NULL
+          ORDER BY m.pinned_at DESC LIMIT 1`,
+        [hiveId],
+      );
+      featuredModule = rows.length
+        ? { kind: 'pinnedItinerary', message: { text: rows[0].message_text, pinned_at: rows[0].pinned_at,
+            channel_id: rows[0].channel_id, sender: person(rows[0]) } }
+        : null;
+    } else if (railKind === 'recentFiles') {
+      const { rows } = await query(
+        `SELECT * FROM (
+           SELECT a.attachment_id AS id, a.file_name, a.mime_type, a.bytes, a.created_at,
+                  m.channel_id AS context_channel_id, NULL::uuid AS context_plan_id
+             FROM message_attachments a
+             JOIN messages m ON m.message_id = a.message_id
+             JOIN hive_channels c ON c.channel_id = m.channel_id
+            WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL
+              AND a.resource_type = 'raw'
+           UNION ALL
+           SELECT u.upload_id AS id, u.file_name, u.mime_type, u.bytes, u.created_at,
+                  NULL::uuid, u.plan_post_id
+             FROM hive_uploads u
+            WHERE u.hive_id = $1 AND u.deleted_at IS NULL AND u.resource_type = 'raw'
+         ) files
+         ORDER BY created_at DESC LIMIT 3`,
+        [hiveId],
+      );
+      featuredModule = rows.length
+        ? { kind: 'recentFiles', files: rows.map(r => ({
+            id: r.id, file_name: r.file_name, mime_type: r.mime_type, bytes: r.bytes,
+            created_at: r.created_at,
+            context_link: r.context_channel_id ? `/hive/${hiveId}/chat/${r.context_channel_id}`
+                        : r.context_plan_id    ? `/hive/${hiveId}/events`
+                        : `/hive/${hiveId}/media`,
+          })) }
+        : null;
+    } else if (railKind === 'opportunities') {
+      const { rows } = await query(
+        `SELECT m.message_id, m.message_text, m.sent_at, m.channel_id,
+                pr.user_id, pr.full_name, pr.profile_photo_url
+           FROM messages m
+           JOIN hive_channels c ON c.channel_id = m.channel_id
+           LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
+          WHERE m.hive_id = $1 AND LOWER(c.name) = 'opportunities'
+            AND c.archived_at IS NULL AND m.deleted_at IS NULL
+          ORDER BY m.sent_at DESC LIMIT 3`,
+        [hiveId],
+      );
+      featuredModule = rows.length
+        ? { kind: 'opportunities', messages: rows.map(r => ({
+            message_id: r.message_id, channel_id: r.channel_id, sent_at: r.sent_at,
+            text: r.message_text?.length > SNIPPET_LEN ? `${r.message_text.slice(0, SNIPPET_LEN)}…` : r.message_text,
+            sender: person(r),
+          })) }
+        : null;
+    }
 
     res.json({
-      nextPlan: planRes.rows.length ? shapePlan(planRes.rows[0]) : null,
+      nextPlan,
 
       stats: {
         memberCount:   st.member_count,
@@ -239,6 +325,8 @@ export const getHiveHome = async (req, res) => {
       hostPost: hostRes.rows[0] ?? null,
 
       pendingRequests: isOwner ? Number(pendingRes.rows[0]?.n ?? 0) : null,
+
+      featuredModule,
     });
   } catch (err) {
     console.error('[hives/getHiveHome]', err);

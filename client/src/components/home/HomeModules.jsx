@@ -5,10 +5,10 @@ import { Icon, Card, relTime } from './HomeBits.jsx';
 import { typeLabel, formatTimeRange } from '../../lib/plans.js';
 
 /* ── Upcoming Plan ───────────────────────────────────────────────────────── */
-export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCreate }) {
+export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCreate, label = 'Upcoming Plan' }) {
   if (!plan) {
     return (
-      <Card icon="calendar" title="Upcoming Plan" className="hh-m-plan">
+      <Card icon="calendar" title={label} className="hh-m-plan">
         <div className="hh-empty">
           <div className="hh-empty-strong">No plans yet</div>
           {canCreate ? (
@@ -32,7 +32,7 @@ export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCre
   const cover = plan.media_url;
 
   return (
-    <Card icon="calendar" title="Upcoming Plan" className="hh-m-plan"
+    <Card icon="calendar" title={label} className="hh-m-plan"
           link="View all plans →" linkTo={`/hive/${hiveId}/events`}>
       <div className={`hh-plan-cover${cover ? '' : ' hh-plan-cover--fallback'}`}
            style={cover ? { backgroundImage: `url(${cover})` } : undefined}>
@@ -133,10 +133,10 @@ export function Glance({ stats, onlineCount }) {
 /* ── Hive Goal ───────────────────────────────────────────────────────────── */
 // No progress bar: nothing measures a goal yet, and an invented bar would be
 // exactly the kind of fake content we don't ship.
-export function Goal({ goal, hiveId, isOwner }) {
+export function Goal({ goal, hiveId, isOwner, label = 'Hive Goal' }) {
   if (!goal && !isOwner) return null;
   return (
-    <Card icon="target" title="Hive Goal" className="hh-m-goal"
+    <Card icon="target" title={label} className="hh-m-goal"
           link={goal && isOwner ? 'Edit' : undefined}
           linkTo={goal && isOwner ? `/hive/${hiveId}/settings` : undefined}>
       {goal ? (
@@ -216,6 +216,104 @@ export function Photos({ photos, hiveId }) {
       </div>
     </Card>
   );
+}
+
+/* ── Category featured module (spec §11) ─────────────────────────────────── */
+// Hidden entirely when featuredModule is null — the server already decided
+// that (no data for this category's module), so there's nothing to render.
+function fmtBytes(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return '';
+  if (v < 1024) return `${v} B`;
+  if (v < 1024 * 1024) return `${(v / 1024).toFixed(1)} KB`;
+  return `${(v / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function FeaturedModule({ module, hiveId }) {
+  if (!module) return null;
+
+  if (module.kind === 'recentMedia') {
+    const shown = module.photos.slice(0, 5);
+    return (
+      <Card icon="image" title="Recent Media" className="hh-m-featured" link="View all →" linkTo={`/hive/${hiveId}/media`}>
+        <div className={`hh-mosaic${shown.length === 1 ? ' hh-mosaic--one' : shown.length <= 3 ? ' hh-mosaic--few' : ''}`}>
+          {shown.map(p => (
+            <Link key={p.attachment_id} to={`/hive/${hiveId}/chat/${p.channel_id}`} className="hh-mosaic-tile">
+              <img src={p.url} alt="" loading="lazy" />
+            </Link>
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
+  if (module.kind === 'nextPlanAttendees') {
+    return (
+      <Card icon="users" title="Who's Going" className="hh-m-featured" link="View plan →" linkTo={`/hive/${hiveId}/events`}>
+        <div className="hh-featured-plan-title">{module.plan.headline}</div>
+        <div className="hh-featured-attendees">
+          {module.attendees.slice(0, 6).map(p => (
+            <Avatar key={p.user_id} name={p.full_name} src={p.profile_photo_url} size={34} />
+          ))}
+          {module.goingCount > module.attendees.length && (
+            <span className="hh-featured-more">+{module.goingCount - module.attendees.length}</span>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
+  if (module.kind === 'pinnedItinerary') {
+    const m = module.message;
+    return (
+      <Card icon="pin" title="Pinned Itinerary" className="hh-m-featured" link="Open chat →" linkTo={`/hive/${hiveId}/chat/${m.channel_id}`}>
+        <div className="hh-featured-itinerary">
+          <Avatar name={m.sender.full_name} src={m.sender.profile_photo_url} size={28} />
+          <p className="hh-featured-itinerary-text">{m.text}</p>
+        </div>
+      </Card>
+    );
+  }
+
+  if (module.kind === 'recentFiles') {
+    return (
+      <Card icon="note" title="Recent Files" className="hh-m-featured" link="View all →" linkTo={`/hive/${hiveId}/media`}>
+        <ul className="hh-featured-files">
+          {module.files.map(f => (
+            <li key={f.id}>
+              <Link to={f.context_link} className="hh-featured-file-row">
+                <span className="hh-featured-file-name">{f.file_name ?? 'File'}</span>
+                <span className="hh-featured-file-meta">{fmtBytes(f.bytes)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    );
+  }
+
+  if (module.kind === 'opportunities') {
+    return (
+      <Card icon="note" title="Opportunities" className="hh-m-featured" link="Open #opportunities →" linkTo={`/hive/${hiveId}/chat/${module.messages[0]?.channel_id}`}>
+        <div>
+          {module.messages.map(msg => (
+            <Link key={msg.message_id} to={`/hive/${hiveId}/chat/${msg.channel_id}`} className="hh-msg">
+              <Avatar name={msg.sender.full_name} src={msg.sender.profile_photo_url} size={32} />
+              <span className="hh-msg-body">
+                <span className="hh-msg-top">
+                  <span className="hh-msg-name">{msg.sender.full_name ?? 'Member'}</span>
+                  <span className="hh-msg-time">{relTime(msg.sent_at)}</span>
+                </span>
+                <span className="hh-msg-text">{msg.text}</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
+  return null;
 }
 
 /* ── From the hosts ──────────────────────────────────────────────────────── */

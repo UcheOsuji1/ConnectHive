@@ -402,7 +402,8 @@ export default function HivePlansPage() {
       {createOpen && (
         <CreatePlanModal hiveId={hiveId} prefill={prefill}
                          onClose={() => { setCreateOpen(false); setPrefill(null); }}
-                         onCreated={onCreated} />
+                         onCreated={onCreated}
+                         preferredTypes={ctx.catConfig?.planTypes ?? []} />
       )}
     </div>
   );

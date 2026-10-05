@@ -4,7 +4,7 @@ import PostCard from '../../components/PostCard.jsx';
 import CreatePlanModal from '../../components/plans/CreatePlanModal.jsx';
 import { Icon } from '../../components/home/HomeBits.jsx';
 import {
-  UpcomingPlan, Activity, Glance, Goal, RecentChat, Photos, HostPost,
+  UpcomingPlan, Activity, Glance, Goal, RecentChat, Photos, HostPost, FeaturedModule,
 } from '../../components/home/HomeModules.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
@@ -28,7 +28,8 @@ function Skeleton() {
 }
 
 export default function HiveHomePage() {
-  const { hive, hiveId, isOwner, openPostModal, newPost } = useOutletContext();
+  const { hive, hiveId, isOwner, openPostModal, newPost, catConfig } = useOutletContext();
+  const labels = catConfig?.labels ?? { nextPlan: 'Upcoming Plan', goal: 'Hive Goal' };
   const { user } = useAuth();
 
   const [data, setData]       = useState(null);
@@ -199,6 +200,7 @@ export default function HiveHomePage() {
             ownerName={data.owner?.full_name}
             onRsvp={onRsvp}
             onCreate={() => setPlanOpen(true)}
+            label={labels.nextPlan}
           />
           <RecentChat
             messages={data.recentMessages}
@@ -215,7 +217,13 @@ export default function HiveHomePage() {
 
         <div className="hh-col hh-col--c">
           <Glance stats={data.stats} onlineCount={online} />
-          <Goal goal={data.goal} hiveId={hiveId} isOwner={isOwner} />
+          {/* recentMedia is skipped here — it's the same data the generic
+              "Recent Photos" card in the middle column already shows, so a
+              Social Hive wouldn't get a second, near-identical photo grid. */}
+          {data.featuredModule?.kind !== 'recentMedia' && (
+            <FeaturedModule module={data.featuredModule} hiveId={hiveId} />
+          )}
+          <Goal goal={data.goal} hiveId={hiveId} isOwner={isOwner} label={labels.goal} />
           <HostPost
             post={data.hostPost}
             hiveId={hiveId}
@@ -276,6 +284,7 @@ export default function HiveHomePage() {
           hiveId={hiveId}
           onClose={() => setPlanOpen(false)}
           onCreated={onPlanCreated}
+          preferredTypes={catConfig?.planTypes ?? []}
         />
       )}
     </div>

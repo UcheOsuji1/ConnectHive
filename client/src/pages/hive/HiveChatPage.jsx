@@ -628,6 +628,7 @@ function DateTile({ iso }) {
 function ContextRail({
   members, presenceData, myStatus, onStatusChange,
   hiveId, hive, nextPlan, recentMedia = [], pin = null, onOpenPins, onClose,
+  nextPlanLabel = 'Upcoming Plan',
 }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
 
@@ -721,7 +722,7 @@ function ContextRail({
         <section className="hc-ctx-card">
           <div className="hc-ctx-head">
             <Ico name="calendar" />
-            <h3 className="hc-ctx-title">Upcoming Plan</h3>
+            <h3 className="hc-ctx-title">{nextPlanLabel}</h3>
             <Link to={`/hive/${hiveId}/events`} className="hc-ctx-link">View all →</Link>
           </div>
           <div className="hc-ctx-plan">
@@ -847,7 +848,7 @@ function PinsModal({ hiveId, channelId, channelName, onClose }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function HiveChatPage() {
-  const { hive, hiveId, isOwner, canPost, setChatUnread } = useOutletContext();
+  const { hive, hiveId, isOwner, canPost, setChatUnread, catConfig } = useOutletContext();
   const { channelId: routeChannelId } = useParams();
   const { user }   = useAuth();
   const navigate   = useNavigate();
@@ -2092,6 +2093,7 @@ export default function HiveChatPage() {
           pin={rail.pin}
           onOpenPins={() => setPinsOpen(true)}
           onClose={() => setShowContext(false)}
+          nextPlanLabel={catConfig?.labels?.nextPlan ?? 'Upcoming Plan'}
         />
       )}
     </div>

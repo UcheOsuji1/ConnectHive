@@ -271,6 +271,38 @@
 .hh-mosaic-tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .hh-mosaic-tile:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
 
+/* ── Category featured module (spec §11) ─────────────────────────────────── */
+.hh-featured-plan-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.05rem; font-weight: 600; color: var(--hdl-ink); margin: 0 0 10px;
+}
+.hh-featured-attendees { display: flex; align-items: center; gap: -6px; flex-wrap: wrap; }
+.hh-featured-attendees > * { margin-right: -8px; border: 2px solid #fff; border-radius: 50%; }
+.hh-featured-more {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 50%; background: #f0e8d8;
+  color: var(--hdl-muted); font-size: .72rem; font-weight: 700;
+  border: 2px solid #fff; margin-left: -8px;
+}
+.hh-featured-itinerary { display: flex; gap: 10px; align-items: flex-start; }
+.hh-featured-itinerary-text {
+  margin: 0; font-size: .86rem; color: var(--hdl-ink); line-height: 1.5;
+  white-space: pre-wrap;
+}
+.hh-featured-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.hh-featured-file-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 2px; text-decoration: none; border-bottom: 1px solid #f0ebe0;
+}
+.hh-featured-files li:last-child .hh-featured-file-row { border-bottom: none; }
+.hh-featured-file-row:hover { background: #faf6ee; }
+.hh-featured-file-row:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: -2px; }
+.hh-featured-file-name {
+  font-size: .83rem; font-weight: 600; color: var(--hdl-ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+}
+.hh-featured-file-meta { font-size: .72rem; color: var(--hdl-muted2); flex-shrink: 0; }
+
 /* ── From the hosts ──────────────────────────────────────────────────────── */
 .hh-host-top {
   display: flex; align-items: center; gap: 9px; padding: 0 16px 8px;
@@ -358,9 +390,10 @@
   .hh-m-chat     { order: 2; }
   .hh-m-activity { order: 3; }
   .hh-m-glance   { order: 4; }
-  .hh-m-goal     { order: 5; }
-  .hh-m-host     { order: 6; }
-  .hh-m-photos   { order: 7; }
+  .hh-m-featured { order: 5; }
+  .hh-m-goal     { order: 6; }
+  .hh-m-host     { order: 7; }
+  .hh-m-photos   { order: 8; }
 
   .hh-hero { min-height: 0; padding: 18px; }
   .hh-hero-title { font-size: 1.9rem; }

@@ -11,6 +11,7 @@ import postRoutes         from './routes/posts.js';
 import notificationRoutes from './routes/notifications.js';
 import eventRoutes        from './routes/events.js';
 import messageRoutes      from './routes/messages.js';
+import categoryRoutes     from './routes/categories.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
@@ -112,6 +113,7 @@ app.use('/api/posts',         postRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/events',        eventRoutes);
 app.use('/api/messages',      messageRoutes);
+app.use('/api/categories',    categoryRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

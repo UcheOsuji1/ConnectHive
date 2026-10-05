@@ -2,7 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../../lib/api.js';
 import { PLAN_TYPES, TYPE_LABELS, localInputToISO } from '../../lib/plans.js';
 
-export default function CreatePlanModal({ hiveId, prefill, onClose, onCreated }) {
+export default function CreatePlanModal({ hiveId, prefill, onClose, onCreated, preferredTypes = [] }) {
+  // Category-aware ordering (spec §11) — the category's preferred types
+  // first, in the order it lists them, then everything else in its usual
+  // order. No new types: this only ever reorders PLAN_TYPES.
+  const orderedTypes = [
+    ...preferredTypes.filter(t => PLAN_TYPES.includes(t)),
+    ...PLAN_TYPES.filter(t => !preferredTypes.includes(t)),
+  ];
   const [title, setTitle]   = useState(prefill?.title ?? '');
   const [type, setType]     = useState(prefill?.planType ?? 'other');
   const [location, setLoc]  = useState('');
@@ -124,7 +131,7 @@ export default function CreatePlanModal({ hiveId, prefill, onClose, onCreated })
             <label className="plans-field">
               <span>Type</span>
               <select value={type} onChange={e => setType(e.target.value)}>
-                {PLAN_TYPES.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
+                {orderedTypes.map(t => <option key={t} value={t}>{TYPE_LABELS[t]}</option>)}
               </select>
             </label>
             <label className="plans-field">
