@@ -35,6 +35,13 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
     setFields(prev => ({ ...prev, [key]: val }));
   }
 
+  // Invite-only never appears in search — the same rule CreateHivePage
+  // enforces on its own join-mode card has to hold here too, not just at
+  // creation.
+  function setJoinPolicy(val) {
+    setFields(prev => ({ ...prev, join_policy: val, discoverable: val === 'invite' ? false : prev.discoverable }));
+  }
+
   async function handleSave(e) {
     e.preventDefault();
     const tagline = fields.tagline.trim();
@@ -208,28 +215,28 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
             <select
               className="hw-settings-select"
               value={fields.join_policy}
-              onChange={e => set('join_policy', e.target.value)}
+              onChange={e => setJoinPolicy(e.target.value)}
             >
               <option value="open">Open — anyone can join</option>
               <option value="request">Request — must be approved</option>
-              {/* Invite-only is set at creation and has no card here — but the
-                  select must still show it truthfully, so an owner who saves
-                  an unrelated field doesn't silently land on "Open" instead. */}
-              {fields.join_policy === 'invite' && (
-                <option value="invite">Invite-only — members join by invite link</option>
-              )}
+              <option value="invite">Invite-only — members join by invite link</option>
             </select>
           </div>
           <div className="hw-settings-field hw-settings-toggle-row">
             <div>
               <label className="hw-settings-label">Discoverable</label>
-              <div className="hw-settings-hint">Show this Hive in search and recommendations</div>
+              <div className="hw-settings-hint">
+                {fields.join_policy === 'invite'
+                  ? "Off — invite-only Hives don't appear in search."
+                  : 'Show this Hive in search and recommendations'}
+              </div>
             </div>
             <button
               type="button"
               className={['hw-toggle', fields.discoverable ? 'hw-toggle-on' : ''].filter(Boolean).join(' ')}
               onClick={() => set('discoverable', !fields.discoverable)}
-              aria-pressed={fields.discoverable}
+              aria-pressed={fields.join_policy === 'invite' ? false : fields.discoverable}
+              disabled={fields.join_policy === 'invite'}
             >
               <span className="hw-toggle-thumb" />
             </button>

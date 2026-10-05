@@ -611,6 +611,7 @@
   padding: 0;
 }
 .hw-toggle.hw-toggle-on { background: var(--hw-gold); }
+.hw-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .hw-toggle-thumb {
   position: absolute;

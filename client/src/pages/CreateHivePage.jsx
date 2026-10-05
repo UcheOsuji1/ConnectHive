@@ -220,6 +220,14 @@ export default function CreateHivePage() {
   const [joinMode,     setJoinMode]     = useState('request');
   const [showInSearch, setShowInSearch] = useState(true);
 
+  // Invite-only promises "Won't appear in search" on its own card — the
+  // discoverability toggle has to agree, not just default to on and let the
+  // two controls disagree with each other.
+  function pickJoinMode(key) {
+    setJoinMode(key);
+    if (key === 'invite') setShowInSearch(false);
+  }
+
   // ── Section 3 ──────────────────────────────────────────────────
   const [sizeKey,    setSizeKey]    = useState(prefillSizeKey || 'medium');
   const [customMax,  setCustomMax]  = useState('');
@@ -573,7 +581,7 @@ export default function CreateHivePage() {
                 <div
                   key={opt.key}
                   className={`ch-join-card${joinMode === opt.key ? ' selected' : ''}`}
-                  onClick={() => setJoinMode(opt.key)}
+                  onClick={() => pickJoinMode(opt.key)}
                 >
                   <div className="ch-join-card-radio">
                     {joinMode === opt.key && <div className="ch-join-card-radio-dot" />}
@@ -590,13 +598,18 @@ export default function CreateHivePage() {
           <div className="ch-toggle-row">
             <div>
               <div className="ch-toggle-row-label">Show in Hive discovery &amp; search</div>
-              <div className="ch-toggle-row-sub">Let matched users find this Hive automatically</div>
+              <div className="ch-toggle-row-sub">
+                {joinMode === 'invite'
+                  ? "Off — invite-only Hives don't appear in search. Share your Hive's code or link instead."
+                  : 'Let matched users find this Hive automatically'}
+              </div>
             </div>
             <label className="ch-toggle-label">
               <input
                 type="checkbox"
                 className="ch-toggle-input"
-                checked={showInSearch}
+                checked={joinMode === 'invite' ? false : showInSearch}
+                disabled={joinMode === 'invite'}
                 onChange={e => setShowInSearch(e.target.checked)}
               />
               <span className="ch-toggle-track">

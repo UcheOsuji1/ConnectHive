@@ -690,6 +690,13 @@ export const createHive = async (req, res) => {
       return res.status(400).json({ error: 'Hive name and category are required.' });
     }
 
+    // Invite-only promises "won't appear in search" on the create page's own
+    // card — enforce that server-side too, so a client that skips the card's
+    // disabling logic (or a future caller) can't create a discoverable
+    // invite-only Hive.
+    const resolvedJoinPolicy = joinPolicy || 'open';
+    const resolvedDiscoverable = resolvedJoinPolicy === 'invite' ? false : (discoverable ?? true);
+
     // Resolve category_id from seeded category name
     const categoryName = CATEGORY_NAME_MAP[category] ?? null;
     let categoryId = null;
@@ -729,8 +736,8 @@ export const createHive = async (req, res) => {
           maxMembers ?? null,
           activationThreshold || 3,
           JSON.stringify(Array.isArray(tags) ? tags : []),
-          joinPolicy || 'open',
-          discoverable ?? true,
+          resolvedJoinPolicy,
+          resolvedDiscoverable,
           locationType,
           location || null,
           cadence || null,
@@ -830,6 +837,17 @@ export const updateHive = async (req, res) => {
       return res.status(400).json({ error: 'No valid fields to update.' });
     }
 
+    // Invite-only Hives never appear in search — true whether THIS request is
+    // the one switching to invite, or it's touching some unrelated field on a
+    // Hive that's already invite-only (e.g. flipping discoverable back on in
+    // a separate save shouldn't quietly undo the invite-only guarantee).
+    const effectiveJoinPolicy = 'join_policy' in updates
+      ? updates.join_policy
+      : (await query(`SELECT join_policy FROM hives WHERE hive_id = $1`, [hiveId])).rows[0]?.join_policy;
+    if (effectiveJoinPolicy === 'invite') {
+      updates.discoverable = false;
+    }
+
     // Nullable identity fields: trim, turn blank into NULL (clears the field),
     // and enforce the same length limits as the hives_*_check constraints.
     const LENGTH_LIMITS = { tagline: { min: 1, max: 90 }, purpose: { max: 500 }, founder_note: { max: 2000 } };
@@ -913,8 +931,12 @@ export const requestToJoin = async (req, res) => {
     );
     const joinExp = obSettings?.join_experience ?? 'standard';
 
-    // 'simple' join_experience → instant-join, no request needed
-    if (joinExp === 'simple') {
+    // 'simple' join_experience → instant-join, no request needed. But only
+    // for an open Hive: 'simple' configures the WELCOME SCREENS a new member
+    // sees, not who's allowed in. A request/invite Hive with 'simple' must
+    // still go through approval — skipping it here let anyone with the link
+    // into a Hive whose owner chose to review members first.
+    if (joinExp === 'simple' && hive.join_policy === 'open') {
       await query(
         `INSERT INTO hive_members
            (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)

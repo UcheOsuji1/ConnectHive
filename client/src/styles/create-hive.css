@@ -446,6 +446,8 @@
   position: relative;
 }
 .ch-toggle-input:checked + .ch-toggle-track { background: #c49a28; }
+.ch-toggle-input:disabled + .ch-toggle-track { opacity: 0.5; cursor: not-allowed; }
+.ch-toggle-label:has(.ch-toggle-input:disabled) { cursor: not-allowed; }
 .ch-toggle-thumb {
   position: absolute;
   top: 3px;
