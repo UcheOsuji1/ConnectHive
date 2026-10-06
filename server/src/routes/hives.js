@@ -64,6 +64,11 @@ import {
 import { requireAuth, requireVerifiedEmail } from '../middleware/auth.js';
 import { getHivePosts } from '../controllers/postsController.js';
 import { getHivePlans, createPlan } from '../controllers/eventsController.js';
+import {
+  getPlanRules, updatePlanRules,
+  createSuggestion, listSuggestions, voteSuggestion,
+  approveSuggestion, declineSuggestion, withdrawSuggestion,
+} from '../controllers/planSuggestionsController.js';
 import { getHiveHome } from '../controllers/hiveHomeController.js';
 import { getChannelRail } from '../controllers/chatRailController.js';
 import { pinMessage, unpinMessage, listPins } from '../controllers/pinsController.js';
@@ -149,6 +154,16 @@ router.get('/:id/ai-match',       requireAuth, getAiMatch);
 router.get('/:id/home',   requireAuth, getHiveHome);
 router.get('/:id/plans',  requireAuth, getHivePlans);
 router.post('/:id/plans', requireAuth, createPlan);
+
+// ── Plan rules + suggestions (Prompt 60) ────────────────────────────────────
+router.get('/:id/plan-rules',  requireAuth, getPlanRules);
+router.put('/:id/plan-rules',  requireAuth, updatePlanRules);
+router.get('/:id/plan-suggestions',               requireAuth, listSuggestions);
+router.post('/:id/plan-suggestions',              requireAuth, createSuggestion);
+router.post('/:id/plan-suggestions/:sid/vote',     requireAuth, voteSuggestion);
+router.post('/:id/plan-suggestions/:sid/approve',  requireAuth, approveSuggestion);
+router.post('/:id/plan-suggestions/:sid/decline',  requireAuth, declineSuggestion);
+router.post('/:id/plan-suggestions/:sid/withdraw', requireAuth, withdrawSuggestion);
 
 // ── Media (banner / logo) ─────────────────────────────────────────────────────
 router.post('/:id/upload-signature', requireAuth, getUploadSignature);

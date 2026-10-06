@@ -448,6 +448,88 @@ export const getPlanAttendees = async (req, res) => {
   }
 };
 
+// ── validatePlanInput ──────────────────────────────────────────────────────────
+// Pulled out of createPlan unchanged, so a suggestion validates with exactly
+// the same rules a direct plan does (Prompt 60 part 2.1). Returns either
+// { error } (a ready-to-send 400 message) or the normalised fields.
+export function validatePlanInput(body) {
+  const {
+    title, planType, startsAt, endsAt, location, description, mediaUrl, visibility,
+  } = body ?? {};
+
+  const t = String(title ?? '').trim();
+  if (!t)             return { error: 'A title is required.' };
+  if (t.length > 120) return { error: 'Title must be 120 characters or fewer.' };
+
+  if (!startsAt) return { error: 'A start time is required.' };
+  const start = new Date(startsAt);
+  if (isNaN(start.getTime())) return { error: 'Start time is not a valid date.' };
+  if (start.getTime() <= Date.now()) {
+    return { error: 'Start time must be in the future.' };
+  }
+
+  let end = null;
+  if (endsAt) {
+    end = new Date(endsAt);
+    if (isNaN(end.getTime())) return { error: 'End time is not a valid date.' };
+    if (end.getTime() <= start.getTime()) {
+      return { error: 'End time must be after the start time.' };
+    }
+  }
+
+  const type = planType == null || planType === '' ? 'other' : String(planType);
+  if (!PLAN_TYPES.includes(type)) {
+    return { error: 'That plan type is not recognised.' };
+  }
+
+  const loc = location == null ? null : String(location).trim();
+  if (loc && loc.length > 200) {
+    return { error: 'Location must be 200 characters or fewer.' };
+  }
+  const desc = description == null ? null : String(description).trim();
+  if (desc && desc.length > 2000) {
+    return { error: 'Description must be 2000 characters or fewer.' };
+  }
+
+  let media = null;
+  if (mediaUrl) {
+    const prefix = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`;
+    if (!String(mediaUrl).startsWith(prefix)) {
+      return { error: 'Cover image must be hosted on your Cloudinary account.' };
+    }
+    media = String(mediaUrl);
+  }
+
+  const vis = visibility === 'public' ? 'public' : 'hive';
+
+  return {
+    title: t, type, start, end, loc: loc || null, desc: desc || null, media, vis,
+  };
+}
+
+// ── insertPlan ─────────────────────────────────────────────────────────────────
+// The hive_posts row plus the author's own Going RSVP, as one statement pair —
+// called inside a transaction the caller already opened (createPlan's own, or
+// a suggestion's approval transaction). authorUserId is whoever the plan is
+// "by": the creator for a direct plan, the suggester for an approved one.
+export async function insertPlan(client, hiveId, authorUserId, fields) {
+  const { title, type, start, end, loc, desc, media, vis } = fields;
+  const { rows: [row] } = await client.query(
+    `INSERT INTO hive_posts
+       (hive_id, author_user_id, post_type, headline, body, media_url,
+        event_at, event_end_at, event_location, plan_type, visibility)
+     VALUES ($1,$2,'event',$3,$4,$5,$6,$7,$8,$9,$10)
+     RETURNING post_id`,
+    [hiveId, authorUserId, title, desc, media,
+     start.toISOString(), end ? end.toISOString() : null, loc, type, vis],
+  );
+  await client.query(
+    `INSERT INTO event_rsvps (post_id, user_id, rsvp_status) VALUES ($1,$2,'going')`,
+    [row.post_id, authorUserId],
+  );
+  return row.post_id;
+}
+
 // ── createPlan — POST /api/hives/:id/plans ────────────────────────────────────
 export const createPlan = async (req, res) => {
   try {
@@ -457,54 +539,8 @@ export const createPlan = async (req, res) => {
       return res.status(403).json({ error: 'Only Hive owners and admins can create plans.' });
     }
 
-    const {
-      title, planType, startsAt, endsAt, location, description, mediaUrl, visibility,
-    } = req.body ?? {};
-
-    const t = String(title ?? '').trim();
-    if (!t)            return res.status(400).json({ error: 'A title is required.' });
-    if (t.length > 120) return res.status(400).json({ error: 'Title must be 120 characters or fewer.' });
-
-    if (!startsAt) return res.status(400).json({ error: 'A start time is required.' });
-    const start = new Date(startsAt);
-    if (isNaN(start.getTime())) return res.status(400).json({ error: 'Start time is not a valid date.' });
-    if (start.getTime() <= Date.now()) {
-      return res.status(400).json({ error: 'Start time must be in the future.' });
-    }
-
-    let end = null;
-    if (endsAt) {
-      end = new Date(endsAt);
-      if (isNaN(end.getTime())) return res.status(400).json({ error: 'End time is not a valid date.' });
-      if (end.getTime() <= start.getTime()) {
-        return res.status(400).json({ error: 'End time must be after the start time.' });
-      }
-    }
-
-    const type = planType == null || planType === '' ? 'other' : String(planType);
-    if (!PLAN_TYPES.includes(type)) {
-      return res.status(400).json({ error: 'That plan type is not recognised.' });
-    }
-
-    const loc = location == null ? null : String(location).trim();
-    if (loc && loc.length > 200) {
-      return res.status(400).json({ error: 'Location must be 200 characters or fewer.' });
-    }
-    const desc = description == null ? null : String(description).trim();
-    if (desc && desc.length > 2000) {
-      return res.status(400).json({ error: 'Description must be 2000 characters or fewer.' });
-    }
-
-    let media = null;
-    if (mediaUrl) {
-      const prefix = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`;
-      if (!String(mediaUrl).startsWith(prefix)) {
-        return res.status(400).json({ error: 'Cover image must be hosted on your Cloudinary account.' });
-      }
-      media = String(mediaUrl);
-    }
-
-    const vis = visibility === 'public' ? 'public' : 'hive';
+    const fields = validatePlanInput(req.body);
+    if (fields.error) return res.status(400).json({ error: fields.error });
 
     // Plan row and the host's going RSVP are one unit of work — the same
     // no-orphan standard as createHive.
@@ -512,20 +548,7 @@ export const createPlan = async (req, res) => {
     let postId;
     try {
       await client.query('BEGIN');
-      const { rows: [row] } = await client.query(
-        `INSERT INTO hive_posts
-           (hive_id, author_user_id, post_type, headline, body, media_url,
-            event_at, event_end_at, event_location, plan_type, visibility)
-         VALUES ($1,$2,'event',$3,$4,$5,$6,$7,$8,$9,$10)
-         RETURNING post_id`,
-        [hiveId, req.userId, t, desc || null, media,
-         start.toISOString(), end ? end.toISOString() : null, loc || null, type, vis],
-      );
-      postId = row.post_id;
-      await client.query(
-        `INSERT INTO event_rsvps (post_id, user_id, rsvp_status) VALUES ($1,$2,$3)`,
-        [postId, req.userId, 'going'],
-      );
+      postId = await insertPlan(client, hiveId, req.userId, fields);
       await client.query('COMMIT');
     } catch (txErr) {
       await client.query('ROLLBACK');
@@ -539,6 +562,7 @@ export const createPlan = async (req, res) => {
     );
     const plan = shapePlan(rows[0]);
     res.status(201).json({ plan });
+    const t = fields.title;
 
     // New Plan notification (spec §14) — best-effort, after the response so a
     // slow fan-out never delays the creator's own confirmation.

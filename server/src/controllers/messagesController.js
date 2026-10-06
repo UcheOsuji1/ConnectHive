@@ -6,6 +6,7 @@ import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
 import { PLAN_SELECT, shapePlan } from './eventsController.js';
 import { shapePolls } from './pollsController.js';
+import { shapeSuggestions } from './planSuggestionsController.js';
 
 // ── Rate limiting (8 messages per 10 s per user, in-memory) ──────────────────
 const _rateMap = new Map();
@@ -48,16 +49,18 @@ function _validateAttachment(att) {
 // Attaches the plan and poll a message carries. viewerId decides viewer_rsvp
 // and my_votes, so this is computed per reader — never broadcast from one.
 async function _attachPlansAndPolls(rows, viewerId) {
-  const planIds = [...new Set(rows.map(r => r.plan_post_id).filter(Boolean))];
-  const pollIds = [...new Set(rows.map(r => r.poll_id).filter(Boolean))];
-  if (!planIds.length && !pollIds.length) return rows;
+  const planIds       = [...new Set(rows.map(r => r.plan_post_id).filter(Boolean))];
+  const pollIds       = [...new Set(rows.map(r => r.poll_id).filter(Boolean))];
+  const suggestionIds = [...new Set(rows.map(r => r.suggestion_id).filter(Boolean))];
+  if (!planIds.length && !pollIds.length && !suggestionIds.length) return rows;
 
-  const [plans, polls] = await Promise.all([
+  const [plans, polls, suggestions] = await Promise.all([
     planIds.length
       ? query(`${PLAN_SELECT} WHERE p.post_id = ANY($2)`, [viewerId, planIds])
           .then(({ rows: pr }) => Object.fromEntries(pr.map(r => [r.post_id, shapePlan(r)])))
       : {},
     pollIds.length ? shapePolls(pollIds, viewerId) : {},
+    suggestionIds.length ? shapeSuggestions(suggestionIds, viewerId) : {},
   ]);
 
   return rows.map(r => ({
@@ -68,6 +71,7 @@ async function _attachPlansAndPolls(rows, viewerId) {
     plan: r.plan_post_id ? (plans[r.plan_post_id] ?? null) : null,
     plan_removed: Boolean(r.plan_post_id && !plans[r.plan_post_id]),
     poll: r.poll_id ? (polls[r.poll_id] ?? null) : null,
+    suggestion: r.suggestion_id ? (suggestions[r.suggestion_id] ?? null) : null,
   }));
 }
 
@@ -84,6 +88,7 @@ export function depersonalise(msg) {
   const out = { ...msg };
   if (out.plan) out.plan = { ...out.plan, viewer_rsvp: null };
   if (out.poll) out.poll = { ...out.poll, my_votes: [] };
+  if (out.suggestion) out.suggestion = { ...out.suggestion, my_vote: null };
   return out;
 }
 
@@ -100,6 +105,7 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
        m.pinned_at,
        m.plan_post_id,
        m.poll_id,
+       m.suggestion_id,
        (m.deleted_at IS NOT NULL)        AS is_deleted,
        p.full_name                        AS sender_name,
        p.profile_photo_url                AS sender_photo,
@@ -184,6 +190,7 @@ function _shape(row) {
     // attach step replaces them with the enriched `plan` / `poll` objects.
     plan_post_id:   row.plan_post_id ?? null,
     poll_id:        row.poll_id ?? null,
+    suggestion_id:  row.suggestion_id ?? null,
     sender: {
       user_id:           row.sender_user_id,
       full_name:         row.sender_name ?? null,

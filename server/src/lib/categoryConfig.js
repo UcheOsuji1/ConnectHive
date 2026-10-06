@@ -20,42 +20,52 @@
 // this author's best judgment of fit per category; Specialized gets no
 // override since it has no rail module or extra rooms either, consistent
 // with being the deliberate no-op category throughout.
+// `planRules`: how a new Hive in this category gets plans made (Prompt 60,
+// decision 6) — owners/admins-only vs members-can-suggest, and owner-approves
+// vs the-Hive-votes. An existing Hive never changes; this only sets the
+// defaults createHive writes for a brand new one.
 export const CATEGORY_CONFIG = {
   'Social Groups': {
     defaultRooms: ['general', 'weekend-plans', 'food-spots', 'random'],
     planTypes: ['hangout', 'food_drinks', 'games'],
     labels: { nextPlan: 'Upcoming Plan', goal: 'Hive Goal' },
     railModule: 'recentMedia',
+    planRules: { plan_proposers: 'members', plan_approval: 'vote' },
   },
   'Professional Networking': {
     defaultRooms: ['general', 'opportunities', 'industry-talk', 'introductions'],
     planTypes: ['networking', 'meeting', 'workshop'],
     labels: { nextPlan: 'Next Session', goal: 'Networking Goal' },
     railModule: 'opportunities',
+    planRules: { plan_proposers: 'members', plan_approval: 'owner' },
   },
   'Travel Buddies': {
     defaultRooms: ['general', 'trip-planning', 'destinations', 'food', 'photos'],
     planTypes: ['trip', 'outdoors', 'food_drinks'],
     labels: { nextPlan: 'Next Trip', goal: 'Travel Goal' },
     railModule: 'pinnedItinerary',
+    planRules: { plan_proposers: 'members', plan_approval: 'vote' },
   },
   'Project Collaboration': {
     defaultRooms: ['general', 'frontend', 'backend', 'design', 'ideas'],
     planTypes: ['meeting', 'workshop', 'networking'],
     labels: { nextPlan: 'Next Milestone', goal: 'Project Goal' },
     railModule: 'recentFiles',
+    planRules: { plan_proposers: 'members', plan_approval: 'owner' },
   },
   'Event Buddies': {
     defaultRooms: ['general', 'upcoming-events', 'meetup-plans', 'rides'],
     planTypes: ['outdoors', 'networking', 'hangout'],
     labels: { nextPlan: 'Next Event', goal: 'Hive Goal' },
     railModule: 'nextPlanAttendees',
+    planRules: { plan_proposers: 'members', plan_approval: 'vote' },
   },
   'Specialized Groups': {
     defaultRooms: ['general'],
     planTypes: [],
     labels: { nextPlan: 'Upcoming Plan', goal: 'Hive Goal' },
     railModule: null,
+    planRules: { plan_proposers: 'owners', plan_approval: 'owner' },
   },
 };
 

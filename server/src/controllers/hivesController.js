@@ -758,6 +758,22 @@ export const createHive = async (req, res) => {
         [hive.hive_id, userId],
       );
 
+      const catConfig = categoryName ? getCategoryConfig(categoryName) : null;
+
+      // How plans get made (Prompt 60, decision 6) — a new Hive gets its
+      // category's default; a category with no planRules (or no category at
+      // all) falls through to the column defaults already set by schema.sql
+      // (owners/owner — today's behaviour), so there's nothing to write.
+      if (catConfig?.planRules) {
+        const { plan_proposers, plan_approval } = catConfig.planRules;
+        await client.query(
+          `UPDATE hives SET plan_proposers = $1, plan_approval = $2 WHERE hive_id = $3`,
+          [plan_proposers, plan_approval, hive.hive_id],
+        );
+        hive.plan_proposers = plan_proposers;
+        hive.plan_approval = plan_approval;
+      }
+
       // Every Hive gets its #general from the moment it exists.
       await client.query(
         `INSERT INTO hive_channels (hive_id, name, channel_type, is_default, position)
@@ -769,7 +785,6 @@ export const createHive = async (req, res) => {
       // #general, so a Hive can never exist with only some of its starting
       // rooms. #general itself is skipped: every category's list leads with
       // it, and it's already inserted above as the one TRUE is_default room.
-      const catConfig = categoryName ? getCategoryConfig(categoryName) : null;
       const extraRooms = (catConfig?.defaultRooms ?? []).filter(r => r !== 'general');
       for (let i = 0; i < extraRooms.length; i++) {
         await client.query(
