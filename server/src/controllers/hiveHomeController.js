@@ -27,7 +27,7 @@ export const getHiveHome = async (req, res) => {
 
     const [
       planRes, statsRes, activityRes, messagesRes,
-      unreadRes, photosRes, hiveRes, hostRes, pendingRes, mediaCounts,
+      unreadRes, photosRes, hiveRes, hostRes, pendingRes, pendingSuggestionsRes, mediaCounts,
     ] = await Promise.all([
       // ── nextPlan — reuses the Plans projection, no duplicated SQL ──────────
       query(
@@ -96,6 +96,15 @@ export const getHiveHome = async (req, res) => {
             WHERE m.hive_id = $1 AND m.deleted_at IS NULL
               AND a.resource_type = 'image' AND c.archived_at IS NULL
             GROUP BY m.message_id, m.sender_user_id, m.channel_id, c.name
+
+           UNION ALL
+           SELECT 'suggestion', s.suggested_by, s.created_at, 'suggested a plan', s.title,
+                  NULL::uuid, NULL::uuid, 0
+             FROM hive_plan_suggestions s
+             JOIN hive_members hm ON hm.hive_id = s.hive_id
+                                  AND hm.user_id = s.suggested_by
+                                  AND hm.membership_status = 'active'
+            WHERE s.hive_id = $1
          )
          SELECT acts.*, pr.full_name, pr.profile_photo_url
            FROM acts
@@ -185,6 +194,16 @@ export const getHiveHome = async (req, res) => {
       isOwner
         ? query(
             `SELECT COUNT(*)::int AS n FROM join_requests
+              WHERE hive_id = $1 AND status = 'pending'`, [hiveId])
+        : Promise.resolve({ rows: [null] }),
+
+      // Plan suggestions waiting on an owner/admin (Prompt 60's Action Center
+      // item). Not lazily resolved here — the Suggested tab's own fetch does
+      // that; this is just a count for the nudge, a few-minutes-stale count
+      // is fine for a "come look" badge.
+      isOwner
+        ? query(
+            `SELECT COUNT(*)::int AS n FROM hive_plan_suggestions
               WHERE hive_id = $1 AND status = 'pending'`, [hiveId])
         : Promise.resolve({ rows: [null] }),
 
@@ -291,12 +310,14 @@ export const getHiveHome = async (req, res) => {
       activity: activityRes.rows.map(r => {
         const text = r.type === 'upload'
           ? `shared ${r.n} photo${r.n === 1 ? '' : 's'} in #${r.target}`
-          : r.type === 'rsvp'  ? `is going to ${r.target}`
-          : r.type === 'plan'  ? `created a plan: ${r.target}`
-          : r.type === 'post'  ? `posted ${r.target}`
+          : r.type === 'rsvp'       ? `is going to ${r.target}`
+          : r.type === 'plan'       ? `created a plan: ${r.target}`
+          : r.type === 'post'       ? `posted ${r.target}`
+          : r.type === 'suggestion' ? `suggested a plan: ${r.target}`
           : r.text;
         const link = r.channel_id ? `/hive/${hiveId}/chat/${r.channel_id}`
           : r.type === 'plan' || r.type === 'rsvp' ? `/hive/${hiveId}/events`
+          : r.type === 'suggestion' ? `/hive/${hiveId}/events?tab=suggested`
           : r.type === 'join' ? `/hive/${hiveId}/members`
           : `/hive/${hiveId}`;
         return { type: r.type, actor: person(r), text, target: r.target, link, at: r.at };
@@ -325,6 +346,8 @@ export const getHiveHome = async (req, res) => {
       hostPost: hostRes.rows[0] ?? null,
 
       pendingRequests: isOwner ? Number(pendingRes.rows[0]?.n ?? 0) : null,
+
+      pendingPlanSuggestions: isOwner ? Number(pendingSuggestionsRes.rows[0]?.n ?? 0) : null,
 
       featuredModule,
     });

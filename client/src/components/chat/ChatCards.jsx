@@ -58,6 +58,162 @@ export function PlanMessageCard({ plan, removed, hiveId, onRsvp }) {
   );
 }
 
+// ── Suggested-plan card in the message stream ────────────────────────────────
+// Matches PlanMessageCard's look (gold left border). On approval it renders
+// the real plan via PlanMessageCard instead — a suggestion isn't a plan
+// until then, so it keeps its own vote/approve UI up to that point.
+export function SuggestionMessageCard({
+  suggestion: s, hiveId, isOwner, viewerId, voteMode,
+  onVote, onApprove, onDecline, onWithdraw, onPlanRsvp,
+}) {
+  const [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (!s) return null;
+
+  if (s.status === 'approved' && s.plan) {
+    return <PlanMessageCard plan={s.plan} hiveId={hiveId} onRsvp={onPlanRsvp} />;
+  }
+
+  const isSuggester = s.suggested_by.user_id === viewerId;
+  const total = s.yes + s.no;
+  const yesPct = total ? Math.round((s.yes / total) * 100) : 0;
+  const d = new Date(s.event_at);
+
+  async function act(fn) {
+    setBusy(true);
+    try { await fn(); } finally { setBusy(false); }
+  }
+
+  const STATUS_LABEL = { declined: 'Declined', expired: 'Expired', withdrawn: 'Withdrawn' };
+
+  return (
+    <div className="hc-plancard hc-suggcard">
+      <div className="hc-plancard-head">
+        <span aria-hidden="true">📅</span>
+        <span className="hc-plancard-label">Suggested Plan</span>
+        {s.status !== 'pending' && (
+          <span className="hc-pollcard-closed">{STATUS_LABEL[s.status]}</span>
+        )}
+      </div>
+
+      <div className="hc-plancard-body">
+        <div className={`hc-plancard-cover${s.media_url ? '' : ' hc-plancard-cover--fallback'}`}
+             style={s.media_url ? { backgroundImage: `url(${s.media_url})` } : undefined}>
+          <div className="hc-datetile hc-datetile--onCover">
+            <span className="hc-datetile-dow">{d.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+            <span className="hc-datetile-date">
+              {d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()} {d.getDate()}
+            </span>
+            <span className="hc-datetile-time">
+              {d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+            </span>
+          </div>
+        </div>
+
+        <div className="hc-plancard-main">
+          {editing ? (
+            <SuggEditForm suggestion={s} onCancel={() => setEditing(false)}
+              onSave={async (edits) => { await act(() => onApprove(s, edits)); setEditing(false); }} />
+          ) : (
+            <>
+              <h4 className="hc-plancard-title">{s.title}</h4>
+              {s.event_location && <div className="hc-plancard-row">📍 {s.event_location}</div>}
+              <div className="hc-plancard-row">
+                <span className="hc-ctx-chip">{typeLabel(s.plan_type)}</span>
+                <span className="hc-plancard-time">{formatTimeRange(s.event_at, s.event_end_at)}</span>
+              </div>
+              <div className="hc-suggcard-by">
+                <Avatar name={s.suggested_by.full_name} src={s.suggested_by.profile_photo_url} size={18} />
+                Suggested by {s.suggested_by.full_name ?? 'a member'}
+              </div>
+
+              {voteMode && s.status === 'pending' && (
+                <div className="hc-suggcard-votewrap">
+                  <div className="hc-suggcard-votebar" role="img" aria-label={`${s.yes} yes, ${s.no} no`}>
+                    <div className="hc-suggcard-voteyes" style={{ width: `${yesPct}%` }} />
+                  </div>
+                  <div className="hc-suggcard-votecounts">
+                    <span>{s.yes} yes</span>
+                    <span>{s.no} no</span>
+                  </div>
+                  <div className="hc-suggcard-voteactions">
+                    <button type="button" disabled={busy}
+                            className={`hc-suggcard-votebtn hc-suggcard-votebtn--yes${s.my_vote === 'yes' ? ' hc-suggcard-votebtn--on' : ''}`}
+                            onClick={() => act(() => onVote(s, s.my_vote === 'yes' ? 'clear' : 'yes'))}>
+                      ✓ Yes
+                    </button>
+                    <button type="button" disabled={busy}
+                            className={`hc-suggcard-votebtn hc-suggcard-votebtn--no${s.my_vote === 'no' ? ' hc-suggcard-votebtn--on' : ''}`}
+                            onClick={() => act(() => onVote(s, s.my_vote === 'no' ? 'clear' : 'no'))}>
+                      ✕ No
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {s.status === 'pending' && (
+                <div className="hc-plancard-foot hc-suggcard-actions">
+                  {isOwner ? (
+                    <>
+                      <button type="button" className="hc-suggcard-btn hc-suggcard-btn--gold" disabled={busy}
+                              onClick={() => act(() => onApprove(s))}>Approve</button>
+                      <button type="button" className="hc-suggcard-btn" disabled={busy}
+                              onClick={() => setEditing(true)}>Approve with edits</button>
+                      <button type="button" className="hc-suggcard-btn hc-suggcard-btn--text" disabled={busy}
+                              onClick={() => act(() => onDecline(s))}>Decline</button>
+                    </>
+                  ) : isSuggester && (
+                    <button type="button" className="hc-suggcard-btn hc-suggcard-btn--text" disabled={busy}
+                            onClick={() => act(() => onWithdraw(s))}>Withdraw</button>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SuggEditForm({ suggestion: s, onSave, onCancel }) {
+  const [title, setTitle] = useState(s.title);
+  const [starts, setStarts] = useState(new Date(s.event_at).toISOString().slice(0, 16));
+  const [error, setError] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true); setError(null);
+    try {
+      await onSave({
+        title: title.trim(), planType: s.plan_type,
+        startsAt: new Date(starts).toISOString(),
+        endsAt: s.event_end_at, location: s.event_location,
+        description: s.description, mediaUrl: s.media_url, visibility: s.visibility,
+      });
+    } catch (err) {
+      setError(err?.data?.error ?? 'Could not save your edits.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="hc-suggcard-editform">
+      <input className="hc-modal-input" value={title} maxLength={120}
+             onChange={e => setTitle(e.target.value)} />
+      <input className="hc-modal-input" type="datetime-local" value={starts}
+             onChange={e => setStarts(e.target.value)} />
+      {error && <p className="hc-modal-error">{error}</p>}
+      <div className="hc-suggcard-actions">
+        <button type="button" className="hc-suggcard-btn hc-suggcard-btn--gold" disabled={saving} onClick={save}>
+          {saving ? 'Saving…' : 'Approve with these edits'}
+        </button>
+        <button type="button" className="hc-suggcard-btn" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Poll card in the message stream ──────────────────────────────────────────
 export function PollMessageCard({ poll, hiveId, onVote }) {
   const [voters, setVoters] = useState(null);

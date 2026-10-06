@@ -72,7 +72,7 @@ export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCre
 }
 
 /* ── Hive Activity ───────────────────────────────────────────────────────── */
-const ACT_ICON = { join: 'userplus', post: 'note', plan: 'calendar', rsvp: 'check', upload: 'image' };
+const ACT_ICON = { join: 'userplus', post: 'note', plan: 'calendar', rsvp: 'check', upload: 'image', suggestion: 'calendar' };
 
 export function Activity({ items }) {
   return (
@@ -317,7 +317,7 @@ export function FeaturedModule({ module, hiveId }) {
 }
 
 /* ── From the hosts ──────────────────────────────────────────────────────── */
-export function HostPost({ post, hiveId, isOwner, pendingRequests, onPost }) {
+export function HostPost({ post, hiveId, isOwner, pendingRequests, pendingPlanSuggestions, onPost }) {
   const strip = isOwner && pendingRequests > 0 && (
     <Link to={`/hive/${hiveId}/requests`} className="hh-requests">
       <Icon name="userplus" size={16} />
@@ -327,12 +327,22 @@ export function HostPost({ post, hiveId, isOwner, pendingRequests, onPost }) {
       <span>Review →</span>
     </Link>
   );
+  const suggStrip = isOwner && pendingPlanSuggestions > 0 && (
+    <Link to={`/hive/${hiveId}/events?tab=suggested`} className="hh-requests">
+      <Icon name="calendar" size={16} />
+      <span style={{ marginLeft: 0 }}>
+        <b>{pendingPlanSuggestions}</b> plan suggestion{pendingPlanSuggestions === 1 ? '' : 's'} to review
+      </span>
+      <span>Review →</span>
+    </Link>
+  );
 
   if (!post) {
-    if (!isOwner) return strip || null;
+    if (!isOwner) return strip || suggStrip || null;
     return (
       <>
         {strip}
+        {suggStrip}
         <Card icon="note" title="From the hosts" className="hh-m-host">
           <div className="hh-empty">
             <button type="button" className="hh-btn hh-btn--ghost" onClick={onPost}>
@@ -347,6 +357,7 @@ export function HostPost({ post, hiveId, isOwner, pendingRequests, onPost }) {
   return (
     <>
       {strip}
+      {suggStrip}
       <Card icon="note" title="From the hosts" className="hh-m-host">
         <div className="hh-host-top">
           <Avatar name={post.author_name} src={post.author_photo} size={34} />

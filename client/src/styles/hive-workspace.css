@@ -595,6 +595,23 @@
 }
 .hw-settings-charcount--over { color: #c0392b; }
 
+/* ── How plans get made (hpr-) ────────────────────────────────────────────── */
+.hpr-fieldset {
+  border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px;
+}
+.hpr-fieldset legend { padding: 0; margin-bottom: 2px; }
+.hpr-radio {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.86rem; color: var(--hw-text-primary); cursor: pointer;
+}
+.hpr-radio input { accent-color: var(--hw-gold); cursor: pointer; width: 16px; height: 16px; }
+.hpr-vote-fields { display: flex; gap: 16px; flex-wrap: wrap; }
+.hpr-vote-fields .hw-settings-field { flex: 1 1 180px; }
+.hpr-summary {
+  font-size: 0.84rem; color: var(--hw-text-secondary); line-height: 1.55;
+  background: var(--hw-ivory-100); border-radius: 8px; padding: 10px 14px; margin: 0;
+}
+
 /* Toggle */
 .hw-settings-toggle-row {
   flex-direction: row;

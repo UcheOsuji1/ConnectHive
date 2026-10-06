@@ -229,6 +229,7 @@ export default function HiveHomePage() {
             hiveId={hiveId}
             isOwner={isOwner}
             pendingRequests={data.pendingRequests}
+            pendingPlanSuggestions={data.pendingPlanSuggestions}
             onPost={openPostModal}
           />
         </div>

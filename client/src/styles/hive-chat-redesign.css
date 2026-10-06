@@ -411,6 +411,38 @@
 }
 .hc-plancard-foot { display: flex; justify-content: flex-end; margin-top: 10px; }
 
+/* ── Suggested-plan card (reuses .hc-plancard's shell) ───────────────────── */
+.hc-suggcard-by {
+  display: flex; align-items: center; gap: 6px; font-size: .74rem; color: #7a6e5e; margin-top: 6px;
+}
+.hc-suggcard-votewrap { display: flex; flex-direction: column; gap: 6px; margin-top: 9px; }
+.hc-suggcard-votebar { height: 7px; border-radius: 99px; background: #f5c3bf; overflow: hidden; }
+.hc-suggcard-voteyes { height: 100%; background: #5dcaa5; }
+.hc-suggcard-votecounts { display: flex; gap: 10px; font-size: .72rem; color: #7a6e5e; }
+.hc-suggcard-votecounts span:first-child { color: #2e9e74; font-weight: 600; }
+.hc-suggcard-votecounts span:nth-child(2) { color: #c0392b; font-weight: 600; }
+.hc-suggcard-voteactions { display: flex; gap: 8px; margin-top: 2px; }
+.hc-suggcard-votebtn {
+  flex: 1; min-height: 34px; border-radius: 8px; font-size: .8rem; font-weight: 600;
+  font-family: inherit; cursor: pointer; border: 1.5px solid #e9dfcf; background: #fff; color: #2d2416;
+}
+.hc-suggcard-votebtn:disabled { opacity: .55; cursor: default; }
+.hc-suggcard-votebtn--yes.hc-suggcard-votebtn--on { background: #5dcaa5; border-color: #5dcaa5; color: #fff; }
+.hc-suggcard-votebtn--no.hc-suggcard-votebtn--on { background: #e05252; border-color: #e05252; color: #fff; }
+.hc-suggcard-votebtn:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+.hc-suggcard-actions, .hc-suggcard-editform .hc-suggcard-actions {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-start !important;
+}
+.hc-suggcard-btn {
+  min-height: 32px; padding: 0 12px; border-radius: 8px; font-size: .78rem; font-weight: 600;
+  font-family: inherit; cursor: pointer; border: 1px solid rgba(35,31,28,.14); background: #fff; color: #2d2416;
+}
+.hc-suggcard-btn:disabled { opacity: .55; cursor: default; }
+.hc-suggcard-btn--gold { background: #c49a28; border-color: #c49a28; color: #fff; }
+.hc-suggcard-btn--text { border: none; background: none; color: #c0392b; padding: 0 4px; }
+.hc-suggcard-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+.hc-suggcard-editform { display: flex; flex-direction: column; gap: 8px; }
+
 /* ── Poll card ───────────────────────────────────────────────────────────── */
 .hc-pollcard {
   border: 1px solid rgba(35,31,28,.1); border-left: 3px solid #c49a28;

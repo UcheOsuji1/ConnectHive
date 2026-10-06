@@ -2,7 +2,15 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../../lib/api.js';
 import { PLAN_TYPES, TYPE_LABELS, localInputToISO } from '../../lib/plans.js';
 
-export default function CreatePlanModal({ hiveId, prefill, onClose, onCreated, preferredTypes = [] }) {
+// mode: 'create' (today's direct form, owner/admin), 'propose' (owner/admin
+// in vote mode — defaults to a vote, with a "Create without a vote"
+// escape hatch), 'suggest' (a member suggesting). planRules is required for
+// 'propose'/'suggest' so the footer note and the checkbox can reflect the
+// Hive's actual settings instead of guessing them.
+export default function CreatePlanModal({
+  hiveId, prefill, onClose, onCreated, preferredTypes = [],
+  mode = 'create', planRules = null, channelId = null,
+}) {
   // Category-aware ordering (spec §11) — the category's preferred types
   // first, in the order it lists them, then everything else in its usual
   // order. No new types: this only ever reorders PLAN_TYPES.
@@ -19,6 +27,9 @@ export default function CreatePlanModal({ hiveId, prefill, onClose, onCreated, p
   const [visibility, setVis] = useState('hive');
   const [mediaUrl, setMediaUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
+  // "Propose" defaults to a vote (decision 3) — owner must actively check
+  // this to skip straight to a direct plan.
+  const [skipVote, setSkipVote] = useState(false);
   const [error, setError]   = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -88,35 +99,49 @@ export default function CreatePlanModal({ hiveId, prefill, onClose, onCreated, p
     return null;
   }
 
+  // 'create' always creates directly; 'propose' creates directly only when
+  // the owner checked "Create without a vote"; 'suggest' always suggests.
+  const willSuggest = mode === 'suggest' || (mode === 'propose' && !skipVote);
+
   async function submit(e) {
     e.preventDefault();
     const bad = clientValidate();
     if (bad) { setError(bad); return; }
     setSaving(true); setError(null);
+    const payload = {
+      title: title.trim(),
+      planType: type,
+      startsAt: localInputToISO(starts),
+      endsAt: ends ? localInputToISO(ends) : null,
+      location: location.trim() || null,
+      description: desc.trim() || null,
+      mediaUrl,
+      visibility,
+    };
     try {
-      const { plan } = await api.post(`/api/hives/${hiveId}/plans`, {
-        title: title.trim(),
-        planType: type,
-        startsAt: localInputToISO(starts),
-        endsAt: ends ? localInputToISO(ends) : null,
-        location: location.trim() || null,
-        description: desc.trim() || null,
-        mediaUrl,
-        visibility,
-      });
-      onCreated(plan);
+      if (willSuggest) {
+        const { suggestion } = await api.post(`/api/hives/${hiveId}/plan-suggestions`, {
+          ...payload, channelId,
+        });
+        onCreated(suggestion, 'suggestion');
+      } else {
+        const { plan } = await api.post(`/api/hives/${hiveId}/plans`, payload);
+        onCreated(plan, 'plan');
+      }
     } catch (err) {
-      setError(err?.data?.error ?? 'Could not create the plan.');
+      setError(err?.data?.error ?? 'Could not save this.');
       setSaving(false);
     }
   }
 
+  const modalTitle = mode === 'suggest' ? 'Suggest a Plan' : mode === 'propose' ? 'Propose a Plan' : 'Create a Plan';
+
   return (
     <>
       <div className="plans-scrim" onClick={onClose} />
-      <div className="plans-modal" role="dialog" aria-modal="true" aria-label="Create a plan" ref={panelRef}>
+      <div className="plans-modal" role="dialog" aria-modal="true" aria-label={modalTitle} ref={panelRef}>
         <div className="plans-modal-head">
-          <h2 className="plans-modal-title">Create a Plan</h2>
+          <h2 className="plans-modal-title">{modalTitle}</h2>
           <button type="button" className="plans-drawer-x" onClick={onClose} aria-label="Close">×</button>
         </div>
 
@@ -186,16 +211,30 @@ export default function CreatePlanModal({ hiveId, prefill, onClose, onCreated, p
             </select>
           </label>
 
+          {mode === 'propose' && (
+            <label className="plans-skipvote-row">
+              <input type="checkbox" checked={skipVote} onChange={e => setSkipVote(e.target.checked)} />
+              Create without a vote
+            </label>
+          )}
+
           {error && <p className="plans-form-error">{error}</p>}
 
           <p className="plans-form-note">
-            Your RSVP is set to Going automatically. You're the host.
+            {!willSuggest
+              ? "Your RSVP is set to Going automatically. You're the host."
+              : planRules?.plan_approval === 'owner'
+                ? 'An owner will review your suggestion.'
+                : `Your suggestion goes to a vote. It closes within ${planRules?.vote_window_hours ?? 48} hours, `
+                  + 'or 1 hour before the plan starts — whichever comes first.'}
           </p>
 
           <div className="plans-modal-foot">
             <button type="button" className="plans-btn-ghost" onClick={onClose}>Cancel</button>
             <button type="submit" className="plans-btn-gold" disabled={saving || uploading}>
-              {saving ? 'Creating…' : 'Create Plan'}
+              {saving
+                ? (willSuggest ? 'Submitting…' : 'Creating…')
+                : (willSuggest ? (mode === 'suggest' ? 'Suggest Plan' : 'Propose Plan') : 'Create Plan')}
             </button>
           </div>
         </form>

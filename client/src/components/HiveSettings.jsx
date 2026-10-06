@@ -1,7 +1,142 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
+
+// ── How plans get made (Prompt 60) ──────────────────────────────────────────
+// A separate load/save cycle from the rest of Settings — plan rules live on
+// their own GET/PUT endpoint, not updateHive's whitelist, so this card owns
+// its own state rather than folding into `fields` above.
+function summarise(r) {
+  if (r.plan_approval === 'owner') {
+    return r.plan_proposers === 'members'
+      ? 'Members suggest plans. An owner or admin reviews each one before it goes ahead.'
+      : 'Only owners and admins create plans.';
+  }
+  const proposerText = r.plan_proposers === 'members' ? 'Members suggest plans' : 'An owner or admin proposes a plan';
+  return `${proposerText}. It goes ahead when more people vote yes than no, with at least `
+    + `${r.vote_min_yes} yes vote${r.vote_min_yes === 1 ? '' : 's'}, within ${r.vote_window_hours} hours.`;
+}
+
+function PlanRulesCard({ hiveId }) {
+  const [rules, setRules]   = useState(null);
+  const [error, setError]   = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [success, setSuccess] = useState(false);
+
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/plan-rules`)
+      .then(setRules)
+      .catch(e => setError(e?.data?.error ?? 'Could not load plan rules.'));
+  }, [hiveId]);
+
+  function set(key, val) { setRules(r => ({ ...r, [key]: val })); }
+
+  async function save() {
+    setSaving(true); setSaveError(null); setSuccess(false);
+    try {
+      const updated = await api.put(`/api/hives/${hiveId}/plan-rules`, rules);
+      setRules(updated);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 4000);
+    } catch (err) {
+      setSaveError(err?.data?.error ?? 'Could not save plan rules.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="hw-settings-card">
+        <div className="hw-card-label">How plans get made</div>
+        <div className="hw-settings-error">{error}</div>
+      </div>
+    );
+  }
+  if (!rules) {
+    return (
+      <div className="hw-settings-card">
+        <div className="hw-card-label">How plans get made</div>
+        <div className="hw-settings-hint">Loading…</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="hw-settings-card">
+      <div className="hw-card-label">How plans get made</div>
+
+      <fieldset className="hpr-fieldset">
+        <legend className="hw-settings-label">Who can suggest plans?</legend>
+        <label className="hpr-radio">
+          <input type="radio" name="hpr-proposers" checked={rules.plan_proposers === 'owners'}
+                 onChange={() => set('plan_proposers', 'owners')} />
+          Only owners and admins
+        </label>
+        <label className="hpr-radio">
+          <input type="radio" name="hpr-proposers" checked={rules.plan_proposers === 'members'}
+                 onChange={() => set('plan_proposers', 'members')} />
+          Any member
+        </label>
+      </fieldset>
+
+      <fieldset className="hpr-fieldset">
+        <legend className="hw-settings-label">How does a suggestion become a plan?</legend>
+        <label className="hpr-radio">
+          <input type="radio" name="hpr-approval" checked={rules.plan_approval === 'owner'}
+                 onChange={() => set('plan_approval', 'owner')} />
+          An owner approves it
+        </label>
+        <label className="hpr-radio">
+          <input type="radio" name="hpr-approval" checked={rules.plan_approval === 'vote'}
+                 onChange={() => set('plan_approval', 'vote')} />
+          The Hive votes
+        </label>
+      </fieldset>
+
+      {rules.plan_approval === 'vote' && (
+        <div className="hpr-vote-fields">
+          <label className="hw-settings-field">
+            <span>Yes votes needed</span>
+            <div className="hw-settings-hint">A suggestion needs at least this many yes votes to pass</div>
+            <input type="number" min={1} max={50} className="hw-settings-input"
+                   value={rules.vote_min_yes}
+                   onChange={e => set('vote_min_yes', Number(e.target.value))} />
+          </label>
+          <label className="hw-settings-field">
+            <span>Voting window (hours)</span>
+            <div className="hw-settings-hint">How long a vote stays open, at most</div>
+            <input type="number" min={6} max={168} className="hw-settings-input"
+                   value={rules.vote_window_hours}
+                   onChange={e => set('vote_window_hours', Number(e.target.value))} />
+          </label>
+        </div>
+      )}
+
+      {rules.plan_proposers === 'members' && (
+        <label className="hw-settings-field">
+          <span>Suggestions per member per day</span>
+          <div className="hw-settings-hint">Keeps one member from flooding the Hive with suggestions</div>
+          <input type="number" min={1} max={20} className="hw-settings-input"
+                 value={rules.suggestions_per_day}
+                 onChange={e => set('suggestions_per_day', Number(e.target.value))} />
+        </label>
+      )}
+
+      <p className="hpr-summary">{summarise(rules)}</p>
+
+      <div className="hw-settings-footer">
+        {saveError && <div className="hw-settings-error">{saveError}</div>}
+        {success && <div className="hw-settings-success">Changes saved.</div>}
+        <button type="button" className="hw-settings-save-btn" onClick={save} disabled={saving}>
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function HiveSettings({ hive, hiveId, onSaved }) {
   const navigate        = useNavigate();
@@ -311,6 +446,8 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
         </div>
 
       </form>
+
+      <PlanRulesCard hiveId={hiveId} />
 
       {/* ── Danger Zone ── */}
       <div className="hw-settings-card hw-settings-danger-card">

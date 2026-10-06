@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import EmojiPicker from '../../components/EmojiPicker.jsx';
 import CreatePlanModal from '../../components/plans/CreatePlanModal.jsx';
-import { PlanMessageCard, PollMessageCard, CreatePollModal } from '../../components/chat/ChatCards.jsx';
+import { PlanMessageCard, PollMessageCard, CreatePollModal, SuggestionMessageCard } from '../../components/chat/ChatCards.jsx';
 import { api } from '../../lib/api.js';
 import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
 import '../../styles/hive-chat.css';
@@ -413,6 +413,7 @@ function MessageSkeleton() {
 
 function MessageRow({
   onPin, onPlanRsvp, onPollVote,
+  onSuggestionVote, onSuggestionApprove, onSuggestionDecline, onSuggestionWithdraw, voteMode,
   msg, isOwn, isLast, members, userId,
   onReply, onEdit, onDelete, onReaction, isOwner,
   editingId, editText, onEditChange, onEditSave, onEditCancel,
@@ -524,6 +525,13 @@ function MessageRow({
               )}
               {!isDeleted && msg.poll && (
                 <PollMessageCard poll={msg.poll} hiveId={msg.hive_id} onVote={onPollVote} />
+              )}
+              {!isDeleted && msg.suggestion && (
+                <SuggestionMessageCard suggestion={msg.suggestion} hiveId={msg.hive_id}
+                                        isOwner={isOwner} viewerId={userId} voteMode={voteMode}
+                                        onVote={onSuggestionVote} onApprove={onSuggestionApprove}
+                                        onDecline={onSuggestionDecline} onWithdraw={onSuggestionWithdraw}
+                                        onPlanRsvp={onPlanRsvp} />
               )}
               {!isDeleted && hasAttachments && (
                 <AttachmentGrid attachments={msg.attachments} />
@@ -855,6 +863,15 @@ export default function HiveChatPage() {
 
   const userId = user?.userId ?? null;
 
+  // How plans get made (Prompt 60) — hive.* already carries these 5 columns.
+  const planProposers = hive?.plan_proposers ?? 'owners';
+  const planApproval  = hive?.plan_approval ?? 'owner';
+  const voteMode       = planApproval === 'vote';
+  const canSuggestPlan = !isOwner && planProposers === 'members' && !!canPost;
+  const planModalMode  = isOwner ? (voteMode ? 'propose' : 'create') : (canSuggestPlan ? 'suggest' : null);
+  const planMenuLabel  = planModalMode === 'propose' ? '📅 Propose a plan'
+    : planModalMode === 'suggest' ? '📅 Suggest a plan' : '📅 Create a plan';
+
   // Channels
   const [channels,          setChannels]          = useState([]);
   const [channelsLoading,   setChannelsLoading]   = useState(true);
@@ -877,6 +894,9 @@ export default function HiveChatPage() {
   const [reconnecting,  setReconnecting]  = useState(!socket.connected);
   const [myStatus,      setMyStatus]      = useState('online');
   const [typingUsers,   setTypingUsers]   = useState({});
+  // Pre-existing gap found live-testing Prompt 60: every setSocketError call
+  // below referenced undeclared state, throwing on every hive-join ack.
+  const [socketError,   setSocketError]   = useState(false);
 
   // Attachments
   const [stagedFiles, setStagedFiles] = useState([]);
@@ -1188,6 +1208,24 @@ export default function HiveChatPage() {
         ? { ...m, plan: { ...m.plan, going_count } } : m));
     };
 
+    // Counts + status only (decision 5) — never someone else's individual
+    // vote. my_vote stays whatever this reader already has locally; when a
+    // suggestion resolves, re-fetch it so a just-approved one picks up its
+    // plan (shapePlan shape) instead of carrying a stale null.
+    const onSuggestionUpdated = ({ suggestion_id, yes, no, status }) => {
+      setMessages(prev => prev.map(m => m.suggestion?.suggestion_id === suggestion_id
+        ? { ...m, suggestion: { ...m.suggestion, ...(yes != null ? { yes } : {}), ...(no != null ? { no } : {}), status } }
+        : m));
+      if (status && status !== 'pending') {
+        api.get(`/api/hives/${hiveId}/plan-suggestions?status=recent`)
+          .then(d => {
+            const fresh = d.suggestions.find(s => s.suggestion_id === suggestion_id);
+            if (fresh) applySuggestionInStream(fresh);
+          })
+          .catch(() => {});
+      }
+    };
+
     const onMessagePinned = ({ pin }) => {
       if (!pin) return;
       setMessages(prev => prev.map(m =>
@@ -1275,6 +1313,7 @@ export default function HiveChatPage() {
     socket.on('channel_activity',     onChannelActivity);
     socket.on('poll_updated',         onPollUpdated);
     socket.on('plan_rsvp_updated',    onPlanRsvpUpdated);
+    socket.on('suggestion_updated',   onSuggestionUpdated);
     socket.on('message_pinned',       onMessagePinned);
     socket.on('message_unpinned',     onMessageUnpinned);
 
@@ -1289,6 +1328,7 @@ export default function HiveChatPage() {
       socket.off('channel_activity',    onChannelActivity);
       socket.off('poll_updated',        onPollUpdated);
       socket.off('plan_rsvp_updated',   onPlanRsvpUpdated);
+      socket.off('suggestion_updated',  onSuggestionUpdated);
       socket.off('message_pinned',      onMessagePinned);
       socket.off('message_unpinned',    onMessageUnpinned);
       socket.off('disconnect',          onDisconnect);
@@ -1357,6 +1397,59 @@ export default function HiveChatPage() {
     } catch (e) {
       // eslint-disable-next-line no-alert
       alert(e?.data?.error ?? 'Could not record your vote.');
+    }
+  }
+
+  // ── Plan suggestions (Prompt 60) ────────────────────────────────────────────
+  function applySuggestionInStream(suggestion) {
+    setMessages(prev => prev.map(m =>
+      m.suggestion?.suggestion_id === suggestion.suggestion_id ? { ...m, suggestion } : m));
+  }
+
+  async function handleSuggestionVote(s, vote) {
+    try {
+      const { suggestion } = await api.post(
+        `/api/hives/${hiveId}/plan-suggestions/${s.suggestion_id}/vote`, { vote });
+      applySuggestionInStream(suggestion);
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(e?.data?.error ?? 'Could not record your vote.');
+    }
+  }
+
+  // Lets the error through when edits are involved — the inline edit form
+  // shows it next to the fields that failed, same pattern as Plans' SuggestionCard.
+  async function handleSuggestionApprove(s, edits) {
+    try {
+      const { suggestion } = await api.post(
+        `/api/hives/${hiveId}/plan-suggestions/${s.suggestion_id}/approve`, edits ? { edits } : {});
+      applySuggestionInStream(suggestion);
+    } catch (e) {
+      if (edits) throw e;
+      // eslint-disable-next-line no-alert
+      alert(e?.data?.error ?? 'Could not approve the suggestion.');
+    }
+  }
+
+  async function handleSuggestionDecline(s) {
+    try {
+      const { suggestion } = await api.post(
+        `/api/hives/${hiveId}/plan-suggestions/${s.suggestion_id}/decline`);
+      applySuggestionInStream(suggestion);
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(e?.data?.error ?? 'Could not decline the suggestion.');
+    }
+  }
+
+  async function handleSuggestionWithdraw(s) {
+    try {
+      const { suggestion } = await api.post(
+        `/api/hives/${hiveId}/plan-suggestions/${s.suggestion_id}/withdraw`);
+      applySuggestionInStream(suggestion);
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(e?.data?.error ?? 'Could not withdraw the suggestion.');
     }
   }
 
@@ -1718,9 +1811,17 @@ export default function HiveChatPage() {
       {planOpen && (
         <CreatePlanModal
           hiveId={hiveId}
+          mode={planModalMode ?? 'create'}
+          planRules={{ plan_approval: planApproval, vote_window_hours: hive?.vote_window_hours }}
+          channelId={activeChannelId}
           onClose={() => setPlanOpen(false)}
-          onCreated={async (plan) => {
+          onCreated={async (result, kind) => {
             setPlanOpen(false);
+            // A suggestion already posted and broadcast its own chat message
+            // as part of its transaction — it arrives over the socket like
+            // any other message, same as a poll's.
+            if (kind === 'suggestion') return;
+            const plan = result;
             // Posting the plan as a message is what puts the card in the room.
             try {
               // Use the REST response locally. The socket broadcast is
@@ -1874,6 +1975,11 @@ export default function HiveChatPage() {
                   onPin={handlePin}
                   onPlanRsvp={handlePlanRsvp}
                   onPollVote={handlePollVote}
+                  onSuggestionVote={handleSuggestionVote}
+                  onSuggestionApprove={handleSuggestionApprove}
+                  onSuggestionDecline={handleSuggestionDecline}
+                  onSuggestionWithdraw={handleSuggestionWithdraw}
+                  voteMode={voteMode}
                   isOwn={msg.sender_user_id === userId}
                   isLast={i === lastConfirmedOwnIdx}
                   members={members}
@@ -1972,10 +2078,10 @@ export default function HiveChatPage() {
                             onClick={() => { setPlusOpen(false); fileInputRef.current?.click(); }}>
                       📎 File
                     </button>
-                    {isOwner && (
+                    {planModalMode && (
                       <button type="button" role="menuitem" className="hc-plus-item"
                               onClick={() => { setPlusOpen(false); setPlanOpen(true); }}>
-                        📅 Create a plan
+                        {planMenuLabel}
                       </button>
                     )}
                     <button type="button" role="menuitem" className="hc-plus-item"
