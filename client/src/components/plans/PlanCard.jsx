@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Avatar from '../Avatar.jsx';
 import RsvpMenu from './RsvpMenu.jsx';
 import { typeLabel, relativeLabel, formatDate, formatTimeRange } from '../../lib/plans.js';
@@ -6,7 +7,7 @@ export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees }
   const cover = plan.media_url;
   return (
     <article className={`plans-card${past ? ' plans-card--past' : ''}`}>
-      <div
+      <Link to={`/hive/${plan.hive_id}/events/${plan.post_id}`}
         className={`plans-card-cover${cover ? '' : ' plans-card-cover--nocover'}`}
         style={cover ? { backgroundImage: `url(${cover})` } : undefined}
       >
@@ -18,10 +19,17 @@ export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees }
         )}
         {/* No cover: the type name carries the card instead of a blank panel. */}
         {!cover && <span className="plans-cover-word">{typeLabel(plan.plan_type)}</span>}
-      </div>
+      </Link>
 
       <div className="plans-card-body">
-        <h3 className="plans-card-title">{plan.headline}</h3>
+        {plan.series && (
+          <span className="plans-series-chip">
+            Repeats {plan.series.rule === 'weekly' ? 'weekly' : plan.series.rule === 'biweekly' ? 'every 2 weeks' : 'monthly'} · {plan.series.index} of {plan.series.count}
+          </span>
+        )}
+        <h3 className="plans-card-title">
+          <Link to={`/hive/${plan.hive_id}/events/${plan.post_id}`} className="plans-card-title-link">{plan.headline}</Link>
+        </h3>
         <div className="plans-card-meta">
           🗓 {formatDate(plan.event_at)} · {formatTimeRange(plan.event_at, plan.event_end_at)}
         </div>

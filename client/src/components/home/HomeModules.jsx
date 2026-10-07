@@ -46,7 +46,9 @@ export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCre
             {d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
           </div>
         </div>
-        <h3 className="hh-plan-title">{plan.headline}</h3>
+        <h3 className="hh-plan-title">
+          <Link to={`/hive/${hiveId}/events/${plan.post_id}`} className="plans-card-title-link">{plan.headline}</Link>
+        </h3>
       </div>
 
       <div className="hh-plan-meta">

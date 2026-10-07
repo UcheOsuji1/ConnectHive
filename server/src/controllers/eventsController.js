@@ -121,13 +121,16 @@ export const toggleRsvp = async (req, res) => {
   try {
     const { postId } = req.params;
     const { rows: [post] } = await query(
-      `SELECT post_id, post_type, hive_id, event_at, event_end_at, visibility
+      `SELECT post_id, post_type, hive_id, event_at, event_end_at, visibility, cancelled_at
          FROM hive_posts WHERE post_id = $1`,
       [postId],
     );
     if (!post) return res.status(400).json({ error: 'Post not found.' });
     if (post.post_type !== 'event') {
       return res.status(400).json({ error: 'This post is not an event.' });
+    }
+    if (post.cancelled_at) {
+      return res.status(400).json({ error: 'This plan was cancelled.' });
     }
     if (!(await canRsvp(post, req.userId))) {
       return res.status(403).json({ error: 'You must be a member of this Hive.' });
@@ -206,7 +209,8 @@ export const toggleRsvp = async (req, res) => {
 // created plan straight into the list.
 export const PLAN_SELECT = `
   SELECT p.post_id, p.hive_id, p.headline, p.body, p.media_url,
-         p.event_at, p.event_end_at,
+         p.event_at, p.event_end_at, p.cancelled_at,
+         p.series_id, p.series_index, ser.rule AS series_rule, ser.count AS series_count,
          COALESCE(p.plan_type, 'other') AS plan_type,
          p.event_location, p.visibility, p.created_at,
          p.author_user_id,
@@ -236,10 +240,11 @@ export const PLAN_SELECT = `
            ) x
          ), '[]'::json)                                          AS going_preview
     FROM hive_posts p
-    LEFT JOIN profiles prof   ON prof.user_id = p.author_user_id
-    LEFT JOIN hive_members hm ON hm.hive_id = p.hive_id
-                             AND hm.user_id = p.author_user_id
-                             AND hm.membership_status = 'active'
+    LEFT JOIN profiles prof        ON prof.user_id = p.author_user_id
+    LEFT JOIN hive_members hm      ON hm.hive_id = p.hive_id
+                                   AND hm.user_id = p.author_user_id
+                                   AND hm.membership_status = 'active'
+    LEFT JOIN hive_plan_series ser ON ser.series_id = p.series_id
 `;
 
 export function shapePlan(r) {
@@ -251,6 +256,7 @@ export function shapePlan(r) {
     media_url: r.media_url,
     event_at: r.event_at,
     event_end_at: r.event_end_at,
+    cancelled_at: r.cancelled_at,
     plan_type: r.plan_type,
     event_location: r.event_location,
     visibility: r.visibility,
@@ -268,6 +274,9 @@ export function shapePlan(r) {
     viewer_rsvp: r.viewer_rsvp,
     is_live: r.is_live,
     going_preview: r.going_preview ?? [],
+    series: r.series_id
+      ? { series_id: r.series_id, index: r.series_index, rule: r.series_rule, count: r.series_count }
+      : null,
   };
 }
 
@@ -289,6 +298,7 @@ export const getHivePlans = async (req, res) => {
         `${PLAN_SELECT}
           WHERE p.hive_id = $2 AND p.post_type = 'event'
             AND p.event_at IS NOT NULL
+            AND p.cancelled_at IS NULL
             AND ${PLAN_END} >= NOW()
           ORDER BY p.event_at ASC
           LIMIT 200`,
@@ -312,15 +322,15 @@ export const getHivePlans = async (req, res) => {
     // here so the page can tell "no plans ever" from "only past plans" without
     // fetching the past list first.
     const { rows: [sum] } = await query(
-      `SELECT COUNT(*) FILTER (WHERE ${PLAN_END} >= NOW())::int
+      `SELECT COUNT(*) FILTER (WHERE ${PLAN_END} >= NOW() AND p.cancelled_at IS NULL)::int
                 AS upcoming_count,
               COUNT(*) FILTER (WHERE ${PLAN_END} <  NOW())::int
                 AS past_count,
-              COALESCE(SUM(CASE WHEN ${PLAN_END} >= NOW()
+              COALESCE(SUM(CASE WHEN ${PLAN_END} >= NOW() AND p.cancelled_at IS NULL
                 THEN (SELECT COUNT(*) FILTER (WHERE r.rsvp_status='going')
                         FROM event_rsvps r WHERE r.post_id = p.post_id)
                 ELSE 0 END), 0)::int AS going_total,
-              COUNT(*) FILTER (WHERE ${PLAN_END} >= NOW()
+              COUNT(*) FILTER (WHERE ${PLAN_END} >= NOW() AND p.cancelled_at IS NULL
                 AND EXISTS(SELECT 1 FROM event_rsvps r
                             WHERE r.post_id = p.post_id AND r.user_id = $1))::int
                 AS my_rsvp_count
@@ -335,6 +345,7 @@ export const getHivePlans = async (req, res) => {
          FROM hive_posts p
         WHERE p.hive_id = $1 AND p.post_type = 'event'
           AND p.event_at IS NOT NULL
+          AND p.cancelled_at IS NULL
           AND ${PLAN_END} >= NOW()
         GROUP BY 1`,
       [hiveId],
@@ -512,22 +523,112 @@ export function validatePlanInput(body) {
 // called inside a transaction the caller already opened (createPlan's own, or
 // a suggestion's approval transaction). authorUserId is whoever the plan is
 // "by": the creator for a direct plan, the suggester for an approved one.
-export async function insertPlan(client, hiveId, authorUserId, fields) {
+// seriesMeta (Prompt 61 Part 4) is optional — { seriesId, index } tags this
+// occurrence as part of a recurring series.
+export async function insertPlan(client, hiveId, authorUserId, fields, seriesMeta = null) {
   const { title, type, start, end, loc, desc, media, vis } = fields;
   const { rows: [row] } = await client.query(
     `INSERT INTO hive_posts
        (hive_id, author_user_id, post_type, headline, body, media_url,
-        event_at, event_end_at, event_location, plan_type, visibility)
-     VALUES ($1,$2,'event',$3,$4,$5,$6,$7,$8,$9,$10)
+        event_at, event_end_at, event_location, plan_type, visibility,
+        series_id, series_index)
+     VALUES ($1,$2,'event',$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
      RETURNING post_id`,
     [hiveId, authorUserId, title, desc, media,
-     start.toISOString(), end ? end.toISOString() : null, loc, type, vis],
+     start.toISOString(), end ? end.toISOString() : null, loc, type, vis,
+     seriesMeta?.seriesId ?? null, seriesMeta?.index ?? null],
   );
   await client.query(
     `INSERT INTO event_rsvps (post_id, user_id, rsvp_status) VALUES ($1,$2,'going')`,
     [row.post_id, authorUserId],
   );
   return row.post_id;
+}
+
+// ── Recurring plans (Prompt 61 Part 4) ──────────────────────────────────────────
+function nthWeekdayOfMonth(year, month, weekday, n) {
+  // month is 0-indexed. Returns a Date at local midnight, or null if the
+  // month has no such occurrence (e.g. a 5th Tuesday that doesn't exist).
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const day = 1 + ((weekday - firstWeekday + 7) % 7) + (n - 1) * 7;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  return day > daysInMonth ? null : new Date(year, month, day);
+}
+
+// Returns { dates, skippedMonths } — dates always has exactly `count` entries
+// (unless the rule guard trips first, which would be a bug, not real input),
+// skippedMonths lists any 'YYYY-MM' a monthly_weekday series had no Nth
+// weekday for, so the form preview can say so.
+export function computeSeriesDates(rule, startDate, count) {
+  if (rule === 'weekly' || rule === 'biweekly') {
+    const stepDays = rule === 'weekly' ? 7 : 14;
+    const dates = Array.from({ length: count }, (_, i) =>
+      new Date(startDate.getTime() + i * stepDays * 86400000));
+    return { dates, skippedMonths: [] };
+  }
+  if (rule === 'monthly_weekday') {
+    const weekday = startDate.getDay();
+    const n = Math.ceil(startDate.getDate() / 7); // which occurrence (1st..5th) this weekday is
+    const [hh, mm, ss] = [startDate.getHours(), startDate.getMinutes(), startDate.getSeconds()];
+    const dates = [new Date(startDate)];
+    const skippedMonths = [];
+    let year = startDate.getFullYear();
+    let month = startDate.getMonth();
+    let guard = 0;
+    while (dates.length < count && guard < 240) {
+      guard++;
+      month++;
+      if (month > 11) { month = 0; year++; }
+      const d = nthWeekdayOfMonth(year, month, weekday, n);
+      if (d) {
+        d.setHours(hh, mm, ss, 0);
+        dates.push(d);
+      } else {
+        skippedMonths.push(`${year}-${String(month + 1).padStart(2, '0')}`);
+      }
+    }
+    return { dates, skippedMonths };
+  }
+  throw new Error('Unknown recurrence rule.');
+}
+
+export function validateRepeat(repeat) {
+  if (!repeat) return { repeat: null };
+  const { rule, count } = repeat;
+  if (!['weekly', 'biweekly', 'monthly_weekday'].includes(rule)) {
+    return { error: 'repeat.rule must be "weekly", "biweekly" or "monthly_weekday".' };
+  }
+  const n = Number(count);
+  if (!Number.isInteger(n) || n < 2 || n > 26) {
+    return { error: 'repeat.count must be a whole number between 2 and 26.' };
+  }
+  return { repeat: { rule, count: n } };
+}
+
+// Inserts a series row plus every occurrence, in one transaction — a failure
+// partway through leaves zero occurrences and zero series rows behind.
+// Returns { seriesId, postIds }.
+export async function insertPlanSeries(client, hiveId, authorUserId, baseFields, rule, count) {
+  const { dates } = computeSeriesDates(rule, baseFields.start, count);
+  const durationMs = baseFields.end ? baseFields.end.getTime() - baseFields.start.getTime() : null;
+
+  const { rows: [series] } = await client.query(
+    `INSERT INTO hive_plan_series (hive_id, created_by, rule, count)
+     VALUES ($1,$2,$3,$4) RETURNING series_id`,
+    [hiveId, authorUserId, rule, dates.length],
+  );
+
+  const postIds = [];
+  for (let i = 0; i < dates.length; i++) {
+    const start = dates[i];
+    const end = durationMs != null ? new Date(start.getTime() + durationMs) : null;
+    const postId = await insertPlan(
+      client, hiveId, authorUserId, { ...baseFields, start, end },
+      { seriesId: series.series_id, index: i + 1 },
+    );
+    postIds.push(postId);
+  }
+  return { seriesId: series.series_id, postIds };
 }
 
 // ── createPlan — POST /api/hives/:id/plans ────────────────────────────────────
@@ -542,13 +643,24 @@ export const createPlan = async (req, res) => {
     const fields = validatePlanInput(req.body);
     if (fields.error) return res.status(400).json({ error: fields.error });
 
-    // Plan row and the host's going RSVP are one unit of work — the same
-    // no-orphan standard as createHive.
+    const repeatResult = validateRepeat(req.body?.repeat);
+    if (repeatResult.error) return res.status(400).json({ error: repeatResult.error });
+    const repeat = repeatResult.repeat;
+
+    // Plan row(s) and the host's going RSVP(s) are one unit of work — the same
+    // no-orphan standard as createHive. A series inserts every occurrence in
+    // this same transaction, so a failure partway through leaves nothing.
     const client = await getClient();
-    let postId;
+    let postId, seriesPostIds = null;
     try {
       await client.query('BEGIN');
-      postId = await insertPlan(client, hiveId, req.userId, fields);
+      if (repeat) {
+        const result = await insertPlanSeries(client, hiveId, req.userId, fields, repeat.rule, repeat.count);
+        seriesPostIds = result.postIds;
+        postId = result.postIds[0];
+      } else {
+        postId = await insertPlan(client, hiveId, req.userId, fields);
+      }
       await client.query('COMMIT');
     } catch (txErr) {
       await client.query('ROLLBACK');
@@ -561,23 +673,29 @@ export const createPlan = async (req, res) => {
       `${PLAN_SELECT} WHERE p.post_id = $2`, [req.userId, postId],
     );
     const plan = shapePlan(rows[0]);
-    res.status(201).json({ plan });
+    const plans = seriesPostIds
+      ? [plan, ...(await query(`${PLAN_SELECT} WHERE p.post_id = ANY($2)`, [req.userId, seriesPostIds.slice(1)]))
+          .rows.map(shapePlan)]
+      : null;
+    res.status(201).json(seriesPostIds ? { plan, plans } : { plan });
     const t = fields.title;
 
     // New Plan notification (spec §14) — best-effort, after the response so a
-    // slow fan-out never delays the creator's own confirmation.
+    // slow fan-out never delays the creator's own confirmation. One
+    // notification per series, not one per occurrence.
     try {
       const { rows: hiveRow } = await query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]);
       const { rows: members } = await query(
         `SELECT user_id FROM hive_members WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
         [hiveId, req.userId],
       );
+      const suffix = seriesPostIds ? ` (repeats ${seriesPostIds.length}×)` : '';
       for (const m of members) {
         await createNotification({
           userId: m.user_id, type: 'plan_created', category: 'plans',
-          title: `New plan in ${hiveRow[0]?.hive_name ?? 'your Hive'}: ${t}`,
+          title: `New plan in ${hiveRow[0]?.hive_name ?? 'your Hive'}: ${t}${suffix}`,
           body: plan.event_location || null,
-          hiveId, actorUserId: req.userId, link: `/hive/${hiveId}/events`,
+          hiveId, actorUserId: req.userId, link: `/hive/${hiveId}/events/${postId}`,
         });
       }
     } catch (notifErr) {
@@ -586,5 +704,187 @@ export const createPlan = async (req, res) => {
   } catch (err) {
     console.error('[events/createPlan]', err);
     res.status(500).json({ error: 'Failed to create plan.' });
+  }
+};
+
+// ── getPlanDetail — GET /api/hives/:id/plans/:postId (Prompt 61 Part 2) ──────
+export const getPlanDetail = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const member = await getMembership(hiveId, req.userId);
+    if (!member) return res.status(403).json({ error: 'You must be a member of this Hive.' });
+
+    const { rows } = await query(
+      `${PLAN_SELECT} WHERE p.post_id = $2 AND p.post_type = 'event'`,
+      [req.userId, req.params.postId],
+    );
+    const row = rows[0];
+    if (!row || row.hive_id !== hiveId) {
+      return res.status(404).json({ error: 'Plan not found.' });
+    }
+
+    res.json({ plan: shapePlan(row) });
+  } catch (err) {
+    console.error('[events/getPlanDetail]', err);
+    res.status(500).json({ error: 'Failed to load this plan.' });
+  }
+};
+
+async function loadPlanForManage(hiveId, postId, userId) {
+  const member = await getMembership(hiveId, userId);
+  if (!member || !['owner', 'admin'].includes(member.role)) {
+    const err = new Error('Only owners and admins can do this.'); err.status = 403; throw err;
+  }
+  const { rows: [post] } = await query(
+    `SELECT post_id, hive_id, post_type, series_id, series_index, cancelled_at
+       FROM hive_posts WHERE post_id = $1`,
+    [postId],
+  );
+  if (!post || post.hive_id !== hiveId || post.post_type !== 'event') {
+    const err = new Error('Plan not found.'); err.status = 404; throw err;
+  }
+  return post;
+}
+
+// ── editPlan — PATCH /api/hives/:id/plans/:postId (Prompt 61 Part 2 + 4) ─────
+// scope: 'this' (default) or 'future' — Part 4's "this plan only" vs "this
+// and all future plans". A 'future' edit never touches start/end time: those
+// are inherently per-occurrence, and this endpoint has no way to know how a
+// single new time should map across several different dates.
+export const editPlan = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const post = await loadPlanForManage(hiveId, req.params.postId, req.userId);
+    if (post.cancelled_at) return res.status(400).json({ error: 'This plan was cancelled.' });
+
+    const scope = req.body?.scope === 'future' ? 'future' : 'this';
+    if (scope === 'future' && !post.series_id) {
+      return res.status(400).json({ error: 'This plan is not part of a series.' });
+    }
+
+    const fields = validatePlanInput(req.body);
+    if (fields.error) return res.status(400).json({ error: fields.error });
+
+    if (scope === 'this') {
+      await query(
+        `UPDATE hive_posts SET
+           headline = $1, body = $2, media_url = $3, event_at = $4, event_end_at = $5,
+           event_location = $6, plan_type = $7, visibility = $8, updated_at = NOW()
+         WHERE post_id = $9`,
+        [fields.title, fields.desc, fields.media, fields.start.toISOString(),
+         fields.end ? fields.end.toISOString() : null, fields.loc, fields.type, fields.vis,
+         post.post_id],
+      );
+    } else {
+      // Non-time fields only, applied to this occurrence and every later one
+      // in the same series.
+      await query(
+        `UPDATE hive_posts SET
+           headline = $1, body = $2, media_url = $3,
+           event_location = $4, plan_type = $5, visibility = $6, updated_at = NOW()
+         WHERE series_id = $7 AND series_index >= $8 AND cancelled_at IS NULL`,
+        [fields.title, fields.desc, fields.media, fields.loc, fields.type, fields.vis,
+         post.series_id, post.series_index],
+      );
+    }
+
+    const { rows } = await query(`${PLAN_SELECT} WHERE p.post_id = $2`, [req.userId, post.post_id]);
+    res.json({ plan: shapePlan(rows[0]) });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('[events/editPlan]', err);
+    res.status(500).json({ error: 'Failed to update this plan.' });
+  }
+};
+
+// ── rsvpSeries — POST /api/hives/:id/plans/:postId/rsvp-series (Part 4) ──────
+// "Going to all" shortcut — Going on this occurrence and every future one in
+// the same series. RSVPs stay per-occurrence otherwise; this is purely a bulk
+// convenience, not a new RSVP concept.
+export const rsvpSeries = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const member = await getMembership(hiveId, req.userId);
+    if (!member) return res.status(403).json({ error: 'You must be a member of this Hive.' });
+
+    const { rows: [post] } = await query(
+      `SELECT post_id, hive_id, series_id, series_index FROM hive_posts WHERE post_id = $1`,
+      [req.params.postId],
+    );
+    if (!post || post.hive_id !== hiveId) return res.status(404).json({ error: 'Plan not found.' });
+    if (!post.series_id) return res.status(400).json({ error: 'This plan is not part of a series.' });
+
+    const { rows: targets } = await query(
+      `SELECT post_id FROM hive_posts
+        WHERE series_id = $1 AND series_index >= $2 AND cancelled_at IS NULL AND ${PLAN_END} >= NOW()`,
+      [post.series_id, post.series_index],
+    );
+    for (const t of targets) {
+      await query(
+        `INSERT INTO event_rsvps (post_id, user_id, rsvp_status)
+         VALUES ($1,$2,'going')
+         ON CONFLICT (post_id, user_id) DO UPDATE SET rsvp_status = 'going', updated_at = NOW()`,
+        [t.post_id, req.userId],
+      );
+    }
+    res.json({ updated: targets.map(t => t.post_id) });
+  } catch (err) {
+    console.error('[events/rsvpSeries]', err);
+    res.status(500).json({ error: 'Failed to RSVP to the series.' });
+  }
+};
+
+// ── cancelPlan — POST /api/hives/:id/plans/:postId/cancel (Prompt 61 Part 2+4) ─
+export const cancelPlan = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const post = await loadPlanForManage(hiveId, req.params.postId, req.userId);
+    if (post.cancelled_at) return res.status(400).json({ error: 'This plan is already cancelled.' });
+
+    const scope = req.body?.scope === 'future' ? 'future' : 'this';
+    if (scope === 'future' && !post.series_id) {
+      return res.status(400).json({ error: 'This plan is not part of a series.' });
+    }
+
+    const targetIds = scope === 'this'
+      ? [post.post_id]
+      : (await query(
+          `SELECT post_id FROM hive_posts
+            WHERE series_id = $1 AND series_index >= $2 AND cancelled_at IS NULL`,
+          [post.series_id, post.series_index],
+        )).rows.map(r => r.post_id);
+
+    await query(
+      `UPDATE hive_posts SET cancelled_at = NOW() WHERE post_id = ANY($1) AND cancelled_at IS NULL`,
+      [targetIds],
+    );
+
+    res.json({ cancelled: targetIds });
+
+    // Notify everyone who RSVP'd Going or Maybe to each cancelled occurrence —
+    // exactly once per person per plan.
+    try {
+      const { rows: hiveRow } = await query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]);
+      for (const postId of targetIds) {
+        const { rows: plan } = await query(`SELECT headline FROM hive_posts WHERE post_id = $1`, [postId]);
+        const { rows: rsvps } = await query(
+          `SELECT user_id FROM event_rsvps WHERE post_id = $1 AND rsvp_status IN ('going','maybe')`,
+          [postId],
+        );
+        for (const r of rsvps) {
+          await createNotification({
+            userId: r.user_id, type: 'plan_cancelled', category: 'plans',
+            title: `Cancelled in ${hiveRow[0]?.hive_name ?? 'your Hive'}: ${plan[0]?.headline ?? 'a plan'}`,
+            body: null, hiveId, actorUserId: req.userId, link: `/hive/${hiveId}/events/${postId}`,
+          });
+        }
+      }
+    } catch (notifErr) {
+      console.error('[events/cancelPlan] notify failed (non-fatal):', notifErr);
+    }
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('[events/cancelPlan]', err);
+    res.status(500).json({ error: 'Failed to cancel this plan.' });
   }
 };

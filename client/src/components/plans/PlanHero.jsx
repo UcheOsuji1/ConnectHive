@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import Avatar from '../Avatar.jsx';
 import RsvpMenu from './RsvpMenu.jsx';
 import { typeLabel, relativeLabel, formatDate, formatTimeRange } from '../../lib/plans.js';
@@ -37,7 +38,9 @@ export default function PlanHero({ plan, onRsvp, onOpenAttendees }) {
       </div>
 
       <div className="plans-hero-body">
-        <h2 className="plans-hero-title">{plan.headline}</h2>
+        <h2 className="plans-hero-title">
+          <Link to={`/hive/${plan.hive_id}/events/${plan.post_id}`} className="plans-card-title-link">{plan.headline}</Link>
+        </h2>
 
         <div className="plans-hero-meta">
           <span>🗓 {formatDate(plan.event_at)}</span>

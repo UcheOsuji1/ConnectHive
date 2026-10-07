@@ -19,7 +19,7 @@ export function PlanMessageCard({ plan, removed, hiveId, onRsvp }) {
       <div className="hc-plancard-head">
         <span aria-hidden="true">📅</span>
         <span className="hc-plancard-label">Upcoming Plan</span>
-        <Link to={`/hive/${hiveId}/events`} className="hc-plancard-link">View Plan →</Link>
+        <Link to={`/hive/${hiveId}/events/${plan.post_id}`} className="hc-plancard-link">View Plan →</Link>
       </div>
 
       <div className="hc-plancard-body">
@@ -37,7 +37,9 @@ export function PlanMessageCard({ plan, removed, hiveId, onRsvp }) {
         </div>
 
         <div className="hc-plancard-main">
-          <h4 className="hc-plancard-title">{plan.headline}</h4>
+          <h4 className="hc-plancard-title">
+            <Link to={`/hive/${hiveId}/events/${plan.post_id}`} className="plans-card-title-link">{plan.headline}</Link>
+          </h4>
           {plan.event_location && (
             <div className="hc-plancard-row">📍 {plan.event_location}</div>
           )}
