@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import Avatar from '../../components/Avatar.jsx';
 import EmojiPicker from '../../components/EmojiPicker.jsx';
 import CreatePlanModal from '../../components/plans/CreatePlanModal.jsx';
+import CreateTimePollModal from '../../components/tools/CreateTimePollModal.jsx';
+import '../../styles/hive-find-time.css';
 import { PlanMessageCard, PollMessageCard, CreatePollModal, SuggestionMessageCard } from '../../components/chat/ChatCards.jsx';
 import { api } from '../../lib/api.js';
 import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
@@ -856,7 +858,8 @@ function PinsModal({ hiveId, channelId, channelName, onClose }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function HiveChatPage() {
-  const { hive, hiveId, isOwner, canPost, setChatUnread, catConfig } = useOutletContext();
+  const { hive, hiveId, isOwner, canPost, setChatUnread, catConfig, hiveTools } = useOutletContext();
+  const findTimeOn = (hiveTools ?? []).some(t => t.key === 'find_time' && t.enabled);
   const { channelId: routeChannelId } = useParams();
   const { user }   = useAuth();
   const navigate   = useNavigate();
@@ -922,6 +925,7 @@ export default function HiveChatPage() {
   const [pinsOpen,    setPinsOpen]    = useState(false);
   const [plusOpen,    setPlusOpen]    = useState(false);
   const [planOpen,    setPlanOpen]    = useState(false);
+  const [findTimeOpen, setFindTimeOpen] = useState(false);
   const [pollOpen,    setPollOpen]    = useState(false);
   // @mention autocomplete
   const [mentionQuery, setMentionQuery] = useState(null); // null = closed
@@ -1840,6 +1844,26 @@ export default function HiveChatPage() {
         />
       )}
 
+      {findTimeOpen && (
+        <CreateTimePollModal
+          hiveId={hiveId}
+          onClose={() => setFindTimeOpen(false)}
+          onCreated={async (poll) => {
+            setFindTimeOpen(false);
+            // No dedicated chat-card type for a time poll yet (Prompt 61
+            // scope note) — a plain message with the link is what "posts a
+            // card into the room" means today; it arrives over the socket
+            // like any other message.
+            try {
+              await api.post(`/api/hives/${hiveId}/messages`, {
+                channel_id: activeChannelId,
+                text: `🕐 Find a time: "${poll.title}" — /hive/${hiveId}/tools/find_time/${poll.poll_id}`,
+              });
+            } catch { /* non-fatal — the poll itself was still created */ }
+          }}
+        />
+      )}
+
       {pollOpen && (
         <CreatePollModal
           hiveId={hiveId}
@@ -2088,6 +2112,12 @@ export default function HiveChatPage() {
                             onClick={() => { setPlusOpen(false); setPollOpen(true); }}>
                       📊 Poll
                     </button>
+                    {findTimeOn && (
+                      <button type="button" role="menuitem" className="hc-plus-item"
+                              onClick={() => { setPlusOpen(false); setFindTimeOpen(true); }}>
+                        🕐 Find a time
+                      </button>
+                    )}
                   </div>
                 </>
               )}

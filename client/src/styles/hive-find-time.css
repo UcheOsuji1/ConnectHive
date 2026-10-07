@@ -1,0 +1,136 @@
+/* Find a time (Prompt 61 Part 3). Prefix: ft- */
+
+.ft-page { display: flex; flex-direction: column; gap: 18px; }
+.ft-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.ft-back { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-gold); text-decoration: none; display: inline-block; margin-bottom: 4px; }
+.ft-back:hover { text-decoration: underline; }
+.ft-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.4rem; font-weight: 700; color: var(--hdl-ink); margin: 0;
+}
+.ft-sub { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); margin: 4px 0 0; }
+.ft-empty { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--hdl-muted); }
+.ft-skel { height: 160px; border-radius: 12px; background: var(--hdl-ivory); }
+.ft-form-error { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: #c0392b; margin: 0; }
+.ft-result-msg { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: #1a7a44; margin: 0; }
+
+.ft-btn-gold {
+  background: var(--hdl-gold); color: #1e1b18; border: none; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.82rem; padding: 10px 18px;
+  cursor: pointer; min-height: 44px;
+}
+.ft-btn-gold:disabled { opacity: 0.6; cursor: default; }
+.ft-btn-ghost {
+  background: none; border: 1px solid var(--hdl-border2); border-radius: 100px; color: var(--hdl-ink);
+  font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.8rem; padding: 9px 16px;
+  cursor: pointer; min-height: 44px;
+}
+.ft-btn-danger { color: #c0392b; border-color: rgba(192,57,43,.4); }
+
+.ft-status {
+  font-family: 'DM Sans', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 4px 10px; border-radius: 100px; white-space: nowrap; height: fit-content;
+}
+.ft-status--open { background: rgba(34,197,94,.15); color: #1a7a44; }
+.ft-status--closed { background: rgba(140,127,108,.15); color: var(--hdl-muted); }
+.ft-status--scheduled { background: rgba(196,154,40,.18); color: var(--hdl-gold); }
+
+.ft-scheduled-banner, .ft-pending-banner {
+  font-family: 'DM Sans', sans-serif; font-size: 0.85rem; padding: 10px 14px; border-radius: 10px;
+}
+.ft-scheduled-banner { background: rgba(196,154,40,.12); color: var(--hdl-gold); text-decoration: none; display: block; font-weight: 600; }
+.ft-pending-banner { background: var(--hdl-ivory); color: var(--hdl-muted); margin: 0; }
+
+/* ── List ── */
+.ft-list { display: flex; flex-direction: column; gap: 8px; }
+.ft-list-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: var(--hdl-surface); border: 1px solid var(--hdl-border2); border-radius: 10px;
+  padding: 14px 16px; text-decoration: none; min-height: 44px;
+}
+.ft-list-item-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ft-list-item-title { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.9rem; color: var(--hdl-ink); }
+.ft-list-item-meta { font-family: 'DM Sans', sans-serif; font-size: 0.76rem; color: var(--hdl-muted); }
+
+/* ── Answer chips (shared desktop/mobile) ── */
+.ft-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.ft-chip {
+  font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 600; padding: 6px 9px;
+  border-radius: 8px; border: 1px solid var(--hdl-border2); background: #fff; color: var(--hdl-muted);
+  cursor: pointer; min-height: 32px;
+}
+.ft-chip:disabled { opacity: 0.6; cursor: default; }
+.ft-chip--on.ft-chip--works { background: #1a7a44; border-color: #1a7a44; color: #fff; }
+.ft-chip--on.ft-chip--if_needed { background: var(--hdl-gold); border-color: var(--hdl-gold); color: #1e1b18; }
+.ft-chip--on.ft-chip--cant { background: #c0392b; border-color: #c0392b; color: #fff; }
+
+.ft-static-chip { font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 600; padding: 4px 8px; border-radius: 8px; }
+.ft-static-chip--works { background: rgba(26,122,68,.14); color: #1a7a44; }
+.ft-static-chip--if_needed { background: rgba(196,154,40,.16); color: var(--hdl-gold); }
+.ft-static-chip--cant { background: rgba(192,57,43,.12); color: #c0392b; }
+.ft-static-chip--none { color: var(--hdl-muted); }
+
+/* ── Desktop grid ── */
+.ft-grid-wrap { overflow-x: auto; display: none; }
+.ft-grid { border-collapse: collapse; width: 100%; }
+.ft-grid th, .ft-grid td { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--hdl-border2); }
+.ft-grid-corner { font-family: 'DM Sans', sans-serif; font-size: 0.75rem; color: var(--hdl-muted); }
+.ft-grid-slothead {
+  font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 700; color: var(--hdl-ink);
+  white-space: nowrap;
+}
+.ft-grid-slothead--best { background: rgba(196,154,40,.10); border-bottom: 2px solid var(--hdl-gold); }
+.ft-grid-rowlabel { font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.82rem; color: var(--hdl-ink); white-space: nowrap; }
+.ft-grid-cell--readonly { }
+.ft-grid-totals td { border-bottom: none; border-top: 2px solid var(--hdl-border2); }
+.ft-grid-totalcell--best { background: rgba(196,154,40,.10); }
+.ft-totals-line { font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: var(--hdl-muted); white-space: nowrap; }
+.ft-best-label { font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 700; color: var(--hdl-gold); margin-top: 2px; }
+.ft-schedule-btn {
+  margin-top: 6px; font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 700;
+  background: var(--hdl-gold); color: #1e1b18; border: none; border-radius: 100px; padding: 6px 10px;
+  cursor: pointer; min-height: 30px;
+}
+.ft-schedule-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* ── Mobile cards (shown under 760px, grid shown above it) ── */
+.ft-cards { display: flex; flex-direction: column; gap: 10px; }
+.ft-card {
+  background: var(--hdl-surface); border: 1px solid var(--hdl-border2); border-radius: 10px;
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+}
+.ft-card--best { border-color: var(--hdl-gold); }
+.ft-card-when { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.86rem; color: var(--hdl-ink); }
+
+.ft-manage-row { display: flex; gap: 10px; }
+
+@media (min-width: 760px) {
+  .ft-grid-wrap { display: block; }
+  .ft-cards { display: none; }
+}
+
+/* ── Create poll modal ── */
+.ft-scrim { position: fixed; inset: 0; background: rgba(23,18,10,.55); z-index: 90; }
+.ft-modal {
+  position: fixed; top: 50%; left: 50%; translate: -50% -50%; z-index: 91;
+  background: #fff; border-radius: 14px; width: min(520px, calc(100vw - 32px));
+  max-height: 85vh; overflow-y: auto; padding: 0;
+}
+.ft-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--hdl-border2); }
+.ft-modal-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.2rem; margin: 0; color: var(--hdl-ink); }
+.ft-modal-x { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--hdl-muted); min-height: 44px; min-width: 44px; }
+.ft-form { display: flex; flex-direction: column; gap: 14px; padding: 18px 20px; }
+.ft-field { display: flex; flex-direction: column; gap: 5px; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-ink); font-weight: 600; }
+.ft-field input, .ft-field select {
+  border: 1px solid var(--hdl-border2); border-radius: 8px; padding: 9px 10px; font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem; min-height: 44px;
+}
+.ft-field-row { display: flex; gap: 12px; }
+.ft-field-row .ft-field { flex: 1; }
+.ft-slot-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.ft-slot-row input { flex: 1; }
+.ft-slot-remove {
+  background: none; border: 1px solid var(--hdl-border2); border-radius: 50%; width: 32px; height: 32px;
+  cursor: pointer; color: var(--hdl-muted); font-size: 1rem; flex-shrink: 0;
+}
+.ft-modal-foot { display: flex; justify-content: flex-end; gap: 10px; }

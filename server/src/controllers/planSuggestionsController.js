@@ -4,7 +4,10 @@ import { getMembership, requireMembership, requireCanPost } from '../lib/hiveMem
 import { getDefaultChannelId } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
-import { validatePlanInput, insertPlan, PLAN_SELECT, shapePlan } from './eventsController.js';
+import {
+  validatePlanInput, insertPlan, PLAN_SELECT, shapePlan,
+  validateRepeat, insertPlanSeries,
+} from './eventsController.js';
 import { getEnrichedMessage, depersonalise } from './messagesController.js';
 
 const RULE_FIELDS = ['plan_proposers', 'plan_approval', 'vote_min_yes', 'vote_window_hours', 'suggestions_per_day'];
@@ -180,7 +183,51 @@ async function finishResolution(s, outcome, overrideUserId, editedFields = null)
         end: locked.event_end_at ? new Date(locked.event_end_at) : null, loc: locked.event_location,
         desc: locked.description, media: locked.media_url, vis: locked.visibility,
       };
-      planPostId = await insertPlan(client, locked.hive_id, locked.suggested_by, fields);
+      // Series suggestion (Prompt 61 Part 4) — approval creates every
+      // occurrence at once. An edit at approval time (editedFields) opts out
+      // of the series and creates a single plan instead: fine-tuning one
+      // occurrence's fields on approval and also recurring it isn't a
+      // combination this endpoint supports.
+      if (locked.series_rule && !editedFields) {
+        const { postIds } = await insertPlanSeries(
+          client, locked.hive_id, locked.suggested_by, fields, locked.series_rule, locked.series_count,
+        );
+        planPostId = postIds[0];
+      } else {
+        planPostId = await insertPlan(client, locked.hive_id, locked.suggested_by, fields);
+      }
+
+      // Find a time (Prompt 61 Part 3): this suggestion was prefilled from a
+      // poll slot — the people who said they could make it become the plan's
+      // RSVPs, same as a direct schedule would have done.
+      if (locked.source_poll_id && locked.source_slot_id) {
+        const { rows: answerRows } = await client.query(
+          `SELECT user_id, answer FROM hive_time_poll_answers
+            WHERE slot_id = $1 AND answer IN ('works','if_needed')`,
+          [locked.source_slot_id],
+        );
+        for (const a of answerRows) {
+          const status = a.answer === 'works' ? 'going' : 'maybe';
+          await client.query(
+            `INSERT INTO event_rsvps (post_id, user_id, rsvp_status)
+             VALUES ($1,$2,$3)
+             ON CONFLICT (post_id, user_id) DO UPDATE SET rsvp_status = EXCLUDED.rsvp_status, updated_at = NOW()`,
+            [planPostId, a.user_id, status],
+          );
+        }
+        await client.query(
+          `UPDATE hive_time_polls SET status = 'scheduled', plan_post_id = $1, pending_suggestion_id = NULL
+            WHERE poll_id = $2`,
+          [planPostId, locked.source_poll_id],
+        );
+      }
+    } else if (locked.source_poll_id) {
+      // Declined, expired or withdrawn — reopen the poll so the Hive can try
+      // scheduling again instead of it being stuck closed forever.
+      await client.query(
+        `UPDATE hive_time_polls SET status = 'open', pending_suggestion_id = NULL WHERE poll_id = $1`,
+        [locked.source_poll_id],
+      );
     }
 
     await client.query(
@@ -253,6 +300,12 @@ export const createSuggestion = async (req, res) => {
     const fields = validatePlanInput(req.body);
     if (fields.error) return res.status(400).json({ error: fields.error });
 
+    // A member suggesting a recurring plan suggests the whole series as one
+    // suggestion (Prompt 61 Part 4) — approval creates every occurrence.
+    const repeatResult = validateRepeat(req.body?.repeat);
+    if (repeatResult.error) return res.status(400).json({ error: repeatResult.error });
+    const repeat = repeatResult.repeat;
+
     let closesAt;
     if (h.plan_approval === 'vote') {
       const twoHoursFromNow = Date.now() + 2 * 3600e3;
@@ -280,12 +333,14 @@ export const createSuggestion = async (req, res) => {
       const { rows: [s] } = await client.query(
         `INSERT INTO hive_plan_suggestions
            (hive_id, channel_id, suggested_by, title, plan_type, event_at, event_end_at,
-            event_location, description, media_url, visibility, status, closes_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12)
+            event_location, description, media_url, visibility, status, closes_at,
+            series_rule, series_count)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12,$13,$14)
          RETURNING suggestion_id`,
         [hiveId, channelId, req.userId, fields.title, fields.type,
          fields.start.toISOString(), fields.end ? fields.end.toISOString() : null,
-         fields.loc, fields.desc, fields.media, fields.vis, closesAt.toISOString()],
+         fields.loc, fields.desc, fields.media, fields.vis, closesAt.toISOString(),
+         repeat?.rule ?? null, repeat?.count ?? null],
       );
       suggestionId = s.suggestion_id;
       const { rows: [msg] } = await client.query(
