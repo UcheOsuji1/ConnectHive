@@ -81,6 +81,16 @@ import {
 } from '../controllers/mediaController.js';
 import { getSequence, saveScreen, saveIntro } from '../controllers/onboardingSequenceController.js';
 import { getHiveNotificationPrefs, updateHiveNotificationPrefs } from '../controllers/notificationsController.js';
+import { getHiveTools, updateHiveTool } from '../controllers/toolsController.js';
+import {
+  listTimePolls, createTimePoll, getTimePoll, answerTimePollSlot,
+  closeTimePoll, deleteTimePoll, scheduleTimePoll,
+} from '../controllers/findTimeController.js';
+import {
+  getPlanDetail, editPlan, cancelPlan, rsvpSeries,
+} from '../controllers/eventsController.js';
+import { selfCheckIn, hostCheckIn, getPlanCheckins } from '../controllers/checkinsController.js';
+import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
 
@@ -155,6 +165,12 @@ router.get('/:id/home',   requireAuth, getHiveHome);
 router.get('/:id/plans',  requireAuth, getHivePlans);
 router.post('/:id/plans', requireAuth, createPlan);
 
+// ── Plan detail page (Prompt 61 Part 2) ─────────────────────────────────────
+router.get('/:id/plans/:postId',             requireAuth, getPlanDetail);
+router.patch('/:id/plans/:postId',           requireAuth, editPlan);
+router.post('/:id/plans/:postId/cancel',     requireAuth, cancelPlan);
+router.post('/:id/plans/:postId/rsvp-series', requireAuth, rsvpSeries);
+
 // ── Plan rules + suggestions (Prompt 60) ────────────────────────────────────
 router.get('/:id/plan-rules',  requireAuth, getPlanRules);
 router.put('/:id/plan-rules',  requireAuth, updatePlanRules);
@@ -209,5 +225,23 @@ router.post('/:id/onboarding/intro',             requireAuth, saveIntro);
 // ── Per-Hive notification preferences (Prompt 58) ────────────────────────────
 router.get('/:id/notification-prefs', requireAuth, getHiveNotificationPrefs);
 router.put('/:id/notification-prefs', requireAuth, updateHiveNotificationPrefs);
+
+// ── Tools framework (Prompt 61 Part 1) ───────────────────────────────────────
+router.get('/:id/tools',       requireAuth, getHiveTools);
+router.put('/:id/tools/:key',  requireAuth, updateHiveTool);
+
+// ── Find a time (Prompt 61 Part 3) — every route gated by the tool itself ───
+router.get('/:id/tools/find_time/polls',                requireAuth, requireTool('find_time'), listTimePolls);
+router.post('/:id/tools/find_time/polls',                requireAuth, requireTool('find_time'), createTimePoll);
+router.get('/:id/tools/find_time/polls/:pollId',          requireAuth, requireTool('find_time'), getTimePoll);
+router.post('/:id/tools/find_time/polls/:pollId/answer',  requireAuth, requireTool('find_time'), answerTimePollSlot);
+router.post('/:id/tools/find_time/polls/:pollId/close',   requireAuth, requireTool('find_time'), closeTimePoll);
+router.delete('/:id/tools/find_time/polls/:pollId',       requireAuth, requireTool('find_time'), deleteTimePoll);
+router.post('/:id/tools/find_time/polls/:pollId/schedule',requireAuth, requireTool('find_time'), scheduleTimePoll);
+
+// ── Check-in (Prompt 61 Part 5) ──────────────────────────────────────────────
+router.post('/:id/plans/:postId/checkin',            requireAuth, requireTool('checkins'), selfCheckIn);
+router.post('/:id/plans/:postId/checkin/:userId',    requireAuth, requireTool('checkins'), hostCheckIn);
+router.get('/:id/plans/:postId/checkins',            requireAuth, requireTool('checkins'), getPlanCheckins);
 
 export default router;

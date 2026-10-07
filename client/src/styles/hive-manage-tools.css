@@ -1,0 +1,43 @@
+/* Manage Hive -> Tools (Prompt 61 Part 1). Prefix: mt- */
+
+.mt-page { display: flex; flex-direction: column; gap: 20px; }
+.mt-head { display: flex; flex-direction: column; gap: 4px; }
+.mt-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.4rem; font-weight: 700; color: var(--hdl-ink); margin: 0;
+}
+.mt-sub { font-family: 'DM Sans', sans-serif; font-size: 0.84rem; color: var(--hdl-muted); margin: 0; max-width: 560px; }
+.mt-back { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--hdl-gold); text-decoration: none; }
+.mt-back:hover { text-decoration: underline; }
+.mt-error { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: #c0392b; margin: 0; }
+.mt-skel { height: 200px; border-radius: 12px; background: var(--hdl-ivory); }
+
+.mt-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px;
+}
+.mt-card {
+  background: var(--hdl-surface); border: 1px solid var(--hdl-border2); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.mt-card-top { display: flex; align-items: flex-start; gap: 12px; }
+.mt-card-icon { font-size: 1.4rem; line-height: 1; flex-shrink: 0; }
+.mt-card-text { flex: 1; min-width: 0; }
+.mt-card-name { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.92rem; color: var(--hdl-ink); }
+.mt-card-desc { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-muted); line-height: 1.4; margin-top: 2px; }
+.mt-recommended {
+  font-family: 'DM Sans', sans-serif; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--hdl-gold); align-self: flex-start;
+}
+
+.mt-toggle {
+  flex-shrink: 0; width: 40px; height: 22px; border-radius: 100px; border: 1px solid var(--hdl-border2);
+  background: var(--hdl-ivory); position: relative; cursor: pointer; padding: 0; transition: background .15s, border-color .15s;
+  min-height: 22px;
+}
+.mt-toggle--on { background: var(--hdl-gold); border-color: var(--hdl-gold); }
+.mt-toggle:disabled { opacity: 0.6; cursor: default; }
+.mt-toggle-knob {
+  position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: translate .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.2);
+}
+.mt-toggle--on .mt-toggle-knob { translate: 18px 0; }

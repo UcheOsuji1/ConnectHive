@@ -25,11 +25,17 @@ const REQUIRED = {
           'tagline', 'purpose', 'founder_note',
           'plan_proposers', 'plan_approval', 'vote_min_yes', 'vote_window_hours', 'suggestions_per_day'],
   hive_members: ['welcome_seen_at', 'onboarding_status', 'onboarding_screen'],
-  hive_posts: ['visibility', 'event_end_at', 'plan_type'],
+  hive_posts: ['visibility', 'event_end_at', 'plan_type', 'cancelled_at', 'series_id', 'series_index'],
   event_rsvps: ['updated_at'],
   messages: ['channel_id', 'edited_at', 'deleted_at', 'pinned_at', 'pinned_by',
              'plan_post_id', 'poll_id', 'suggestion_id'],
   post_comments: ['parent_comment_id'],
+  // hive_plan_suggestions and hive_time_polls both predate this specific
+  // column (the suggestions table from Prompt 60, the polls table created
+  // earlier in this same migration) — new columns on a table that already
+  // has live rows are the drift-risk case, not the "table absent" case.
+  hive_plan_suggestions: ['source_poll_id', 'source_slot_id', 'series_rule', 'series_count'],
+  hive_time_polls: ['pending_suggestion_id'],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -60,6 +66,12 @@ const IMPACT = {
   'hives.vote_min_yes':         'plan rules — vote threshold',
   'hives.vote_window_hours':    'plan rules — vote deadline',
   'hives.suggestions_per_day':  'plan rules — suggestion spam guard',
+  'hive_posts.cancelled_at':    'the plan detail page — cancel/edit and RSVP blocking fail',
+  'hive_posts.series_id':       'recurring plans — series queries fail',
+  'hive_posts.series_index':    'recurring plans — series queries fail',
+  'hive_plan_suggestions.source_poll_id': 'Find a time — scheduling via suggestion fails',
+  'hive_plan_suggestions.source_slot_id': 'Find a time — scheduling via suggestion fails',
+  'hive_time_polls.pending_suggestion_id': 'Find a time — scheduling via suggestion fails',
 };
 
 let state = { checked: false, ok: true, missing: [] };

@@ -34,7 +34,11 @@ import HiveManageOverviewPage from './pages/hive/HiveManageOverviewPage';
 import HiveManageMembersPage from './pages/hive/HiveManageMembersPage';
 import HiveManageRoomsPage from './pages/hive/HiveManageRoomsPage';
 import HiveManageAppearancePage from './pages/hive/HiveManageAppearancePage';
+import HiveManageToolsPage from './pages/hive/HiveManageToolsPage';
 import HiveAnalyticsPage from './pages/hive/HiveAnalyticsPage';
+import HiveToolsHubPage from './pages/hive/HiveToolsHubPage';
+import HiveFindTimePage from './pages/hive/HiveFindTimePage';
+import PlanDetailPage from './pages/hive/PlanDetailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
@@ -100,9 +104,14 @@ export default function App() {
           <Route path="chat" element={<HiveChatPage />} />
           <Route path="chat/:channelId" element={<HiveChatPage />} />
           <Route path="events" element={<HivePlansPage />} />
+          <Route path="events/:postId" element={<PlanDetailPage />} />
+          <Route path="tools" element={<HiveToolsHubPage />} />
+          <Route path="tools/find_time" element={<HiveFindTimePage />} />
+          <Route path="tools/find_time/:pollId" element={<HiveFindTimePage />} />
           <Route path="overview" element={<HiveManageOverviewPage />} />
           <Route path="members-roles" element={<HiveManageMembersPage />} />
           <Route path="rooms" element={<HiveManageRoomsPage />} />
+          <Route path="manage-tools" element={<HiveManageToolsPage />} />
           <Route path="appearance" element={<HiveManageAppearancePage />} />
           <Route path="analytics" element={<HiveAnalyticsPage />} />
           <Route path="roles" element={<HiveSoonPage feature="Roles & Permissions" />} />

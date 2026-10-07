@@ -824,3 +824,97 @@ CREATE TABLE IF NOT EXISTS hive_plan_suggestion_votes (
 -- The suggestion's chat card — same pattern as messages.plan_post_id / poll_id.
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS suggestion_id UUID
   REFERENCES hive_plan_suggestions(suggestion_id) ON DELETE SET NULL;
+
+-- ─── Hive Tools framework (Prompt 61) ──────────────────────────────────────────
+-- No row for (hive, tool) = the tool follows its category's defaultOn list in
+-- toolCatalog.js. A row only exists once an owner/admin has explicitly flipped
+-- a tool away from that default. New tables only — no backfill is possible or
+-- needed, every row here is new by definition.
+CREATE TABLE IF NOT EXISTS hive_tools (
+  hive_id     UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  tool_key    TEXT        NOT NULL,
+  enabled     BOOLEAN     NOT NULL,
+  settings    JSONB       NOT NULL DEFAULT '{}',
+  updated_by  UUID        REFERENCES users(user_id),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (hive_id, tool_key)
+);
+
+-- ─── Plan detail page (Prompt 61 Part 2) ───────────────────────────────────────
+ALTER TABLE hive_posts ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ NULL;
+
+-- ─── Find a time (Prompt 61 Part 3, tool_key = 'find_time') ────────────────────
+CREATE TABLE IF NOT EXISTS hive_time_polls (
+  poll_id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id         UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  created_by      UUID        NOT NULL REFERENCES users(user_id),
+  title           TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  duration_minutes INT        NOT NULL CHECK (duration_minutes BETWEEN 15 AND 1440),
+  location        TEXT        NULL CHECK (location IS NULL OR char_length(location) <= 200),
+  closes_at       TIMESTAMPTZ NULL,
+  status          TEXT        NOT NULL DEFAULT 'open'
+                    CHECK (status IN ('open','closed','scheduled')),
+  plan_post_id    UUID        NULL REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_time_polls_hive ON hive_time_polls(hive_id, status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS hive_time_poll_slots (
+  slot_id   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  poll_id   UUID        NOT NULL REFERENCES hive_time_polls(poll_id) ON DELETE CASCADE,
+  starts_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_time_poll_slots_poll ON hive_time_poll_slots(poll_id);
+
+CREATE TABLE IF NOT EXISTS hive_time_poll_answers (
+  slot_id  UUID NOT NULL REFERENCES hive_time_poll_slots(slot_id) ON DELETE CASCADE,
+  user_id  UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  answer   TEXT NOT NULL CHECK (answer IN ('works','if_needed','cant')),
+  PRIMARY KEY (slot_id, user_id)
+);
+
+-- Scheduling a poll in a Hive where the scheduler can only suggest (not
+-- create directly) submits a suggestion instead of a plan (Prompt 60 rules
+-- apply). These two columns thread the poll back through approval: on
+-- approve, the chosen slot's Works/If-needed answers become the new plan's
+-- RSVPs; on decline/expire/withdraw, the poll reopens. While a suggestion is
+-- pending the poll sits in 'closed' (no new enum value needed).
+ALTER TABLE hive_time_polls ADD COLUMN IF NOT EXISTS pending_suggestion_id UUID NULL
+  REFERENCES hive_plan_suggestions(suggestion_id) ON DELETE SET NULL;
+ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS source_poll_id UUID NULL
+  REFERENCES hive_time_polls(poll_id) ON DELETE SET NULL;
+ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS source_slot_id UUID NULL
+  REFERENCES hive_time_poll_slots(slot_id) ON DELETE SET NULL;
+
+-- A member suggesting a recurring plan suggests the whole series as one
+-- suggestion; approval creates every occurrence (Prompt 61 Part 4).
+ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS series_rule  TEXT NULL
+  CHECK (series_rule IS NULL OR series_rule IN ('weekly','biweekly','monthly_weekday'));
+ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS series_count INT  NULL
+  CHECK (series_count IS NULL OR series_count BETWEEN 2 AND 26);
+
+-- ─── Recurring plans (Prompt 61 Part 4) ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_plan_series (
+  series_id  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id    UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  created_by UUID        NOT NULL REFERENCES users(user_id),
+  rule       TEXT        NOT NULL CHECK (rule IN ('weekly','biweekly','monthly_weekday')),
+  count      INT         NOT NULL CHECK (count BETWEEN 2 AND 26),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE hive_posts ADD COLUMN IF NOT EXISTS series_id    UUID NULL
+  REFERENCES hive_plan_series(series_id) ON DELETE SET NULL;
+ALTER TABLE hive_posts ADD COLUMN IF NOT EXISTS series_index INT  NULL;
+CREATE INDEX IF NOT EXISTS idx_hive_posts_series ON hive_posts(series_id, series_index)
+  WHERE series_id IS NOT NULL;
+
+-- ─── Check-in (Prompt 61 Part 5, tool_key = 'checkins') ────────────────────────
+CREATE TABLE IF NOT EXISTS plan_checkins (
+  post_id        UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  user_id        UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  method         TEXT        NOT NULL CHECK (method IN ('self','host')),
+  checked_in_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  checked_in_by  UUID        NOT NULL REFERENCES users(user_id),
+  PRIMARY KEY (post_id, user_id)
+);

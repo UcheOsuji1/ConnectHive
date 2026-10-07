@@ -108,6 +108,7 @@ const I = {
   pin:      <><path d="M12 21s7-5.7 7-11a7 7 0 1 0-14 0c0 5.3 7 11 7 11z" /><circle cx="12" cy="10" r="2.6" /></>,
   globe:    <><circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z" /></>,
   pencil:   <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></>,
+  tools:    <><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.1-3.1a4 4 0 0 1-4.9 4.9L7.9 19.1a2 2 0 1 1-2.8-2.8L13 8.3a4 4 0 0 1 4.9-4.9l-3.1 3" /></>,
 };
 
 function Ico({ name, size = 16, className }) {
@@ -124,7 +125,7 @@ function Ico({ name, size = 16, className }) {
 // Replaces the old wide cover banner: the Hive's identity now lives at the top
 // of the rail, so every page gets the full content width.
 function HiveSidebar({
-  hive, hiveId, isOwner, requestCount, chatUnread,
+  hive, hiveId, isOwner, requestCount, chatUnread, hiveToolsOn,
   uploading, uploadError, onEditCover, onEditLogo,
 }) {
   const { pathname } = useLocation();
@@ -186,6 +187,7 @@ function HiveSidebar({
     { label: 'Join Requests',        sub: 'requests',      badge: requestCount },
     { label: 'Members & Roles',      sub: 'members-roles' },
     { label: 'Rooms',                sub: 'rooms' },
+    { label: 'Tools',                sub: 'manage-tools' },
     { label: 'Appearance',           sub: 'appearance' },
     { label: 'Member Onboarding',    sub: 'onboarding' },
     { label: 'Analytics',            sub: 'analytics' },
@@ -274,6 +276,9 @@ function HiveSidebar({
         <NavItem label="Plans"     sub="events"  icon="plans" />
         <NavItem label="Members"   sub="members" icon="members" />
         <NavItem label="Media & Files" sub="media" icon="image" />
+        {/* Only shown once at least one hive-scope tool is actually on —
+            an empty Tools hub isn't worth a permanent nav slot. */}
+        {hiveToolsOn && <NavItem label="Tools" sub="tools" icon="tools" />}
         {/* About was gated behind !isOwner, so owners and admins could not
             reach their own Hive's About page from the nav. Now shown to all. */}
         <NavItem label="About"     sub="about"   icon="about" />
@@ -504,6 +509,7 @@ export default function HiveDashboardLayout() {
 
   const [hive,              setHive]              = useState(null);
   const [categoryConfig,    setCategoryConfig]     = useState(categoryConfigCache ?? {});
+  const [hiveTools,         setHiveTools]         = useState(null);
   const [loading,           setLoading]           = useState(true);
   const [hiveError,         setHiveError]         = useState(null);
   const [requestCount,      setRequestCount]      = useState(null);
@@ -593,6 +599,11 @@ export default function HiveDashboardLayout() {
       .finally(() => setLoading(false));
   }, [hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const loadTools = useCallback(() => {
+    api.get(`/api/hives/${hiveId}/tools`).then(d => setHiveTools(d.tools ?? [])).catch(() => setHiveTools([]));
+  }, [hiveId]);
+  useEffect(() => { loadTools(); }, [loadTools]);
+
   // Hold the Hive room for as long as the member is anywhere in this Hive.
   // Chat and Hive Home each take their own claim on top of this one; because
   // the claims are reference counted, moving between Hive pages never releases
@@ -661,6 +672,7 @@ export default function HiveDashboardLayout() {
   const canPost = isOwner || accessMode === 'full';
 
   const catConfig = categoryConfig[hive.category_name] ?? null;
+  const hiveToolsOn = (hiveTools ?? []).some(t => t.enabled && (t.scope === 'hive' || t.scope === 'both'));
 
   const outletCtx = {
     hive,
@@ -676,6 +688,8 @@ export default function HiveDashboardLayout() {
     canPost,
     catConfig,
     setChatUnread,
+    hiveTools,
+    loadTools,
     // Manage > Appearance reuses the exact same cover/logo upload flow the
     // identity rail already uses, instead of a second implementation.
     onEditCover: () => bannerInputRef.current?.click(),
@@ -731,6 +745,7 @@ export default function HiveDashboardLayout() {
             isOwner={isOwner}
             requestCount={requestCount}
             chatUnread={chatUnread}
+            hiveToolsOn={hiveToolsOn}
             uploading={uploading}
             uploadError={uploadError}
             onEditCover={() => bannerInputRef.current?.click()}
