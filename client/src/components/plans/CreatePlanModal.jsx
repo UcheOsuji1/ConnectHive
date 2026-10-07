@@ -1,6 +1,36 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { api } from '../../lib/api.js';
 import { PLAN_TYPES, TYPE_LABELS, localInputToISO } from '../../lib/plans.js';
+
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const ORDINAL = ['1st', '2nd', '3rd', '4th', '5th'];
+
+// Mirrors server/src/controllers/eventsController.js's nthWeekdayOfMonth —
+// used here only to build the form's "skips these months" preview text, not
+// to compute real dates (the server is the source of truth for that).
+function monthHasNthWeekday(year, month, weekday, n) {
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const day = 1 + ((weekday - firstWeekday + 7) % 7) + (n - 1) * 7;
+  return day <= new Date(year, month + 1, 0).getDate();
+}
+
+function monthlyPreview(startDate, count) {
+  if (!startDate || isNaN(startDate.getTime())) return null;
+  const weekday = startDate.getDay();
+  const n = Math.ceil(startDate.getDate() / 7);
+  if (n > 5) return null;
+  const skipped = [];
+  let year = startDate.getFullYear(), month = startDate.getMonth(), found = 1;
+  let guard = 0;
+  while (found < count && guard < 240) {
+    guard++;
+    month++;
+    if (month > 11) { month = 0; year++; }
+    if (monthHasNthWeekday(year, month, weekday, n)) found++;
+    else skipped.push(new Date(year, month, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }));
+  }
+  return { label: `${ORDINAL[n - 1]} ${WEEKDAY_NAMES[weekday]} of the month`, skipped };
+}
 
 // mode: 'create' (today's direct form, owner/admin), 'propose' (owner/admin
 // in vote mode — defaults to a vote, with a "Create without a vote"
@@ -27,6 +57,10 @@ export default function CreatePlanModal({
   const [visibility, setVis] = useState('hive');
   const [mediaUrl, setMediaUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
+  // Recurring plans (Part 4) — Never / Weekly / Every 2 weeks / Monthly on
+  // the same weekday, for N times.
+  const [repeatRule, setRepeatRule] = useState('never');
+  const [repeatCount, setRepeatCount] = useState(4);
   // "Propose" defaults to a vote (decision 3) — owner must actively check
   // this to skip straight to a direct plan.
   const [skipVote, setSkipVote] = useState(false);
@@ -103,6 +137,11 @@ export default function CreatePlanModal({
   // the owner checked "Create without a vote"; 'suggest' always suggests.
   const willSuggest = mode === 'suggest' || (mode === 'propose' && !skipVote);
 
+  const monthlyInfo = useMemo(
+    () => repeatRule === 'monthly_weekday' ? monthlyPreview(starts ? new Date(starts) : null, repeatCount) : null,
+    [repeatRule, starts, repeatCount],
+  );
+
   async function submit(e) {
     e.preventDefault();
     const bad = clientValidate();
@@ -117,6 +156,7 @@ export default function CreatePlanModal({
       description: desc.trim() || null,
       mediaUrl,
       visibility,
+      repeat: repeatRule === 'never' ? null : { rule: repeatRule, count: Number(repeatCount) },
     };
     try {
       if (willSuggest) {
@@ -176,6 +216,33 @@ export default function CreatePlanModal({
               <input type="datetime-local" value={ends} onChange={e => setEnds(e.target.value)} />
             </label>
           </div>
+
+          <div className="plans-field-row">
+            <label className="plans-field">
+              <span>Repeats</span>
+              <select value={repeatRule} onChange={e => setRepeatRule(e.target.value)}>
+                <option value="never">Never</option>
+                <option value="weekly">Weekly</option>
+                <option value="biweekly">Every 2 weeks</option>
+                <option value="monthly_weekday">Monthly on the same weekday</option>
+              </select>
+            </label>
+            {repeatRule !== 'never' && (
+              <label className="plans-field">
+                <span>For how many times</span>
+                <input type="number" min={2} max={26} value={repeatCount}
+                       onChange={e => setRepeatCount(e.target.value)} />
+              </label>
+            )}
+          </div>
+          {repeatRule === 'monthly_weekday' && monthlyInfo && (
+            <p className="plans-form-note">
+              Repeats the {monthlyInfo.label}.
+              {monthlyInfo.skipped.length > 0 && (
+                <> Some months have no {monthlyInfo.label.split(' ').slice(0, 2).join(' ')} — skipped: {monthlyInfo.skipped.join(', ')}.</>
+              )}
+            </p>
+          )}
 
           <label className="plans-field">
             <span>Description</span>
