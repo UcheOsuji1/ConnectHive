@@ -569,6 +569,7 @@ export default function HivePlansPage() {
 
       {drawerPlan && (
         <AttendeesDrawer plan={drawerPlan} past={tab === 'past'}
+                         checkinsOn={(ctx.hiveTools ?? []).some(t => t.key === 'checkins' && t.enabled)}
                          onClose={() => setDrawerPlan(null)} />
       )}
       {createOpen && (

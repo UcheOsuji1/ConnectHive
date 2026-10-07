@@ -48,3 +48,7 @@
   .han-dual-chart { grid-template-columns: 1fr; }
   .han-room-name { flex-basis: 80px; }
 }
+
+/* Attendance rate (Prompt 61 Part 5) */
+.han-attendance-rate { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 2.2rem; font-weight: 700; color: var(--hw-gold); line-height: 1; margin-top: 4px; }
+.han-attendance-caption { font-size: 0.76rem; color: var(--hw-text-muted); margin-top: 4px; }

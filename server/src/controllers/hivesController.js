@@ -12,6 +12,7 @@ import { createNotification } from './notificationsController.js';
 import { evictUserFromHive } from '../realtime/socket.js';
 import { getCategoryConfig } from '../lib/categoryConfig.js';
 import { PLAN_END } from './eventsController.js';
+import { getAttendanceRate } from './checkinsController.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -1474,7 +1475,7 @@ export const getHiveAnalytics = async (req, res) => {
 
     // One series of week-start buckets for the window, so a week with zero
     // activity still shows as a 0 point instead of a gap in the chart.
-    const [memberRes, messageRes, planRes, roomRes] = await Promise.all([
+    const [memberRes, messageRes, planRes, roomRes, attendanceRate] = await Promise.all([
       query(
         `WITH weeks AS (
            SELECT date_trunc('week', NOW()) - (n || ' weeks')::interval AS week_start
@@ -1542,6 +1543,8 @@ export const getHiveAnalytics = async (req, res) => {
           LIMIT 5`,
         [hiveId, days],
       ),
+      // null until 3+ past plans have check-in data (Prompt 61 Part 5).
+      getAttendanceRate(hiveId),
     ]);
 
     res.json({
@@ -1550,6 +1553,7 @@ export const getHiveAnalytics = async (req, res) => {
       messagesByWeek: messageRes.rows.map(r => ({ week: r.week_start, count: r.count })),
       plansByMonth: planRes.rows.map(r => ({ month: r.month_start, plans: r.plans, rsvps: r.rsvps })),
       activeRooms: roomRes.rows.map(r => ({ channel_id: r.channel_id, name: r.name, messageCount: r.message_count })),
+      attendanceRate, // { rate, planCount } | null
     });
   } catch (err) {
     console.error('[hives/getHiveAnalytics]', err);

@@ -127,6 +127,18 @@ export default function HiveAnalyticsPage() {
             </div>
           </div>
 
+          {/* Only shown once 3+ past plans have check-in data — never a 0%
+              rate presented as if it were measured (Prompt 61 Part 5). */}
+          {data.attendanceRate && (
+            <div className="han-card">
+              <div className="hw-card-label">Attendance Rate</div>
+              <div className="han-attendance-rate">{data.attendanceRate.rate}%</div>
+              <div className="han-attendance-caption">
+                Based on {data.attendanceRate.planCount} past plan{data.attendanceRate.planCount === 1 ? '' : 's'} with check-ins
+              </div>
+            </div>
+          )}
+
           <div className="han-card">
             <div className="hw-card-label">Most Active Rooms</div>
             {data.activeRooms.length === 0 || data.activeRooms.every(r => r.messageCount === 0) ? (

@@ -1,0 +1,27 @@
+/* Check-in (Prompt 61 Part 5). Prefix: ci- */
+
+.ci-box {
+  background: var(--hdl-surface); border: 1px solid var(--hdl-border2); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.ci-head { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.88rem; color: var(--hdl-ink); }
+.ci-error { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: #c0392b; margin: 0; }
+
+.ci-btn-here {
+  background: var(--hdl-gold); color: #1e1b18; border: none; border-radius: 100px; padding: 10px;
+  font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.85rem; cursor: pointer; min-height: 44px;
+}
+.ci-btn-here:disabled { opacity: 0.6; cursor: default; }
+.ci-done { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 700; color: #1a7a44; }
+
+.ci-list, .ci-rollcall { display: flex; flex-direction: column; gap: 6px; }
+.ci-list-label { font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 700; color: var(--hdl-muted); text-transform: uppercase; letter-spacing: .03em; }
+.ci-row { display: flex; align-items: center; gap: 8px; }
+.ci-row-name { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-ink); flex: 1; min-width: 0; }
+.ci-row-tag { font-family: 'DM Sans', sans-serif; font-size: 0.68rem; color: var(--hdl-muted); }
+.ci-row-check { color: #1a7a44; font-weight: 700; }
+.ci-mark-btn {
+  background: none; border: 1px solid var(--hdl-border2); border-radius: 100px; padding: 5px 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: var(--hdl-ink); cursor: pointer; min-height: 30px;
+}
+.ci-mark-btn:disabled { opacity: 0.6; cursor: default; }

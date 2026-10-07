@@ -4,6 +4,7 @@ import { PLAN_SELECT, PLAN_END, shapePlan } from './eventsController.js';
 import { FEED_SELECT } from './postsController.js';
 import { getMediaCounts } from './mediaController.js';
 import { getCategoryConfig } from '../lib/categoryConfig.js';
+import { getAttendanceRate } from './checkinsController.js';
 
 const ACTIVITY_LIMIT = 8;
 const MESSAGE_LIMIT  = 4;
@@ -28,12 +29,14 @@ export const getHiveHome = async (req, res) => {
     const [
       planRes, statsRes, activityRes, messagesRes,
       unreadRes, photosRes, hiveRes, hostRes, pendingRes, pendingSuggestionsRes, mediaCounts,
+      attendanceRate,
     ] = await Promise.all([
       // ── nextPlan — reuses the Plans projection, no duplicated SQL ──────────
       query(
         `${PLAN_SELECT}
           WHERE p.hive_id = $2 AND p.post_type = 'event'
             AND p.event_at IS NOT NULL
+            AND p.cancelled_at IS NULL
             AND ${PLAN_END} >= NOW()
           ORDER BY p.event_at ASC
           LIMIT 1`,
@@ -48,7 +51,8 @@ export const getHiveHome = async (req, res) => {
            (SELECT max_members FROM hives WHERE hive_id = $1)                AS max_members,
            (SELECT COUNT(*)::int FROM hive_posts p
              WHERE p.hive_id = $1 AND p.post_type = 'event'
-               AND p.event_at IS NOT NULL AND ${PLAN_END} >= NOW())          AS upcoming_plans`,
+               AND p.event_at IS NOT NULL AND p.cancelled_at IS NULL
+               AND ${PLAN_END} >= NOW())                                    AS upcoming_plans`,
         [hiveId],
       ),
 
@@ -210,6 +214,9 @@ export const getHiveHome = async (req, res) => {
       // Same definition the Media & Files page counts with — mediaCount can
       // never drift between Home, About and the media summary again.
       getMediaCounts(hiveId),
+
+      // null until 3+ past plans have check-in data (Prompt 61 Part 5).
+      getAttendanceRate(hiveId),
     ]);
 
     const st = statsRes.rows[0];
@@ -305,6 +312,7 @@ export const getHiveHome = async (req, res) => {
         maxMembers:    st.max_members,
         upcomingPlans: st.upcoming_plans,
         mediaCount:    mediaCounts.photos + mediaCounts.files,
+        attendanceRate, // { rate, planCount } | null
       },
 
       activity: activityRes.rows.map(r => {

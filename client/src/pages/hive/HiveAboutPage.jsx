@@ -261,6 +261,14 @@ export default function HiveAboutPage() {
               <span className="hab-glance-num hab-glance-num--sm">Since {monthYear(hive.created_at)}</span>
               <span className="hab-glance-label">Created</span>
             </div>
+            {/* Only once 3+ past plans have check-in data (Prompt 61 Part 5) —
+                never shown as 0% before there's real data behind it. */}
+            {glance?.attendanceRate && (
+              <div className="hab-glance-stat">
+                <span className="hab-glance-num">{glance.attendanceRate.rate}%</span>
+                <span className="hab-glance-label">Attendance Rate</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
