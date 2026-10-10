@@ -3,13 +3,15 @@ import { api } from '../../lib/api.js';
 import Avatar from '../Avatar.jsx';
 import '../../styles/hive-checkins.css';
 
-// Check-in (Prompt 61 Part 5). Self check-in for the viewer, plus a host/
-// owner/admin roll call over the plan's Going + Maybe attendees — the
-// endpoint itself allows marking any active member, this UI scopes to the
-// natural candidate pool (who actually said they were coming).
+// Check-in (Prompt 61 Part 5, extended Prompt 62 Part 0.5). Self check-in for
+// the viewer, plus a host/owner/admin roll call over every active member —
+// Going and Maybe listed first (the likely candidates), then everyone else,
+// filterable by a search field once the Hive is big enough for that to matter.
 export default function CheckInButton({ hiveId, postId, canHostCheckIn }) {
   const [data, setData] = useState(null);
   const [attendees, setAttendees] = useState(null);
+  const [members, setMembers] = useState(null);
+  const [search, setSearch] = useState('');
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(null);
 
@@ -21,7 +23,8 @@ export default function CheckInButton({ hiveId, postId, canHostCheckIn }) {
   useEffect(() => {
     if (!canHostCheckIn) return;
     api.get(`/api/events/${postId}/attendees`).then(setAttendees).catch(() => {});
-  }, [canHostCheckIn, postId]);
+    api.get(`/api/hives/${hiveId}/members`).then(d => setMembers(d.members ?? [])).catch(() => {});
+  }, [canHostCheckIn, hiveId, postId]);
 
   async function selfCheckIn() {
     setBusy('self');
@@ -52,9 +55,16 @@ export default function CheckInButton({ hiveId, postId, canHostCheckIn }) {
   if (!data) return null;
 
   const checkedInIds = new Set(data.checkins.map(c => c.user_id));
-  const candidates = canHostCheckIn
-    ? [...(attendees?.going ?? []), ...(attendees?.maybe ?? [])]
-    : [];
+  // Going + Maybe first (the likely candidates), then every other active
+  // member — the endpoint allows marking anyone active, not just RSVPs.
+  const goingMaybe = [...(attendees?.going ?? []), ...(attendees?.maybe ?? [])];
+  const goingMaybeIds = new Set(goingMaybe.map(p => p.user_id));
+  const rest = (members ?? []).filter(m => !goingMaybeIds.has(m.user_id));
+  const allCandidates = canHostCheckIn ? [...goingMaybe, ...rest] : [];
+  const q = search.trim().toLowerCase();
+  const candidates = q
+    ? allCandidates.filter(p => (p.full_name ?? '').toLowerCase().includes(q))
+    : allCandidates;
 
   return (
     <div className="ci-box">
@@ -82,9 +92,13 @@ export default function CheckInButton({ hiveId, postId, canHostCheckIn }) {
         </div>
       )}
 
-      {canHostCheckIn && candidates.length > 0 && (
+      {canHostCheckIn && allCandidates.length > 0 && (
         <div className="ci-rollcall">
           <div className="ci-list-label">Roll call</div>
+          <input type="text" className="ci-search" placeholder="Search members…"
+                 value={search} onChange={e => setSearch(e.target.value)}
+                 aria-label="Search members for roll call" />
+          {candidates.length === 0 && <p className="ci-empty">No members match "{search}".</p>}
           {candidates.map(p => (
             <div key={p.user_id} className="ci-row ci-row--rollcall">
               <Avatar name={p.full_name} src={p.profile_photo_url} size={22} />

@@ -25,3 +25,11 @@
   font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: var(--hdl-ink); cursor: pointer; min-height: 30px;
 }
 .ci-mark-btn:disabled { opacity: 0.6; cursor: default; }
+
+/* Roll call search (Prompt 62 Part 0.5 — "any active member") */
+.ci-search {
+  font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-ink);
+  border: 1px solid var(--hdl-border2); border-radius: 8px; padding: 7px 10px; min-height: 34px;
+  background: var(--hdl-ivory); width: 100%; box-sizing: border-box;
+}
+.ci-empty { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-muted); margin: 2px 0; }
