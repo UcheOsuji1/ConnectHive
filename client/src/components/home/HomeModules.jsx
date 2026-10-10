@@ -1,11 +1,43 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../Avatar.jsx';
 import RsvpMenu from '../plans/RsvpMenu.jsx';
 import { Icon, Card, relTime } from './HomeBits.jsx';
 import { typeLabel, formatTimeRange } from '../../lib/plans.js';
+import { api } from '../../lib/api.js';
+
+// Self check-in only (Prompt 62 Part 0.4) — the full roll-call UI stays on
+// the plan page; Home's card just needs the one button members actually use
+// in the moment. Always shown when the tool is on; the server is the one
+// source of truth for the window, same as the plan page's own button.
+function HomeCheckIn({ hiveId, postId }) {
+  const [state, setState] = useState('idle'); // idle | busy | done | error
+  const [error, setError] = useState(null);
+
+  async function checkIn() {
+    setState('busy'); setError(null);
+    try {
+      await api.post(`/api/hives/${hiveId}/plans/${postId}/checkin`);
+      setState('done');
+    } catch (e) {
+      setError(e?.data?.error ?? 'Could not check in.');
+      setState('error');
+    }
+  }
+
+  if (state === 'done') return <span className="hh-checkin-done">✓ Checked in</span>;
+  return (
+    <span className="hh-checkin">
+      <button type="button" className="hh-checkin-btn" disabled={state === 'busy'} onClick={checkIn}>
+        {state === 'busy' ? 'Checking in…' : "I'm here"}
+      </button>
+      {error && <span className="hh-checkin-error">{error}</span>}
+    </span>
+  );
+}
 
 /* ── Upcoming Plan ───────────────────────────────────────────────────────── */
-export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCreate, label = 'Upcoming Plan' }) {
+export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCreate, checkinsOn = false, label = 'Upcoming Plan' }) {
   if (!plan) {
     return (
       <Card icon="calendar" title={label} className="hh-m-plan">
@@ -68,6 +100,7 @@ export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCre
 
       <div className="hh-plan-foot">
         <RsvpMenu value={plan.viewer_rsvp} onChange={s => onRsvp(plan, s)} openUp />
+        {checkinsOn && <HomeCheckIn hiveId={hiveId} postId={plan.post_id} />}
       </div>
     </Card>
   );

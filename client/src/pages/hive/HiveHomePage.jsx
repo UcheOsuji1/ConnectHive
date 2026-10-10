@@ -28,7 +28,8 @@ function Skeleton() {
 }
 
 export default function HiveHomePage() {
-  const { hive, hiveId, isOwner, openPostModal, newPost, catConfig } = useOutletContext();
+  const { hive, hiveId, isOwner, openPostModal, newPost, catConfig, hiveTools } = useOutletContext();
+  const checkinsOn = (hiveTools ?? []).some(t => t.key === 'checkins' && t.enabled);
   const labels = catConfig?.labels ?? { nextPlan: 'Upcoming Plan', goal: 'Hive Goal' };
   const { user } = useAuth();
 
@@ -200,6 +201,7 @@ export default function HiveHomePage() {
             ownerName={data.owner?.full_name}
             onRsvp={onRsvp}
             onCreate={() => setPlanOpen(true)}
+            checkinsOn={checkinsOn}
             label={labels.nextPlan}
           />
           <RecentChat
