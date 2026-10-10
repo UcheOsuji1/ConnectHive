@@ -5,6 +5,9 @@ import { typeLabel, relativeLabel, formatDate, formatTimeRange } from '../../lib
 
 export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees, moreInSeries = 0 }) {
   const cover = plan.media_url;
+  // A past plan with any check-ins shows real attendance instead of the
+  // RSVP-derived "went" guess (Prompt 61 Part 5 / 62 Part 0.3).
+  const attended = past && plan.attended_count > 0;
   return (
     <article className={`plans-card${past ? ' plans-card--past' : ''}`}>
       <Link to={`/hive/${plan.hive_id}/events/${plan.post_id}`}
@@ -53,7 +56,7 @@ export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees, 
             type="button"
             className="plans-people"
             onClick={() => onOpenAttendees(plan)}
-            aria-label={`${plan.going_count} ${past ? 'went' : 'going'} — view attendees`}
+            aria-label={`${attended ? plan.attended_count : plan.going_count} ${past ? (attended ? 'attended' : 'went') : 'going'} — view attendees`}
           >
             <span className="plans-avstack">
               {plan.going_preview.slice(0, 3).map(p => (
@@ -66,7 +69,7 @@ export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees, 
               )}
             </span>
             <span className="plans-count plans-count--stacked">
-              <b>{plan.going_count} {past ? 'went' : 'going'}</b>
+              <b>{attended ? plan.attended_count : plan.going_count} {past ? (attended ? 'attended' : 'went') : 'going'}</b>
               {!past && plan.maybe_count > 0 && <em>{plan.maybe_count} maybe</em>}
             </span>
           </button>

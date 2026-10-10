@@ -226,6 +226,8 @@ export const PLAN_SELECT = `
          (SELECT r.rsvp_status FROM event_rsvps r
            WHERE r.post_id = p.post_id AND r.user_id = $1)      AS viewer_rsvp,
          (p.event_at <= NOW() AND ${PLAN_END} >= NOW())         AS is_live,
+         (SELECT COUNT(DISTINCT c.user_id)::int
+            FROM plan_checkins c WHERE c.post_id = p.post_id)    AS attended_count,
          COALESCE((
            SELECT json_agg(x) FROM (
              SELECT pr.user_id, pr.full_name, pr.profile_photo_url
@@ -273,6 +275,7 @@ export function shapePlan(r) {
     not_going_count: r.not_going_count,
     viewer_rsvp: r.viewer_rsvp,
     is_live: r.is_live,
+    attended_count: r.attended_count ?? 0,
     going_preview: r.going_preview ?? [],
     series: r.series_id
       ? { series_id: r.series_id, index: r.series_index, rule: r.series_rule, count: r.series_count }
