@@ -29,6 +29,16 @@
   text-transform: uppercase; color: var(--hdl-gold); align-self: flex-start;
 }
 
+.mt-setting-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  border-top: 1px solid var(--hdl-border2); padding-top: 10px; margin-top: 4px;
+}
+.mt-setting-label { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-ink); font-weight: 600; }
+.mt-setting-select {
+  border: 1px solid var(--hdl-border2); border-radius: 8px; padding: 6px 8px; font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem; min-height: 36px;
+}
+
 .mt-toggle {
   flex-shrink: 0; width: 40px; height: 22px; border-radius: 100px; border: 1px solid var(--hdl-border2);
   background: var(--hdl-ivory); position: relative; cursor: pointer; padding: 0; transition: background .15s, border-color .15s;

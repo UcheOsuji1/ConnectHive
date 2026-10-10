@@ -118,6 +118,10 @@
 .hab-edit-link { font-size: 0.78rem; font-weight: 600; color: #78580f; text-decoration: none; }
 .hab-edit-link:hover { text-decoration: underline; }
 
+.hab-doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.hab-doc-link { font-size: 0.85rem; font-weight: 600; color: var(--hdl-ink); text-decoration: none; }
+.hab-doc-link:hover { text-decoration: underline; }
+
 /* Founder note */
 .hab-note-card { gap: 12px; }
 .hab-note-body { display: flex; gap: 16px; align-items: flex-start; }

@@ -40,6 +40,7 @@ import HiveToolsHubPage from './pages/hive/HiveToolsHubPage';
 import HiveFindTimePage from './pages/hive/HiveFindTimePage';
 import HiveSplitCostsPage from './pages/hive/HiveSplitCostsPage';
 import HiveSignupsPage from './pages/hive/HiveSignupsPage';
+import HiveDocsPage from './pages/hive/HiveDocsPage';
 import PlanDetailPage from './pages/hive/PlanDetailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -114,6 +115,8 @@ export default function App() {
           <Route path="tools/split_costs/:groupId" element={<HiveSplitCostsPage />} />
           <Route path="tools/signups" element={<HiveSignupsPage />} />
           <Route path="tools/signups/:listId" element={<HiveSignupsPage />} />
+          <Route path="tools/docs" element={<HiveDocsPage />} />
+          <Route path="tools/docs/:docId" element={<HiveDocsPage />} />
           <Route path="overview" element={<HiveManageOverviewPage />} />
           <Route path="members-roles" element={<HiveManageMembersPage />} />
           <Route path="rooms" element={<HiveManageRoomsPage />} />

@@ -46,6 +46,7 @@ export default function HiveAboutPage() {
   const [owner,   setOwner]   = useState(null);
   const [leaders, setLeaders] = useState([]); // owner + admins
   const [glance,  setGlance]  = useState(null);
+  const [pinnedDocs, setPinnedDocs] = useState([]);
   const [toast,   setToast]   = useState(null);
   const toastTimer = useRef(null);
 
@@ -62,6 +63,11 @@ export default function HiveAboutPage() {
     // its exact definition rather than a second, possibly-drifting one.
     api.get(`/api/hives/${hiveId}/home`)
       .then(d => setGlance(d.stats ?? null))
+      .catch(() => {});
+    // 404s silently (tool off) — pinnedDocs just stays empty, same as any
+    // other disabled-tool surface.
+    api.get(`/api/hives/${hiveId}/tools/docs/docs`)
+      .then(d => setPinnedDocs((d.docs ?? []).filter(doc => doc.pinned)))
       .catch(() => {});
   }, [hiveId]);
 
@@ -239,6 +245,19 @@ export default function HiveAboutPage() {
               {canEdit && <Link to={`/hive/${hiveId}/settings`} className="hab-edit-link">Edit →</Link>}
             </div>
             <p className="hab-card-body">{hive.pinned_goal}</p>
+          </div>
+        )}
+
+        {pinnedDocs.length > 0 && (
+          <div className="hab-card">
+            <div className="hab-card-label"><span aria-hidden="true">📄</span> Pinned Docs</div>
+            <ul className="hab-doc-list">
+              {pinnedDocs.map(d => (
+                <li key={d.doc_id}>
+                  <Link to={`/hive/${hiveId}/tools/docs/${d.doc_id}`} className="hab-doc-link">{d.title}</Link>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 

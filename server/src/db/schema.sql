@@ -1060,3 +1060,39 @@ CREATE TABLE IF NOT EXISTS hive_signup_claims (
   claimed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (item_id, user_id)
 );
+
+-- ─── Prompt 63, Part 1 — Hive docs (tool_key = 'docs') ──────────────────────
+-- body is rendered client-side via marked + DOMPurify — never trusted as raw
+-- HTML server-side. Revisions are capped at 25/doc, pruned in the same
+-- transaction as each save (see docsController.js saveRevision).
+CREATE TABLE IF NOT EXISTS hive_docs (
+  doc_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id     UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title       TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  body        TEXT        NOT NULL DEFAULT '' CHECK (char_length(body) <= 50000),
+  icon        TEXT,
+  pinned      BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_by  UUID        NOT NULL REFERENCES users(user_id),
+  updated_by  UUID        NOT NULL REFERENCES users(user_id),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- (3) = millisecond precision. The client's optimistic-concurrency check
+  -- round-trips this value through a JS Date, which only carries milliseconds
+  -- — microsecond precision here would make every honest save 409 against
+  -- itself (the Postgres value and the JS-truncated echo would never match).
+  updated_at  TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+  deleted_at  TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_docs_hive ON hive_docs(hive_id) WHERE deleted_at IS NULL;
+-- Structural, re-runnable: narrows a table that may already exist with the
+-- old (default, microsecond) precision to millisecond precision.
+ALTER TABLE hive_docs ALTER COLUMN updated_at TYPE TIMESTAMPTZ(3);
+
+CREATE TABLE IF NOT EXISTS hive_doc_revisions (
+  revision_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  doc_id      UUID        NOT NULL REFERENCES hive_docs(doc_id) ON DELETE CASCADE,
+  title       TEXT        NOT NULL,
+  body        TEXT        NOT NULL,
+  edited_by   UUID        NOT NULL REFERENCES users(user_id),
+  edited_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_doc_revisions_doc ON hive_doc_revisions(doc_id, edited_at DESC);

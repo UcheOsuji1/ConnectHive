@@ -23,6 +23,16 @@ export async function isToolOn(hiveId, key) {
   return def.defaultOn.includes(h?.category_name ?? '');
 }
 
+// A tool's per-Hive settings override (e.g. docs' editors: owners|members).
+// {} when no override row exists yet — callers apply their own default.
+export async function getToolSettings(hiveId, key) {
+  const { rows: [row] } = await query(
+    `SELECT settings FROM hive_tools WHERE hive_id = $1 AND tool_key = $2`,
+    [hiveId, key],
+  );
+  return row?.settings ?? {};
+}
+
 // req.params.id must be the hive id — every tools route is mounted under
 // /api/hives/:id/... .
 export function requireTool(key) {

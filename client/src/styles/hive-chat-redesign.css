@@ -218,6 +218,11 @@
   font-size: .68rem; font-weight: 600;
 }
 
+/* Pinned Docs (Prompt 63 Part 1) */
+.hc-ctx-docs { display: flex; flex-direction: column; gap: 6px; }
+.hc-ctx-doc-link { font-size: 0.82rem; font-weight: 600; color: #3a3028; text-decoration: none; }
+.hc-ctx-doc-link:hover { text-decoration: underline; }
+
 /* Recent Media */
 .hc-ctx-media { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
 .hc-ctx-media-tile {

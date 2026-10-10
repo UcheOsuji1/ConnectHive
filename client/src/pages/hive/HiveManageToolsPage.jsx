@@ -40,6 +40,19 @@ export default function HiveManageToolsPage() {
     }
   }
 
+  async function setEditors(tool, editors) {
+    setPending(tool.key);
+    setError(null);
+    try {
+      await api.put(`/api/hives/${hiveId}/tools/${tool.key}`, { enabled: tool.enabled, settings: { editors } });
+      loadTools();
+    } catch (e) {
+      setError(e?.data?.error ?? 'Could not update this tool.');
+    } finally {
+      setPending(null);
+    }
+  }
+
   const sorted = [...hiveTools].sort((a, b) => {
     if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
     return a.name.localeCompare(b.name);
@@ -77,6 +90,20 @@ export default function HiveManageToolsPage() {
             </div>
             {tool.recommended && (
               <span className="mt-recommended">Recommended for this category</span>
+            )}
+            {tool.key === 'docs' && tool.enabled && (
+              <div className="mt-setting-row">
+                <span className="mt-setting-label">Who can edit docs</span>
+                <select
+                  className="mt-setting-select"
+                  value={tool.settings?.editors ?? 'owners'}
+                  disabled={pending === tool.key}
+                  onChange={e => setEditors(tool, e.target.value)}
+                >
+                  <option value="owners">Owners and admins only</option>
+                  <option value="members">Any member</option>
+                </select>
+              </div>
             )}
           </div>
         ))}

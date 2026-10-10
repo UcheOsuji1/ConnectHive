@@ -95,6 +95,9 @@ import {
   getExpenseEvents, createSettlement, deleteSettlement,
 } from '../controllers/costsController.js';
 import {
+  listDocs, createDoc, getDoc, updateDoc, setDocPinned, deleteDoc, listRevisions, restoreRevision,
+} from '../controllers/docsController.js';
+import {
   listSignupLists, createSignupList, getSignupList, addSignupItem, editSignupItem, deleteSignupItem,
   claimSignupItem, unclaimSignupItem, removeClaim,
 } from '../controllers/signupsController.js';
@@ -273,5 +276,15 @@ router.delete('/:id/tools/signups/items/:itemId',       requireAuth, requireTool
 router.post('/:id/tools/signups/items/:itemId/claim',   requireAuth, requireTool('signups'), claimSignupItem);
 router.delete('/:id/tools/signups/items/:itemId/claim', requireAuth, requireTool('signups'), unclaimSignupItem);
 router.delete('/:id/tools/signups/items/:itemId/claims/:userId', requireAuth, requireTool('signups'), removeClaim);
+
+router.get('/:id/tools/docs/docs',                           requireAuth, requireTool('docs'), listDocs);
+router.post('/:id/tools/docs/docs',                          requireAuth, requireTool('docs'), createDoc);
+router.get('/:id/tools/docs/docs/:docId',                    requireAuth, requireTool('docs'), getDoc);
+router.patch('/:id/tools/docs/docs/:docId',                  requireAuth, requireTool('docs'), updateDoc);
+router.delete('/:id/tools/docs/docs/:docId',                 requireAuth, requireTool('docs'), deleteDoc);
+router.post('/:id/tools/docs/docs/:docId/pin',               requireAuth, requireTool('docs'), setDocPinned(true));
+router.delete('/:id/tools/docs/docs/:docId/pin',             requireAuth, requireTool('docs'), setDocPinned(false));
+router.get('/:id/tools/docs/docs/:docId/revisions',          requireAuth, requireTool('docs'), listRevisions);
+router.post('/:id/tools/docs/docs/:docId/revisions/:revisionId/restore', requireAuth, requireTool('docs'), restoreRevision);
 
 export default router;

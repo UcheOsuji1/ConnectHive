@@ -640,7 +640,7 @@ function DateTile({ iso }) {
 
 function ContextRail({
   members, presenceData, myStatus, onStatusChange,
-  hiveId, hive, nextPlan, recentMedia = [], pin = null, onOpenPins, onClose,
+  hiveId, hive, nextPlan, recentMedia = [], pin = null, pinnedDocs = [], onOpenPins, onClose,
   nextPlanLabel = 'Upcoming Plan',
 }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -781,6 +781,23 @@ function ContextRail({
               </span>
             </div>
             <p className="hc-ctx-pinned-text">{pin.text}</p>
+          </div>
+        </section>
+      )}
+
+      {/* ── Pinned Docs ── */}
+      {pinnedDocs.length > 0 && (
+        <section className="hc-ctx-card">
+          <div className="hc-ctx-head">
+            <span aria-hidden="true">📄</span>
+            <h3 className="hc-ctx-title">Pinned Docs</h3>
+          </div>
+          <div className="hc-ctx-docs">
+            {pinnedDocs.map(d => (
+              <Link key={d.doc_id} to={`/hive/${hiveId}/tools/docs/${d.doc_id}`} className="hc-ctx-doc-link">
+                {d.title}
+              </Link>
+            ))}
           </div>
         </section>
       )}
@@ -937,7 +954,7 @@ export default function HiveChatPage() {
   const [newMsgCount, setNewMsgCount] = useState(0);
 
   // Context rail data for the active room (next plan + this room's images)
-  const [rail, setRail] = useState({ nextPlan: null, recentMedia: [], pin: null });
+  const [rail, setRail] = useState({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [] });
 
   // Refs for stable callbacks
   const scrollAreaRef    = useRef(null);
@@ -1390,12 +1407,13 @@ export default function HiveChatPage() {
 
   // ── Context rail data for the active room ──────────────────────────────────
   useEffect(() => {
-    if (!activeChannelId) { setRail({ nextPlan: null, recentMedia: [], pin: null }); return; }
+    if (!activeChannelId) { setRail({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [] }); return; }
     let live = true;
     api.get(`/api/hives/${hiveId}/channels/${activeChannelId}/rail`)
       .then(d => { if (live) setRail({ nextPlan: d.nextPlan ?? null,
-                                       recentMedia: d.recentMedia ?? [], pin: d.pin ?? null }); })
-      .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [], pin: null }); });
+                                       recentMedia: d.recentMedia ?? [], pin: d.pin ?? null,
+                                       pinnedDocs: d.pinnedDocs ?? [] }); })
+      .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [] }); });
     return () => { live = false; };
   }, [hiveId, activeChannelId]);
 
@@ -2245,6 +2263,7 @@ export default function HiveChatPage() {
           nextPlan={rail.nextPlan}
           recentMedia={rail.recentMedia}
           pin={rail.pin}
+          pinnedDocs={rail.pinnedDocs}
           onOpenPins={() => setPinsOpen(true)}
           onClose={() => setShowContext(false)}
           nextPlanLabel={catConfig?.labels?.nextPlan ?? 'Upcoming Plan'}

@@ -1,6 +1,8 @@
 import { query } from '../db/index.js';
 import { requireMembership } from '../lib/hiveMembership.js';
 import { PLAN_SELECT, PLAN_END, shapePlan } from './eventsController.js';
+import { isToolOn } from '../lib/hiveTools.js';
+import { getPinnedDocs } from './docsController.js';
 
 const MEDIA_LIMIT = 6;
 
@@ -18,7 +20,7 @@ export const getChannelRail = async (req, res) => {
     );
     if (!ch) return res.status(404).json({ error: 'Room not found.' });
 
-    const [planRes, mediaRes, pinRes] = await Promise.all([
+    const [planRes, mediaRes, pinRes, docsOn] = await Promise.all([
       query(
         `${PLAN_SELECT}
           WHERE p.hive_id = $2 AND p.post_type = 'event'
@@ -51,9 +53,11 @@ export const getChannelRail = async (req, res) => {
           LIMIT 1`,
         [channelId],
       ),
+      isToolOn(hiveId, 'docs'),
     ]);
 
     const p0 = pinRes.rows[0];
+    const pinnedDocs = docsOn ? await getPinnedDocs(hiveId) : [];
     res.json({
       nextPlan: planRes.rows.length ? shapePlan(planRes.rows[0]) : null,
       recentMedia: mediaRes.rows,
@@ -63,6 +67,7 @@ export const getChannelRail = async (req, res) => {
         sender: { user_id: p0.sender_user_id, full_name: p0.full_name,
                   profile_photo_url: p0.profile_photo_url },
       } : null,
+      pinnedDocs,
     });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });

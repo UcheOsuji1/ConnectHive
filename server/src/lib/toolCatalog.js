@@ -42,7 +42,14 @@ export const TOOL_CATALOG = [
     key: 'docs', name: 'Hive docs', description: 'A shared doc space for the Hive.',
     icon: 'doc', scope: 'hive',
     defaultOn: ['Professional Networking', 'Project Collaboration', 'Specialized Groups'],
-    available: false,
+    available: true,
+    validateSettings(settings) {
+      const editors = settings?.editors;
+      if (editors !== 'owners' && editors !== 'members') {
+        return { error: 'editors must be "owners" or "members".' };
+      }
+      return { settings: { editors } };
+    },
   },
   {
     key: 'goals', name: 'Goals', description: 'Track what the Hive is working toward together.',
