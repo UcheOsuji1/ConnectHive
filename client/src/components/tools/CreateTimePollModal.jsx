@@ -4,7 +4,7 @@ import { localInputToISO } from '../../lib/plans.js';
 
 const DURATIONS = [30, 60, 90, 120, 180];
 
-export default function CreateTimePollModal({ hiveId, onClose, onCreated }) {
+export default function CreateTimePollModal({ hiveId, channelId = null, onClose, onCreated }) {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState(60);
   const [location, setLocation] = useState('');
@@ -47,6 +47,7 @@ export default function CreateTimePollModal({ hiveId, onClose, onCreated }) {
         durationMinutes: Number(duration),
         location: location.trim() || null,
         slots: filled.map(localInputToISO),
+        channelId,
       });
       onCreated(poll);
     } catch (err) {

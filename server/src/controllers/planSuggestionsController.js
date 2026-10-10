@@ -238,6 +238,15 @@ async function finishResolution(s, outcome, overrideUserId, editedFields = null)
     );
     await client.query('COMMIT');
     broadcastSuggestion(locked.hive_id, locked.suggestion_id, { status: outcome });
+    if (locked.source_poll_id) {
+      try {
+        getIO()?.to(`hive:${locked.hive_id}`).emit('time_poll_updated', {
+          hive_id: locked.hive_id, poll_id: locked.source_poll_id,
+          status: outcome === 'approved' ? 'scheduled' : 'open',
+          ...(outcome === 'approved' ? { plan_post_id: planPostId } : {}),
+        });
+      } catch { /* no socket in tests */ }
+    }
     return { hiveId: locked.hive_id, suggestedBy: locked.suggested_by, title: locked.title, outcome, planPostId };
   } catch (err) {
     await client.query('ROLLBACK');

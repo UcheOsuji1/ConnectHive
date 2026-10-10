@@ -6,7 +6,7 @@ import EmojiPicker from '../../components/EmojiPicker.jsx';
 import CreatePlanModal from '../../components/plans/CreatePlanModal.jsx';
 import CreateTimePollModal from '../../components/tools/CreateTimePollModal.jsx';
 import '../../styles/hive-find-time.css';
-import { PlanMessageCard, PollMessageCard, CreatePollModal, SuggestionMessageCard } from '../../components/chat/ChatCards.jsx';
+import { PlanMessageCard, PollMessageCard, CreatePollModal, SuggestionMessageCard, TimePollMessageCard } from '../../components/chat/ChatCards.jsx';
 import { api } from '../../lib/api.js';
 import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
 import '../../styles/hive-chat.css';
@@ -534,6 +534,9 @@ function MessageRow({
                                         onVote={onSuggestionVote} onApprove={onSuggestionApprove}
                                         onDecline={onSuggestionDecline} onWithdraw={onSuggestionWithdraw}
                                         onPlanRsvp={onPlanRsvp} />
+              )}
+              {!isDeleted && msg.time_poll && (
+                <TimePollMessageCard poll={msg.time_poll} hiveId={msg.hive_id} />
               )}
               {!isDeleted && hasAttachments && (
                 <AttachmentGrid attachments={msg.attachments} />
@@ -1206,6 +1209,25 @@ export default function HiveChatPage() {
       }));
     };
 
+    // Counts + status only (54b pattern) — never an individual answer.
+    // viewer_answer stays whatever this reader already has locally.
+    const onTimePollUpdated = ({ poll_id, slots, best_slot_id, status, plan_post_id }) => {
+      setMessages(prev => prev.map(m => {
+        if (m.time_poll?.poll_id !== poll_id) return m;
+        const next = { ...m.time_poll };
+        if (slots) {
+          next.slots = m.time_poll.slots.map(s => {
+            const u = slots.find(x => x.slot_id === s.slot_id);
+            return u ? { ...s, works: u.works, if_needed: u.if_needed, cant: u.cant, score: u.score } : s;
+          });
+        }
+        if (best_slot_id !== undefined) next.best_slot_id = best_slot_id;
+        if (status) next.status = status;
+        if (plan_post_id) next.plan_post_id = plan_post_id;
+        return { ...m, time_poll: next };
+      }));
+    };
+
     const onPlanRsvpUpdated = ({ post_id, going_count }) => {
       // Counts only — viewer_rsvp stays whatever this reader set.
       setMessages(prev => prev.map(m => m.plan?.post_id === post_id
@@ -1318,6 +1340,7 @@ export default function HiveChatPage() {
     socket.on('poll_updated',         onPollUpdated);
     socket.on('plan_rsvp_updated',    onPlanRsvpUpdated);
     socket.on('suggestion_updated',   onSuggestionUpdated);
+    socket.on('time_poll_updated',    onTimePollUpdated);
     socket.on('message_pinned',       onMessagePinned);
     socket.on('message_unpinned',     onMessageUnpinned);
 
@@ -1333,6 +1356,7 @@ export default function HiveChatPage() {
       socket.off('poll_updated',        onPollUpdated);
       socket.off('plan_rsvp_updated',   onPlanRsvpUpdated);
       socket.off('suggestion_updated',  onSuggestionUpdated);
+      socket.off('time_poll_updated',   onTimePollUpdated);
       socket.off('message_pinned',      onMessagePinned);
       socket.off('message_unpinned',    onMessageUnpinned);
       socket.off('disconnect',          onDisconnect);
@@ -1847,19 +1871,13 @@ export default function HiveChatPage() {
       {findTimeOpen && (
         <CreateTimePollModal
           hiveId={hiveId}
+          channelId={activeChannelId}
           onClose={() => setFindTimeOpen(false)}
-          onCreated={async (poll) => {
+          onCreated={() => {
             setFindTimeOpen(false);
-            // No dedicated chat-card type for a time poll yet (Prompt 61
-            // scope note) — a plain message with the link is what "posts a
-            // card into the room" means today; it arrives over the socket
-            // like any other message.
-            try {
-              await api.post(`/api/hives/${hiveId}/messages`, {
-                channel_id: activeChannelId,
-                text: `🕐 Find a time: "${poll.title}" — /hive/${hiveId}/tools/find_time/${poll.poll_id}`,
-              });
-            } catch { /* non-fatal — the poll itself was still created */ }
+            // The poll's own card message was posted server-side, in the
+            // same transaction as the poll itself (Prompt 62 Part 0.1) — it
+            // arrives over the socket like any other message.
           }}
         />
       )}

@@ -216,6 +216,54 @@ function SuggEditForm({ suggestion: s, onSave, onCancel }) {
   );
 }
 
+// ── Find a time card in the message stream (Prompt 62, Part 0.1) ────────────
+// Matches PlanMessageCard's look. Answering happens on the dedicated grid
+// page, not inline here — the grid is the whole point of Find a time, so
+// this card just surfaces enough to pull a member in: the best slot so far,
+// how many people have weighed in, and an Answer button.
+export function TimePollMessageCard({ poll, hiveId }) {
+  if (!poll) return null;
+  const STATUS_LABEL = { closed: 'Closed', scheduled: 'Scheduled' };
+  const responderCount = new Set(poll.slots.flatMap(s => s.answers.map(a => a.user_id))).size;
+  // bestSlot() always returns a slot (earliest, as a deterministic tie-break)
+  // even with zero answers — only call it "best so far" once someone actually has.
+  const best = responderCount > 0 ? poll.slots.find(s => s.slot_id === poll.best_slot_id) ?? null : null;
+
+  return (
+    <div className="hc-plancard hc-timepollcard">
+      <div className="hc-plancard-head">
+        <span aria-hidden="true">🕐</span>
+        <span className="hc-plancard-label">Find a Time</span>
+        {poll.status !== 'open' && (
+          <span className="hc-pollcard-closed">{STATUS_LABEL[poll.status] ?? poll.status}</span>
+        )}
+      </div>
+
+      <div className="hc-plancard-body">
+        <div className="hc-plancard-main">
+          <h4 className="hc-plancard-title">{poll.title}</h4>
+          {best && (
+            <div className="hc-plancard-row">
+              ⭐ Best so far: {new Date(best.starts_at).toLocaleString(undefined, {
+                weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+              })}
+            </div>
+          )}
+          <div className="hc-plancard-row">
+            <span>{responderCount} response{responderCount === 1 ? '' : 's'}</span>
+          </div>
+          <div className="hc-plancard-foot">
+            <Link to={`/hive/${hiveId}/tools/find_time/${poll.poll_id}`}
+                  className="hc-suggcard-btn hc-suggcard-btn--gold">
+              {poll.status === 'open' ? 'Answer →' : 'View →'}
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Poll card in the message stream ──────────────────────────────────────────
 export function PollMessageCard({ poll, hiveId, onVote }) {
   const [voters, setVoters] = useState(null);

@@ -28,7 +28,7 @@ const REQUIRED = {
   hive_posts: ['visibility', 'event_end_at', 'plan_type', 'cancelled_at', 'series_id', 'series_index'],
   event_rsvps: ['updated_at'],
   messages: ['channel_id', 'edited_at', 'deleted_at', 'pinned_at', 'pinned_by',
-             'plan_post_id', 'poll_id', 'suggestion_id'],
+             'plan_post_id', 'poll_id', 'suggestion_id', 'time_poll_id'],
   post_comments: ['parent_comment_id'],
   // hive_plan_suggestions and hive_time_polls both predate this specific
   // column (the suggestions table from Prompt 60, the polls table created
@@ -61,6 +61,7 @@ const IMPACT = {
   'messages.plan_post_id':      'plan cards in chat — the message list fails',
   'messages.poll_id':           'polls in chat — the message list fails',
   'messages.suggestion_id':     'suggested-plan cards in chat — the message list fails',
+  'messages.time_poll_id':      'Find a time cards in chat — the message list fails',
   'hives.plan_proposers':       'plan rules — who may suggest plans',
   'hives.plan_approval':        'plan rules — owner-approve vs Hive vote',
   'hives.vote_min_yes':         'plan rules — vote threshold',

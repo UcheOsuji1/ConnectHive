@@ -918,3 +918,8 @@ CREATE TABLE IF NOT EXISTS plan_checkins (
   checked_in_by  UUID        NOT NULL REFERENCES users(user_id),
   PRIMARY KEY (post_id, user_id)
 );
+
+-- ─── Prompt 62, Part 0.1 — Find a time's chat card ──────────────────────────
+-- Same pattern as messages.plan_post_id / poll_id / suggestion_id.
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS time_poll_id UUID
+  REFERENCES hive_time_polls(poll_id) ON DELETE SET NULL;

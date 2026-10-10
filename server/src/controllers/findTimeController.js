@@ -5,6 +5,7 @@ import { getDefaultChannelId } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
 import { insertPlan, PLAN_SELECT, shapePlan } from './eventsController.js';
+import { getEnrichedMessage, depersonalise } from './messagesController.js';
 
 const SCORE = { works: 2, if_needed: 1, cant: 0 };
 
@@ -48,6 +49,19 @@ async function loadPollWithSlots(pollId) {
   );
 
   return { poll, slots, answers: answerRows };
+}
+
+// Plural form for messagesController's enrichment join (Prompt 62 Part 0.1) —
+// the same shape shapePoll returns, keyed by poll_id. Cardinality here is
+// always small (one poll per chat message), so a loop over loadPollWithSlots
+// is simpler than a real batch query and costs nothing in practice.
+export async function shapeTimePolls(pollIds, viewerId) {
+  const out = {};
+  for (const id of pollIds) {
+    const loaded = await loadPollWithSlots(id);
+    if (loaded) out[id] = shapePoll(loaded, viewerId);
+  }
+  return out;
 }
 
 function shapePoll({ poll, slots, answers }, viewerId) {
@@ -116,7 +130,7 @@ export const createTimePoll = async (req, res) => {
     const hiveId = req.params.id;
     await requireCanPost(hiveId, req.userId);
 
-    const { title, durationMinutes, location, closesAt, slots } = req.body ?? {};
+    const { title, durationMinutes, location, closesAt, slots, channelId: bodyChannelId } = req.body ?? {};
     const t = String(title ?? '').trim();
     if (!t) return res.status(400).json({ error: 'A title is required.' });
     if (t.length > 120) return res.status(400).json({ error: 'Title must be 120 characters or fewer.' });
@@ -146,8 +160,19 @@ export const createTimePoll = async (req, res) => {
       if (isNaN(closes.getTime())) return res.status(400).json({ error: 'Closing time is not a valid date.' });
     }
 
+    // "Posts a card into the room" (Prompt 61 Part 3's scope note, fixed in
+    // Prompt 62 Part 0.1) — the poll's own message is created in the same
+    // transaction, same pattern as createPoll/createSuggestion, so it's
+    // never possible to have the poll exist with no card to show it.
+    const channelId = bodyChannelId || await getDefaultChannelId(hiveId);
+    const { rows: [chCheck] } = await query(
+      `SELECT channel_id FROM hive_channels WHERE channel_id = $1 AND hive_id = $2 AND archived_at IS NULL`,
+      [channelId, hiveId],
+    );
+    if (!chCheck) return res.status(400).json({ error: 'That room does not belong to this Hive.' });
+
     const client = await getClient();
-    let pollId;
+    let pollId, messageId;
     try {
       await client.query('BEGIN');
       const { rows: [p] } = await client.query(
@@ -162,6 +187,12 @@ export const createTimePoll = async (req, res) => {
           [pollId, d.toISOString()],
         );
       }
+      const { rows: [msg] } = await client.query(
+        `INSERT INTO messages (hive_id, channel_id, sender_user_id, message_text, time_poll_id)
+         VALUES ($1,$2,$3,'',$4) RETURNING message_id`,
+        [hiveId, channelId, req.userId, pollId],
+      );
+      messageId = msg.message_id;
       await client.query('COMMIT');
     } catch (txErr) {
       await client.query('ROLLBACK');
@@ -170,8 +201,15 @@ export const createTimePoll = async (req, res) => {
       client.release();
     }
 
+    const msg = await getEnrichedMessage(messageId, req.userId);
+    try {
+      const io = getIO();
+      io?.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
+      io?.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+    } catch { /* no socket in tests */ }
+
     const shaped = shapePoll(await loadPollWithSlots(pollId), req.userId);
-    res.status(201).json({ poll: shaped });
+    res.status(201).json({ poll: shaped, message_id: messageId });
 
     try {
       const { rows: hiveRow } = await query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]);
@@ -251,7 +289,7 @@ export const answerTimePollSlot = async (req, res) => {
 
     try {
       getIO()?.to(`hive:${hiveId}`).emit('time_poll_updated', {
-        hive_id: hiveId, poll_id: poll.poll_id,
+        hive_id: hiveId, poll_id: poll.poll_id, status: 'open',
         slots: shaped.slots.map(s => ({ slot_id: s.slot_id, works: s.works, if_needed: s.if_needed, cant: s.cant, score: s.score })),
         best_slot_id: shaped.best_slot_id,
       });
@@ -286,6 +324,9 @@ export const closeTimePoll = async (req, res) => {
     if (poll.status !== 'open') return res.status(400).json({ error: 'This poll is already closed.' });
 
     await query(`UPDATE hive_time_polls SET status = 'closed' WHERE poll_id = $1`, [poll.poll_id]);
+    try {
+      getIO()?.to(`hive:${hiveId}`).emit('time_poll_updated', { hive_id: hiveId, poll_id: poll.poll_id, status: 'closed' });
+    } catch { /* no socket in tests */ }
     res.json({ ok: true });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -381,6 +422,12 @@ export const scheduleTimePoll = async (req, res) => {
       const plan = shapePlan(rows[0]);
 
       try {
+        getIO()?.to(`hive:${hiveId}`).emit('time_poll_updated', {
+          hive_id: hiveId, poll_id: poll.poll_id, status: 'scheduled', plan_post_id: postId,
+        });
+      } catch { /* no socket in tests */ }
+
+      try {
         const { rows: answerRows } = await query(
           `SELECT user_id FROM hive_time_poll_answers WHERE slot_id = $1 AND answer IN ('works','if_needed') AND user_id != $2`,
           [slotId, req.userId],
@@ -437,6 +484,9 @@ export const scheduleTimePoll = async (req, res) => {
       `UPDATE hive_time_polls SET status = 'closed', pending_suggestion_id = $1 WHERE poll_id = $2`,
       [s.suggestion_id, poll.poll_id],
     );
+    try {
+      getIO()?.to(`hive:${hiveId}`).emit('time_poll_updated', { hive_id: hiveId, poll_id: poll.poll_id, status: 'closed' });
+    } catch { /* no socket in tests */ }
 
     res.json({ created: 'suggestion', suggestion_id: s.suggestion_id });
   } catch (err) {
