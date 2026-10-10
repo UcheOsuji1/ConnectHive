@@ -96,6 +96,50 @@
 
 .pd-tools-stack { display: flex; flex-direction: column; gap: 14px; }
 
+/* Generic Tools-stack block shell, shared by Split costs and Sign-up lists
+   (Prompt 62) — Check-in keeps its own .ci-box look from hive-checkins.css. */
+.pd-tool-block {
+  background: var(--hdl-surface); border: 1px solid var(--hdl-border2); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 10px;
+}
+.pd-tool-block-title { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.88rem; color: var(--hdl-ink); }
+.pd-tool-empty { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-muted); margin: 0; }
+.pd-tool-cta {
+  background: var(--hdl-gold); color: #1e1b18; border: none; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.82rem; padding: 10px; cursor: pointer; min-height: 40px;
+}
+.pd-tool-cta:disabled { opacity: 0.6; cursor: default; }
+.pd-tool-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.84rem; font-weight: 600; color: var(--hdl-ink);
+  text-decoration: none; padding: 8px 10px; border-radius: 8px; background: var(--hdl-ivory);
+}
+.pd-tool-link:hover { background: rgba(196,154,40,.12); }
+.pd-tool-balance-owed { color: #1a7a44; font-weight: 700; }
+.pd-tool-balance-owe { color: #c0392b; font-weight: 700; }
+.pd-tool-balance-even { color: var(--hdl-muted); }
+
+.pd-signup-list { display: flex; flex-direction: column; gap: 6px; }
+.pd-signup-list-title { background: none; padding: 0; }
+.pd-signup-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-ink); padding: 2px 0;
+}
+.pd-signup-item-label em { color: var(--hdl-muted); font-style: normal; }
+.pd-tool-small-btn {
+  background: #fff; border: 1px solid var(--hdl-border2); border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 600; color: var(--hdl-ink);
+  padding: 5px 10px; cursor: pointer; min-height: 30px;
+}
+.pd-tool-small-btn--gold { background: var(--hdl-gold); border-color: var(--hdl-gold); color: #1e1b18; }
+.pd-tool-small-btn:disabled { opacity: 0.6; cursor: default; }
+.pd-tool-small-full { font-family: 'DM Sans', sans-serif; font-size: 0.72rem; color: var(--hdl-muted); }
+.pd-tool-addform { display: flex; gap: 6px; margin-top: 4px; }
+.pd-tool-addform input {
+  flex: 1; border: 1px solid var(--hdl-border2); border-radius: 8px; padding: 7px 9px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.8rem; min-height: 34px;
+}
+
 .pd-scope-row { display: flex; flex-direction: column; gap: 6px; background: var(--hdl-ivory); border-radius: 10px; padding: 10px 12px; }
 .pd-scope-opt { display: flex; align-items: center; gap: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-ink); }
 

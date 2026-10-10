@@ -20,8 +20,37 @@ function FindTimeCount({ hiveId }) {
   return <span className="thub-tile-count">{n} open poll{n === 1 ? '' : 's'}</span>;
 }
 
+// "$84 owed to you" style live count (Prompt 62 Part 1) — sums every group's
+// your_balance_cents the viewer is owed, across the whole Hive.
+function SplitCostsCount({ hiveId }) {
+  const [text, setText] = useState(null);
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/split_costs/groups`)
+      .then(d => {
+        const owed = (d.groups ?? []).reduce((n, g) => n + Math.max(0, g.your_balance_cents), 0);
+        setText(owed > 0 ? `$${(owed / 100).toFixed(2)} owed to you` : 'All settled');
+      })
+      .catch(() => setText(null));
+  }, [hiveId]);
+  if (text === null) return null;
+  return <span className="thub-tile-count">{text}</span>;
+}
+
+function SignupsCount({ hiveId }) {
+  const [n, setN] = useState(null);
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/signups/lists`)
+      .then(d => setN((d.lists ?? []).reduce((sum, l) => sum + Math.max(0, l.total_slots - l.claimed_slots), 0)))
+      .catch(() => setN(null));
+  }, [hiveId]);
+  if (n === null) return null;
+  return <span className="thub-tile-count">{n} open slot{n === 1 ? '' : 's'}</span>;
+}
+
+const TILE_COUNT = { find_time: FindTimeCount, split_costs: SplitCostsCount, signups: SignupsCount };
+
 // A tool lives inside each plan's page rather than getting its own hub tile.
-const PLAN_SCOPED_NO_TILE = new Set(['checkins', 'split_costs', 'signups', 'itinerary', 'rides']);
+const PLAN_SCOPED_NO_TILE = new Set(['checkins', 'itinerary', 'rides']);
 
 export default function HiveToolsHubPage() {
   const { hiveId, hiveTools } = useOutletContext();
@@ -46,7 +75,7 @@ export default function HiveToolsHubPage() {
               <span className="thub-tile-icon" aria-hidden="true">{ICON[t.icon] ?? '🔧'}</span>
               <span className="thub-tile-name">{t.name}</span>
               <span className="thub-tile-desc">{t.description}</span>
-              {t.key === 'find_time' && <FindTimeCount hiveId={hiveId} />}
+              {(() => { const Count = TILE_COUNT[t.key]; return Count ? <Count hiveId={hiveId} /> : null; })()}
             </Link>
           ))}
         </div>

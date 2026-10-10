@@ -17,12 +17,41 @@ export const getProfile = async (req, res) => {
   }
 };
 
+// Payment handles only (Prompt 62) — the rest of profile editing (bio,
+// interests, etc.) goes through setupProfile below; this stub's scope is
+// just the three handles Account Settings -> Payments saves.
+const HANDLE_RE = /^[A-Za-z0-9_.-]{1,30}$/;
+function validateHandle(raw, { stripDollar = false } = {}) {
+  if (raw == null || String(raw).trim() === '') return { value: null };
+  let v = String(raw).trim();
+  if (stripDollar && v.startsWith('$')) v = v.slice(1);
+  if (!HANDLE_RE.test(v)) {
+    return { error: 'must be 1-30 characters of letters, numbers, underscores, periods or hyphens.' };
+  }
+  return { value: v };
+}
+
 export const updateProfile = async (req, res) => {
   try {
-    // TODO: validate and update profile fields for req.userId
-    res.json({ message: 'updateProfile — not yet implemented' });
+    const { venmoHandle, cashappHandle, paypalHandle } = req.body ?? {};
+    const venmo = validateHandle(venmoHandle);
+    if (venmo.error) return res.status(400).json({ error: `Venmo handle ${venmo.error}` });
+    const cashapp = validateHandle(cashappHandle, { stripDollar: true });
+    if (cashapp.error) return res.status(400).json({ error: `CashApp handle ${cashapp.error}` });
+    const paypal = validateHandle(paypalHandle);
+    if (paypal.error) return res.status(400).json({ error: `PayPal handle ${paypal.error}` });
+
+    const { rows: [updated] } = await query(
+      `UPDATE profiles SET venmo_handle = $1, cashapp_handle = $2, paypal_handle = $3
+        WHERE user_id = $4
+      RETURNING venmo_handle, cashapp_handle, paypal_handle`,
+      [venmo.value, cashapp.value, paypal.value, req.userId],
+    );
+    if (!updated) return res.status(404).json({ error: 'Profile not found.' });
+    res.json({ profile: updated });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[users/updateProfile]', err);
+    res.status(500).json({ error: 'Failed to update your payment handles.' });
   }
 };
 

@@ -7,6 +7,8 @@ import RsvpMenu from '../../components/plans/RsvpMenu.jsx';
 import EditPlanModal from '../../components/plans/EditPlanModal.jsx';
 import PlanDiscussion from '../../components/plans/PlanDiscussion.jsx';
 import CheckInButton from '../../components/tools/CheckInButton.jsx';
+import SplitCostsPlanBlock from '../../components/tools/SplitCostsPlanBlock.jsx';
+import SignupsPlanBlock from '../../components/tools/SignupsPlanBlock.jsx';
 import { typeLabel, formatDate, formatTimeRange, relativeLabel } from '../../lib/plans.js';
 import '../../styles/hive-plans.css';
 import '../../styles/hive-plan-detail.css';
@@ -81,8 +83,11 @@ export default function PlanDetailPage() {
   if (!plan) return <div className="pd-page"><div className="pd-skel" /></div>;
 
   const cover = plan.media_url;
-  const planTools = hiveTools.filter(t => t.enabled && t.scope === 'plan');
+  // 'both'-scope tools (split_costs, signups) attach to individual plans
+  // too, alongside their hub presence — not just 'plan'-scope ones (checkins).
+  const planTools = hiveTools.filter(t => t.enabled && (t.scope === 'plan' || t.scope === 'both'));
   const canHostCheckIn = isOwner || plan.host?.user_id === viewerId;
+  const canCreateTool = isOwner || !!ctx.canPost;
 
   return (
     <div className="pd-page">
@@ -163,13 +168,18 @@ export default function PlanDetailPage() {
 
         {planTools.length > 0 && (
           <aside className="pd-tools-stack">
-            {planTools.map(t => t.key === 'checkins' && (
-              <CheckInButton
-                key={t.key}
-                hiveId={hiveId}
-                postId={postId}
-                canHostCheckIn={canHostCheckIn}
-              />
+            {planTools.map(t => (
+              <div key={t.key}>
+                {t.key === 'checkins' && (
+                  <CheckInButton hiveId={hiveId} postId={postId} canHostCheckIn={canHostCheckIn} />
+                )}
+                {t.key === 'split_costs' && (
+                  <SplitCostsPlanBlock hiveId={hiveId} postId={postId} canCreate={canCreateTool} />
+                )}
+                {t.key === 'signups' && (
+                  <SignupsPlanBlock hiveId={hiveId} postId={postId} canCreate={canCreateTool} />
+                )}
+              </div>
             ))}
           </aside>
         )}

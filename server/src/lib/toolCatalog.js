@@ -27,16 +27,16 @@ export const TOOL_CATALOG = [
     available: true,
   },
   {
-    key: 'split_costs', name: 'Split costs', description: 'Track who owes what for a plan.',
-    icon: 'dollar', scope: 'plan',
+    key: 'split_costs', name: 'Split costs', description: 'Track who paid, who owes what, and settle up.',
+    icon: 'dollar', scope: 'both',
     defaultOn: ['Social Groups', 'Travel Buddies', 'Event Buddies'],
-    available: false,
+    available: true,
   },
   {
     key: 'signups', name: 'Sign-up lists', description: 'Let members claim a slot — bring a dish, a ride seat, a task.',
-    icon: 'clipboard', scope: 'plan',
+    icon: 'clipboard', scope: 'both',
     defaultOn: ['Social Groups', 'Event Buddies', 'Travel Buddies'],
-    available: false,
+    available: true,
   },
   {
     key: 'docs', name: 'Hive docs', description: 'A shared doc space for the Hive.',

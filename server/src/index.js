@@ -18,6 +18,7 @@ import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './
 import { initSocket }     from './realtime/socket.js';
 import { startRsvpReminderJob } from './jobs/rsvpReminderJob.js';
 import { startPlanSuggestionJob } from './jobs/planSuggestionJob.js';
+import { startCostNudgeJob } from './jobs/costNudgeJob.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -147,4 +148,5 @@ server.listen(PORT, async () => {
   }
   startRsvpReminderJob();
   startPlanSuggestionJob();
+  startCostNudgeJob();
 });

@@ -90,6 +90,14 @@ import {
   getPlanDetail, editPlan, cancelPlan, rsvpSeries,
 } from '../controllers/eventsController.js';
 import { selfCheckIn, hostCheckIn, getPlanCheckins } from '../controllers/checkinsController.js';
+import {
+  listCostGroups, createCostGroup, getCostGroup, createExpense, editExpense, deleteExpense,
+  getExpenseEvents, createSettlement, deleteSettlement,
+} from '../controllers/costsController.js';
+import {
+  listSignupLists, createSignupList, getSignupList, addSignupItem, editSignupItem, deleteSignupItem,
+  claimSignupItem, unclaimSignupItem, removeClaim,
+} from '../controllers/signupsController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -243,5 +251,27 @@ router.post('/:id/tools/find_time/polls/:pollId/schedule',requireAuth, requireTo
 router.post('/:id/plans/:postId/checkin',            requireAuth, requireTool('checkins'), selfCheckIn);
 router.post('/:id/plans/:postId/checkin/:userId',    requireAuth, requireTool('checkins'), hostCheckIn);
 router.get('/:id/plans/:postId/checkins',            requireAuth, requireTool('checkins'), getPlanCheckins);
+
+// ── Split costs (Prompt 62 Part 1) ───────────────────────────────────────────
+router.get('/:id/tools/split_costs/groups',                   requireAuth, requireTool('split_costs'), listCostGroups);
+router.post('/:id/tools/split_costs/groups',                  requireAuth, requireTool('split_costs'), createCostGroup);
+router.get('/:id/tools/split_costs/groups/:groupId',          requireAuth, requireTool('split_costs'), getCostGroup);
+router.post('/:id/tools/split_costs/groups/:groupId/expenses',    requireAuth, requireTool('split_costs'), createExpense);
+router.patch('/:id/tools/split_costs/expenses/:expenseId',        requireAuth, requireTool('split_costs'), editExpense);
+router.delete('/:id/tools/split_costs/expenses/:expenseId',       requireAuth, requireTool('split_costs'), deleteExpense);
+router.get('/:id/tools/split_costs/expenses/:expenseId/events',   requireAuth, requireTool('split_costs'), getExpenseEvents);
+router.post('/:id/tools/split_costs/groups/:groupId/settlements', requireAuth, requireTool('split_costs'), createSettlement);
+router.delete('/:id/tools/split_costs/settlements/:settlementId', requireAuth, requireTool('split_costs'), deleteSettlement);
+
+// ── Sign-up lists (Prompt 62 Part 2) ─────────────────────────────────────────
+router.get('/:id/tools/signups/lists',              requireAuth, requireTool('signups'), listSignupLists);
+router.post('/:id/tools/signups/lists',             requireAuth, requireTool('signups'), createSignupList);
+router.get('/:id/tools/signups/lists/:listId',      requireAuth, requireTool('signups'), getSignupList);
+router.post('/:id/tools/signups/lists/:listId/items',   requireAuth, requireTool('signups'), addSignupItem);
+router.patch('/:id/tools/signups/items/:itemId',        requireAuth, requireTool('signups'), editSignupItem);
+router.delete('/:id/tools/signups/items/:itemId',       requireAuth, requireTool('signups'), deleteSignupItem);
+router.post('/:id/tools/signups/items/:itemId/claim',   requireAuth, requireTool('signups'), claimSignupItem);
+router.delete('/:id/tools/signups/items/:itemId/claim', requireAuth, requireTool('signups'), unclaimSignupItem);
+router.delete('/:id/tools/signups/items/:itemId/claims/:userId', requireAuth, requireTool('signups'), removeClaim);
 
 export default router;

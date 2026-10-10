@@ -210,6 +210,27 @@
   color: var(--text-muted, #6b6057);
 }
 
+/* ── Payments (Prompt 62 Part 1) ──────────────────────────────── */
+.acct-payments-sub {
+  font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--text-muted, #6b6057);
+  margin: 0 0 16px; line-height: 1.5;
+}
+.acct-payments-fields {
+  display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px;
+}
+.acct-payments-field {
+  display: flex; flex-direction: column; gap: 5px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.8rem; font-weight: 600; color: var(--charcoal, #1e1b18);
+}
+.acct-payments-field input {
+  font-family: 'DM Sans', sans-serif; font-size: 0.86rem; font-weight: 400;
+  border: 1px solid #ebe1cd; border-radius: 10px; padding: 10px 12px; min-height: 40px;
+  background: #fff;
+}
+.acct-payments-field input:focus-visible { outline: 2px solid #c49a28; outline-offset: 1px; }
+.acct-payments-error { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #dc2626; margin: 0 0 10px; }
+.acct-payments-success { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #1a7a44; margin: 0 0 10px; }
+
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .acct-inner { padding: 0 16px; gap: 16px; }

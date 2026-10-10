@@ -743,6 +743,9 @@ CREATE TABLE IF NOT EXISTS hive_notification_prefs (
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (hive_id, user_id)
 );
+-- Added after the table first existed — ALTER, not the CREATE above, is what
+-- actually reaches a database that already has this table (Prompt 62 Part 1).
+ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS costs BOOLEAN;
 
 -- Idempotency ledger for the 24h-before RSVP reminder job — one row per
 -- (plan, recipient) ever sent, so re-running the job (every 15 min, or after
@@ -923,3 +926,137 @@ CREATE TABLE IF NOT EXISTS plan_checkins (
 -- Same pattern as messages.plan_post_id / poll_id / suggestion_id.
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS time_poll_id UUID
   REFERENCES hive_time_polls(poll_id) ON DELETE SET NULL;
+
+-- ─── Prompt 62, Part 1 — Split costs ────────────────────────────────────────
+-- Payment handles — optional, set by each member under Account Settings ->
+-- Payments. Shown only inside Split costs, to people who share a Hive with
+-- the member (enforced by that controller's queries, never a general profile
+-- read — getMemberProfile whitelists its response and does not include
+-- these). TrueHive never moves money; these are just deep-link targets.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS venmo_handle   TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS cashapp_handle TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS paypal_handle  TEXT;
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_venmo_handle_check;
+ALTER TABLE profiles ADD CONSTRAINT profiles_venmo_handle_check
+  CHECK (venmo_handle IS NULL OR venmo_handle ~ '^[A-Za-z0-9_.-]{1,30}$');
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_cashapp_handle_check;
+ALTER TABLE profiles ADD CONSTRAINT profiles_cashapp_handle_check
+  CHECK (cashapp_handle IS NULL OR cashapp_handle ~ '^[A-Za-z0-9_.-]{1,30}$');
+ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_paypal_handle_check;
+ALTER TABLE profiles ADD CONSTRAINT profiles_paypal_handle_check
+  CHECK (paypal_handle IS NULL OR paypal_handle ~ '^[A-Za-z0-9_.-]{1,30}$');
+
+-- All money is stored as integer cents — never a float, never a currency
+-- conversion. One currency per group; the code shows the code, never converts.
+CREATE TABLE IF NOT EXISTS hive_cost_groups (
+  group_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id       UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  created_by    UUID        NOT NULL REFERENCES users(user_id),
+  title         TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 80),
+  plan_post_id  UUID        REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  currency      CHAR(3)     NOT NULL DEFAULT 'USD',
+  archived_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_cost_groups_hive ON hive_cost_groups(hive_id);
+CREATE INDEX IF NOT EXISTS idx_cost_groups_plan ON hive_cost_groups(plan_post_id);
+
+CREATE TABLE IF NOT EXISTS hive_expenses (
+  expense_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id      UUID        NOT NULL REFERENCES hive_cost_groups(group_id) ON DELETE CASCADE,
+  paid_by       UUID        NOT NULL REFERENCES users(user_id),
+  amount_cents  INT         NOT NULL CHECK (amount_cents > 0 AND amount_cents <= 10000000),
+  description   TEXT        NOT NULL CHECK (char_length(description) BETWEEN 1 AND 120),
+  spent_on      DATE,
+  split_mode    TEXT        NOT NULL CHECK (split_mode IN ('equal','custom')),
+  created_by    UUID        NOT NULL REFERENCES users(user_id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_expenses_group ON hive_expenses(group_id);
+
+-- Share amounts always sum exactly to amount_cents — enforced in the
+-- controller (equal splits spread the leftover cent-by-cent, deterministic
+-- by user id; custom splits are rejected with 400 if they don't sum), not
+-- here, since a CHECK can't see sibling rows.
+CREATE TABLE IF NOT EXISTS hive_expense_shares (
+  expense_id   UUID NOT NULL REFERENCES hive_expenses(expense_id) ON DELETE CASCADE,
+  user_id      UUID NOT NULL REFERENCES users(user_id),
+  share_cents  INT  NOT NULL CHECK (share_cents >= 0),
+  PRIMARY KEY (expense_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS hive_settlements (
+  settlement_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  group_id      UUID        NOT NULL REFERENCES hive_cost_groups(group_id) ON DELETE CASCADE,
+  from_user     UUID        NOT NULL REFERENCES users(user_id),
+  to_user       UUID        NOT NULL REFERENCES users(user_id),
+  amount_cents  INT         NOT NULL CHECK (amount_cents > 0),
+  method        TEXT        NOT NULL CHECK (method IN ('venmo','cashapp','paypal','cash','other')),
+  note          TEXT,
+  recorded_by   UUID        NOT NULL REFERENCES users(user_id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_settlements_group ON hive_settlements(group_id);
+
+-- "Edited by Marcus - 2h ago" — one row per edit or soft-delete.
+CREATE TABLE IF NOT EXISTS hive_expense_events (
+  event_id   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  expense_id UUID        NOT NULL REFERENCES hive_expenses(expense_id) ON DELETE CASCADE,
+  actor      UUID        NOT NULL REFERENCES users(user_id),
+  action     TEXT        NOT NULL CHECK (action IN ('created','edited','deleted')),
+  before     JSONB,
+  after      JSONB,
+  at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_expense_events_expense ON hive_expense_events(expense_id);
+
+-- Idempotency ledger for the weekly "you owe money" nudge — at most one per
+-- (user, group, ISO week), same PRIMARY-KEY-as-the-guard pattern as
+-- plan_reminders_sent, safe under concurrent/overlapping job runs.
+CREATE TABLE IF NOT EXISTS cost_nudges_sent (
+  user_id  UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  group_id UUID NOT NULL REFERENCES hive_cost_groups(group_id) ON DELETE CASCADE,
+  week_of  DATE NOT NULL,
+  sent_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, group_id, week_of)
+);
+
+-- ─── Prompt 62, Part 2 — Sign-up lists ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_signup_lists (
+  list_id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id          UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  created_by       UUID        NOT NULL REFERENCES users(user_id),
+  title            TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 80),
+  plan_post_id     UUID        REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  members_can_add  BOOLEAN     NOT NULL DEFAULT TRUE,
+  closes_at        TIMESTAMPTZ,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_signup_lists_hive ON hive_signup_lists(hive_id);
+CREATE INDEX IF NOT EXISTS idx_signup_lists_plan ON hive_signup_lists(plan_post_id);
+
+CREATE TABLE IF NOT EXISTS hive_signup_items (
+  item_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  list_id     UUID        NOT NULL REFERENCES hive_signup_lists(list_id) ON DELETE CASCADE,
+  label       TEXT        NOT NULL CHECK (char_length(label) BETWEEN 1 AND 80),
+  slots       INT         NOT NULL DEFAULT 1 CHECK (slots BETWEEN 1 AND 50),
+  note        TEXT,
+  position    INT         NOT NULL DEFAULT 0,
+  created_by  UUID        NOT NULL REFERENCES users(user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_signup_items_list ON hive_signup_items(list_id);
+
+-- quantity claimed can't exceed an item's remaining slots — enforced in the
+-- controller with a row lock in a transaction (a conditional INSERT against
+-- a locked SELECT SUM), so two concurrent claims on the last slot can't both
+-- succeed. Not a CHECK: it needs to see sibling rows' quantities.
+CREATE TABLE IF NOT EXISTS hive_signup_claims (
+  item_id     UUID        NOT NULL REFERENCES hive_signup_items(item_id) ON DELETE CASCADE,
+  user_id     UUID        NOT NULL REFERENCES users(user_id),
+  quantity    INT         NOT NULL DEFAULT 1 CHECK (quantity >= 1),
+  note        TEXT,
+  claimed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (item_id, user_id)
+);

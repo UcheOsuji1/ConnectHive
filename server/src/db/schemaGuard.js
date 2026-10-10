@@ -20,7 +20,7 @@ import { query } from './index.js';
 const REQUIRED = {
   users: ['member_id', 'date_of_birth', 'terms_accepted_at', 'terms_policy_version',
           'email_verified', 'token_version', 'presence_status'],
-  profiles: ['connection_purposes', 'social_preferences'],
+  profiles: ['connection_purposes', 'social_preferences', 'venmo_handle', 'cashapp_handle', 'paypal_handle'],
   hives: ['hive_code', 'banner_url', 'logo_url', 'cadence', 'hive_values',
           'tagline', 'purpose', 'founder_note',
           'plan_proposers', 'plan_approval', 'vote_min_yes', 'vote_window_hours', 'suggestions_per_day'],
@@ -36,6 +36,7 @@ const REQUIRED = {
   // has live rows are the drift-risk case, not the "table absent" case.
   hive_plan_suggestions: ['source_poll_id', 'source_slot_id', 'series_rule', 'series_count'],
   hive_time_polls: ['pending_suggestion_id'],
+  hive_notification_prefs: ['costs'],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -62,6 +63,10 @@ const IMPACT = {
   'messages.poll_id':           'polls in chat — the message list fails',
   'messages.suggestion_id':     'suggested-plan cards in chat — the message list fails',
   'messages.time_poll_id':      'Find a time cards in chat — the message list fails',
+  'profiles.venmo_handle':      'Split costs — payment-handle links and Account Settings -> Payments fail',
+  'profiles.cashapp_handle':    'Split costs — payment-handle links and Account Settings -> Payments fail',
+  'profiles.paypal_handle':     'Split costs — payment-handle links and Account Settings -> Payments fail',
+  'hive_notification_prefs.costs': 'Split costs notification preferences fail to save',
   'hives.plan_proposers':       'plan rules — who may suggest plans',
   'hives.plan_approval':        'plan rules — owner-approve vs Hive vote',
   'hives.vote_min_yes':         'plan rules — vote threshold',

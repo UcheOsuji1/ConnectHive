@@ -8,6 +8,7 @@ const PREF_ROWS = [
   { key: 'new_members',    label: 'New members',      desc: 'When someone joins or introduces themselves' },
   { key: 'announcements',  label: 'Announcements',    desc: 'Messages sent to you by an owner or admin' },
   { key: 'all_messages',   label: 'All chat messages', desc: 'Every message in every room — noisy' },
+  { key: 'costs',          label: 'Split costs',      desc: 'Added to an expense, a settlement, or owing money' },
 ];
 
 export default function HiveNotificationPrefsBell({ hiveId }) {
