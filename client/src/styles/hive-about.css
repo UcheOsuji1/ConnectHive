@@ -118,6 +118,10 @@
 .hab-edit-link { font-size: 0.78rem; font-weight: 600; color: #78580f; text-decoration: none; }
 .hab-edit-link:hover { text-decoration: underline; }
 
+.hab-goal-bar { height: 7px; border-radius: 100px; background: var(--hdl-ivory); overflow: hidden; margin: 10px 0 6px; }
+.hab-goal-bar-fill { height: 100%; border-radius: 100px; background: var(--hdl-gold); }
+.hab-goal-meta { font-size: 0.76rem; color: var(--hdl-muted); margin: 0; }
+
 .hab-doc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .hab-doc-link { font-size: 0.85rem; font-weight: 600; color: var(--hdl-ink); text-decoration: none; }
 .hab-doc-link:hover { text-decoration: underline; }

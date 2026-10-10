@@ -5,6 +5,8 @@ import { FEED_SELECT } from './postsController.js';
 import { getMediaCounts } from './mediaController.js';
 import { getCategoryConfig } from '../lib/categoryConfig.js';
 import { getAttendanceRate } from './checkinsController.js';
+import { getFeaturedGoalWithProgress } from './goalsController.js';
+import { isToolOn } from '../lib/hiveTools.js';
 
 const ACTIVITY_LIMIT = 8;
 const MESSAGE_LIMIT  = 4;
@@ -29,7 +31,7 @@ export const getHiveHome = async (req, res) => {
     const [
       planRes, statsRes, activityRes, messagesRes,
       unreadRes, photosRes, hiveRes, hostRes, pendingRes, pendingSuggestionsRes, mediaCounts,
-      attendanceRate,
+      attendanceRate, goalsOn, featuredGoal,
     ] = await Promise.all([
       // ── nextPlan — reuses the Plans projection, no duplicated SQL ──────────
       query(
@@ -109,6 +111,15 @@ export const getHiveHome = async (req, res) => {
                                   AND hm.user_id = s.suggested_by
                                   AND hm.membership_status = 'active'
             WHERE s.hive_id = $1
+
+           UNION ALL
+           SELECT 'goal_completed', g.created_by, g.completed_at, 'completed a goal', g.title,
+                  NULL::uuid, NULL::uuid, 0
+             FROM hive_goals g
+             JOIN hive_members hm ON hm.hive_id = g.hive_id
+                                  AND hm.user_id = g.created_by
+                                  AND hm.membership_status = 'active'
+            WHERE g.hive_id = $1 AND g.completed_at IS NOT NULL
          )
          SELECT acts.*, pr.full_name, pr.profile_photo_url
            FROM acts
@@ -217,6 +228,14 @@ export const getHiveHome = async (req, res) => {
 
       // null until 3+ past plans have check-in data (Prompt 61 Part 5).
       getAttendanceRate(hiveId),
+
+      // Whether the goals tool is on — gates whether featuredGoal is ever
+      // exposed below. A disabled tool must stay invisible, Home included.
+      isToolOn(hiveId, 'goals'),
+
+      // Computed unconditionally (cheap, one row at most) so it's ready the
+      // instant goalsOn comes back true; thrown away otherwise.
+      getFeaturedGoalWithProgress(hiveId),
     ]);
 
     const st = statsRes.rows[0];
@@ -322,11 +341,13 @@ export const getHiveHome = async (req, res) => {
           : r.type === 'plan'       ? `created a plan: ${r.target}`
           : r.type === 'post'       ? `posted ${r.target}`
           : r.type === 'suggestion' ? `suggested a plan: ${r.target}`
+          : r.type === 'goal_completed' ? `completed a goal: ${r.target}`
           : r.text;
         const link = r.channel_id ? `/hive/${hiveId}/chat/${r.channel_id}`
           : r.type === 'plan' || r.type === 'rsvp' ? `/hive/${hiveId}/events`
           : r.type === 'suggestion' ? `/hive/${hiveId}/events?tab=suggested`
           : r.type === 'join' ? `/hive/${hiveId}/members`
+          : r.type === 'goal_completed' ? `/hive/${hiveId}/tools/goals`
           : `/hive/${hiveId}`;
         return { type: r.type, actor: person(r), text, target: r.target, link, at: r.at };
       }),
@@ -346,6 +367,11 @@ export const getHiveHome = async (req, res) => {
       recentPhotos: photosRes.rows,
 
       goal: hiveRes.rows[0]?.pinned_goal ?? null,
+
+      // The featured Goal's live progress bar — null when the tool is off,
+      // there's no featured goal, or none exists yet. Home falls back to
+      // the plain pinned_goal text above when this is null.
+      featuredGoal: goalsOn ? featuredGoal : null,
 
       owner: hiveRes.rows[0]?.owner_name?.trim()
         ? { full_name: hiveRes.rows[0].owner_name.trim() }

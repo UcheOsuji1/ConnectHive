@@ -168,7 +168,29 @@ export function Glance({ stats, onlineCount }) {
 /* ── Hive Goal ───────────────────────────────────────────────────────────── */
 // No progress bar: nothing measures a goal yet, and an invented bar would be
 // exactly the kind of fake content we don't ship.
-export function Goal({ goal, hiveId, isOwner, label = 'Hive Goal' }) {
+// featuredGoal (Prompt 63 Part 2) — a real, live-computed progress bar from
+// the goals tool. Falls back to the plain pinned_goal text only when there
+// is no featured goal (tool off, none created, or none featured).
+export function Goal({ goal, featuredGoal, hiveId, isOwner, label = 'Hive Goal' }) {
+  if (featuredGoal) {
+    const pct = featuredGoal.progress_pct;
+    return (
+      <Card icon="target" title={label} className="hh-m-goal"
+            link="View" linkTo={`/hive/${hiveId}/tools/goals`}>
+        <div className="hh-goal-live">
+          <p className="hh-goal-live-title">{featuredGoal.title}</p>
+          <div className="hh-goal-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+            <div className="hh-goal-bar-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="hh-goal-live-meta">
+            {featuredGoal.value} / {featuredGoal.target} · {pct}%
+            {featuredGoal.completed_at && <span className="hh-goal-done"> · Completed 🎉</span>}
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
   if (!goal && !isOwner) return null;
   return (
     <Card icon="target" title={label} className="hh-m-goal"

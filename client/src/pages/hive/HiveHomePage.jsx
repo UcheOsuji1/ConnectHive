@@ -225,7 +225,7 @@ export default function HiveHomePage() {
           {data.featuredModule?.kind !== 'recentMedia' && (
             <FeaturedModule module={data.featuredModule} hiveId={hiveId} />
           )}
-          <Goal goal={data.goal} hiveId={hiveId} isOwner={isOwner} label={labels.goal} />
+          <Goal goal={data.goal} featuredGoal={data.featuredGoal} hiveId={hiveId} isOwner={isOwner} label={labels.goal} />
           <HostPost
             post={data.hostPost}
             hiveId={hiveId}

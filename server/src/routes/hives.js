@@ -98,6 +98,9 @@ import {
   listDocs, createDoc, getDoc, updateDoc, setDocPinned, deleteDoc, listRevisions, restoreRevision,
 } from '../controllers/docsController.js';
 import {
+  listGoals, createGoal, updateGoal, updateManualProgress, archiveGoal,
+} from '../controllers/goalsController.js';
+import {
   listSignupLists, createSignupList, getSignupList, addSignupItem, editSignupItem, deleteSignupItem,
   claimSignupItem, unclaimSignupItem, removeClaim,
 } from '../controllers/signupsController.js';
@@ -286,5 +289,11 @@ router.post('/:id/tools/docs/docs/:docId/pin',               requireAuth, requir
 router.delete('/:id/tools/docs/docs/:docId/pin',             requireAuth, requireTool('docs'), setDocPinned(false));
 router.get('/:id/tools/docs/docs/:docId/revisions',          requireAuth, requireTool('docs'), listRevisions);
 router.post('/:id/tools/docs/docs/:docId/revisions/:revisionId/restore', requireAuth, requireTool('docs'), restoreRevision);
+
+router.get('/:id/tools/goals/goals',                requireAuth, requireTool('goals'), listGoals);
+router.post('/:id/tools/goals/goals',               requireAuth, requireTool('goals'), createGoal);
+router.patch('/:id/tools/goals/goals/:goalId',      requireAuth, requireTool('goals'), updateGoal);
+router.patch('/:id/tools/goals/goals/:goalId/progress', requireAuth, requireTool('goals'), updateManualProgress);
+router.post('/:id/tools/goals/goals/:goalId/archive', requireAuth, requireTool('goals'), archiveGoal);
 
 export default router;

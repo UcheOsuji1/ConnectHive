@@ -1096,3 +1096,30 @@ CREATE TABLE IF NOT EXISTS hive_doc_revisions (
   edited_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_doc_revisions_doc ON hive_doc_revisions(doc_id, edited_at DESC);
+
+-- ─── Prompt 63, Part 2 — Goals (tool_key = 'goals') ─────────────────────────
+-- Progress is computed live from real tables per-metric (see
+-- goalsController.js METRIC_DEFS) — manual_value is only read for metric =
+-- 'manual'. pinned_goal on hives is deliberately left alone: these tables
+-- are additive, never auto-migrated from it.
+CREATE TABLE IF NOT EXISTS hive_goals (
+  goal_id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id       UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title         TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  description   TEXT,
+  metric        TEXT        NOT NULL CHECK (metric IN
+                  ('plans_held','attendance','members','new_members','messages','photos','milestones_done','manual')),
+  target        INT         NOT NULL CHECK (target BETWEEN 1 AND 100000),
+  period_start  DATE        NOT NULL,
+  period_end    DATE        NOT NULL CHECK (period_end >= period_start),
+  manual_value  INT         CHECK (manual_value IS NULL OR manual_value >= 0),
+  featured      BOOLEAN     NOT NULL DEFAULT FALSE,
+  created_by    UUID        NOT NULL REFERENCES users(user_id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at  TIMESTAMPTZ,
+  archived_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_goals_hive ON hive_goals(hive_id);
+-- At most one featured, non-archived goal per Hive.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_hive_goals_one_featured
+  ON hive_goals(hive_id) WHERE featured = TRUE AND archived_at IS NULL;

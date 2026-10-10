@@ -55,7 +55,7 @@ export const TOOL_CATALOG = [
     key: 'goals', name: 'Goals', description: 'Track what the Hive is working toward together.',
     icon: 'target', scope: 'hive',
     defaultOn: ['Social Groups', 'Professional Networking', 'Travel Buddies', 'Project Collaboration', 'Event Buddies', 'Specialized Groups'],
-    available: false,
+    available: true,
   },
   {
     key: 'coffee_chats', name: 'Meet someone new', description: 'Get paired with another member for a 1:1 chat.',

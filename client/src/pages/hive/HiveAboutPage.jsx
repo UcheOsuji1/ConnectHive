@@ -46,6 +46,7 @@ export default function HiveAboutPage() {
   const [owner,   setOwner]   = useState(null);
   const [leaders, setLeaders] = useState([]); // owner + admins
   const [glance,  setGlance]  = useState(null);
+  const [featuredGoal, setFeaturedGoal] = useState(null);
   const [pinnedDocs, setPinnedDocs] = useState([]);
   const [toast,   setToast]   = useState(null);
   const toastTimer = useRef(null);
@@ -62,7 +63,7 @@ export default function HiveAboutPage() {
     // Same stats query Hive Home uses — mediaCount and upcomingPlans share
     // its exact definition rather than a second, possibly-drifting one.
     api.get(`/api/hives/${hiveId}/home`)
-      .then(d => setGlance(d.stats ?? null))
+      .then(d => { setGlance(d.stats ?? null); setFeaturedGoal(d.featuredGoal ?? null); })
       .catch(() => {});
     // 404s silently (tool off) — pinnedDocs just stays empty, same as any
     // other disabled-tool surface.
@@ -238,7 +239,17 @@ export default function HiveAboutPage() {
           <div className="hab-card hab-card--empty"><AddPlaceholder hiveId={hiveId} label="Hive Rules" /></div>
         ) : null}
 
-        {hive.pinned_goal && (
+        {featuredGoal ? (
+          <div className="hab-card">
+            <div className="hab-card-label-row">
+              <div className="hab-card-label"><span aria-hidden="true">⭐</span> Pinned Goal</div>
+              <Link to={`/hive/${hiveId}/tools/goals`} className="hab-edit-link">View →</Link>
+            </div>
+            <p className="hab-card-body">{featuredGoal.title}</p>
+            <div className="hab-goal-bar"><div className="hab-goal-bar-fill" style={{ width: `${featuredGoal.progress_pct}%` }} /></div>
+            <p className="hab-goal-meta">{featuredGoal.value} / {featuredGoal.target} · {featuredGoal.progress_pct}%</p>
+          </div>
+        ) : hive.pinned_goal && (
           <div className="hab-card">
             <div className="hab-card-label-row">
               <div className="hab-card-label"><span aria-hidden="true">⭐</span> Pinned Goal</div>
