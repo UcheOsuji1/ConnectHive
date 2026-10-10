@@ -14,6 +14,10 @@
   color: var(--hdl-gold, #c49a28); background: rgba(196,154,40,.12); padding: 3px 9px; border-radius: 100px;
   margin-bottom: 4px;
 }
+/* Collapsed-series "+N more" link (Prompt 62 Part 0.2) — sits inside the chip. */
+.plans-series-more {
+  margin-left: 6px; color: inherit; text-decoration: underline;
+}
 
 /* ── Header ───────────────────────────────────────────────────────────────── */
 .plans-head {

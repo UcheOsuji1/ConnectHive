@@ -3,7 +3,7 @@ import Avatar from '../Avatar.jsx';
 import RsvpMenu from './RsvpMenu.jsx';
 import { typeLabel, relativeLabel, formatDate, formatTimeRange } from '../../lib/plans.js';
 
-export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees }) {
+export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees, moreInSeries = 0 }) {
   const cover = plan.media_url;
   return (
     <article className={`plans-card${past ? ' plans-card--past' : ''}`}>
@@ -25,6 +25,11 @@ export default function PlanCard({ plan, past = false, onRsvp, onOpenAttendees }
         {plan.series && (
           <span className="plans-series-chip">
             Repeats {plan.series.rule === 'weekly' ? 'weekly' : plan.series.rule === 'biweekly' ? 'every 2 weeks' : 'monthly'} · {plan.series.index} of {plan.series.count}
+            {moreInSeries > 0 && (
+              <Link to={`/hive/${plan.hive_id}/events?series=${plan.series.series_id}`} className="plans-series-more">
+                +{moreInSeries} more
+              </Link>
+            )}
           </span>
         )}
         <h3 className="plans-card-title">

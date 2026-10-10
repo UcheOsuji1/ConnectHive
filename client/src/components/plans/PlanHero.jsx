@@ -22,7 +22,7 @@ function Stack({ people, goingCount, maybeCount, onOpen }) {
   );
 }
 
-export default function PlanHero({ plan, onRsvp, onOpenAttendees }) {
+export default function PlanHero({ plan, onRsvp, onOpenAttendees, moreInSeries = 0 }) {
   const cover = plan.media_url;
   return (
     <article
@@ -38,6 +38,16 @@ export default function PlanHero({ plan, onRsvp, onOpenAttendees }) {
       </div>
 
       <div className="plans-hero-body">
+        {plan.series && (
+          <span className="plans-series-chip">
+            Repeats {plan.series.rule === 'weekly' ? 'weekly' : plan.series.rule === 'biweekly' ? 'every 2 weeks' : 'monthly'} · {plan.series.index} of {plan.series.count}
+            {moreInSeries > 0 && (
+              <Link to={`/hive/${plan.hive_id}/events?series=${plan.series.series_id}`} className="plans-series-more">
+                +{moreInSeries} more
+              </Link>
+            )}
+          </span>
+        )}
         <h2 className="plans-hero-title">
           <Link to={`/hive/${plan.hive_id}/events/${plan.post_id}`} className="plans-card-title-link">{plan.headline}</Link>
         </h2>

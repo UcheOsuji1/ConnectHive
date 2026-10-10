@@ -252,6 +252,36 @@ export default function HivePlansPage() {
     });
   }, [upcoming, typeFilter, whenFilter]);
 
+  // Collapse a recurring series to its next occurrence (Prompt 62 Part 0.2) —
+  // `filtered` is already event_at-ASC from the server, so the first time a
+  // series_id is seen is its next occurrence by construction.
+  const collapsed = useMemo(() => {
+    const countBySeries = {};
+    for (const p of filtered) {
+      if (p.series) countBySeries[p.series.series_id] = (countBySeries[p.series.series_id] ?? 0) + 1;
+    }
+    const seen = new Set();
+    const out = [];
+    for (const p of filtered) {
+      if (p.series) {
+        if (seen.has(p.series.series_id)) continue;
+        seen.add(p.series.series_id);
+        out.push({ ...p, _moreInSeries: countBySeries[p.series.series_id] - 1 });
+      } else {
+        out.push(p);
+      }
+    }
+    return out;
+  }, [filtered]);
+
+  // "+N more" lands here — every upcoming occurrence of one series.
+  const seriesFilter = searchParams.get('series');
+  const seriesOccurrences = useMemo(() => {
+    if (!seriesFilter || !upcoming) return null;
+    return upcoming.filter(p => p.series?.series_id === seriesFilter)
+      .sort((a, b) => a.series.index - b.series.index);
+  }, [seriesFilter, upcoming]);
+
   const myRsvps = useMemo(
     () => (upcoming ?? []).filter(p => p.viewer_rsvp), [upcoming]);
 
@@ -342,7 +372,26 @@ export default function HivePlansPage() {
 
       <div className="plans-layout">
         <div className="plans-main">
-          {isEmptyHive ? (
+          {seriesFilter ? (
+            <>
+              <Link to={`/hive/${hiveId}/events`} className="plans-btn-text">← Back to Plans</Link>
+              <div className="plans-secthead">
+                <h2 className="plans-secttitle">Every occurrence</h2>
+                <span className="plans-sectmeta">{seriesOccurrences?.length ?? 0}</span>
+              </div>
+              {seriesOccurrences === null ? (
+                <div className="plans-skel plans-skel--card" />
+              ) : seriesOccurrences.length === 0 ? (
+                <p className="plans-empty-txt">No upcoming occurrences of this series.</p>
+              ) : (
+                <div className="plans-grid">
+                  {seriesOccurrences.map(p => (
+                    <PlanCard key={p.post_id} plan={p} onRsvp={onRsvp} onOpenAttendees={setDrawerPlan} />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : isEmptyHive ? (
             <div className="plans-empty">
               <div className="plans-hex" aria-hidden="true" />
               <h2 className="plans-empty-title">No plans yet</h2>
@@ -378,7 +427,7 @@ export default function HivePlansPage() {
               )}
             </div>
           ) : tab === 'upcoming' ? (
-            filtered.length === 0 ? (
+            collapsed.length === 0 ? (
               <div className="plans-nomatch">
                 <p>No upcoming plans match these filters</p>
                 <button type="button" className="plans-btn-ghost" onClick={clearFilters}>
@@ -387,17 +436,18 @@ export default function HivePlansPage() {
               </div>
             ) : (
               <>
-                <PlanHero plan={filtered[0]} onRsvp={onRsvp} onOpenAttendees={setDrawerPlan} />
-                {filtered.length > 1 ? (
+                <PlanHero plan={collapsed[0]} onRsvp={onRsvp} onOpenAttendees={setDrawerPlan}
+                          moreInSeries={collapsed[0]._moreInSeries ?? 0} />
+                {collapsed.length > 1 ? (
                   <>
                     <div className="plans-secthead">
                       <h2 className="plans-secttitle">Upcoming plans</h2>
-                      <span className="plans-sectmeta">{filtered.length - 1} more</span>
+                      <span className="plans-sectmeta">{collapsed.length - 1} more</span>
                     </div>
                     <div className="plans-grid">
-                      {filtered.slice(1).map(p => (
+                      {collapsed.slice(1).map(p => (
                         <PlanCard key={p.post_id} plan={p} onRsvp={onRsvp}
-                                  onOpenAttendees={setDrawerPlan} />
+                                  onOpenAttendees={setDrawerPlan} moreInSeries={p._moreInSeries ?? 0} />
                       ))}
                     </div>
                   </>
