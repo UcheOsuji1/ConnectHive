@@ -77,7 +77,8 @@ async function computeMetricValue(hiveId, goal) {
     case 'messages': {
       const { rows: [r] } = await query(
         `SELECT COUNT(*)::int AS n FROM messages m
-          WHERE m.hive_id = $1 AND m.deleted_at IS NULL
+           LEFT JOIN hive_channels c ON c.channel_id = m.channel_id
+          WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND (c.kind IS NULL OR c.kind != 'pair')
             AND m.sent_at >= $2::date AND m.sent_at < ${periodEndExclusive('$3')}`,
         [hiveId, start, end],
       );
@@ -89,7 +90,8 @@ async function computeMetricValue(hiveId, goal) {
         `SELECT (
            (SELECT COUNT(*)::int FROM message_attachments a
               JOIN messages m ON m.message_id = a.message_id
-             WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND a.resource_type = 'image'
+              JOIN hive_channels c ON c.channel_id = m.channel_id
+             WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.kind != 'pair' AND a.resource_type = 'image'
                AND a.created_at >= $2::date AND a.created_at < ${periodEndExclusive('$3')})
            +
            (SELECT COUNT(*)::int FROM hive_uploads u

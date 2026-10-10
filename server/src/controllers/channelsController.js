@@ -15,7 +15,7 @@ export const listChannels = async (req, res) => {
       `SELECT channel_id, hive_id, name, description, channel_type, is_default, position, icon,
               archived_at
        FROM   hive_channels
-       WHERE  hive_id = $1
+       WHERE  hive_id = $1 AND kind = 'room'
          ${includeArchived ? '' : 'AND archived_at IS NULL'}
        ORDER  BY (archived_at IS NOT NULL) ASC, position ASC, created_at ASC`,
       [hiveId],
@@ -246,7 +246,7 @@ export const getSuggestedRooms = async (req, res) => {
     if (defaultRooms.length === 0) return res.json({ suggested: [] });
 
     const { rows: existing } = await query(
-      `SELECT LOWER(name) AS name FROM hive_channels WHERE hive_id = $1`,
+      `SELECT LOWER(name) AS name FROM hive_channels WHERE hive_id = $1 AND kind = 'room'`,
       [hiveId],
     );
     const existingNames = new Set(existing.map(r => r.name));
@@ -280,7 +280,7 @@ export const addSuggestedRooms = async (req, res) => {
     const defaultRooms = catConfig?.defaultRooms ?? [];
 
     const { rows: existing } = await query(
-      `SELECT LOWER(name) AS name FROM hive_channels WHERE hive_id = $1`,
+      `SELECT LOWER(name) AS name FROM hive_channels WHERE hive_id = $1 AND kind = 'room'`,
       [hiveId],
     );
     const existingNames = new Set(existing.map(r => r.name));
@@ -306,7 +306,7 @@ export const addSuggestedRooms = async (req, res) => {
     const { rows: channels } = await query(
       `SELECT channel_id, hive_id, name, description, channel_type, is_default, position, icon
        FROM   hive_channels
-       WHERE  hive_id = $1 AND archived_at IS NULL
+       WHERE  hive_id = $1 AND kind = 'room' AND archived_at IS NULL
        ORDER  BY position ASC, created_at ASC`,
       [hiveId],
     );
@@ -315,5 +315,62 @@ export const addSuggestedRooms = async (req, res) => {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error('[channels/addSuggestedRooms]', err);
     res.status(500).json({ error: 'Failed to add suggested rooms.' });
+  }
+};
+
+// ── GET /api/hives/:id/chats ──────────────────────────────────────────────────
+// The viewer's own pair channels (Meet someone new + Mentorship), newest
+// first. Never includes a chat the viewer isn't a member of — this is the
+// ONLY place pair channels are ever listed.
+export const listMyChats = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    await requireMembership(hiveId, req.userId);
+
+    const { rows } = await query(
+      `SELECT c.channel_id, c.created_for, c.archived_at,
+              ARRAY_AGG(hcm2.user_id) FILTER (WHERE hcm2.user_id != $2) AS other_user_ids,
+              (SELECT m.message_text FROM messages m
+                WHERE m.channel_id = c.channel_id AND m.deleted_at IS NULL
+                ORDER BY m.sent_at DESC LIMIT 1) AS last_text,
+              (SELECT m.sent_at FROM messages m
+                WHERE m.channel_id = c.channel_id AND m.deleted_at IS NULL
+                ORDER BY m.sent_at DESC LIMIT 1) AS last_at,
+              (SELECT COUNT(*)::int FROM messages m
+                WHERE m.channel_id = c.channel_id AND m.deleted_at IS NULL
+                  AND m.sender_user_id != $2
+                  AND m.sent_at > COALESCE(
+                    (SELECT last_seen_at FROM hive_last_seen WHERE user_id = $2 AND hive_id = $1),
+                    '1970-01-01'::timestamptz)) AS unread_count
+         FROM hive_channels c
+         JOIN hive_channel_members hcm  ON hcm.channel_id = c.channel_id AND hcm.user_id = $2
+         LEFT JOIN hive_channel_members hcm2 ON hcm2.channel_id = c.channel_id
+        WHERE c.hive_id = $1 AND c.kind = 'pair'
+        GROUP BY c.channel_id, c.created_for, c.archived_at
+        ORDER BY last_at DESC NULLS LAST`,
+      [hiveId, req.userId],
+    );
+
+    const otherIds = [...new Set(rows.flatMap(r => r.other_user_ids ?? []))];
+    const { rows: others } = otherIds.length
+      ? await query(`SELECT user_id, full_name, profile_photo_url FROM profiles WHERE user_id = ANY($1)`, [otherIds])
+      : { rows: [] };
+    const byId = Object.fromEntries(others.map(o => [o.user_id, o]));
+
+    res.json({
+      chats: rows.map(r => ({
+        channel_id: r.channel_id,
+        created_for: r.created_for,
+        archived: !!r.archived_at,
+        other_members: (r.other_user_ids ?? []).map(id => byId[id] ?? { user_id: id, full_name: 'Member', profile_photo_url: null }),
+        last_text: r.last_text,
+        last_at: r.last_at,
+        unread_count: Math.min(r.unread_count, 99),
+      })),
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('[channels/listMyChats]', err);
+    res.status(500).json({ error: 'Failed to load chats.' });
   }
 };

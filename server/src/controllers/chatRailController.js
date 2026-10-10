@@ -3,6 +3,7 @@ import { requireMembership } from '../lib/hiveMembership.js';
 import { PLAN_SELECT, PLAN_END, shapePlan } from './eventsController.js';
 import { isToolOn } from '../lib/hiveTools.js';
 import { getPinnedDocs } from './docsController.js';
+import { requireChannelAccess } from '../lib/hiveChannels.js';
 
 const MEDIA_LIMIT = 6;
 
@@ -13,12 +14,7 @@ export const getChannelRail = async (req, res) => {
   try {
     const { id: hiveId, channelId } = req.params;
     await requireMembership(hiveId, req.userId);
-
-    const { rows: [ch] } = await query(
-      `SELECT channel_id FROM hive_channels WHERE channel_id = $1 AND hive_id = $2`,
-      [channelId, hiveId],
-    );
-    if (!ch) return res.status(404).json({ error: 'Room not found.' });
+    await requireChannelAccess(hiveId, channelId, req.userId);
 
     const [planRes, mediaRes, pinRes, docsOn] = await Promise.all([
       query(

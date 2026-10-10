@@ -37,6 +37,7 @@ const REQUIRED = {
   hive_plan_suggestions: ['source_poll_id', 'source_slot_id', 'series_rule', 'series_count'],
   hive_time_polls: ['pending_suggestion_id'],
   hive_notification_prefs: ['costs'],
+  hive_channels: ['kind', 'created_for'],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -78,6 +79,8 @@ const IMPACT = {
   'hive_plan_suggestions.source_poll_id': 'Find a time — scheduling via suggestion fails',
   'hive_plan_suggestions.source_slot_id': 'Find a time — scheduling via suggestion fails',
   'hive_time_polls.pending_suggestion_id': 'Find a time — scheduling via suggestion fails',
+  'hive_channels.kind':        'private pair chats — every privacy guard that excludes them fails open (would leak pair-chat content Hive-wide) instead of failing closed',
+  'hive_channels.created_for': 'Meet someone new and Mentorship — pair-chat creation fails',
 };
 
 let state = { checked: false, ok: true, missing: [] };

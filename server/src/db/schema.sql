@@ -1123,3 +1123,21 @@ CREATE INDEX IF NOT EXISTS idx_hive_goals_hive ON hive_goals(hive_id);
 -- At most one featured, non-archived goal per Hive.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_hive_goals_one_featured
   ON hive_goals(hive_id) WHERE featured = TRUE AND archived_at IS NULL;
+
+-- ─── Prompt 64, Part 1 — Private pair chats (shared by coffee_chats + mentorship) ─
+-- A pair channel is a hive_channels row like any other (so messages, reactions,
+-- mentions, polls etc. all work unchanged) with kind='pair'. Every query that
+-- lists/reads/counts/searches channels or messages must exclude kind='pair'
+-- unless the viewer is in hive_channel_members — see lib/hiveChannels.js's
+-- requireChannelAccess, the one gate every endpoint below routes through.
+ALTER TABLE hive_channels ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'room' CHECK (kind IN ('room','pair'));
+ALTER TABLE hive_channels ADD COLUMN IF NOT EXISTS created_for TEXT CHECK (created_for IS NULL OR created_for IN ('coffee_chat','mentorship'));
+
+-- Rows exist ONLY for pair channels — a room channel has none here, and that
+-- absence is fine: room access is governed by hive_members, not this table.
+CREATE TABLE IF NOT EXISTS hive_channel_members (
+  channel_id UUID NOT NULL REFERENCES hive_channels(channel_id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  PRIMARY KEY (channel_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_members_user ON hive_channel_members(user_id);

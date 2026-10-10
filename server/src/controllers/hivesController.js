@@ -1388,8 +1388,10 @@ export const getHiveOverview = async (req, res) => {
       [hiveId],
     );
     const { rows: [msgRow] } = await query(
-      `SELECT COUNT(*)::int AS n FROM messages
-        WHERE hive_id = $1 AND sent_at >= NOW() - INTERVAL '7 days' AND deleted_at IS NULL`,
+      `SELECT COUNT(*)::int AS n FROM messages m
+        LEFT JOIN hive_channels c ON c.channel_id = m.channel_id
+        WHERE m.hive_id = $1 AND m.sent_at >= NOW() - INTERVAL '7 days' AND m.deleted_at IS NULL
+          AND (c.kind IS NULL OR c.kind != 'pair')`,
       [hiveId],
     );
     const { rows: [planRow] } = await query(
@@ -1511,6 +1513,8 @@ export const getHiveAnalytics = async (req, res) => {
            FROM weeks w
            LEFT JOIN messages m ON date_trunc('week', m.sent_at) = w.week_start
                                AND m.hive_id = $1 AND m.deleted_at IS NULL
+           LEFT JOIN hive_channels c ON c.channel_id = m.channel_id
+          WHERE c.channel_id IS NULL OR c.kind != 'pair'
           GROUP BY w.week_start
           ORDER BY w.week_start`,
         [hiveId],
@@ -1537,7 +1541,7 @@ export const getHiveAnalytics = async (req, res) => {
            LEFT JOIN messages m ON m.channel_id = c.channel_id
                                AND m.sent_at >= NOW() - ($2 || ' days')::interval
                                AND m.deleted_at IS NULL
-          WHERE c.hive_id = $1 AND c.archived_at IS NULL
+          WHERE c.hive_id = $1 AND c.archived_at IS NULL AND c.kind != 'pair'
           GROUP BY c.channel_id, c.name
           ORDER BY message_count DESC, c.position ASC
           LIMIT 5`,

@@ -183,7 +183,12 @@ function StagedFileChips({ files, onRemove }) {
 
 const CHANNEL_ICON = <span className="hc-room-hash" aria-hidden="true">#</span>;
 
-function RoomsRail({ channels, activeChannelId, unreadChannels, onSelect, onAddRoom, canManage, open }) {
+function chatPreviewText(chat) {
+  if (!chat.last_text) return chat.created_for === 'mentorship' ? 'Say hello' : 'Matched — say hi!';
+  return chat.last_text.length > 48 ? `${chat.last_text.slice(0, 48)}…` : chat.last_text;
+}
+
+function RoomsRail({ channels, chats = [], activeChannelId, unreadChannels, onSelect, onAddRoom, canManage, open }) {
   const [filter, setFilter] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef(null);
@@ -271,6 +276,35 @@ function RoomsRail({ channels, activeChannelId, unreadChannels, onSelect, onAddR
               <span className="hc-room-soon-pill">Soon</span>
             </div>
           ))}
+        </>
+      )}
+
+      {chats.length > 0 && (
+        <>
+          <div className="hc-rail-section-label">Chats</div>
+          {chats.map(chat => {
+            const other = chat.other_members?.[0];
+            return (
+              <button
+                key={chat.channel_id}
+                className={[
+                  'hc-chat-item',
+                  chat.channel_id === activeChannelId ? 'hc-room-item--active' : '',
+                ].filter(Boolean).join(' ')}
+                onClick={() => onSelect(chat.channel_id)}
+                aria-current={chat.channel_id === activeChannelId ? 'page' : undefined}
+              >
+                <Avatar name={other?.full_name} src={other?.profile_photo_url} size={24} />
+                <span className="hc-chat-item-text">
+                  <span className="hc-chat-item-name">{other?.full_name ?? 'Member'}</span>
+                  <span className="hc-chat-item-preview">{chatPreviewText(chat)}</span>
+                </span>
+                {chat.unread_count > 0 && (
+                  <span className="hc-room-unread" aria-label="Unread messages" />
+                )}
+              </button>
+            );
+          })}
         </>
       )}
 
@@ -898,6 +932,8 @@ export default function HiveChatPage() {
   // Channels
   const [channels,          setChannels]          = useState([]);
   const [channelsLoading,   setChannelsLoading]   = useState(true);
+  const [chats,             setChats]             = useState([]); // private pair chats (Prompt 64 Part 1)
+  const [chatsLoading,      setChatsLoading]       = useState(true);
   const [activeChannelId,   setActiveChannelId]   = useState(null);
   const [unreadChannels,    setUnreadChannels]     = useState(new Set());
   const [showCreateChannel, setShowCreateChannel] = useState(false);
@@ -1095,6 +1131,14 @@ export default function HiveChatPage() {
       .finally(() => setChannelsLoading(false));
   }, [hiveId]);
 
+  const loadChats = useCallback(() => {
+    api.get(`/api/hives/${hiveId}/chats`)
+      .then(data => setChats(data.chats ?? []))
+      .catch(() => {})
+      .finally(() => setChatsLoading(false));
+  }, [hiveId]);
+  useEffect(() => { loadChats(); }, [loadChats]);
+
   // ── Load members once per hive ────────────────────────────────────────────
   useEffect(() => {
     api.get(`/api/hives/${hiveId}/members`)
@@ -1104,16 +1148,17 @@ export default function HiveChatPage() {
 
   // ── Redirect to default channel when channels are ready ───────────────────
   useEffect(() => {
-    if (channelsLoading || channels.length === 0) return;
+    if (channelsLoading || chatsLoading || channels.length === 0) return;
 
-    const validChannel = channels.find(c => c.channel_id === routeChannelId);
+    const validChannel = channels.find(c => c.channel_id === routeChannelId)
+      || chats.find(c => c.channel_id === routeChannelId);
     if (!validChannel) {
       const defaultCh = channels.find(c => c.is_default) ?? channels[0];
       navigate(`/hive/${hiveId}/chat/${defaultCh.channel_id}`, { replace: true });
       return;
     }
     setActiveChannelId(routeChannelId);
-  }, [channelsLoading, channels, routeChannelId, hiveId, navigate]);
+  }, [channelsLoading, chatsLoading, channels, chats, routeChannelId, hiveId, navigate]);
 
   // ── Load messages when active channel changes ─────────────────────────────
   useEffect(() => {
@@ -1150,6 +1195,7 @@ export default function HiveChatPage() {
         requestAnimationFrame(() => scrollToBottom());
       });
     markSeen();
+    loadChats(); // zeroes this chat's unread badge in the Chats section once opened
   }, [activeChannelId, hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Join/leave channel socket room on channel switch ──────────────────────
@@ -1215,6 +1261,7 @@ export default function HiveChatPage() {
         markSeen();
         if (isNearBottomRef.current) requestAnimationFrame(() => scrollToBottom(true));
       }
+      loadChats(); // keeps the Chats section's preview/ordering live for an open pair chat
     };
 
     const onPollUpdated = ({ poll_id, results, total_votes }) => {
@@ -1698,6 +1745,7 @@ export default function HiveChatPage() {
         m.message_id === tempId ? { ...real, _status: 'sent' } : m,
       ));
       markSeen();
+      if (isPairActive) loadChats(); // refresh preview text + ordering
     } catch {
       setMessages(prev => prev.map(m =>
         m.message_id === tempId ? { ...m, _status: 'failed' } : m,
@@ -1834,6 +1882,10 @@ export default function HiveChatPage() {
   }
 
   const activeChannel = channels.find(c => c.channel_id === activeChannelId);
+  const activeChat = chats.find(c => c.channel_id === activeChannelId);
+  const isPairActive = !activeChannel && !!activeChat;
+  const pairOther = activeChat?.other_members?.[0] ?? null;
+  const pairHeaderName = pairOther?.full_name ?? 'Member';
   const canManageChannels = isOwner || (hive?.my_role === 'admin');
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -1932,6 +1984,7 @@ export default function HiveChatPage() {
       {showRooms && <div className="hc-rooms-scrim" onClick={() => setShowRooms(false)} />}
       <RoomsRail
         channels={channels}
+        chats={chats}
         activeChannelId={activeChannelId}
         unreadChannels={unreadChannels}
         onSelect={(id) => { handleChannelSelect(id); setShowRooms(false); }}
@@ -1957,23 +2010,33 @@ export default function HiveChatPage() {
             </svg>
           </button>
 
-          <span className="hc-header-hash" aria-hidden="true">#</span>
+          {isPairActive ? (
+            <Avatar name={pairHeaderName} src={pairOther?.profile_photo_url} size={22} />
+          ) : (
+            <span className="hc-header-hash" aria-hidden="true">#</span>
+          )}
           <div className="hc-header-left">
-            <h1 className="hc-header-room">{activeChannel ? activeChannel.name : '…'}</h1>
-            {activeChannel?.description && (
+            <h1 className="hc-header-room">
+              {isPairActive ? pairHeaderName : activeChannel ? activeChannel.name : '…'}
+            </h1>
+            {isPairActive ? (
+              <p className="hc-header-desc">Just the two of you — nobody else in this Hive can see this chat.</p>
+            ) : activeChannel?.description && (
               <p className="hc-header-desc">{activeChannel.description}</p>
             )}
           </div>
 
-          <button
-            type="button"
-            className="hc-header-members"
-            onClick={() => setShowContext(v => !v)}
-            aria-label={showContext ? 'Hide the context rail' : 'Show the context rail'}
-            aria-expanded={showContext}
-          >
-            {memberCount} members <span aria-hidden="true">›</span>
-          </button>
+          {!isPairActive && (
+            <button
+              type="button"
+              className="hc-header-members"
+              onClick={() => setShowContext(v => !v)}
+              aria-label={showContext ? 'Hide the context rail' : 'Show the context rail'}
+              aria-expanded={showContext}
+            >
+              {memberCount} members <span aria-hidden="true">›</span>
+            </button>
+          )}
         </div>
 
         {reconnecting && (
@@ -1999,11 +2062,14 @@ export default function HiveChatPage() {
               <div className="hc-empty">
                 <div className="hc-empty-glyph">⬡</div>
                 <h2 className="hc-empty-title">
-                  {activeChannel && activeChannel.name !== 'general'
+                  {isPairActive ? `Say hi to ${pairHeaderName}`
+                    : activeChannel && activeChannel.name !== 'general'
                     ? `Welcome to ${activeChannel.name}`
                     : `Welcome to the beginning of ${hive?.hive_name ?? 'this Hive'}`}
                 </h2>
-                <p className="hc-empty-sub">Every great Hive starts with its first conversation.</p>
+                <p className="hc-empty-sub">
+                  {isPairActive ? 'Just the two of you — start the conversation.' : 'Every great Hive starts with its first conversation.'}
+                </p>
                 {hive?.icebreaker && (
                   <div className="hc-icebreaker-card">
                     <div className="hc-icebreaker-label">Break the ice</div>
@@ -2181,7 +2247,7 @@ export default function HiveChatPage() {
               <textarea
                 ref={composerRef}
                 className="hc-textarea"
-                placeholder={activeChannel ? `Message #${activeChannel.name}…` : 'Select a room…'}
+                placeholder={isPairActive ? `Message ${pairHeaderName}…` : activeChannel ? `Message #${activeChannel.name}…` : 'Select a room…'}
                 value={draftText}
                 onChange={handleDraftChange}
                 onKeyDown={handleComposerKey}
@@ -2251,8 +2317,8 @@ export default function HiveChatPage() {
           above it), so the "N members" toggle that opened it can end up
           covered by the sheet itself. The scrim is how it closes regardless —
           same pattern as the rooms drawer. */}
-      {showContext && <div className="hc-context-scrim" onClick={() => setShowContext(false)} />}
-      {showContext && (
+      {showContext && !isPairActive && <div className="hc-context-scrim" onClick={() => setShowContext(false)} />}
+      {showContext && !isPairActive && (
         <ContextRail
           members={members}
           presenceData={presenceData}

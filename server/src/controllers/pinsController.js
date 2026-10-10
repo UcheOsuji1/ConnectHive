@@ -1,6 +1,7 @@
 import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
 import { getIO } from '../realtime/socket.js';
+import { requireChannelAccess } from '../lib/hiveChannels.js';
 
 // One pinned message, shaped for the rail and the pins list.
 const PIN_SELECT = `
@@ -53,6 +54,9 @@ export const pinMessage = async (req, res) => {
     const m = await loadPinnable(hiveId, messageId);
     if (!m) return res.status(404).json({ error: 'Message not found.' });
     if (m.deleted_at) return res.status(400).json({ error: 'A deleted message cannot be pinned.' });
+    // Owner/admin can moderate anything in a room, but a pair chat has no
+    // moderator who isn't one of its own two (or three) members.
+    await requireChannelAccess(hiveId, m.channel_id, req.userId);
 
     await query(
       `UPDATE messages SET pinned_at = NOW(), pinned_by = $2 WHERE message_id = $1`,
@@ -79,6 +83,7 @@ export const unpinMessage = async (req, res) => {
     }
     const m = await loadPinnable(hiveId, messageId);
     if (!m) return res.status(404).json({ error: 'Message not found.' });
+    await requireChannelAccess(hiveId, m.channel_id, req.userId);
 
     await query(
       `UPDATE messages SET pinned_at = NULL, pinned_by = NULL WHERE message_id = $1`,
@@ -100,6 +105,7 @@ export const listPins = async (req, res) => {
   try {
     const { id: hiveId, channelId } = req.params;
     await requireMembership(hiveId, req.userId);
+    await requireChannelAccess(hiveId, channelId, req.userId);
 
     const { rows } = await query(
       `${PIN_SELECT}

@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { parseCookie } from 'cookie';
 import { query } from '../db/index.js';
 import { requireMembership } from '../lib/hiveMembership.js';
+import { requireChannelAccess } from '../lib/hiveChannels.js';
 import { dbTokenVersion } from '../middleware/auth.js';
 
 let io = null;
@@ -192,9 +193,14 @@ export function initSocket(httpServer, allowedOrigins) {
     });
 
     // ── join_channel / leave_channel ─────────────────────────────────────────
+    // A pair channel's room additionally requires the socket's own user be
+    // one of its members — without this, any Hive member could join a pair
+    // channel's socket room by id and silently receive every future
+    // receive_message / poll_updated broadcast meant for just the two of them.
     socket.on('join_channel', async ({ hiveId, channelId } = {}, ack) => {
       try {
         await requireMembership(hiveId, userId);
+        await requireChannelAccess(hiveId, channelId, userId);
         socket.join(`hive:${hiveId}:ch:${channelId}`);
         if (typeof ack === 'function') ack({ ok: true });
       } catch (err) {

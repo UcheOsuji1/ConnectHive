@@ -1,5 +1,6 @@
 import { query, getClient } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
+import { requireChannelAccess } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
 import { getEnrichedMessage, depersonalise } from './messagesController.js';
 
@@ -10,9 +11,11 @@ const MAX_OPTIONS = 6;
 
 export async function loadPoll(pollId) {
   const { rows: [p] } = await query(
-    `SELECT poll_id, hive_id, channel_id, created_by, question,
-            allows_multiple, closes_at, created_at
-       FROM hive_polls WHERE poll_id = $1`,
+    `SELECT hp.poll_id, hp.hive_id, hp.channel_id, hp.created_by, hp.question,
+            hp.allows_multiple, hp.closes_at, hp.created_at, c.kind AS channel_kind
+       FROM hive_polls hp
+       LEFT JOIN hive_channels c ON c.channel_id = hp.channel_id
+      WHERE hp.poll_id = $1`,
     [pollId],
   );
   return p;
@@ -75,8 +78,13 @@ async function pollCounts(pollId) {
   return { results: rows, total_votes: rows.reduce((n, r) => n + r.count, 0) };
 }
 
-function broadcastPoll(hiveId, pollId, payload) {
-  getIO()?.to(`hive:${hiveId}`).emit('poll_updated', { hive_id: hiveId, poll_id: pollId, ...payload });
+// A room poll's vote counts broadcast hive-wide, same as always. A pair
+// poll's go only to its own channel room — the two (or three) members are
+// already in it, and nobody outside should learn a pair chat has an active
+// poll, let alone see it update live.
+function broadcastPoll(hiveId, poll, payload) {
+  const room = poll.channel_kind === 'pair' ? `hive:${hiveId}:ch:${poll.channel_id}` : `hive:${hiveId}`;
+  getIO()?.to(room).emit('poll_updated', { hive_id: hiveId, poll_id: poll.poll_id, ...payload });
 }
 
 // ── POST /api/hives/:id/polls ────────────────────────────────────────────────
@@ -102,10 +110,7 @@ export const createPoll = async (req, res) => {
       return res.status(400).json({ error: 'Each option must be 80 characters or fewer.' });
     }
 
-    const { rows: [ch] } = await query(
-      `SELECT channel_id FROM hive_channels WHERE channel_id = $1 AND hive_id = $2`,
-      [channelId, hiveId],
-    );
+    const ch = await requireChannelAccess(hiveId, channelId, req.userId).catch(() => null);
     if (!ch) return res.status(400).json({ error: 'That room does not belong to this Hive.' });
 
     let closes = null;
@@ -154,7 +159,9 @@ export const createPoll = async (req, res) => {
     try {
       const io = getIO();
       io?.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
-      io?.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+      if (ch.kind !== 'pair') {
+        io?.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+      }
     } catch { /* no socket in tests */ }
 
     const shaped = await shapePolls([pollId], req.userId);
@@ -220,7 +227,7 @@ export const votePoll = async (req, res) => {
     }
 
     const counts = await pollCounts(poll.poll_id);
-    broadcastPoll(hiveId, poll.poll_id, counts);
+    broadcastPoll(hiveId, poll, counts);
     const shaped = await shapePolls([poll.poll_id], req.userId);
     res.json({ poll: shaped[poll.poll_id] });
   } catch (err) {
@@ -245,7 +252,7 @@ export const clearVote = async (req, res) => {
       [poll.poll_id, req.userId]);
 
     const counts = await pollCounts(poll.poll_id);
-    broadcastPoll(hiveId, poll.poll_id, counts);
+    broadcastPoll(hiveId, poll, counts);
     const shaped = await shapePolls([poll.poll_id], req.userId);
     res.json({ poll: shaped[poll.poll_id] });
   } catch (err) {

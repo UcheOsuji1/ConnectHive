@@ -49,6 +49,7 @@ import {
   reorderChannels,
   getSuggestedRooms,
   addSuggestedRooms,
+  listMyChats,
 } from '../controllers/channelsController.js';
 import {
   getOnboarding,
@@ -212,6 +213,7 @@ router.delete('/:id/links/:linkId',        requireAuth, deleteLink);
 router.get('/:id/channels/:channelId/rail',      requireAuth, getChannelRail);
 router.get('/:id/channels/:channelId/pins',      requireAuth, listPins);
 router.get('/:id/channels',                      requireAuth, listChannels);
+router.get('/:id/chats',                          requireAuth, listMyChats);
 router.post('/:id/channels',                     requireAuth, createChannel);
 router.post('/:id/channels/reorder',             requireAuth, reorderChannels);
 router.get('/:id/channels/suggested',            requireAuth, getSuggestedRooms);

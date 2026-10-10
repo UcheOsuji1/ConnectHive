@@ -1,7 +1,7 @@
 // Find a time (Prompt 61 Part 3, tool_key = 'find_time').
 import { query, getClient } from '../db/index.js';
 import { getMembership, requireMembership, requireCanPost } from '../lib/hiveMembership.js';
-import { getDefaultChannelId } from '../lib/hiveChannels.js';
+import { getDefaultChannelId, requireChannelAccess } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
 import { insertPlan, PLAN_SELECT, shapePlan } from './eventsController.js';
@@ -165,11 +165,8 @@ export const createTimePoll = async (req, res) => {
     // transaction, same pattern as createPoll/createSuggestion, so it's
     // never possible to have the poll exist with no card to show it.
     const channelId = bodyChannelId || await getDefaultChannelId(hiveId);
-    const { rows: [chCheck] } = await query(
-      `SELECT channel_id FROM hive_channels WHERE channel_id = $1 AND hive_id = $2 AND archived_at IS NULL`,
-      [channelId, hiveId],
-    );
-    if (!chCheck) return res.status(400).json({ error: 'That room does not belong to this Hive.' });
+    const chCheck = await requireChannelAccess(hiveId, channelId, req.userId).catch(() => null);
+    if (!chCheck || chCheck.archived_at) return res.status(400).json({ error: 'That room does not belong to this Hive.' });
 
     const client = await getClient();
     let pollId, messageId;
@@ -205,7 +202,9 @@ export const createTimePoll = async (req, res) => {
     try {
       const io = getIO();
       io?.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
-      io?.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+      if (chCheck.kind !== 'pair') {
+        io?.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+      }
     } catch { /* no socket in tests */ }
 
     const shaped = shapePoll(await loadPollWithSlots(pollId), req.userId);

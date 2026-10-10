@@ -51,7 +51,7 @@ export const getSequence = async (req, res) => {
       ),
       query(
         `SELECT channel_id, name, icon, channel_type FROM hive_channels
-          WHERE hive_id = $1 AND archived_at IS NULL ORDER BY position ASC`,
+          WHERE hive_id = $1 AND kind = 'room' AND archived_at IS NULL ORDER BY position ASC`,
         [hiveId],
       ),
       query(

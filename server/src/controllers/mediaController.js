@@ -51,7 +51,7 @@ export async function getMediaCounts(hiveId) {
          (SELECT COUNT(*)::int FROM message_attachments a
             JOIN messages m ON m.message_id = a.message_id
             JOIN hive_channels c ON c.channel_id = m.channel_id
-           WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL
+           WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
              AND a.resource_type IN ('image','video'))
          +
          (SELECT COUNT(*)::int FROM hive_uploads u
@@ -65,7 +65,7 @@ export async function getMediaCounts(hiveId) {
          (SELECT COUNT(*)::int FROM message_attachments a
             JOIN messages m ON m.message_id = a.message_id
             JOIN hive_channels c ON c.channel_id = m.channel_id
-           WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL
+           WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
              AND a.resource_type = 'raw')
          +
          (SELECT COUNT(*)::int FROM hive_uploads u
@@ -105,7 +105,7 @@ async function extractChatLinks(hiveId) {
        FROM messages m
        JOIN hive_channels c ON c.channel_id = m.channel_id
        LEFT JOIN profiles p ON p.user_id = m.sender_user_id
-      WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL
+      WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
         AND m.message_text ~ 'https?://'
       ORDER BY m.sent_at ASC
       LIMIT 1000`,
@@ -158,7 +158,7 @@ export const getMediaSummary = async (req, res) => {
            FROM message_attachments a
            JOIN messages m ON m.message_id = a.message_id
            JOIN hive_channels c ON c.channel_id = m.channel_id
-          WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL
+          WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
             AND a.resource_type IN ('image','video')
             AND a.created_at >= NOW() - INTERVAL '30 days'
          UNION ALL
@@ -257,7 +257,7 @@ export const getHiveMedia = async (req, res) => {
           FROM message_attachments a
           JOIN messages m ON m.message_id = a.message_id
           JOIN hive_channels c ON c.channel_id = m.channel_id
-         WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND ${chatTypeFilter}
+         WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair' AND ${chatTypeFilter}
         UNION ALL
         SELECT 'upload'::text AS source, u.upload_id AS id, u.url, u.resource_type,
                u.file_name, u.mime_type, u.bytes, u.width, u.height,

@@ -100,7 +100,7 @@ export const getHiveHome = async (req, res) => {
                                   AND hm.user_id = m.sender_user_id
                                   AND hm.membership_status = 'active'
             WHERE m.hive_id = $1 AND m.deleted_at IS NULL
-              AND a.resource_type = 'image' AND c.archived_at IS NULL
+              AND a.resource_type = 'image' AND c.archived_at IS NULL AND c.kind != 'pair'
             GROUP BY m.message_id, m.sender_user_id, m.channel_id, c.name
 
            UNION ALL
@@ -140,17 +140,22 @@ export const getHiveHome = async (req, res) => {
            FROM messages m
            JOIN hive_channels c ON c.channel_id = m.channel_id
            LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
-          WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL
+          WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
           ORDER BY m.sent_at DESC
           LIMIT ${MESSAGE_LIMIT}`,
         [hiveId],
       ),
 
-      // Same expression as GET /messages/unread-count, so the two never diverge.
+      // Same expression as GET /messages/unread-count, so the two never diverge
+      // (pair-chat messages count here only for their own members).
       query(
         `SELECT LEAST(COUNT(*)::int, 99) AS count
            FROM messages m
+           LEFT JOIN hive_channels c ON c.channel_id = m.channel_id
           WHERE m.hive_id = $1 AND m.sender_user_id != $2 AND m.deleted_at IS NULL
+            AND (c.kind IS NULL OR c.kind != 'pair' OR EXISTS (
+                  SELECT 1 FROM hive_channel_members hcm
+                   WHERE hcm.channel_id = m.channel_id AND hcm.user_id = $2))
             AND m.sent_at > COALESCE(
               (SELECT last_seen_at FROM hive_last_seen WHERE user_id = $2 AND hive_id = $1),
               '1970-01-01'::timestamptz)`,
@@ -165,7 +170,7 @@ export const getHiveHome = async (req, res) => {
            JOIN messages m      ON m.message_id = a.message_id
            JOIN hive_channels c ON c.channel_id = m.channel_id
           WHERE m.hive_id = $1 AND m.deleted_at IS NULL
-            AND c.archived_at IS NULL AND a.resource_type = 'image'
+            AND c.archived_at IS NULL AND c.kind != 'pair' AND a.resource_type = 'image'
           ORDER BY a.created_at DESC
           LIMIT ${PHOTO_LIMIT}`,
         [hiveId],
@@ -266,7 +271,7 @@ export const getHiveHome = async (req, res) => {
            JOIN hive_channels c ON c.channel_id = m.channel_id
            LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
           WHERE m.hive_id = $1 AND LOWER(c.name) = 'trip-planning'
-            AND c.archived_at IS NULL AND m.deleted_at IS NULL AND m.pinned_at IS NOT NULL
+            AND c.archived_at IS NULL AND c.kind != 'pair' AND m.deleted_at IS NULL AND m.pinned_at IS NOT NULL
           ORDER BY m.pinned_at DESC LIMIT 1`,
         [hiveId],
       );
@@ -282,7 +287,7 @@ export const getHiveHome = async (req, res) => {
              FROM message_attachments a
              JOIN messages m ON m.message_id = a.message_id
              JOIN hive_channels c ON c.channel_id = m.channel_id
-            WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL
+            WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
               AND a.resource_type = 'raw'
            UNION ALL
            SELECT u.upload_id AS id, u.file_name, u.mime_type, u.bytes, u.created_at,
@@ -310,7 +315,7 @@ export const getHiveHome = async (req, res) => {
            JOIN hive_channels c ON c.channel_id = m.channel_id
            LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
           WHERE m.hive_id = $1 AND LOWER(c.name) = 'opportunities'
-            AND c.archived_at IS NULL AND m.deleted_at IS NULL
+            AND c.archived_at IS NULL AND c.kind != 'pair' AND m.deleted_at IS NULL
           ORDER BY m.sent_at DESC LIMIT 3`,
         [hiveId],
       );

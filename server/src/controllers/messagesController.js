@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
-import { getDefaultChannelId } from '../lib/hiveChannels.js';
+import { getDefaultChannelId, requireChannelAccess } from '../lib/hiveChannels.js';
 import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
 import { PLAN_SELECT, shapePlan } from './eventsController.js';
@@ -220,19 +220,19 @@ function _shape(row) {
 }
 
 // ── Channel resolver ─────────────────────────────────────────────────────────
-// Returns a validated channel_id belonging to hiveId.
-// If requestedId is provided and belongs to the hive, returns it.
-// Otherwise falls back to the hive's default channel.
-async function _resolveChannelId(hiveId, requestedId) {
+// No requestedId falls back to the hive's default (always a room, always
+// safe). A requestedId must be real, unarchived, AND accessible to this
+// viewer — an invalid, archived or inaccessible id is a hard 404, never a
+// silent swap to a different channel's messages. Returns kind too, since
+// callers need it to decide whether a broadcast may go hive-wide.
+async function _resolveChannel(hiveId, requestedId, userId) {
   if (requestedId) {
-    const { rows: [ch] } = await query(
-      `SELECT channel_id FROM hive_channels
-       WHERE channel_id = $1 AND hive_id = $2 AND archived_at IS NULL`,
-      [requestedId, hiveId],
-    );
-    if (ch) return ch.channel_id;
+    const ch = await requireChannelAccess(hiveId, requestedId, userId);
+    if (ch.archived_at) { const err = new Error('Room not found.'); err.status = 404; throw err; }
+    return ch;
   }
-  return getDefaultChannelId(hiveId);
+  const channel_id = await getDefaultChannelId(hiveId);
+  return { channel_id, kind: 'room' };
 }
 
 // ── Controllers ───────────────────────────────────────────────────────────────
@@ -244,7 +244,7 @@ export const listMessages = async (req, res) => {
 
     const before    = req.query.before ? new Date(req.query.before).toISOString() : new Date().toISOString();
     const limit     = Math.min(Math.max(parseInt(req.query.limit ?? '50', 10), 1), 100);
-    const channelId = await _resolveChannelId(hiveId, req.query.channel_id);
+    const { channel_id: channelId } = await _resolveChannel(hiveId, req.query.channel_id, req.userId);
 
     const msgs = await _runEnriched(
       `WHERE m.hive_id    = $1
@@ -320,7 +320,7 @@ export const createMessage = async (req, res) => {
       }
     }
 
-    const channelId = await _resolveChannelId(hiveId, reqChannelId);
+    const { channel_id: channelId, kind: channelKind } = await _resolveChannel(hiveId, reqChannelId, req.userId);
 
     const { rows: [ins] } = await query(
       `INSERT INTO messages (hive_id, sender_user_id, message_text, reply_to_message_id,
@@ -361,18 +361,29 @@ export const createMessage = async (req, res) => {
     // ── Mentions ──────────────────────────────────────────────────────────────
     // Only active members of this Hive are stored; anything else is dropped
     // silently, so a crafted id cannot notify a stranger or leave a row behind.
+    // Inside a pair chat the candidate pool narrows further, to the pair's
+    // own members — a mention can never reach outside the conversation it
+    // was typed in.
     const wanted = [...new Set((Array.isArray(mentionUserIds) ? mentionUserIds : [])
       .filter(id => typeof id === 'string' && id))];
     let mentioned = [];
     if (wanted.length) {
-      const { rows } = await query(
-        `SELECT hm.user_id, pr.full_name
-           FROM hive_members hm
-           LEFT JOIN profiles pr ON pr.user_id = hm.user_id
-          WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
-            AND hm.user_id = ANY($2)`,
-        [hiveId, wanted],
-      );
+      const { rows } = channelKind === 'pair'
+        ? await query(
+            `SELECT hcm.user_id, pr.full_name
+               FROM hive_channel_members hcm
+               LEFT JOIN profiles pr ON pr.user_id = hcm.user_id
+              WHERE hcm.channel_id = $1 AND hcm.user_id = ANY($2)`,
+            [channelId, wanted],
+          )
+        : await query(
+            `SELECT hm.user_id, pr.full_name
+               FROM hive_members hm
+               LEFT JOIN profiles pr ON pr.user_id = hm.user_id
+              WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
+                AND hm.user_id = ANY($2)`,
+            [hiveId, wanted],
+          );
       mentioned = rows;
       if (mentioned.length) {
         await query(
@@ -387,7 +398,12 @@ export const createMessage = async (req, res) => {
     try {
       const io = getIO();
       io.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
-      io.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+      // A pair chat's existence (even just its id, with no content) is never
+      // broadcast outside the channel room itself — only the two members,
+      // who are already in that room, see activity on it.
+      if (channelKind !== 'pair') {
+        io.to(`hive:${hiveId}`).emit('channel_activity', { hive_id: hiveId, channel_id: channelId });
+      }
     } catch { /* no socket in tests */ }
 
     // One notification per mentioned member, never to yourself.
@@ -509,6 +525,8 @@ export const toggleReaction = async (req, res) => {
     if (!msg) return res.status(404).json({ error: 'Message not found.' });
 
     await requireMembership(msg.hive_id, req.userId);
+    // Legacy pre-channel messages (channel_id NULL) have no pair concept.
+    if (msg.channel_id) await requireChannelAccess(msg.hive_id, msg.channel_id, req.userId);
 
     const { rows: [existing] } = await query(
       `SELECT reaction_id FROM message_reactions
@@ -568,12 +586,20 @@ export const getUnreadCount = async (req, res) => {
     const hiveId = req.params.id;
     await requireMembership(hiveId, req.userId);
 
+    // A pair chat's messages count toward this badge only for its own
+    // members — same as any room — never for the rest of the Hive. The
+    // Chats section shows the same number again per-chat; this is just the
+    // Hive-wide total, so the two must stay consistent with each other.
     const { rows: [row] } = await query(
       `SELECT LEAST(COUNT(*)::int, 99) AS count
        FROM messages m
+       LEFT JOIN hive_channels c ON c.channel_id = m.channel_id
        WHERE m.hive_id          = $1
          AND m.sender_user_id  != $2
          AND m.deleted_at       IS NULL
+         AND (c.kind IS NULL OR c.kind != 'pair' OR EXISTS (
+               SELECT 1 FROM hive_channel_members hcm
+                WHERE hcm.channel_id = m.channel_id AND hcm.user_id = $2))
          AND m.sent_at > COALESCE(
            (SELECT last_seen_at FROM hive_last_seen WHERE user_id = $2 AND hive_id = $1),
            '1970-01-01'::timestamptz
