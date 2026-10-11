@@ -748,6 +748,7 @@ CREATE TABLE IF NOT EXISTS hive_notification_prefs (
 ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS costs BOOLEAN;
 ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS matches BOOLEAN;
 ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS opportunities BOOLEAN;
+ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS tasks BOOLEAN;
 
 -- Idempotency ledger for the 24h-before RSVP reminder job — one row per
 -- (plan, recipient) ever sent, so re-running the job (every 15 min, or after
@@ -1278,4 +1279,73 @@ CREATE TABLE IF NOT EXISTS hive_opportunity_deadline_notified (
   user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
   sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (opp_id, user_id)
+);
+
+-- ─── Prompt 65, Part 2 — Task board and milestones (tool_key = 'tasks') ─────
+CREATE TABLE IF NOT EXISTS hive_milestones (
+  milestone_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title        TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  due_on       DATE,
+  created_by   UUID        NOT NULL REFERENCES users(user_id),
+  completed_at TIMESTAMPTZ,
+  position     NUMERIC     NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_hive_milestones_hive ON hive_milestones(hive_id);
+
+-- position is NUMERIC (fractional indexing) — a reorder writes only the
+-- moved row's position (new value = midpoint of its two new neighbors),
+-- so no other row is ever touched by a reorder.
+CREATE TABLE IF NOT EXISTS hive_tasks (
+  task_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title        TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 160),
+  description  TEXT        NOT NULL DEFAULT '' CHECK (char_length(description) <= 4000),
+  status       TEXT        NOT NULL DEFAULT 'todo' CHECK (status IN ('todo','doing','done')),
+  position     NUMERIC     NOT NULL DEFAULT 0,
+  milestone_id UUID        REFERENCES hive_milestones(milestone_id) ON DELETE SET NULL,
+  due_on       DATE,
+  created_by   UUID        NOT NULL REFERENCES users(user_id),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ,
+  deleted_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_tasks_hive ON hive_tasks(hive_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_hive_tasks_milestone ON hive_tasks(milestone_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS hive_task_assignees (
+  task_id UUID NOT NULL REFERENCES hive_tasks(task_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  PRIMARY KEY (task_id, user_id)
+);
+
+-- Doc links are only offered client-side when the Docs tool (Prompt 63) is
+-- on; ref just stores the target id/URL, kind says how to resolve it.
+CREATE TABLE IF NOT EXISTS hive_task_links (
+  link_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id UUID NOT NULL REFERENCES hive_tasks(task_id) ON DELETE CASCADE,
+  kind    TEXT NOT NULL CHECK (kind IN ('file','doc','url','plan')),
+  ref     TEXT NOT NULL,
+  label   TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_hive_task_links_task ON hive_task_links(task_id);
+
+CREATE TABLE IF NOT EXISTS hive_task_comments (
+  comment_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id    UUID        NOT NULL REFERENCES hive_tasks(task_id) ON DELETE CASCADE,
+  user_id    UUID        NOT NULL REFERENCES users(user_id),
+  body       TEXT        NOT NULL CHECK (char_length(body) BETWEEN 1 AND 2000),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_task_comments_task ON hive_task_comments(task_id);
+
+-- Idempotent-ledger guard for the "due tomorrow" reminder.
+CREATE TABLE IF NOT EXISTS hive_task_due_notified (
+  task_id UUID NOT NULL REFERENCES hive_tasks(task_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (task_id, user_id)
 );

@@ -7,6 +7,7 @@ import { getCategoryConfig } from '../lib/categoryConfig.js';
 import { getAttendanceRate } from './checkinsController.js';
 import { getFeaturedGoalWithProgress } from './goalsController.js';
 import { getFeaturedOpportunities } from './opportunitiesController.js';
+import { getSoonestOpenMilestone } from './tasksController.js';
 import { isToolOn } from '../lib/hiveTools.js';
 
 const ACTIVITY_LIMIT = 8;
@@ -256,6 +257,15 @@ export const getHiveHome = async (req, res) => {
     const railKind = categoryName ? getCategoryConfig(categoryName)?.railModule ?? null : null;
     let featuredModule = null;
 
+    // "Next Milestone" (Project Collaboration's label for this card, Prompt
+    // 59) sources from the soonest open Task-board milestone once that tool
+    // is on — the Upcoming Plan card's data, not just its label, switches.
+    // The Project module's own "recent files" featuredModule is untouched.
+    let nextMilestone = null;
+    if (categoryName === 'Project Collaboration' && await isToolOn(hiveId, 'tasks')) {
+      nextMilestone = await getSoonestOpenMilestone(hiveId);
+    }
+
     if (railKind === 'recentMedia') {
       featuredModule = photosRes.rows.length
         ? { kind: 'recentMedia', photos: photosRes.rows } : null;
@@ -342,6 +352,7 @@ export const getHiveHome = async (req, res) => {
 
     res.json({
       nextPlan,
+      nextMilestone,
 
       stats: {
         memberCount:   st.member_count,

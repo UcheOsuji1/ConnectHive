@@ -86,7 +86,7 @@ export const TOOL_CATALOG = [
     key: 'tasks', name: 'Task board', description: 'Track what needs doing and who owns it.',
     icon: 'tasks', scope: 'hive',
     defaultOn: ['Project Collaboration'],
-    available: false,
+    available: true,
   },
   {
     key: 'itinerary', name: 'Itinerary', description: 'Build a shared schedule for a trip.',

@@ -204,6 +204,7 @@ export default function HiveHomePage() {
             onCreate={() => setPlanOpen(true)}
             checkinsOn={checkinsOn}
             label={labels.nextPlan}
+            milestone={data.nextMilestone}
           />
           <RecentChat
             messages={data.recentMessages}

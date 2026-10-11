@@ -117,6 +117,11 @@ import {
   closeOpportunity, deleteOpportunity, setSaved, expressInterest, withdrawInterest, listInterested,
   reportOpportunity, listReports,
 } from '../controllers/opportunitiesController.js';
+import {
+  listMilestones, createMilestone, updateMilestone, deleteMilestone,
+  listTasks, getTask, createTask, updateTask, moveTask, deleteTask,
+  addLink as addTaskLink, removeLink as removeTaskLink, addComment, deleteComment,
+} from '../controllers/tasksController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -344,5 +349,20 @@ router.post('/:id/tools/opportunities/opportunities/:oppId/interest',   requireA
 router.delete('/:id/tools/opportunities/opportunities/:oppId/interest', requireAuth, requireTool('opportunities'), withdrawInterest);
 router.get('/:id/tools/opportunities/opportunities/:oppId/interested',  requireAuth, requireTool('opportunities'), listInterested);
 router.post('/:id/tools/opportunities/opportunities/:oppId/report', requireAuth, requireTool('opportunities'), reportOpportunity);
+
+router.get('/:id/tools/tasks/milestones',              requireAuth, requireTool('tasks'), listMilestones);
+router.post('/:id/tools/tasks/milestones',              requireAuth, requireTool('tasks'), createMilestone);
+router.patch('/:id/tools/tasks/milestones/:milestoneId', requireAuth, requireTool('tasks'), updateMilestone);
+router.delete('/:id/tools/tasks/milestones/:milestoneId', requireAuth, requireTool('tasks'), deleteMilestone);
+router.get('/:id/tools/tasks/tasks',                     requireAuth, requireTool('tasks'), listTasks);
+router.post('/:id/tools/tasks/tasks',                    requireAuth, requireTool('tasks'), createTask);
+router.get('/:id/tools/tasks/tasks/:taskId',             requireAuth, requireTool('tasks'), getTask);
+router.patch('/:id/tools/tasks/tasks/:taskId',           requireAuth, requireTool('tasks'), updateTask);
+router.post('/:id/tools/tasks/tasks/:taskId/move',       requireAuth, requireTool('tasks'), moveTask);
+router.delete('/:id/tools/tasks/tasks/:taskId',          requireAuth, requireTool('tasks'), deleteTask);
+router.post('/:id/tools/tasks/tasks/:taskId/links',      requireAuth, requireTool('tasks'), addTaskLink);
+router.delete('/:id/tools/tasks/tasks/:taskId/links/:linkId', requireAuth, requireTool('tasks'), removeTaskLink);
+router.post('/:id/tools/tasks/tasks/:taskId/comments',   requireAuth, requireTool('tasks'), addComment);
+router.delete('/:id/tools/tasks/tasks/:taskId/comments/:commentId', requireAuth, requireTool('tasks'), deleteComment);
 
 export default router;

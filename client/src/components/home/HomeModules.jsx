@@ -37,7 +37,30 @@ function HomeCheckIn({ hiveId, postId }) {
 }
 
 /* ── Upcoming Plan ───────────────────────────────────────────────────────── */
-export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCreate, checkinsOn = false, label = 'Upcoming Plan' }) {
+export function UpcomingPlan({ plan, hiveId, canCreate, ownerName, onRsvp, onCreate, checkinsOn = false, label = 'Upcoming Plan', milestone = null }) {
+  // Project Collaboration + the Task board tool on: this card's content,
+  // not just its label, comes from the soonest open milestone instead of
+  // the next calendar plan (Prompt 65 Part 2).
+  if (milestone) {
+    return (
+      <Card icon="calendar" title={label} className="hh-m-plan"
+            link="View task board →" linkTo={`/hive/${hiveId}/tools/tasks`}>
+        <div className="hh-milestone-body">
+          <h3 className="hh-milestone-title">{milestone.title}</h3>
+          <div className="hh-goal-bar"><div className="hh-goal-bar-fill" style={{ width: `${milestone.progress_pct}%` }} /></div>
+          <p className="hh-milestone-meta">
+            {milestone.done_tasks} / {milestone.total_tasks} tasks done · {milestone.progress_pct}%
+          </p>
+          {milestone.due_on && (
+            <p className="hh-milestone-due">
+              <Icon name="calendar" size={13} /> Due {new Date(milestone.due_on).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </p>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   if (!plan) {
     return (
       <Card icon="calendar" title={label} className="hh-m-plan">

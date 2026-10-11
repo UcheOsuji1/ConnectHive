@@ -14,7 +14,7 @@ export const METRIC_DEFS = {
   new_members:      { label: 'New members', explain: 'Counts members who joined during the goal period.' },
   messages:         { label: 'Messages sent', explain: 'Counts chat messages sent in this Hive during the goal period.' },
   photos:           { label: 'Photos shared', explain: 'Counts image attachments and uploads shared during the goal period.' },
-  milestones_done:  { label: 'Milestones completed', explain: 'Counts completed tasks — not available until the Task board tool exists.', unavailable: true },
+  milestones_done:  { label: 'Milestones completed', explain: 'Counts Task board milestones completed during the goal period.' },
   manual:           { label: 'Manual', explain: 'An owner or admin updates this number by hand.' },
 };
 
@@ -98,6 +98,16 @@ async function computeMetricValue(hiveId, goal) {
              WHERE u.hive_id = $1 AND u.deleted_at IS NULL AND u.resource_type = 'image'
                AND u.created_at >= $2::date AND u.created_at < ${periodEndExclusive('$3')})
          ) AS n`,
+        [hiveId, start, end],
+      );
+      return r.n;
+    }
+
+    case 'milestones_done': {
+      const { rows: [r] } = await query(
+        `SELECT COUNT(*)::int AS n FROM hive_milestones
+          WHERE hive_id = $1 AND completed_at IS NOT NULL
+            AND completed_at >= $2::date AND completed_at < ${periodEndExclusive('$3')}`,
         [hiveId, start, end],
       );
       return r.n;
