@@ -747,6 +747,7 @@ CREATE TABLE IF NOT EXISTS hive_notification_prefs (
 -- actually reaches a database that already has this table (Prompt 62 Part 1).
 ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS costs BOOLEAN;
 ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS matches BOOLEAN;
+ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS opportunities BOOLEAN;
 
 -- Idempotency ledger for the 24h-before RSVP reminder job — one row per
 -- (plan, recipient) ever sent, so re-running the job (every 15 min, or after
@@ -1215,3 +1216,66 @@ CREATE TABLE IF NOT EXISTS hive_mentor_requests (
 );
 CREATE INDEX IF NOT EXISTS idx_mentor_requests_mentee ON hive_mentor_requests(hive_id, mentee_id);
 CREATE INDEX IF NOT EXISTS idx_mentor_requests_mentor ON hive_mentor_requests(hive_id, mentor_id);
+
+-- ─── Prompt 65, Part 1 — Opportunities board (tool_key = 'opportunities') ───
+CREATE TABLE IF NOT EXISTS hive_opportunities (
+  opp_id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  posted_by    UUID        NOT NULL REFERENCES users(user_id),
+  kind         TEXT        NOT NULL CHECK (kind IN ('job','internship','gig','intro','event','other')),
+  title        TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  organization TEXT        CHECK (organization IS NULL OR char_length(organization) BETWEEN 1 AND 80),
+  url          TEXT,
+  location     TEXT,
+  remote       BOOLEAN     NOT NULL DEFAULT FALSE,
+  description  TEXT        NOT NULL DEFAULT '' CHECK (char_length(description) <= 2000),
+  deadline     DATE,
+  tags         TEXT[]      NOT NULL DEFAULT '{}' CHECK (array_length(tags, 1) IS NULL OR array_length(tags, 1) <= 6),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  closed_at    TIMESTAMPTZ,
+  deleted_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_opportunities_hive ON hive_opportunities(hive_id) WHERE deleted_at IS NULL;
+
+-- Private to each member — never shown to anyone else, including the poster.
+CREATE TABLE IF NOT EXISTS hive_opportunity_saves (
+  opp_id   UUID        NOT NULL REFERENCES hive_opportunities(opp_id) ON DELETE CASCADE,
+  user_id  UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (opp_id, user_id)
+);
+
+-- Visible only to the poster and to owners/admins.
+CREATE TABLE IF NOT EXISTS hive_opportunity_interest (
+  opp_id  UUID        NOT NULL REFERENCES hive_opportunities(opp_id) ON DELETE CASCADE,
+  user_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  note    TEXT        NOT NULL DEFAULT '' CHECK (char_length(note) <= 280),
+  at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (opp_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS hive_opportunity_reports (
+  opp_id  UUID        NOT NULL REFERENCES hive_opportunities(opp_id) ON DELETE CASCADE,
+  user_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  reason  TEXT        NOT NULL CHECK (char_length(reason) BETWEEN 1 AND 500),
+  at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (opp_id, user_id)
+);
+
+-- Idempotent-ledger guards for the two batched/dedupe-sensitive notification
+-- types (same shape as plan_reminders_sent / cost_nudges_sent) — a job tick
+-- that fires twice must still send each exactly once.
+CREATE TABLE IF NOT EXISTS hive_opportunity_digests_sent (
+  hive_id     UUID NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  digest_date DATE NOT NULL,
+  sent_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (hive_id, user_id, digest_date)
+);
+CREATE TABLE IF NOT EXISTS hive_opportunity_deadline_notified (
+  opp_id  UUID NOT NULL REFERENCES hive_opportunities(opp_id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (opp_id, user_id)
+);

@@ -53,6 +53,19 @@ export default function HiveManageToolsPage() {
     }
   }
 
+  async function setPosters(tool, posters) {
+    setPending(tool.key);
+    setError(null);
+    try {
+      await api.put(`/api/hives/${hiveId}/tools/${tool.key}`, { enabled: tool.enabled, settings: { posters } });
+      loadTools();
+    } catch (e) {
+      setError(e?.data?.error ?? 'Could not update this tool.');
+    } finally {
+      setPending(null);
+    }
+  }
+
   const sorted = [...hiveTools].sort((a, b) => {
     if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
     return a.name.localeCompare(b.name);
@@ -102,6 +115,20 @@ export default function HiveManageToolsPage() {
                 >
                   <option value="owners">Owners and admins only</option>
                   <option value="members">Any member</option>
+                </select>
+              </div>
+            )}
+            {tool.key === 'opportunities' && tool.enabled && (
+              <div className="mt-setting-row">
+                <span className="mt-setting-label">Who can post opportunities</span>
+                <select
+                  className="mt-setting-select"
+                  value={tool.settings?.posters ?? 'members'}
+                  disabled={pending === tool.key}
+                  onChange={e => setPosters(tool, e.target.value)}
+                >
+                  <option value="members">Any member</option>
+                  <option value="owners">Owners and admins only</option>
                 </select>
               </div>
             )}

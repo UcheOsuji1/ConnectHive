@@ -112,6 +112,11 @@ import {
   getMyProfile, upsertMyProfile, deleteMyProfile, listMentors, createRequest, listRequests, listMine,
   acceptRequest, declineRequest, withdrawRequest, endMentorship,
 } from '../controllers/mentorshipController.js';
+import {
+  listOpportunities, listSaved, listMine as listMyOpportunities, createOpportunity, updateOpportunity,
+  closeOpportunity, deleteOpportunity, setSaved, expressInterest, withdrawInterest, listInterested,
+  reportOpportunity, listReports,
+} from '../controllers/opportunitiesController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -324,5 +329,20 @@ router.post('/:id/tools/mentorship/requests/:requestId/accept',   requireAuth, r
 router.post('/:id/tools/mentorship/requests/:requestId/decline',  requireAuth, requireTool('mentorship'), declineRequest);
 router.post('/:id/tools/mentorship/requests/:requestId/withdraw', requireAuth, requireTool('mentorship'), withdrawRequest);
 router.post('/:id/tools/mentorship/requests/:requestId/end',      requireAuth, requireTool('mentorship'), endMentorship);
+
+router.get('/:id/tools/opportunities/opportunities',                requireAuth, requireTool('opportunities'), listOpportunities);
+router.post('/:id/tools/opportunities/opportunities',               requireAuth, requireTool('opportunities'), createOpportunity);
+router.get('/:id/tools/opportunities/saved',                        requireAuth, requireTool('opportunities'), listSaved);
+router.get('/:id/tools/opportunities/mine',                         requireAuth, requireTool('opportunities'), listMyOpportunities);
+router.get('/:id/tools/opportunities/reports',                      requireAuth, requireTool('opportunities'), listReports);
+router.patch('/:id/tools/opportunities/opportunities/:oppId',       requireAuth, requireTool('opportunities'), updateOpportunity);
+router.post('/:id/tools/opportunities/opportunities/:oppId/close',  requireAuth, requireTool('opportunities'), closeOpportunity);
+router.delete('/:id/tools/opportunities/opportunities/:oppId',      requireAuth, requireTool('opportunities'), deleteOpportunity);
+router.post('/:id/tools/opportunities/opportunities/:oppId/save',   requireAuth, requireTool('opportunities'), setSaved(true));
+router.delete('/:id/tools/opportunities/opportunities/:oppId/save', requireAuth, requireTool('opportunities'), setSaved(false));
+router.post('/:id/tools/opportunities/opportunities/:oppId/interest',   requireAuth, requireTool('opportunities'), expressInterest);
+router.delete('/:id/tools/opportunities/opportunities/:oppId/interest', requireAuth, requireTool('opportunities'), withdrawInterest);
+router.get('/:id/tools/opportunities/opportunities/:oppId/interested',  requireAuth, requireTool('opportunities'), listInterested);
+router.post('/:id/tools/opportunities/opportunities/:oppId/report', requireAuth, requireTool('opportunities'), reportOpportunity);
 
 export default router;

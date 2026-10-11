@@ -390,6 +390,29 @@ export function FeaturedModule({ module, hiveId }) {
     );
   }
 
+  if (module.kind === 'opportunities' && module.board) {
+    return (
+      <Card icon="briefcase" title="Opportunities" className="hh-m-featured" link="View all →" linkTo={`/hive/${hiveId}/tools/opportunities`}>
+        <div>
+          {module.opportunities.map(opp => (
+            <Link key={opp.opp_id} to={`/hive/${hiveId}/tools/opportunities`} className="hh-msg">
+              <Avatar name={opp.sender.full_name} src={opp.sender.profile_photo_url} size={32} />
+              <span className="hh-msg-body">
+                <span className="hh-msg-top">
+                  <span className="hh-msg-name">{opp.title}</span>
+                  <span className="hh-msg-time">{relTime(opp.created_at)}</span>
+                </span>
+                <span className="hh-msg-text">
+                  {opp.organization ? `${opp.organization} · ` : ''}{opp.remote ? 'Remote' : opp.location || opp.kind}
+                </span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </Card>
+    );
+  }
+
   if (module.kind === 'opportunities') {
     return (
       <Card icon="note" title="Opportunities" className="hh-m-featured" link="Open #opportunities →" linkTo={`/hive/${hiveId}/chat/${module.messages[0]?.channel_id}`}>

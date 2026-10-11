@@ -10,6 +10,7 @@ const PREF_ROWS = [
   { key: 'all_messages',   label: 'All chat messages', desc: 'Every message in every room — noisy' },
   { key: 'costs',          label: 'Split costs',      desc: 'Added to an expense, a settlement, or owing money' },
   { key: 'matches',        label: 'Matches',          desc: 'Meet someone new pairings and mentorship requests' },
+  { key: 'opportunities',  label: 'Opportunities',    desc: 'New posts (daily digest), interest in your post, and saved posts closing soon' },
 ];
 
 export default function HiveNotificationPrefsBell({ hiveId }) {

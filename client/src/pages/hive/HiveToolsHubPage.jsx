@@ -97,9 +97,21 @@ function MentorshipCount({ hiveId }) {
   return <span className="thub-tile-count">{text}</span>;
 }
 
+function OpportunitiesCount({ hiveId }) {
+  const [n, setN] = useState(null);
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/opportunities/opportunities?status=open`)
+      .then(d => setN((d.opportunities ?? []).length))
+      .catch(() => setN(null));
+  }, [hiveId]);
+  if (n === null) return null;
+  return <span className="thub-tile-count">{n} open</span>;
+}
+
 const TILE_COUNT = {
   find_time: FindTimeCount, split_costs: SplitCostsCount, signups: SignupsCount,
   docs: DocsCount, goals: GoalsCount, coffee_chats: CoffeeChatsCount, mentorship: MentorshipCount,
+  opportunities: OpportunitiesCount,
 };
 
 // A tool lives inside each plan's page rather than getting its own hub tile.

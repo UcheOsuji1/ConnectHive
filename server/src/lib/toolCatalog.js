@@ -73,7 +73,14 @@ export const TOOL_CATALOG = [
     key: 'opportunities', name: 'Opportunities board', description: 'Share roles, referrals and leads with the Hive.',
     icon: 'briefcase', scope: 'hive',
     defaultOn: ['Professional Networking'],
-    available: false,
+    available: true,
+    validateSettings(settings) {
+      const posters = settings?.posters;
+      if (posters !== 'members' && posters !== 'owners') {
+        return { error: 'posters must be "members" or "owners".' };
+      }
+      return { settings: { posters } };
+    },
   },
   {
     key: 'tasks', name: 'Task board', description: 'Track what needs doing and who owns it.',

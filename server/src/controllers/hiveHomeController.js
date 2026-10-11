@@ -6,6 +6,7 @@ import { getMediaCounts } from './mediaController.js';
 import { getCategoryConfig } from '../lib/categoryConfig.js';
 import { getAttendanceRate } from './checkinsController.js';
 import { getFeaturedGoalWithProgress } from './goalsController.js';
+import { getFeaturedOpportunities } from './opportunitiesController.js';
 import { isToolOn } from '../lib/hiveTools.js';
 
 const ACTIVITY_LIMIT = 8;
@@ -308,24 +309,35 @@ export const getHiveHome = async (req, res) => {
           })) }
         : null;
     } else if (railKind === 'opportunities') {
-      const { rows } = await query(
-        `SELECT m.message_id, m.message_text, m.sent_at, m.channel_id,
-                pr.user_id, pr.full_name, pr.profile_photo_url
-           FROM messages m
-           JOIN hive_channels c ON c.channel_id = m.channel_id
-           LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
-          WHERE m.hive_id = $1 AND LOWER(c.name) = 'opportunities'
-            AND c.archived_at IS NULL AND c.kind != 'pair' AND m.deleted_at IS NULL
-          ORDER BY m.sent_at DESC LIMIT 3`,
-        [hiveId],
-      );
-      featuredModule = rows.length
-        ? { kind: 'opportunities', messages: rows.map(r => ({
-            message_id: r.message_id, channel_id: r.channel_id, sent_at: r.sent_at,
-            text: r.message_text?.length > SNIPPET_LEN ? `${r.message_text.slice(0, SNIPPET_LEN)}…` : r.message_text,
-            sender: person(r),
-          })) }
-        : null;
+      // Once the Opportunities board tool is on, this module (Home's
+      // featured module AND the Chat rail's version of it, which reads the
+      // same field) sources from the board's 3 newest open posts instead of
+      // #opportunities messages. Off, it keeps the original message-based
+      // behavior (Prompt 65 Part 1).
+      const opportunitiesOn = await isToolOn(hiveId, 'opportunities');
+      if (opportunitiesOn) {
+        const opps = await getFeaturedOpportunities(hiveId, 3);
+        featuredModule = opps.length ? { kind: 'opportunities', board: true, opportunities: opps } : null;
+      } else {
+        const { rows } = await query(
+          `SELECT m.message_id, m.message_text, m.sent_at, m.channel_id,
+                  pr.user_id, pr.full_name, pr.profile_photo_url
+             FROM messages m
+             JOIN hive_channels c ON c.channel_id = m.channel_id
+             LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
+            WHERE m.hive_id = $1 AND LOWER(c.name) = 'opportunities'
+              AND c.archived_at IS NULL AND c.kind != 'pair' AND m.deleted_at IS NULL
+            ORDER BY m.sent_at DESC LIMIT 3`,
+          [hiveId],
+        );
+        featuredModule = rows.length
+          ? { kind: 'opportunities', board: false, messages: rows.map(r => ({
+              message_id: r.message_id, channel_id: r.channel_id, sent_at: r.sent_at,
+              text: r.message_text?.length > SNIPPET_LEN ? `${r.message_text.slice(0, SNIPPET_LEN)}…` : r.message_text,
+              sender: person(r),
+            })) }
+          : null;
+      }
     }
 
     res.json({
