@@ -1184,3 +1184,34 @@ CREATE TABLE IF NOT EXISTS hive_coffee_pairs (
   met         BOOLEAN
 );
 CREATE INDEX IF NOT EXISTS idx_coffee_pairs_round ON hive_coffee_pairs(round_id);
+
+-- ─── Prompt 64, Part 3 — Mentorship (tool_key = 'mentorship') ───────────────
+-- "Open spots" is computed live (capacity minus accepted requests), never a
+-- separately-stored counter that could drift from the requests it counts.
+CREATE TABLE IF NOT EXISTS hive_mentor_profiles (
+  hive_id     UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  user_id     UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  role        TEXT        NOT NULL CHECK (role IN ('mentor','mentee','both')),
+  topics      TEXT[]      NOT NULL CHECK (array_length(topics, 1) BETWEEN 1 AND 8),
+  about       TEXT        NOT NULL DEFAULT '' CHECK (char_length(about) <= 280),
+  capacity    INT         NOT NULL DEFAULT 2 CHECK (capacity BETWEEN 0 AND 5),
+  accepting   BOOLEAN     NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (hive_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS hive_mentor_requests (
+  request_id  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id     UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  mentee_id   UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  mentor_id   UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  message     TEXT        NOT NULL CHECK (char_length(message) BETWEEN 1 AND 500),
+  status      TEXT        NOT NULL DEFAULT 'pending'
+                            CHECK (status IN ('pending','accepted','declined','withdrawn','ended')),
+  channel_id  UUID        REFERENCES hive_channels(channel_id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decided_at  TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_mentor_requests_mentee ON hive_mentor_requests(hive_id, mentee_id);
+CREATE INDEX IF NOT EXISTS idx_mentor_requests_mentor ON hive_mentor_requests(hive_id, mentor_id);

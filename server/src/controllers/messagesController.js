@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
 import { getDefaultChannelId, requireChannelAccess } from '../lib/hiveChannels.js';
+import { isEndedMentorshipChannel } from './mentorshipController.js';
 import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
 import { PLAN_SELECT, shapePlan } from './eventsController.js';
@@ -321,6 +322,11 @@ export const createMessage = async (req, res) => {
     }
 
     const { channel_id: channelId, kind: channelKind } = await _resolveChannel(hiveId, reqChannelId, req.userId);
+    // An ended mentorship's chat stays readable to both members but takes no
+    // new messages — the one place that rule is enforced.
+    if (channelKind === 'pair' && await isEndedMentorshipChannel(channelId)) {
+      return res.status(400).json({ error: 'This mentorship has ended — the chat is read-only.' });
+    }
 
     const { rows: [ins] } = await query(
       `INSERT INTO messages (hive_id, sender_user_id, message_text, reply_to_message_id,

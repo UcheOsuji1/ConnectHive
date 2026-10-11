@@ -23,6 +23,25 @@ export async function isToolOn(hiveId, key) {
   return def.defaultOn.includes(h?.category_name ?? '');
 }
 
+// Batched version of isToolOn across every Hive — for background jobs that
+// loop all Hives (coffeeChatJob), so they pay one query instead of 1-2 per
+// Hive (N+1). Same on/off logic as isToolOn, just computed set-wise.
+export async function getHivesWithToolOn(key) {
+  const def = getToolDef(key);
+  if (!def || !def.available) return [];
+
+  const { rows } = await query(
+    `SELECT h.hive_id, ht.enabled AS override_enabled, c.category_name
+       FROM hives h
+       LEFT JOIN hive_tools ht ON ht.hive_id = h.hive_id AND ht.tool_key = $1
+       LEFT JOIN categories c ON c.category_id = h.category_id`,
+    [key],
+  );
+  return rows
+    .filter(r => (r.override_enabled !== null ? r.override_enabled : def.defaultOn.includes(r.category_name ?? '')))
+    .map(r => r.hive_id);
+}
+
 // A tool's per-Hive settings override (e.g. docs' editors: owners|members).
 // {} when no override row exists yet — callers apply their own default.
 export async function getToolSettings(hiveId, key) {

@@ -83,9 +83,23 @@ function CoffeeChatsCount({ hiveId }) {
   return <span className="thub-tile-count">{text}</span>;
 }
 
+function MentorshipCount({ hiveId }) {
+  const [text, setText] = useState(null);
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/mentorship/requests?direction=incoming`)
+      .then(d => {
+        const pending = (d.requests ?? []).filter(r => r.status === 'pending').length;
+        setText(pending > 0 ? `${pending} request${pending === 1 ? '' : 's'}` : null);
+      })
+      .catch(() => setText(null));
+  }, [hiveId]);
+  if (text === null) return null;
+  return <span className="thub-tile-count">{text}</span>;
+}
+
 const TILE_COUNT = {
   find_time: FindTimeCount, split_costs: SplitCostsCount, signups: SignupsCount,
-  docs: DocsCount, goals: GoalsCount, coffee_chats: CoffeeChatsCount,
+  docs: DocsCount, goals: GoalsCount, coffee_chats: CoffeeChatsCount, mentorship: MentorshipCount,
 };
 
 // A tool lives inside each plan's page rather than getting its own hub tile.

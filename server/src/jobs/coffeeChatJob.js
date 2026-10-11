@@ -2,7 +2,7 @@
 // as rsvpReminderJob.js: an exported run function the checks can call
 // directly, plus an interval wrapper with a started-once guard.
 import { query, getClient } from '../db/index.js';
-import { isToolOn } from '../lib/hiveTools.js';
+import { getHivesWithToolOn } from '../lib/hiveTools.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
 import { createPairChannel } from '../lib/hiveChannels.js';
 import { getSystemUserId } from '../lib/systemUser.js';
@@ -76,12 +76,10 @@ export async function runCoffeeChatJob() {
   const todayDow = today.getUTCDay();
   const todayStr = today.toISOString().slice(0, 10);
 
-  const { rows: hives } = await query(`SELECT hive_id FROM hives`);
+  const hiveIds = await getHivesWithToolOn('coffee_chats');
   let roundsRun = 0, pairsCreated = 0, trios = 0, sitOuts = 0;
 
-  for (const { hive_id: hiveId } of hives) {
-    if (!(await isToolOn(hiveId, 'coffee_chats'))) continue;
-
+  for (const hiveId of hiveIds) {
     const { rows: [settings] } = await query(
       `SELECT cadence, pairing_day, allow_groups_of_3 FROM hive_coffee_settings WHERE hive_id = $1`,
       [hiveId],

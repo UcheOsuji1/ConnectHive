@@ -108,6 +108,10 @@ import {
 import {
   getCoffeeSettings, updateCoffeeSettings, getCoffeeStatus, optIn, optOut, skipNextRound, recordMet,
 } from '../controllers/coffeeChatController.js';
+import {
+  getMyProfile, upsertMyProfile, deleteMyProfile, listMentors, createRequest, listRequests, listMine,
+  acceptRequest, declineRequest, withdrawRequest, endMentorship,
+} from '../controllers/mentorshipController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -308,5 +312,17 @@ router.post('/:id/tools/coffee_chats/optin',         requireAuth, requireTool('c
 router.delete('/:id/tools/coffee_chats/optin',       requireAuth, requireTool('coffee_chats'), optOut);
 router.post('/:id/tools/coffee_chats/skip-next',     requireAuth, requireTool('coffee_chats'), skipNextRound);
 router.post('/:id/tools/coffee_chats/pairs/:pairId/met', requireAuth, requireTool('coffee_chats'), recordMet);
+
+router.get('/:id/tools/mentorship/profile',           requireAuth, requireTool('mentorship'), getMyProfile);
+router.put('/:id/tools/mentorship/profile',            requireAuth, requireTool('mentorship'), upsertMyProfile);
+router.delete('/:id/tools/mentorship/profile',          requireAuth, requireTool('mentorship'), deleteMyProfile);
+router.get('/:id/tools/mentorship/mentors',             requireAuth, requireTool('mentorship'), listMentors);
+router.post('/:id/tools/mentorship/requests',           requireAuth, requireTool('mentorship'), createRequest);
+router.get('/:id/tools/mentorship/requests',            requireAuth, requireTool('mentorship'), listRequests);
+router.get('/:id/tools/mentorship/mine',                requireAuth, requireTool('mentorship'), listMine);
+router.post('/:id/tools/mentorship/requests/:requestId/accept',   requireAuth, requireTool('mentorship'), acceptRequest);
+router.post('/:id/tools/mentorship/requests/:requestId/decline',  requireAuth, requireTool('mentorship'), declineRequest);
+router.post('/:id/tools/mentorship/requests/:requestId/withdraw', requireAuth, requireTool('mentorship'), withdrawRequest);
+router.post('/:id/tools/mentorship/requests/:requestId/end',      requireAuth, requireTool('mentorship'), endMentorship);
 
 export default router;

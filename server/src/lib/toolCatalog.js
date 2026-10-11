@@ -67,7 +67,7 @@ export const TOOL_CATALOG = [
     key: 'mentorship', name: 'Mentorship', description: 'Match mentors and mentees inside the Hive.',
     icon: 'mentor', scope: 'hive',
     defaultOn: ['Professional Networking'],
-    available: false,
+    available: true,
   },
   {
     key: 'opportunities', name: 'Opportunities board', description: 'Share roles, referrals and leads with the Hive.',
