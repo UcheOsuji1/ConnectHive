@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
-import { getDefaultChannelId, requireChannelAccess } from '../lib/hiveChannels.js';
+import { getDefaultChannelId, requireChannelAccess, loadChannel, isPairMember } from '../lib/hiveChannels.js';
 import { isEndedMentorshipChannel } from './mentorshipController.js';
 import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
@@ -120,9 +120,15 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
        p.profile_photo_url                AS sender_photo,
        COALESCE(hm.role, 'member')        AS sender_role,
        m.reply_to_message_id,
-       rp.full_name                       AS reply_sender_name,
+       -- Second layer against a cross-channel reply (Prompt 65 Part 0 #1):
+       -- even if one somehow existed, the list query itself never exposes
+       -- the target's text or sender once channels don't match — a pair
+       -- chat's content can never surface via someone replying to it from
+       -- a room they're actually in.
+       CASE WHEN rm.channel_id IS DISTINCT FROM m.channel_id THEN NULL ELSE rp.full_name END AS reply_sender_name,
        CASE
          WHEN m.reply_to_message_id IS NULL THEN NULL
+         WHEN rm.channel_id IS DISTINCT FROM m.channel_id THEN NULL
          WHEN rm.deleted_at IS NOT NULL      THEN '[deleted]'
          ELSE LEFT(rm.message_text, 90)
        END                                AS reply_snippet,
@@ -312,20 +318,24 @@ export const createMessage = async (req, res) => {
       return res.status(429).json({ error: 'Slow down — you are sending messages too quickly.' });
     }
 
-    if (reply_to_message_id) {
-      const { rows: [ref] } = await query(
-        `SELECT hive_id FROM messages WHERE message_id = $1`, [reply_to_message_id],
-      );
-      if (!ref || ref.hive_id !== hiveId) {
-        return res.status(400).json({ error: 'Reply target not found in this Hive.' });
-      }
-    }
-
     const { channel_id: channelId, kind: channelKind } = await _resolveChannel(hiveId, reqChannelId, req.userId);
     // An ended mentorship's chat stays readable to both members but takes no
     // new messages — the one place that rule is enforced.
     if (channelKind === 'pair' && await isEndedMentorshipChannel(channelId)) {
       return res.status(400).json({ error: 'This mentorship has ended — the chat is read-only.' });
+    }
+
+    // Reply target must be in THIS SAME CHANNEL, not merely the same Hive
+    // (Prompt 65 Part 0 #1) — otherwise a member who has a pair-chat
+    // message's id could reply to it from #general and pull its text into
+    // a public room via reply_snippet.
+    if (reply_to_message_id) {
+      const { rows: [ref] } = await query(
+        `SELECT hive_id, channel_id FROM messages WHERE message_id = $1`, [reply_to_message_id],
+      );
+      if (!ref || ref.hive_id !== hiveId || ref.channel_id !== channelId) {
+        return res.status(400).json({ error: 'Reply target not found in this room.' });
+      }
     }
 
     const { rows: [ins] } = await query(
@@ -493,6 +503,14 @@ export const deleteMessage = async (req, res) => {
       const membership = await getMembership(existing.hive_id, req.userId);
       if (!membership || !['owner', 'admin'].includes(membership.role)) {
         return res.status(403).json({ error: 'Not authorized to delete this message.' });
+      }
+      // A pair chat has no moderator outside its own members (Prompt 65
+      // Part 0 #2) — owner/admin status on the Hive isn't enough there.
+      if (existing.channel_id) {
+        const ch = await loadChannel(existing.hive_id, existing.channel_id);
+        if (ch?.kind === 'pair' && !(await isPairMember(existing.channel_id, req.userId))) {
+          return res.status(403).json({ error: 'Only this pair chat’s own members can delete messages in it.' });
+        }
       }
     }
 
