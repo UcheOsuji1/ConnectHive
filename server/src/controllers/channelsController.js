@@ -341,12 +341,14 @@ export const listMyChats = async (req, res) => {
                   AND m.sender_user_id != $2
                   AND m.sent_at > COALESCE(
                     (SELECT last_seen_at FROM hive_last_seen WHERE user_id = $2 AND hive_id = $1),
-                    '1970-01-01'::timestamptz)) AS unread_count
+                    '1970-01-01'::timestamptz)) AS unread_count,
+              cp.pair_id, cp.met, cp.created_at AS paired_at
          FROM hive_channels c
          JOIN hive_channel_members hcm  ON hcm.channel_id = c.channel_id AND hcm.user_id = $2
          LEFT JOIN hive_channel_members hcm2 ON hcm2.channel_id = c.channel_id
+         LEFT JOIN hive_coffee_pairs cp ON cp.channel_id = c.channel_id
         WHERE c.hive_id = $1 AND c.kind = 'pair'
-        GROUP BY c.channel_id, c.created_for, c.archived_at
+        GROUP BY c.channel_id, c.created_for, c.archived_at, cp.pair_id, cp.met, cp.created_at
         ORDER BY last_at DESC NULLS LAST`,
       [hiveId, req.userId],
     );
@@ -357,6 +359,7 @@ export const listMyChats = async (req, res) => {
       : { rows: [] };
     const byId = Object.fromEntries(others.map(o => [o.user_id, o]));
 
+    const METPROMPT_AFTER_DAYS = 7;
     res.json({
       chats: rows.map(r => ({
         channel_id: r.channel_id,
@@ -366,6 +369,10 @@ export const listMyChats = async (req, res) => {
         last_text: r.last_text,
         last_at: r.last_at,
         unread_count: Math.min(r.unread_count, 99),
+        pair_id: r.pair_id ?? null,
+        met: r.pair_id ? r.met : null,
+        pending_met_prompt: !!r.pair_id && r.met === null
+          && (Date.now() - new Date(r.paired_at).getTime()) >= METPROMPT_AFTER_DAYS * 86400000,
       })),
     });
   } catch (err) {

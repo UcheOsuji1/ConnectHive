@@ -1,0 +1,44 @@
+/* Meet someone new (Prompt 64 Part 2). Prefix: cc- */
+
+.cc-page { display: flex; flex-direction: column; gap: 18px; max-width: 560px; }
+.cc-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.4rem; font-weight: 700; color: var(--hdl-ink); margin: 0;
+}
+.cc-sub { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); margin: 4px 0 0; }
+.cc-skel { height: 160px; border-radius: 12px; background: var(--hdl-ivory); }
+.cc-error { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #c0392b; margin: 4px 0 0; }
+
+.cc-card {
+  background: var(--hdl-surface); border: 1px solid var(--hdl-border2); border-radius: 12px;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+.cc-card-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.05rem; color: var(--hdl-ink); margin: 0; }
+.cc-card-desc { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); margin: 4px 0 0; }
+
+.cc-optin-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+
+.cc-toggle {
+  flex-shrink: 0; width: 40px; height: 22px; border-radius: 100px; border: 1px solid var(--hdl-border2);
+  background: var(--hdl-ivory); position: relative; cursor: pointer; padding: 0; transition: background .15s, border-color .15s;
+}
+.cc-toggle--on { background: var(--hdl-gold); border-color: var(--hdl-gold); }
+.cc-toggle-knob {
+  position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform .15s;
+}
+.cc-toggle--on .cc-toggle-knob { transform: translateX(18px); }
+
+.cc-btn-ghost {
+  align-self: flex-start; background: none; border: 1px solid var(--hdl-border2); border-radius: 100px;
+  color: var(--hdl-ink); font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.78rem;
+  padding: 8px 16px; cursor: pointer; min-height: 38px;
+}
+
+.cc-field { display: flex; flex-direction: column; gap: 5px; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-ink); font-weight: 600; }
+.cc-field select {
+  border: 1px solid var(--hdl-border2); border-radius: 8px; padding: 9px 10px; font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem; min-height: 44px; background: #fff;
+}
+.cc-check-row { display: flex; align-items: flex-start; gap: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-ink); line-height: 1.4; }
+.cc-check-row input { margin-top: 3px; flex-shrink: 0; }

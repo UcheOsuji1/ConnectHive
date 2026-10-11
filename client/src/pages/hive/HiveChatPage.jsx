@@ -979,6 +979,7 @@ export default function HiveChatPage() {
   );
   const [showRooms,   setShowRooms]   = useState(false);
   const [pinsOpen,    setPinsOpen]    = useState(false);
+  const [metPromptDismissed, setMetPromptDismissed] = useState(false);
   const [plusOpen,    setPlusOpen]    = useState(false);
   const [planOpen,    setPlanOpen]    = useState(false);
   const [findTimeOpen, setFindTimeOpen] = useState(false);
@@ -1196,6 +1197,7 @@ export default function HiveChatPage() {
       });
     markSeen();
     loadChats(); // zeroes this chat's unread badge in the Chats section once opened
+    setMetPromptDismissed(false);
   }, [activeChannelId, hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Join/leave channel socket room on channel switch ──────────────────────
@@ -1888,6 +1890,15 @@ export default function HiveChatPage() {
   const pairHeaderName = pairOther?.full_name ?? 'Member';
   const canManageChannels = isOwner || (hive?.my_role === 'admin');
 
+  async function answerMetPrompt(response) {
+    setMetPromptDismissed(true);
+    if (!activeChat?.pair_id) return;
+    try {
+      await api.post(`/api/hives/${hiveId}/tools/coffee_chats/pairs/${activeChat.pair_id}/met`, { response });
+      loadChats();
+    } catch { /* banner is already dismissed locally either way */ }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   const annotated  = annotate(messages);
   const memberCount = hive?.member_count ?? members.length;
@@ -2042,6 +2053,20 @@ export default function HiveChatPage() {
         {reconnecting && (
           <div className="hc-socket-error" role="status">
             Reconnecting…
+          </div>
+        )}
+
+        {isPairActive && activeChat?.pending_met_prompt && !metPromptDismissed && (
+          <div className="hc-met-prompt" role="status">
+            <span>Did you and {pairHeaderName} meet up?</span>
+            <div className="hc-met-prompt-btns">
+              <button type="button" className="hc-met-btn hc-met-btn--yes"
+                      onClick={() => answerMetPrompt('yes')}>Yes</button>
+              <button type="button" className="hc-met-btn"
+                      onClick={() => answerMetPrompt('not_yet')}>Not yet</button>
+              <button type="button" className="hc-met-btn"
+                      onClick={() => answerMetPrompt('skip')}>Skip</button>
+            </div>
           </div>
         )}
 

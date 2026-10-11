@@ -1477,7 +1477,7 @@ export const getHiveAnalytics = async (req, res) => {
 
     // One series of week-start buckets for the window, so a week with zero
     // activity still shows as a 0 point instead of a gap in the chart.
-    const [memberRes, messageRes, planRes, roomRes, attendanceRate] = await Promise.all([
+    const [memberRes, messageRes, planRes, roomRes, attendanceRate, coffeeMetRes] = await Promise.all([
       query(
         `WITH weeks AS (
            SELECT date_trunc('week', NOW()) - (n || ' weeks')::interval AS week_start
@@ -1549,7 +1549,25 @@ export const getHiveAnalytics = async (req, res) => {
       ),
       // null until 3+ past plans have check-in data (Prompt 61 Part 5).
       getAttendanceRate(hiveId),
+      // Threshold is on completed PAIRS (spec: "at least 5 completed
+      // pairs"); the number actually shown is the distinct member count
+      // among them, so a trio counts its 3 members once each, never the
+      // pairing 3 times, and someone met through two different pairings
+      // isn't double-counted either.
+      query(
+        `SELECT
+           COUNT(DISTINCT cp.pair_id)::int AS pair_count,
+           COUNT(DISTINCT uid)::int AS member_count
+           FROM hive_coffee_pairs cp
+           JOIN hive_coffee_rounds cr ON cr.round_id = cp.round_id
+           CROSS JOIN LATERAL unnest(cp.user_ids) AS uid
+          WHERE cr.hive_id = $1 AND cp.met = TRUE`,
+        [hiveId],
+      ),
     ]);
+
+    const coffeePairCount = Number(coffeeMetRes.rows[0]?.pair_count ?? 0);
+    const coffeeMemberCount = Number(coffeeMetRes.rows[0]?.member_count ?? 0);
 
     res.json({
       days,
@@ -1558,6 +1576,8 @@ export const getHiveAnalytics = async (req, res) => {
       plansByMonth: planRes.rows.map(r => ({ month: r.month_start, plans: r.plans, rsvps: r.rsvps })),
       activeRooms: roomRes.rows.map(r => ({ channel_id: r.channel_id, name: r.name, messageCount: r.message_count })),
       attendanceRate, // { rate, planCount } | null
+      // Only shown once the Hive has at least 5 completed pairings.
+      membersMetCount: coffeePairCount >= 5 ? coffeeMemberCount : null,
     });
   } catch (err) {
     console.error('[hives/getHiveAnalytics]', err);

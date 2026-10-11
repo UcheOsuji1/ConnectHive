@@ -4,7 +4,7 @@ import PostCard from '../../components/PostCard.jsx';
 import CreatePlanModal from '../../components/plans/CreatePlanModal.jsx';
 import { Icon } from '../../components/home/HomeBits.jsx';
 import {
-  UpcomingPlan, Activity, Glance, Goal, RecentChat, Photos, HostPost, FeaturedModule,
+  UpcomingPlan, Activity, Glance, Goal, RecentChat, Photos, HostPost, FeaturedModule, CoffeeChatCard,
 } from '../../components/home/HomeModules.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { api } from '../../lib/api.js';
@@ -30,6 +30,7 @@ function Skeleton() {
 export default function HiveHomePage() {
   const { hive, hiveId, isOwner, openPostModal, newPost, catConfig, hiveTools } = useOutletContext();
   const checkinsOn = (hiveTools ?? []).some(t => t.key === 'checkins' && t.enabled);
+  const coffeeChatsOn = (hiveTools ?? []).some(t => t.key === 'coffee_chats' && t.enabled);
   const labels = catConfig?.labels ?? { nextPlan: 'Upcoming Plan', goal: 'Hive Goal' };
   const { user } = useAuth();
 
@@ -226,6 +227,7 @@ export default function HiveHomePage() {
             <FeaturedModule module={data.featuredModule} hiveId={hiveId} />
           )}
           <Goal goal={data.goal} featuredGoal={data.featuredGoal} hiveId={hiveId} isOwner={isOwner} label={labels.goal} />
+          {coffeeChatsOn && <CoffeeChatCard hiveId={hiveId} />}
           <HostPost
             post={data.hostPost}
             hiveId={hiveId}

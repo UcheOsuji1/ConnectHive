@@ -72,7 +72,21 @@ function GoalsCount({ hiveId }) {
   return <span className="thub-tile-count">{text}</span>;
 }
 
-const TILE_COUNT = { find_time: FindTimeCount, split_costs: SplitCostsCount, signups: SignupsCount, docs: DocsCount, goals: GoalsCount };
+function CoffeeChatsCount({ hiveId }) {
+  const [text, setText] = useState(null);
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/coffee_chats/status`)
+      .then(d => setText(d.optedIn ? 'You’re opted in' : null))
+      .catch(() => setText(null));
+  }, [hiveId]);
+  if (text === null) return null;
+  return <span className="thub-tile-count">{text}</span>;
+}
+
+const TILE_COUNT = {
+  find_time: FindTimeCount, split_costs: SplitCostsCount, signups: SignupsCount,
+  docs: DocsCount, goals: GoalsCount, coffee_chats: CoffeeChatsCount,
+};
 
 // A tool lives inside each plan's page rather than getting its own hub tile.
 const PLAN_SCOPED_NO_TILE = new Set(['checkins', 'itinerary', 'rides']);

@@ -5,15 +5,15 @@ import { query } from '../db/index.js';
 // within an existing row falls back to its own default too, so a future
 // category added to the table doesn't silently mute everyone who saved prefs
 // before it existed.
-const CATEGORIES = ['mentions', 'plans', 'rsvp_reminders', 'new_members', 'announcements', 'all_messages', 'costs'];
+const CATEGORIES = ['mentions', 'plans', 'rsvp_reminders', 'new_members', 'announcements', 'all_messages', 'costs', 'matches'];
 const DEFAULTS = {
   mentions: true, plans: true, rsvp_reminders: true,
-  new_members: false, announcements: true, all_messages: false, costs: true,
+  new_members: false, announcements: true, all_messages: false, costs: true, matches: true,
 };
 
 export async function getPrefsRow(hiveId, userId) {
   const { rows: [row] } = await query(
-    `SELECT mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs
+    `SELECT mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs, matches
        FROM hive_notification_prefs WHERE hive_id = $1 AND user_id = $2`,
     [hiveId, userId],
   );
@@ -145,13 +145,13 @@ export const updateHiveNotificationPrefs = async (req, res) => {
 
     await query(
       `INSERT INTO hive_notification_prefs
-         (hive_id, user_id, mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
+         (hive_id, user_id, mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs, matches, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
        ON CONFLICT (hive_id, user_id) DO UPDATE SET
          mentions = EXCLUDED.mentions, plans = EXCLUDED.plans, rsvp_reminders = EXCLUDED.rsvp_reminders,
          new_members = EXCLUDED.new_members, announcements = EXCLUDED.announcements,
-         all_messages = EXCLUDED.all_messages, costs = EXCLUDED.costs, updated_at = NOW()`,
-      [hiveId, req.userId, next.mentions, next.plans, next.rsvp_reminders, next.new_members, next.announcements, next.all_messages, next.costs],
+         all_messages = EXCLUDED.all_messages, costs = EXCLUDED.costs, matches = EXCLUDED.matches, updated_at = NOW()`,
+      [hiveId, req.userId, next.mentions, next.plans, next.rsvp_reminders, next.new_members, next.announcements, next.all_messages, next.costs, next.matches],
     );
 
     res.json({ prefs: next });

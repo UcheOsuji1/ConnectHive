@@ -139,6 +139,18 @@ export default function HiveAnalyticsPage() {
             </div>
           )}
 
+          {/* Only shown once the Hive has 5+ completed Meet someone new
+              pairings — never a tiny, not-yet-meaningful count. */}
+          {data.membersMetCount != null && (
+            <div className="han-card">
+              <div className="hw-card-label">Meet someone new</div>
+              <div className="han-attendance-rate">{data.membersMetCount}</div>
+              <div className="han-attendance-caption">
+                member{data.membersMetCount === 1 ? '' : 's'} met through TrueHive
+              </div>
+            </div>
+          )}
+
           <div className="han-card">
             <div className="hw-card-label">Most Active Rooms</div>
             {data.activeRooms.length === 0 || data.activeRooms.every(r => r.messageCount === 0) ? (

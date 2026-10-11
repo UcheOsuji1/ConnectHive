@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../Avatar.jsx';
 import RsvpMenu from '../plans/RsvpMenu.jsx';
@@ -205,6 +205,47 @@ export function Goal({ goal, featuredGoal, hiveId, isOwner, label = 'Hive Goal' 
           </Link>
         </div>
       )}
+    </Card>
+  );
+}
+
+/* ── Meet someone new (Prompt 64 Part 2) ────────────────────────────────── */
+export function CoffeeChatCard({ hiveId }) {
+  const [status, setStatus] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/coffee_chats/status`)
+      .then(setStatus)
+      .catch(() => setStatus({ optedIn: false, pausedUntil: null }));
+  }, [hiveId]);
+
+  async function toggle() {
+    if (!status) return;
+    setBusy(true);
+    try {
+      if (status.optedIn) await api.delete(`/api/hives/${hiveId}/tools/coffee_chats/optin`);
+      else await api.post(`/api/hives/${hiveId}/tools/coffee_chats/optin`);
+      setStatus(s => ({ ...s, optedIn: !s.optedIn, pausedUntil: null }));
+    } catch { /* toggle just doesn't move */ }
+    setBusy(false);
+  }
+
+  if (!status) return null;
+
+  return (
+    <Card icon="coffee" title="Meet someone new" className="hh-m-coffee"
+          link="Details" linkTo={`/hive/${hiveId}/tools/coffee_chats`}>
+      <div className="hh-coffee-row">
+        <p className="hh-coffee-text">
+          {status.optedIn ? 'You’ll be matched with someone new next round.' : 'Get matched with someone new every round.'}
+        </p>
+        <button type="button" role="switch" aria-checked={status.optedIn}
+                className={`hh-coffee-toggle${status.optedIn ? ' hh-coffee-toggle--on' : ''}`}
+                disabled={busy} onClick={toggle} aria-label={status.optedIn ? 'Opt out' : 'Opt in'}>
+          <span className="hh-coffee-toggle-knob" />
+        </button>
+      </div>
     </Card>
   );
 }

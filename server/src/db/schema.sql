@@ -746,6 +746,7 @@ CREATE TABLE IF NOT EXISTS hive_notification_prefs (
 -- Added after the table first existed — ALTER, not the CREATE above, is what
 -- actually reaches a database that already has this table (Prompt 62 Part 1).
 ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS costs BOOLEAN;
+ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS matches BOOLEAN;
 
 -- Idempotency ledger for the 24h-before RSVP reminder job — one row per
 -- (plan, recipient) ever sent, so re-running the job (every 15 min, or after
@@ -1141,3 +1142,45 @@ CREATE TABLE IF NOT EXISTS hive_channel_members (
   PRIMARY KEY (channel_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS idx_channel_members_user ON hive_channel_members(user_id);
+
+-- ─── Prompt 64, Part 2 — Meet someone new (tool_key = 'coffee_chats') ───────
+CREATE TABLE IF NOT EXISTS hive_coffee_settings (
+  hive_id            UUID        PRIMARY KEY REFERENCES hives(hive_id) ON DELETE CASCADE,
+  cadence            TEXT        NOT NULL DEFAULT 'biweekly' CHECK (cadence IN ('weekly','biweekly','monthly')),
+  pairing_day        INT         NOT NULL DEFAULT 1 CHECK (pairing_day BETWEEN 0 AND 6), -- 0=Sun .. 6=Sat
+  allow_groups_of_3  BOOLEAN     NOT NULL DEFAULT TRUE,
+  updated_by         UUID        REFERENCES users(user_id),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS hive_coffee_optins (
+  hive_id       UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  user_id       UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  opted_in_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  paused_until  DATE,
+  PRIMARY KEY (hive_id, user_id)
+);
+
+-- One row claims a Hive's pairing slot for a given cycle date — the
+-- UNIQUE(hive_id, scheduled_for) + ON CONFLICT DO NOTHING in the job is the
+-- actual "two runs make one round" guard, same shape as plan_reminders_sent.
+CREATE TABLE IF NOT EXISTS hive_coffee_rounds (
+  round_id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id        UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  scheduled_for  DATE        NOT NULL,
+  run_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (hive_id, scheduled_for)
+);
+CREATE INDEX IF NOT EXISTS idx_coffee_rounds_hive ON hive_coffee_rounds(hive_id, scheduled_for DESC);
+
+-- user_ids length 1 = sat out this round (fairness marker for next round);
+-- 2 = a pair; 3 = a trio (odd leftover folded into the best-scoring pair).
+CREATE TABLE IF NOT EXISTS hive_coffee_pairs (
+  pair_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  round_id    UUID        NOT NULL REFERENCES hive_coffee_rounds(round_id) ON DELETE CASCADE,
+  user_ids    UUID[]      NOT NULL,
+  channel_id  UUID        REFERENCES hive_channels(channel_id) ON DELETE SET NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  met         BOOLEAN
+);
+CREATE INDEX IF NOT EXISTS idx_coffee_pairs_round ON hive_coffee_pairs(round_id);

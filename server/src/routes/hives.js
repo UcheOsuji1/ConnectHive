@@ -105,6 +105,9 @@ import {
   listSignupLists, createSignupList, getSignupList, addSignupItem, editSignupItem, deleteSignupItem,
   claimSignupItem, unclaimSignupItem, removeClaim,
 } from '../controllers/signupsController.js';
+import {
+  getCoffeeSettings, updateCoffeeSettings, getCoffeeStatus, optIn, optOut, skipNextRound, recordMet,
+} from '../controllers/coffeeChatController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -297,5 +300,13 @@ router.post('/:id/tools/goals/goals',               requireAuth, requireTool('go
 router.patch('/:id/tools/goals/goals/:goalId',      requireAuth, requireTool('goals'), updateGoal);
 router.patch('/:id/tools/goals/goals/:goalId/progress', requireAuth, requireTool('goals'), updateManualProgress);
 router.post('/:id/tools/goals/goals/:goalId/archive', requireAuth, requireTool('goals'), archiveGoal);
+
+router.get('/:id/tools/coffee_chats/settings',       requireAuth, requireTool('coffee_chats'), getCoffeeSettings);
+router.put('/:id/tools/coffee_chats/settings',       requireAuth, requireTool('coffee_chats'), updateCoffeeSettings);
+router.get('/:id/tools/coffee_chats/status',         requireAuth, requireTool('coffee_chats'), getCoffeeStatus);
+router.post('/:id/tools/coffee_chats/optin',         requireAuth, requireTool('coffee_chats'), optIn);
+router.delete('/:id/tools/coffee_chats/optin',       requireAuth, requireTool('coffee_chats'), optOut);
+router.post('/:id/tools/coffee_chats/skip-next',     requireAuth, requireTool('coffee_chats'), skipNextRound);
+router.post('/:id/tools/coffee_chats/pairs/:pairId/met', requireAuth, requireTool('coffee_chats'), recordMet);
 
 export default router;

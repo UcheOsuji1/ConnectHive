@@ -61,7 +61,7 @@ export const TOOL_CATALOG = [
     key: 'coffee_chats', name: 'Meet someone new', description: 'Get paired with another member for a 1:1 chat.',
     icon: 'coffee', scope: 'hive',
     defaultOn: ['Social Groups', 'Professional Networking'],
-    available: false,
+    available: true,
   },
   {
     key: 'mentorship', name: 'Mentorship', description: 'Match mentors and mentees inside the Hive.',

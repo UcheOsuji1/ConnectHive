@@ -36,7 +36,7 @@ const REQUIRED = {
   // has live rows are the drift-risk case, not the "table absent" case.
   hive_plan_suggestions: ['source_poll_id', 'source_slot_id', 'series_rule', 'series_count'],
   hive_time_polls: ['pending_suggestion_id'],
-  hive_notification_prefs: ['costs'],
+  hive_notification_prefs: ['costs', 'matches'],
   hive_channels: ['kind', 'created_for'],
 };
 
@@ -68,6 +68,7 @@ const IMPACT = {
   'profiles.cashapp_handle':    'Split costs — payment-handle links and Account Settings -> Payments fail',
   'profiles.paypal_handle':     'Split costs — payment-handle links and Account Settings -> Payments fail',
   'hive_notification_prefs.costs': 'Split costs notification preferences fail to save',
+  'hive_notification_prefs.matches': 'Meet someone new / Mentorship notification preferences fail to save',
   'hives.plan_proposers':       'plan rules — who may suggest plans',
   'hives.plan_approval':        'plan rules — owner-approve vs Hive vote',
   'hives.vote_min_yes':         'plan rules — vote threshold',
