@@ -126,6 +126,11 @@ import {
   listTrips, createTrip, getTrip, updateTrip, archiveTrip,
   createItem, updateItem, deleteItem, moveItem,
 } from '../controllers/tripsController.js';
+import {
+  getRidesOverview, getRideBoard, createOffer, cancelOffer,
+  createRequest as createRideRequest, cancelRequest as cancelRideRequest,
+  requestSeat, confirmSeat, declineSeat,
+} from '../controllers/ridesController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -378,5 +383,15 @@ router.post('/:id/tools/itinerary/trips/:tripId/items',  requireAuth, requireToo
 router.patch('/:id/tools/itinerary/items/:itemId',       requireAuth, requireTool('itinerary'), updateItem);
 router.delete('/:id/tools/itinerary/items/:itemId',      requireAuth, requireTool('itinerary'), deleteItem);
 router.post('/:id/tools/itinerary/items/:itemId/move',   requireAuth, requireTool('itinerary'), moveItem);
+
+router.get('/:id/tools/rides/overview',                  requireAuth, requireTool('rides'), getRidesOverview);
+router.get('/:id/tools/rides/board',                     requireAuth, requireTool('rides'), getRideBoard);
+router.post('/:id/tools/rides/offers',                   requireAuth, requireTool('rides'), createOffer);
+router.delete('/:id/tools/rides/offers/:offerId',         requireAuth, requireTool('rides'), cancelOffer);
+router.post('/:id/tools/rides/requests',                  requireAuth, requireTool('rides'), createRideRequest);
+router.delete('/:id/tools/rides/requests/:requestId',     requireAuth, requireTool('rides'), cancelRideRequest);
+router.post('/:id/tools/rides/offers/:offerId/request',   requireAuth, requireTool('rides'), requestSeat);
+router.post('/:id/tools/rides/offers/:offerId/riders/:riderId/confirm', requireAuth, requireTool('rides'), confirmSeat);
+router.post('/:id/tools/rides/offers/:offerId/riders/:riderId/decline', requireAuth, requireTool('rides'), declineSeat);
 
 export default router;

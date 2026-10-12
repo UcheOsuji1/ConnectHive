@@ -284,6 +284,10 @@ function RoomsRail({ channels, chats = [], activeChannelId, unreadChannels, onSe
           <div className="hc-rail-section-label">Chats</div>
           {chats.map(chat => {
             const other = chat.other_members?.[0];
+            // Ride/trio chats have more than one "other" member — show all
+            // their names, not just the first (that silently dropped the
+            // rest for a 3+-person pair chat).
+            const otherNames = (chat.other_members ?? []).map(p => p.full_name).filter(Boolean).join(', ') || 'Member';
             return (
               <button
                 key={chat.channel_id}
@@ -296,7 +300,7 @@ function RoomsRail({ channels, chats = [], activeChannelId, unreadChannels, onSe
               >
                 <Avatar name={other?.full_name} src={other?.profile_photo_url} size={24} />
                 <span className="hc-chat-item-text">
-                  <span className="hc-chat-item-name">{other?.full_name ?? 'Member'}</span>
+                  <span className="hc-chat-item-name">{otherNames}</span>
                   <span className="hc-chat-item-preview">{chatPreviewText(chat)}</span>
                 </span>
                 {chat.unread_count > 0 && (
@@ -1903,8 +1907,14 @@ export default function HiveChatPage() {
   const activeChannel = channels.find(c => c.channel_id === activeChannelId);
   const activeChat = chats.find(c => c.channel_id === activeChannelId);
   const isPairActive = !activeChannel && !!activeChat;
+  // A ride chat (Prompt 66) can have a driver + several confirmed riders —
+  // other_members is already the full list server-side, so join all of them
+  // instead of only ever showing the first (that silently dropped everyone
+  // else for 3+-person pair chats, trios included).
   const pairOther = activeChat?.other_members?.[0] ?? null;
-  const pairHeaderName = pairOther?.full_name ?? 'Member';
+  const pairHeaderName = (activeChat?.other_members?.length
+    ? activeChat.other_members.map(p => p.full_name).filter(Boolean).join(', ')
+    : null) ?? 'Member';
   const canManageChannels = isOwner || (hive?.my_role === 'admin');
 
   async function answerMetPrompt(response) {

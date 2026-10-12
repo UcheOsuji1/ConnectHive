@@ -130,10 +130,21 @@ function ItineraryCount({ hiveId }) {
   return <span className="thub-tile-count">{n} trip{n === 1 ? '' : 's'}</span>;
 }
 
+function RidesCount({ hiveId }) {
+  const [n, setN] = useState(null);
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/rides/overview`)
+      .then(d => setN((d.plans ?? []).reduce((sum, p) => sum + p.offer_count, 0)))
+      .catch(() => setN(null));
+  }, [hiveId]);
+  if (n === null || n === 0) return null;
+  return <span className="thub-tile-count">{n} offer{n === 1 ? '' : 's'}</span>;
+}
+
 const TILE_COUNT = {
   find_time: FindTimeCount, split_costs: SplitCostsCount, signups: SignupsCount,
   docs: DocsCount, goals: GoalsCount, coffee_chats: CoffeeChatsCount, mentorship: MentorshipCount,
-  opportunities: OpportunitiesCount, tasks: TasksCount, itinerary: ItineraryCount,
+  opportunities: OpportunitiesCount, tasks: TasksCount, itinerary: ItineraryCount, rides: RidesCount,
 };
 
 // A tool lives inside each plan's page rather than getting its own hub tile.

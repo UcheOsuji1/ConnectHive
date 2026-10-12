@@ -1,0 +1,58 @@
+/* Ride board (Prompt 66 Part 2). Prefix: rd- */
+
+.rd-form-error { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: #c0392b; margin: 2px 0; }
+
+/* ── Plan-page block (inline, inside .pd-tool-block) ── */
+.rd-block { display: flex; flex-direction: column; gap: 10px; }
+.rd-offer-card { background: var(--hdl-ivory); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.rd-offer-top { display: flex; align-items: center; gap: 8px; }
+.rd-offer-main { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.rd-offer-driver { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.84rem; color: var(--hdl-ink); }
+.rd-offer-meta { font-family: 'DM Sans', sans-serif; font-size: 0.74rem; color: var(--hdl-muted); }
+.rd-offer-note { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-ink); margin: 0; }
+.rd-status-chip { font-family: 'DM Sans', sans-serif; font-size: 0.7rem; font-weight: 700; color: var(--hdl-muted); background: #fff; border-radius: 100px; padding: 3px 10px; flex-shrink: 0; }
+.rd-status-chip--on { color: #1e1b18; background: var(--hdl-gold); }
+
+.rd-rider-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.rd-rider-chip {
+  display: inline-flex; align-items: center; gap: 4px; font-family: 'DM Sans', sans-serif; font-size: 0.72rem;
+  color: var(--hdl-ink); background: #fff; border-radius: 100px; padding: 2px 10px 2px 2px;
+}
+.rd-requested-list { display: flex; flex-direction: column; gap: 6px; }
+.rd-requested-row { display: flex; align-items: center; gap: 8px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-ink); }
+.rd-requested-row span { flex: 1; }
+
+.rd-requests-section { display: flex; flex-direction: column; gap: 6px; }
+.rd-requests-title { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.78rem; color: var(--hdl-muted); }
+.rd-request-row { display: flex; align-items: center; gap: 8px; }
+.rd-request-text { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-ink); flex: 1; }
+
+.rd-cta-row { display: flex; gap: 8px; }
+.rd-form { display: flex; flex-direction: column; gap: 8px; background: #fff; border: 1px solid var(--hdl-border2); border-radius: 10px; padding: 10px; }
+.rd-form-row { display: flex; gap: 8px; }
+.rd-field { display: flex; flex-direction: column; gap: 3px; font-family: 'DM Sans', sans-serif; font-size: 0.76rem; font-weight: 600; color: var(--hdl-ink); flex: 1; }
+.rd-field input, .rd-field textarea {
+  border: 1px solid var(--hdl-border2); border-radius: 7px; padding: 7px 9px; font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem; font-weight: 400; color: var(--hdl-ink);
+}
+
+/* ── Rides hub (Tools -> Rides overview) ── */
+.rd-page { display: flex; flex-direction: column; gap: 16px; }
+.rd-head { display: flex; flex-direction: column; gap: 4px; }
+.rd-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.4rem; font-weight: 700; color: var(--hdl-ink); margin: 0; }
+.rd-sub { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); margin: 0; }
+.rd-empty { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); }
+.rd-skel { height: 220px; border-radius: 12px; background: var(--hdl-ivory); }
+.rd-plan-group { display: flex; flex-direction: column; gap: 10px; }
+.rd-plan-head {
+  display: flex; align-items: center; justify-content: space-between; text-decoration: none; color: inherit;
+  background: #fff; border: 1px solid var(--hdl-border2); border-radius: 10px; padding: 12px 16px;
+}
+.rd-plan-head:hover { border-color: var(--hdl-gold); }
+.rd-plan-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.05rem; color: var(--hdl-ink); margin: 0; }
+.rd-plan-meta { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-muted); margin: 4px 0 0; }
+.rd-plan-counts { font-family: 'DM Sans', sans-serif; font-size: 0.74rem; color: var(--hdl-muted); background: var(--hdl-ivory); border-radius: 100px; padding: 4px 10px; }
+
+@media (max-width: 760px) {
+  .rd-form-row { flex-direction: column; }
+}

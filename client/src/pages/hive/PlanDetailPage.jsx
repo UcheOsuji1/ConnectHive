@@ -9,6 +9,7 @@ import PlanDiscussion from '../../components/plans/PlanDiscussion.jsx';
 import CheckInButton from '../../components/tools/CheckInButton.jsx';
 import SplitCostsPlanBlock from '../../components/tools/SplitCostsPlanBlock.jsx';
 import SignupsPlanBlock from '../../components/tools/SignupsPlanBlock.jsx';
+import RidesPlanBlock from '../../components/tools/RidesPlanBlock.jsx';
 import { typeLabel, formatDate, formatTimeRange, relativeLabel } from '../../lib/plans.js';
 import '../../styles/hive-plans.css';
 import '../../styles/hive-plan-detail.css';
@@ -178,6 +179,9 @@ export default function PlanDetailPage() {
                 )}
                 {t.key === 'signups' && (
                   <SignupsPlanBlock hiveId={hiveId} postId={postId} canCreate={canCreateTool} />
+                )}
+                {t.key === 'rides' && (
+                  <RidesPlanBlock hiveId={hiveId} postId={postId} viewerRsvp={plan.viewer_rsvp} />
                 )}
               </div>
             ))}
