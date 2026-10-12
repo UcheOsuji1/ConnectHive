@@ -1162,61 +1162,80 @@ export const reviewRequest = async (req, res) => {
     );
     if (!request) return res.status(404).json({ error: 'Request not found or already reviewed.' });
 
+    // The decision (status UPDATE + member INSERT/UPSERT + capacity re-check)
+    // is one transaction — previously these were separate statements, so a
+    // crash between them (an unhandled throw further down used to do this
+    // every single time, see the ReferenceError this fix also removes) could
+    // leave the request accepted with no member row. SELECT ... FOR UPDATE
+    // locks the Hive row so two concurrent accepts can't both pass the
+    // capacity check and overshoot max_members.
     let joinExp = null;
-    if (action === 'accept') {
-      // Re-check capacity before accepting
-      const { rows: [countRow] } = await query(
-        `SELECT h.max_members,
-                COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
-         FROM hives h
-         LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
-         WHERE h.hive_id = $1
-         GROUP BY h.hive_id`,
-        [hiveId],
-      );
-      if (countRow.max_members &&
-          Number(countRow.member_count) >= Number(countRow.max_members)) {
-        return res.status(400).json({ error: 'Hive is full.' });
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+
+      if (action === 'accept') {
+        const { rows: [hiveRow] } = await client.query(
+          `SELECT max_members FROM hives WHERE hive_id = $1 FOR UPDATE`,
+          [hiveId],
+        );
+        const { rows: [countRow] } = await client.query(
+          `SELECT COUNT(*) AS member_count FROM hive_members
+            WHERE hive_id = $1 AND membership_status = 'active'`,
+          [hiveId],
+        );
+        if (hiveRow.max_members &&
+            Number(countRow.member_count) >= Number(hiveRow.max_members)) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'Hive is full.' });
+        }
+
+        // Determine onboarding status from hive settings
+        const { rows: [obSettings] } = await client.query(
+          `SELECT join_experience FROM hive_onboarding_settings WHERE hive_id = $1`,
+          [hiveId],
+        );
+        joinExp = obSettings?.join_experience ?? 'standard';
+        // simple/standard → no onboarding steps, immediately active
+        // guided/application → member must work through steps before full access
+        const onboardingStatus =
+          joinExp === 'simple'   ? 'completed' :
+          joinExp === 'standard' ? 'completed' : 'pending';
+
+        await client.query(
+          `UPDATE join_requests
+           SET status = 'accepted', reviewed_at = NOW(), reviewed_by = $1
+           WHERE request_id = $2`,
+          [req.userId, requestId],
+        );
+        await client.query(
+          `INSERT INTO hive_members
+             (hive_id, user_id, role, membership_status, welcome_seen_at, onboarding_status)
+           VALUES ($1, $2, 'member', 'active', NULL, $3)
+           ON CONFLICT (hive_id, user_id) DO UPDATE
+             SET role                    = 'member',
+                 membership_status       = 'active',
+                 welcome_seen_at         = NULL,
+                 onboarding_status       = $3,
+                 onboarding_started_at   = NULL,
+                 onboarding_completed_at = NULL`,
+          [hiveId, request.user_id, onboardingStatus],
+        );
+      } else {
+        await client.query(
+          `UPDATE join_requests
+           SET status = 'rejected', reviewed_at = NOW(), reviewed_by = $1
+           WHERE request_id = $2`,
+          [req.userId, requestId],
+        );
       }
 
-      // Determine onboarding status from hive settings
-      const { rows: [obSettings] } = await query(
-        `SELECT join_experience FROM hive_onboarding_settings WHERE hive_id = $1`,
-        [hiveId],
-      );
-      joinExp = obSettings?.join_experience ?? 'standard';
-      // simple/standard → no onboarding steps, immediately active
-      // guided/application → member must work through steps before full access
-      const onboardingStatus =
-        joinExp === 'simple'   ? 'completed' :
-        joinExp === 'standard' ? 'completed' : 'pending';
-
-      await query(
-        `UPDATE join_requests
-         SET status = 'accepted', reviewed_at = NOW(), reviewed_by = $1
-         WHERE request_id = $2`,
-        [req.userId, requestId],
-      );
-      await query(
-        `INSERT INTO hive_members
-           (hive_id, user_id, role, membership_status, welcome_seen_at, onboarding_status)
-         VALUES ($1, $2, 'member', 'active', NULL, $3)
-         ON CONFLICT (hive_id, user_id) DO UPDATE
-           SET role                    = 'member',
-               membership_status       = 'active',
-               welcome_seen_at         = NULL,
-               onboarding_status       = $3,
-               onboarding_started_at   = NULL,
-               onboarding_completed_at = NULL`,
-        [hiveId, request.user_id, onboardingStatus],
-      );
-    } else {
-      await query(
-        `UPDATE join_requests
-         SET status = 'rejected', reviewed_at = NOW(), reviewed_by = $1
-         WHERE request_id = $2`,
-        [req.userId, requestId],
-      );
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
 
     const { rows: [{ count }] } = await query(
@@ -1308,7 +1327,7 @@ export const reviewRequest = async (req, res) => {
       action,
       member_count: Number(count),
       new_member:   newMember,
-      join_experience: action === 'accept' ? (obSettings?.join_experience ?? 'standard') : undefined,
+      join_experience: action === 'accept' ? joinExp : undefined,
     });
   } catch (err) {
     console.error('[hives/reviewRequest]', err);
