@@ -8,6 +8,7 @@ import { getAttendanceRate } from './checkinsController.js';
 import { getFeaturedGoalWithProgress } from './goalsController.js';
 import { getFeaturedOpportunities } from './opportunitiesController.js';
 import { getSoonestOpenMilestone } from './tasksController.js';
+import { getPinnedItineraryModule } from './tripsController.js';
 import { isToolOn } from '../lib/hiveTools.js';
 
 const ACTIVITY_LIMIT = 8;
@@ -275,21 +276,31 @@ export const getHiveHome = async (req, res) => {
             attendees: nextPlan.going_preview, goingCount: nextPlan.going_count }
         : null;
     } else if (railKind === 'pinnedItinerary') {
-      const { rows } = await query(
-        `SELECT m.message_id, m.message_text, m.pinned_at, m.channel_id,
-                pr.user_id, pr.full_name, pr.profile_photo_url
-           FROM messages m
-           JOIN hive_channels c ON c.channel_id = m.channel_id
-           LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
-          WHERE m.hive_id = $1 AND LOWER(c.name) = 'trip-planning'
-            AND c.archived_at IS NULL AND c.kind != 'pair' AND m.deleted_at IS NULL AND m.pinned_at IS NOT NULL
-          ORDER BY m.pinned_at DESC LIMIT 1`,
-        [hiveId],
-      );
-      featuredModule = rows.length
-        ? { kind: 'pinnedItinerary', message: { text: rows[0].message_text, pinned_at: rows[0].pinned_at,
-            channel_id: rows[0].channel_id, sender: person(rows[0]) } }
-        : null;
+      // Once the Itinerary tool is on, this module sources from today's (or
+      // the next trip's first day's) real items instead of a pinned message
+      // in #trip-planning. Off, it keeps the original message-based
+      // behavior — same on/off split as Opportunities (Prompt 65 Part 1).
+      const itineraryOn = await isToolOn(hiveId, 'itinerary');
+      if (itineraryOn) {
+        const mod = await getPinnedItineraryModule(hiveId);
+        featuredModule = mod ? { kind: 'pinnedItinerary', board: true, ...mod } : null;
+      } else {
+        const { rows } = await query(
+          `SELECT m.message_id, m.message_text, m.pinned_at, m.channel_id,
+                  pr.user_id, pr.full_name, pr.profile_photo_url
+             FROM messages m
+             JOIN hive_channels c ON c.channel_id = m.channel_id
+             LEFT JOIN profiles pr ON pr.user_id = m.sender_user_id
+            WHERE m.hive_id = $1 AND LOWER(c.name) = 'trip-planning'
+              AND c.archived_at IS NULL AND c.kind != 'pair' AND m.deleted_at IS NULL AND m.pinned_at IS NOT NULL
+            ORDER BY m.pinned_at DESC LIMIT 1`,
+          [hiveId],
+        );
+        featuredModule = rows.length
+          ? { kind: 'pinnedItinerary', board: false, message: { text: rows[0].message_text, pinned_at: rows[0].pinned_at,
+              channel_id: rows[0].channel_id, sender: person(rows[0]) } }
+          : null;
+      }
     } else if (railKind === 'recentFiles') {
       const { rows } = await query(
         `SELECT * FROM (

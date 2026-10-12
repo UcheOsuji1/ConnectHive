@@ -118,6 +118,20 @@ export default function HiveManageToolsPage() {
                 </select>
               </div>
             )}
+            {tool.key === 'itinerary' && tool.enabled && (
+              <div className="mt-setting-row">
+                <span className="mt-setting-label">Who can edit the itinerary</span>
+                <select
+                  className="mt-setting-select"
+                  value={tool.settings?.editors ?? 'members'}
+                  disabled={pending === tool.key}
+                  onChange={e => setEditors(tool, e.target.value)}
+                >
+                  <option value="members">Any member</option>
+                  <option value="owners">Owners and admins only</option>
+                </select>
+              </div>
+            )}
             {tool.key === 'opportunities' && tool.enabled && (
               <div className="mt-setting-row">
                 <span className="mt-setting-label">Who can post opportunities</span>

@@ -650,6 +650,25 @@ export const createPlan = async (req, res) => {
     if (repeatResult.error) return res.status(400).json({ error: repeatResult.error });
     const repeat = repeatResult.repeat;
 
+    // "Make this/it a plan" (Itinerary items and Ideas, Prompt 66) — direct
+    // create links the new plan back to its source in the same transaction,
+    // no pending state involved. Validated here so a bad id 400s instead of
+    // silently creating an unlinked plan.
+    const sourceIdeaId = req.body?.sourceIdeaId || null;
+    const sourceTripItemId = req.body?.sourceTripItemId || null;
+    let sourceIdea = null;
+    if (sourceIdeaId) {
+      const { rows: [idea] } = await query(`SELECT idea_id FROM hive_ideas WHERE idea_id = $1 AND hive_id = $2 AND done_at IS NULL AND archived_at IS NULL`, [sourceIdeaId, hiveId]);
+      if (!idea) return res.status(400).json({ error: 'That idea is not available to turn into a plan.' });
+      sourceIdea = idea;
+    }
+    if (sourceTripItemId) {
+      const { rows: [item] } = await query(
+        `SELECT i.item_id FROM hive_trip_items i JOIN hive_trips t ON t.trip_id = i.trip_id
+          WHERE i.item_id = $1 AND t.hive_id = $2`, [sourceTripItemId, hiveId]);
+      if (!item) return res.status(400).json({ error: 'That itinerary item does not belong to this Hive.' });
+    }
+
     // Plan row(s) and the host's going RSVP(s) are one unit of work — the same
     // no-orphan standard as createHive. A series inserts every occurrence in
     // this same transaction, so a failure partway through leaves nothing.
@@ -663,6 +682,12 @@ export const createPlan = async (req, res) => {
         postId = result.postIds[0];
       } else {
         postId = await insertPlan(client, hiveId, req.userId, fields);
+      }
+      if (sourceIdea) {
+        await client.query(`UPDATE hive_ideas SET plan_post_id = $1, done_at = NOW() WHERE idea_id = $2`, [postId, sourceIdea.idea_id]);
+      }
+      if (sourceTripItemId) {
+        await client.query(`UPDATE hive_trip_items SET plan_post_id = $1, updated_at = NOW() WHERE item_id = $2`, [postId, sourceTripItemId]);
       }
       await client.query('COMMIT');
     } catch (txErr) {
@@ -703,6 +728,22 @@ export const createPlan = async (req, res) => {
       }
     } catch (notifErr) {
       console.error('[events/createPlan] plan_created notify failed (non-fatal):', notifErr);
+    }
+
+    // "An idea you liked is now a plan" — every upvoter, once, best-effort.
+    if (sourceIdea) {
+      try {
+        const { rows: voters } = await query(`SELECT user_id FROM hive_idea_votes WHERE idea_id = $1`, [sourceIdea.idea_id]);
+        for (const v of voters) {
+          await createNotification({
+            userId: v.user_id, type: 'idea_became_plan', category: 'plans',
+            title: `An idea you liked is now a plan: ${t}`,
+            hiveId, actorUserId: req.userId, link: `/hive/${hiveId}/events/${postId}`,
+          });
+        }
+      } catch (notifErr) {
+        console.error('[events/createPlan] idea upvoter notify failed (non-fatal):', notifErr);
+      }
     }
   } catch (err) {
     console.error('[events/createPlan]', err);

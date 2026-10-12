@@ -221,6 +221,18 @@ async function finishResolution(s, outcome, overrideUserId, editedFields = null)
           [planPostId, locked.source_poll_id],
         );
       }
+
+      // "Make this/it a plan" (Prompt 66) — the idea/item only links back
+      // and (for the idea) the "now a plan" notification only fires the
+      // instant the suggestion actually resolves into a real plan, not at
+      // suggest-time. Declined/expired/withdrawn leaves both untouched —
+      // there's nothing to "reopen" the way a poll is.
+      if (locked.source_idea_id) {
+        await client.query(`UPDATE hive_ideas SET plan_post_id = $1, done_at = NOW() WHERE idea_id = $2`, [planPostId, locked.source_idea_id]);
+      }
+      if (locked.source_trip_item_id) {
+        await client.query(`UPDATE hive_trip_items SET plan_post_id = $1, updated_at = NOW() WHERE item_id = $2`, [planPostId, locked.source_trip_item_id]);
+      }
     } else if (locked.source_poll_id) {
       // Declined, expired or withdrawn — reopen the poll so the Hive can try
       // scheduling again instead of it being stuck closed forever.
@@ -246,6 +258,22 @@ async function finishResolution(s, outcome, overrideUserId, editedFields = null)
           ...(outcome === 'approved' ? { plan_post_id: planPostId } : {}),
         });
       } catch { /* no socket in tests */ }
+    }
+    // "An idea you liked is now a plan" — every upvoter, once, only on the
+    // instant this resolves into a real plan (never on decline/expiry).
+    if (outcome === 'approved' && locked.source_idea_id) {
+      try {
+        const { rows: voters } = await query(`SELECT user_id FROM hive_idea_votes WHERE idea_id = $1`, [locked.source_idea_id]);
+        for (const v of voters) {
+          await createNotification({
+            userId: v.user_id, type: 'idea_became_plan', category: 'plans',
+            title: `An idea you liked is now a plan: ${locked.title}`,
+            hiveId: locked.hive_id, link: `/hive/${locked.hive_id}/events/${planPostId}`,
+          });
+        }
+      } catch (e) {
+        console.error('[planSuggestions] idea upvoter notify failed (non-fatal):', e);
+      }
     }
     return { hiveId: locked.hive_id, suggestedBy: locked.suggested_by, title: locked.title, outcome, planPostId };
   } catch (err) {
@@ -332,6 +360,22 @@ export const createSuggestion = async (req, res) => {
     const chCheck = await requireChannelAccess(hiveId, channelId, req.userId).catch(() => null);
     if (!chCheck || chCheck.archived_at) return res.status(400).json({ error: 'That room does not belong to this Hive.' });
 
+    // "Make this/it a plan" (Itinerary items and Ideas, Prompt 66) — same
+    // source_poll_id/source_slot_id precedent Find a Time already uses:
+    // finishResolution links the source back only once this is approved.
+    const sourceIdeaId = req.body?.sourceIdeaId || null;
+    const sourceTripItemId = req.body?.sourceTripItemId || null;
+    if (sourceIdeaId) {
+      const { rows: [idea] } = await query(`SELECT idea_id FROM hive_ideas WHERE idea_id = $1 AND hive_id = $2 AND done_at IS NULL AND archived_at IS NULL`, [sourceIdeaId, hiveId]);
+      if (!idea) return res.status(400).json({ error: 'That idea is not available to turn into a plan.' });
+    }
+    if (sourceTripItemId) {
+      const { rows: [item] } = await query(
+        `SELECT i.item_id FROM hive_trip_items i JOIN hive_trips t ON t.trip_id = i.trip_id
+          WHERE i.item_id = $1 AND t.hive_id = $2`, [sourceTripItemId, hiveId]);
+      if (!item) return res.status(400).json({ error: 'That itinerary item does not belong to this Hive.' });
+    }
+
     const client = await getClient();
     let suggestionId, messageId;
     try {
@@ -340,13 +384,13 @@ export const createSuggestion = async (req, res) => {
         `INSERT INTO hive_plan_suggestions
            (hive_id, channel_id, suggested_by, title, plan_type, event_at, event_end_at,
             event_location, description, media_url, visibility, status, closes_at,
-            series_rule, series_count)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12,$13,$14)
+            series_rule, series_count, source_idea_id, source_trip_item_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'pending',$12,$13,$14,$15,$16)
          RETURNING suggestion_id`,
         [hiveId, channelId, req.userId, fields.title, fields.type,
          fields.start.toISOString(), fields.end ? fields.end.toISOString() : null,
          fields.loc, fields.desc, fields.media, fields.vis, closesAt.toISOString(),
-         repeat?.rule ?? null, repeat?.count ?? null],
+         repeat?.rule ?? null, repeat?.count ?? null, sourceIdeaId, sourceTripItemId],
       );
       suggestionId = s.suggestion_id;
       const { rows: [msg] } = await client.query(

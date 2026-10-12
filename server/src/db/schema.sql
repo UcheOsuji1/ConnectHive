@@ -1349,3 +1349,120 @@ CREATE TABLE IF NOT EXISTS hive_task_due_notified (
   sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (task_id, user_id)
 );
+
+-- ══════════════════════════ Prompt 66: Itinerary, Rides, Ideas ═════════════
+
+-- ── Itinerary (tool_key = 'itinerary') ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_trips (
+  trip_id       UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id       UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title         TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  destination   TEXT        NOT NULL CHECK (char_length(destination) BETWEEN 1 AND 120),
+  starts_on     DATE        NOT NULL,
+  ends_on       DATE        NOT NULL CHECK (ends_on >= starts_on AND ends_on - starts_on <= 60),
+  cost_group_id UUID        REFERENCES hive_cost_groups(group_id) ON DELETE SET NULL,
+  created_by    UUID        NOT NULL REFERENCES users(user_id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  archived_at   TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_trips_hive ON hive_trips(hive_id);
+
+-- An item's day must fall within [starts_on, ends_on] — enforced in the
+-- controller (a CHECK can't see the parent trip's own columns). position is
+-- fractional, same reorder-without-renumbering guarantee as hive_tasks.
+CREATE TABLE IF NOT EXISTS hive_trip_items (
+  item_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  trip_id      UUID        NOT NULL REFERENCES hive_trips(trip_id) ON DELETE CASCADE,
+  day          DATE        NOT NULL,
+  time         TIME,
+  title        TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  location     TEXT,
+  url          TEXT,
+  notes        TEXT        NOT NULL DEFAULT '' CHECK (char_length(notes) <= 1000),
+  plan_post_id UUID        REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  position     NUMERIC     NOT NULL DEFAULT 0,
+  created_by   UUID        NOT NULL REFERENCES users(user_id),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_hive_trip_items_trip ON hive_trip_items(trip_id);
+
+-- ── Ride board (tool_key = 'rides') — per plan ──────────────────────────────
+-- channel_id is not in the prompt's literal column list but is required to
+-- find "this offer's private ride chat" once one is confirmed — the same
+-- role hive_mentor_requests.channel_id and hive_coffee_pairs.channel_id play
+-- for Prompt 64's pair chats.
+CREATE TABLE IF NOT EXISTS plan_ride_offers (
+  offer_id     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id      UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  driver_id    UUID        NOT NULL REFERENCES users(user_id),
+  seats        INT         NOT NULL CHECK (seats BETWEEN 1 AND 8),
+  leaving_from TEXT        NOT NULL CHECK (char_length(leaving_from) BETWEEN 1 AND 80),
+  departs_at   TIMESTAMPTZ,
+  note         TEXT        NOT NULL DEFAULT '' CHECK (char_length(note) <= 280),
+  channel_id   UUID        REFERENCES hive_channels(channel_id) ON DELETE SET NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  cancelled_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_plan_ride_offers_post ON plan_ride_offers(post_id);
+
+CREATE TABLE IF NOT EXISTS plan_ride_requests (
+  request_id   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id      UUID        NOT NULL REFERENCES hive_posts(post_id) ON DELETE CASCADE,
+  rider_id     UUID        NOT NULL REFERENCES users(user_id),
+  from_area    TEXT        NOT NULL CHECK (char_length(from_area) BETWEEN 1 AND 80),
+  note         TEXT        NOT NULL DEFAULT '' CHECK (char_length(note) <= 280),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  cancelled_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_plan_ride_requests_post ON plan_ride_requests(post_id);
+
+-- Confirmed seats on one offer can never exceed its own `seats` — enforced
+-- transactionally (SELECT ... FOR UPDATE on the offer row) in the
+-- controller, not here, since a CHECK can't see sibling rows.
+CREATE TABLE IF NOT EXISTS plan_ride_seats (
+  offer_id     UUID        NOT NULL REFERENCES plan_ride_offers(offer_id) ON DELETE CASCADE,
+  rider_id     UUID        NOT NULL REFERENCES users(user_id),
+  status       TEXT        NOT NULL DEFAULT 'requested' CHECK (status IN ('requested','confirmed','declined')),
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (offer_id, rider_id)
+);
+
+-- A ride's confirmed group gets a private chat — same hive_channels(kind=
+-- 'pair') mechanism Prompt 64 built, just with N members instead of 2/3 and
+-- a new created_for value. Every existing 'pair' channel already has the
+-- same loop-based member insert, so nothing about that path changes.
+ALTER TABLE hive_channels DROP CONSTRAINT IF EXISTS hive_channels_created_for_check;
+ALTER TABLE hive_channels ADD CONSTRAINT hive_channels_created_for_check
+  CHECK (created_for IS NULL OR created_for IN ('coffee_chat','mentorship','ride'));
+
+-- ── Ideas board (tool_key = 'ideas') ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS hive_ideas (
+  idea_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id      UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title        TEXT        NOT NULL CHECK (char_length(title) BETWEEN 1 AND 120),
+  kind         TEXT        NOT NULL CHECK (kind IN ('place','activity','trip','other')),
+  url          TEXT,
+  location     TEXT,
+  note         TEXT        NOT NULL DEFAULT '' CHECK (char_length(note) <= 500),
+  plan_type    TEXT,
+  created_by   UUID        NOT NULL REFERENCES users(user_id),
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  done_at      TIMESTAMPTZ,
+  plan_post_id UUID        REFERENCES hive_posts(post_id) ON DELETE SET NULL,
+  archived_at  TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_hive_ideas_hive ON hive_ideas(hive_id);
+
+CREATE TABLE IF NOT EXISTS hive_idea_votes (
+  idea_id  UUID        NOT NULL REFERENCES hive_ideas(idea_id) ON DELETE CASCADE,
+  user_id  UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  voted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (idea_id, user_id)
+);
+
+-- "Make this/it a plan" (Itinerary items and Ideas) links back to its source
+-- the same way Find a Time's source_poll_id/source_slot_id already does —
+-- finishResolution (planSuggestionsController.js) updates the source row the
+-- instant a suggestion is approved, exactly mirroring that existing branch.
+ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS source_idea_id UUID REFERENCES hive_ideas(idea_id) ON DELETE SET NULL;
+ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS source_trip_item_id UUID REFERENCES hive_trip_items(item_id) ON DELETE SET NULL;

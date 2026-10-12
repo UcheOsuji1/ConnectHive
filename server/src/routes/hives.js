@@ -122,6 +122,10 @@ import {
   listTasks, getTask, createTask, updateTask, moveTask, deleteTask,
   addLink as addTaskLink, removeLink as removeTaskLink, addComment, deleteComment,
 } from '../controllers/tasksController.js';
+import {
+  listTrips, createTrip, getTrip, updateTrip, archiveTrip,
+  createItem, updateItem, deleteItem, moveItem,
+} from '../controllers/tripsController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -364,5 +368,15 @@ router.post('/:id/tools/tasks/tasks/:taskId/links',      requireAuth, requireToo
 router.delete('/:id/tools/tasks/tasks/:taskId/links/:linkId', requireAuth, requireTool('tasks'), removeTaskLink);
 router.post('/:id/tools/tasks/tasks/:taskId/comments',   requireAuth, requireTool('tasks'), addComment);
 router.delete('/:id/tools/tasks/tasks/:taskId/comments/:commentId', requireAuth, requireTool('tasks'), deleteComment);
+
+router.get('/:id/tools/itinerary/trips',                requireAuth, requireTool('itinerary'), listTrips);
+router.post('/:id/tools/itinerary/trips',                requireAuth, requireTool('itinerary'), createTrip);
+router.get('/:id/tools/itinerary/trips/:tripId',         requireAuth, requireTool('itinerary'), getTrip);
+router.patch('/:id/tools/itinerary/trips/:tripId',       requireAuth, requireTool('itinerary'), updateTrip);
+router.delete('/:id/tools/itinerary/trips/:tripId',      requireAuth, requireTool('itinerary'), archiveTrip);
+router.post('/:id/tools/itinerary/trips/:tripId/items',  requireAuth, requireTool('itinerary'), createItem);
+router.patch('/:id/tools/itinerary/items/:itemId',       requireAuth, requireTool('itinerary'), updateItem);
+router.delete('/:id/tools/itinerary/items/:itemId',      requireAuth, requireTool('itinerary'), deleteItem);
+router.post('/:id/tools/itinerary/items/:itemId/move',   requireAuth, requireTool('itinerary'), moveItem);
 
 export default router;

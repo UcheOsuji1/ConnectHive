@@ -674,7 +674,7 @@ function DateTile({ iso }) {
 
 function ContextRail({
   members, presenceData, myStatus, onStatusChange,
-  hiveId, hive, nextPlan, recentMedia = [], pin = null, pinnedDocs = [], onOpenPins, onClose,
+  hiveId, hive, nextPlan, recentMedia = [], pin = null, pinnedDocs = [], itinerary = null, onOpenPins, onClose,
   nextPlanLabel = 'Upcoming Plan',
 }) {
   const [showStatusMenu, setShowStatusMenu] = useState(false);
@@ -815,6 +815,23 @@ function ContextRail({
               </span>
             </div>
             <p className="hc-ctx-pinned-text">{pin.text}</p>
+          </div>
+        </section>
+      )}
+
+      {/* ── Pinned Itinerary (Prompt 66) ── */}
+      {itinerary && (
+        <section className="hc-ctx-card">
+          <div className="hc-ctx-head">
+            <span aria-hidden="true">🗺️</span>
+            <h3 className="hc-ctx-title">Pinned Itinerary</h3>
+            <Link to={`/hive/${hiveId}/tools/itinerary/${itinerary.trip.trip_id}`} className="hc-ctx-link">Open →</Link>
+          </div>
+          <p className="hc-ctx-pinned-date">{itinerary.isToday ? 'Today' : 'Next up'} · {itinerary.trip.destination}</p>
+          <div className="hc-ctx-docs">
+            {itinerary.items.slice(0, 4).map(i => (
+              <span key={i.item_id} className="hc-ctx-doc-link" style={{ cursor: 'default' }}>{i.title}</span>
+            ))}
           </div>
         </section>
       )}
@@ -991,7 +1008,7 @@ export default function HiveChatPage() {
   const [newMsgCount, setNewMsgCount] = useState(0);
 
   // Context rail data for the active room (next plan + this room's images)
-  const [rail, setRail] = useState({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [] });
+  const [rail, setRail] = useState({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [], itinerary: null });
 
   // Refs for stable callbacks
   const scrollAreaRef    = useRef(null);
@@ -1456,13 +1473,13 @@ export default function HiveChatPage() {
 
   // ── Context rail data for the active room ──────────────────────────────────
   useEffect(() => {
-    if (!activeChannelId) { setRail({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [] }); return; }
+    if (!activeChannelId) { setRail({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [], itinerary: null }); return; }
     let live = true;
     api.get(`/api/hives/${hiveId}/channels/${activeChannelId}/rail`)
       .then(d => { if (live) setRail({ nextPlan: d.nextPlan ?? null,
                                        recentMedia: d.recentMedia ?? [], pin: d.pin ?? null,
-                                       pinnedDocs: d.pinnedDocs ?? [] }); })
-      .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [] }); });
+                                       pinnedDocs: d.pinnedDocs ?? [], itinerary: d.itinerary ?? null }); })
+      .catch(() => { if (live) setRail({ nextPlan: null, recentMedia: [], pin: null, pinnedDocs: [], itinerary: null }); });
     return () => { live = false; };
   }, [hiveId, activeChannelId]);
 
@@ -2355,6 +2372,7 @@ export default function HiveChatPage() {
           recentMedia={rail.recentMedia}
           pin={rail.pin}
           pinnedDocs={rail.pinnedDocs}
+          itinerary={rail.itinerary}
           onOpenPins={() => setPinsOpen(true)}
           onClose={() => setShowContext(false)}
           nextPlanLabel={catConfig?.labels?.nextPlan ?? 'Upcoming Plan'}

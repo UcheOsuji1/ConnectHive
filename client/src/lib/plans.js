@@ -78,3 +78,18 @@ export function withinDays(startsAt, days) {
   if (!startsAt) return false;
   return new Date(startsAt).getTime() - Date.now() <= days * DAY;
 }
+
+// Same derivation HivePlansPage.jsx uses for its own "Create/Propose/Suggest
+// a Plan" button — pulled out here so "Make this/it a plan" buttons
+// elsewhere (Itinerary, Ideas) follow the exact same Prompt 60 rules instead
+// of re-deriving them. ctx is the outlet context every hive page already has
+// (ctx.hive, ctx.isOwner, ctx.canPost). Returns 'propose' | 'create' |
+// 'suggest' | null (null = this member cannot make a plan at all).
+export function planCreateMode(ctx) {
+  const isOwner = !!ctx?.isOwner;
+  const proposers = ctx?.hive?.plan_proposers ?? 'owners';
+  const approval = ctx?.hive?.plan_approval ?? 'owner';
+  const voteMode = approval === 'vote';
+  const canSuggest = !isOwner && proposers === 'members' && !!ctx?.canPost;
+  return isOwner ? (voteMode ? 'propose' : 'create') : (canSuggest ? 'suggest' : null);
+}

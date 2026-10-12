@@ -384,6 +384,29 @@ export function FeaturedModule({ module, hiveId }) {
     );
   }
 
+  if (module.kind === 'pinnedItinerary' && module.board) {
+    const fmtDay = (d) => new Date(`${d}T00:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const fmtTime = (t) => {
+      if (!t) return null;
+      const [h, m] = t.split(':').map(Number);
+      return new Date(2000, 0, 1, h, m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    };
+    return (
+      <Card icon="pin" title="Pinned Itinerary" className="hh-m-featured" link="View trip →" linkTo={`/hive/${hiveId}/tools/itinerary/${module.trip.trip_id}`}>
+        <div className="hh-featured-itinerary">
+          <p className="hh-featured-itinerary-day">{module.isToday ? 'Today' : 'Next up'} · {fmtDay(module.day)} · {module.trip.destination}</p>
+          <ul className="hh-featured-itinerary-items">
+            {module.items.map(i => (
+              <li key={i.item_id}>
+                {fmtTime(i.time) && <span className="hh-featured-itinerary-time">{fmtTime(i.time)}</span>} {i.title}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </Card>
+    );
+  }
+
   if (module.kind === 'pinnedItinerary') {
     const m = module.message;
     return (

@@ -40,6 +40,7 @@ function monthlyPreview(startDate, count) {
 export default function CreatePlanModal({
   hiveId, prefill, onClose, onCreated, preferredTypes = [],
   mode = 'create', planRules = null, channelId = null,
+  sourceIdeaId = null, sourceTripItemId = null,
 }) {
   // Category-aware ordering (spec §11) — the category's preferred types
   // first, in the order it lists them, then everything else in its usual
@@ -50,10 +51,10 @@ export default function CreatePlanModal({
   ];
   const [title, setTitle]   = useState(prefill?.title ?? '');
   const [type, setType]     = useState(prefill?.planType ?? 'other');
-  const [location, setLoc]  = useState('');
+  const [location, setLoc]  = useState(prefill?.location ?? '');
   const [starts, setStarts] = useState('');
   const [ends, setEnds]     = useState('');
-  const [desc, setDesc]     = useState('');
+  const [desc, setDesc]     = useState(prefill?.description ?? '');
   const [visibility, setVis] = useState('hive');
   const [mediaUrl, setMediaUrl] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -157,6 +158,7 @@ export default function CreatePlanModal({
       mediaUrl,
       visibility,
       repeat: repeatRule === 'never' ? null : { rule: repeatRule, count: Number(repeatCount) },
+      sourceIdeaId, sourceTripItemId,
     };
     try {
       if (willSuggest) {

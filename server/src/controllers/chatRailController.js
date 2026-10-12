@@ -3,6 +3,7 @@ import { requireMembership } from '../lib/hiveMembership.js';
 import { PLAN_SELECT, PLAN_END, shapePlan } from './eventsController.js';
 import { isToolOn } from '../lib/hiveTools.js';
 import { getPinnedDocs } from './docsController.js';
+import { getPinnedItineraryModule } from './tripsController.js';
 import { requireChannelAccess } from '../lib/hiveChannels.js';
 
 const MEDIA_LIMIT = 6;
@@ -16,7 +17,7 @@ export const getChannelRail = async (req, res) => {
     await requireMembership(hiveId, req.userId);
     await requireChannelAccess(hiveId, channelId, req.userId);
 
-    const [planRes, mediaRes, pinRes, docsOn] = await Promise.all([
+    const [planRes, mediaRes, pinRes, docsOn, itineraryOn] = await Promise.all([
       query(
         `${PLAN_SELECT}
           WHERE p.hive_id = $2 AND p.post_type = 'event'
@@ -50,10 +51,12 @@ export const getChannelRail = async (req, res) => {
         [channelId],
       ),
       isToolOn(hiveId, 'docs'),
+      isToolOn(hiveId, 'itinerary'),
     ]);
 
     const p0 = pinRes.rows[0];
     const pinnedDocs = docsOn ? await getPinnedDocs(hiveId) : [];
+    const itinerary = itineraryOn ? await getPinnedItineraryModule(hiveId) : null;
     res.json({
       nextPlan: planRes.rows.length ? shapePlan(planRes.rows[0]) : null,
       recentMedia: mediaRes.rows,
@@ -64,6 +67,7 @@ export const getChannelRail = async (req, res) => {
                   profile_photo_url: p0.profile_photo_url },
       } : null,
       pinnedDocs,
+      itinerary,
     });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });

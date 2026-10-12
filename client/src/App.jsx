@@ -46,6 +46,7 @@ import HiveCoffeeChatsPage from './pages/hive/HiveCoffeeChatsPage';
 import HiveMentorshipPage from './pages/hive/HiveMentorshipPage';
 import HiveOpportunitiesPage from './pages/hive/HiveOpportunitiesPage';
 import HiveTasksPage from './pages/hive/HiveTasksPage';
+import HiveItineraryPage from './pages/hive/HiveItineraryPage';
 import PlanDetailPage from './pages/hive/PlanDetailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
@@ -127,6 +128,8 @@ export default function App() {
           <Route path="tools/mentorship" element={<HiveMentorshipPage />} />
           <Route path="tools/opportunities" element={<HiveOpportunitiesPage />} />
           <Route path="tools/tasks" element={<HiveTasksPage />} />
+          <Route path="tools/itinerary" element={<HiveItineraryPage />} />
+          <Route path="tools/itinerary/:tripId" element={<HiveItineraryPage />} />
           <Route path="overview" element={<HiveManageOverviewPage />} />
           <Route path="members-roles" element={<HiveManageMembersPage />} />
           <Route path="rooms" element={<HiveManageRoomsPage />} />

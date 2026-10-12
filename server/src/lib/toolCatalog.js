@@ -90,21 +90,33 @@ export const TOOL_CATALOG = [
   },
   {
     key: 'itinerary', name: 'Itinerary', description: 'Build a shared schedule for a trip.',
-    icon: 'map', scope: 'plan',
+    // 'hive': trips are their own Tools-hub entity (a Hive can have several),
+    // not scoped to one plan — unlike rides, which are per-plan.
+    icon: 'map', scope: 'hive',
     defaultOn: ['Travel Buddies'],
-    available: false,
+    available: true,
+    validateSettings(settings) {
+      const editors = settings?.editors;
+      if (editors !== 'owners' && editors !== 'members') {
+        return { error: 'editors must be "owners" or "members".' };
+      }
+      return { settings: { editors } };
+    },
   },
   {
     key: 'rides', name: 'Ride board', description: 'Coordinate who is driving and who needs a seat.',
-    icon: 'car', scope: 'plan',
+    // 'both': a hub tile (Tools -> Rides, grouped by plan) AND it attaches to
+    // individual plans (the plan page's Tools stack) — same shape as
+    // split_costs/signups, not pure 'plan'-scope like checkins.
+    icon: 'car', scope: 'both',
     defaultOn: ['Event Buddies'],
-    available: false,
+    available: true,
   },
   {
     key: 'ideas', name: 'Ideas board', description: 'Collect and vote on ideas for what the Hive does next.',
     icon: 'bulb', scope: 'hive',
     defaultOn: ['Social Groups', 'Travel Buddies'],
-    available: false,
+    available: true,
   },
 ];
 

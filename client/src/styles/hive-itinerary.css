@@ -1,0 +1,113 @@
+/* Itinerary (Prompt 66 Part 1). Prefix: it- */
+
+.it-page { display: flex; flex-direction: column; gap: 16px; }
+.it-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.it-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.4rem; font-weight: 700; color: var(--hdl-ink); margin: 0; }
+.it-sub { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); margin: 4px 0 0; }
+.it-empty { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); }
+.it-skel { height: 260px; border-radius: 12px; background: var(--hdl-ivory); }
+.it-form-error { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #c0392b; margin: 0; }
+.it-section-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.05rem; color: var(--hdl-ink); margin: 0 0 8px; }
+.it-back { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-muted); text-decoration: none; }
+.it-back:hover { color: var(--hdl-ink); }
+
+.it-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+.it-btn-gold {
+  background: var(--hdl-gold); color: #1e1b18; border: none; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.8rem; padding: 9px 16px;
+  cursor: pointer; min-height: 40px;
+}
+.it-btn-gold:disabled { opacity: 0.6; cursor: default; }
+.it-btn-ghost {
+  background: none; border: 1px solid var(--hdl-border2); border-radius: 100px; color: var(--hdl-ink);
+  font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.78rem; padding: 8px 14px;
+  cursor: pointer; min-height: 38px;
+}
+.it-btn-text {
+  background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.76rem; font-weight: 600;
+  color: var(--hdl-muted); cursor: pointer; padding: 4px;
+}
+.it-btn-text--danger { color: #c0392b; }
+
+/* ── Trips hub ── */
+.it-trip-section { display: flex; flex-direction: column; }
+.it-trip-list { display: flex; flex-direction: column; gap: 10px; }
+.it-trip-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: #fff; border: 1px solid var(--hdl-border2); border-radius: 10px; padding: 14px 16px;
+  text-decoration: none; color: inherit;
+}
+.it-trip-card:hover { border-color: var(--hdl-gold); }
+.it-trip-card-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.05rem; color: var(--hdl-ink); margin: 0; }
+.it-trip-card-meta { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-muted); margin: 4px 0 0; }
+.it-trip-card-count { font-family: 'DM Sans', sans-serif; font-size: 0.74rem; color: var(--hdl-muted); background: var(--hdl-ivory); border-radius: 100px; padding: 4px 10px; flex-shrink: 0; }
+
+/* ── Trip header ── */
+.it-trip-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.it-trip-head-actions { display: flex; gap: 8px; align-items: center; }
+.it-day-badge { font-family: 'DM Sans', sans-serif; font-size: 0.72rem; font-weight: 700; color: #1e1b18; background: var(--hdl-gold); border-radius: 100px; padding: 2px 10px; margin-left: 8px; }
+.it-cost-link { display: inline-block; margin-top: 6px; font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-gold); text-decoration: none; }
+.it-cost-link:hover { text-decoration: underline; }
+.it-plan-msg { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-ink); background: rgba(196,154,40,0.12); border-radius: 8px; padding: 8px 12px; margin: 0; }
+
+/* ── Days ── */
+.it-days { display: flex; flex-direction: column; gap: 20px; }
+.it-day-section { display: flex; flex-direction: column; gap: 10px; }
+.it-day-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--hdl-border2); padding-bottom: 6px; }
+.it-day-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.05rem; color: var(--hdl-ink); margin: 0; }
+.it-today-chip { font-family: 'DM Sans', sans-serif; font-size: 0.68rem; font-weight: 700; color: #1e1b18; background: var(--hdl-gold); border-radius: 100px; padding: 1px 8px; margin-left: 8px; }
+.it-day-empty { padding: 4px 0; }
+.it-item-list { display: flex; flex-direction: column; gap: 8px; min-height: 10px; }
+
+/* ── Item card ── */
+.it-item {
+  display: flex; gap: 12px; background: #fff; border: 1px solid var(--hdl-border2); border-radius: 10px; padding: 10px 14px;
+}
+.it-item:focus-visible { outline: 2px solid var(--hdl-gold); outline-offset: 2px; }
+.it-item--grabbed { outline: 2px solid var(--hdl-gold); box-shadow: 0 4px 14px rgba(0,0,0,0.12); }
+.it-item-time { font-family: 'DM Sans', sans-serif; font-size: 0.76rem; font-weight: 700; color: var(--hdl-muted); min-width: 64px; }
+.it-item-body { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.it-item-top { display: flex; align-items: center; gap: 8px; }
+.it-item-title { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.88rem; color: var(--hdl-ink); margin: 0; }
+.it-item-plan-chip { font-family: 'DM Sans', sans-serif; font-size: 0.68rem; color: var(--hdl-gold); }
+.it-item-location, .it-item-notes, .it-item-by { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-muted); margin: 0; }
+.it-item-link { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-gold); text-decoration: none; }
+.it-item-link:hover { text-decoration: underline; }
+.it-item-actions { display: flex; gap: 10px; margin-top: 4px; }
+
+/* ── Modals ── */
+.it-scrim { position: fixed; inset: 0; background: rgba(30,27,24,0.4); z-index: 60; }
+.it-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 61;
+  background: #fff; border-radius: 14px; padding: 20px 22px; width: min(480px, 92vw);
+  max-height: 86vh; overflow-y: auto;
+}
+.it-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.it-modal-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.15rem; color: var(--hdl-ink); margin: 0; }
+.it-modal-x { background: none; border: none; font-size: 1.3rem; color: var(--hdl-muted); cursor: pointer; line-height: 1; }
+.it-modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.it-form { display: flex; flex-direction: column; gap: 12px; }
+.it-field { display: flex; flex-direction: column; gap: 4px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600; color: var(--hdl-ink); flex: 1; }
+.it-field input, .it-field select, .it-field textarea {
+  border: 1px solid var(--hdl-border2); border-radius: 8px; padding: 8px 10px; font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem; font-weight: 400; color: var(--hdl-ink);
+}
+.it-field-row { display: flex; gap: 10px; }
+
+/* ── Responsive ── */
+@media (max-width: 760px) {
+  .it-field-row { flex-direction: column; }
+  .it-item { flex-direction: column; gap: 4px; }
+  .it-item-time { min-width: 0; }
+}
+
+/* ── Print-friendly trip view ── */
+@media print {
+  .it-back, .it-trip-head-actions, .it-item-actions, .it-day-head .it-btn-text { display: none !important; }
+  .it-item { border: none; border-bottom: 1px solid #ccc; border-radius: 0; break-inside: avoid; }
+  .it-page { gap: 10px; }
+}

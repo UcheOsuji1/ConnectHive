@@ -34,7 +34,8 @@ const REQUIRED = {
   // column (the suggestions table from Prompt 60, the polls table created
   // earlier in this same migration) — new columns on a table that already
   // has live rows are the drift-risk case, not the "table absent" case.
-  hive_plan_suggestions: ['source_poll_id', 'source_slot_id', 'series_rule', 'series_count'],
+  hive_plan_suggestions: ['source_poll_id', 'source_slot_id', 'series_rule', 'series_count',
+                           'source_idea_id', 'source_trip_item_id'],
   hive_time_polls: ['pending_suggestion_id'],
   hive_notification_prefs: ['costs', 'matches', 'opportunities', 'tasks'],
   hive_channels: ['kind', 'created_for'],
@@ -84,6 +85,8 @@ const IMPACT = {
   'hive_channels.created_for': 'Meet someone new and Mentorship — pair-chat creation fails',
   'hive_notification_prefs.opportunities': 'Opportunities board notification preferences fail to save',
   'hive_notification_prefs.tasks': 'Task board notification preferences fail to save',
+  'hive_plan_suggestions.source_idea_id': 'Ideas board — "Make it a plan" via suggestion fails to link back',
+  'hive_plan_suggestions.source_trip_item_id': 'Itinerary — "Make this a plan" via suggestion fails to link back',
 };
 
 let state = { checked: false, ok: true, missing: [] };

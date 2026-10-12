@@ -119,14 +119,28 @@ function TasksCount({ hiveId }) {
   return <span className="thub-tile-count">{n} assigned to you</span>;
 }
 
+function ItineraryCount({ hiveId }) {
+  const [n, setN] = useState(null);
+  useEffect(() => {
+    api.get(`/api/hives/${hiveId}/tools/itinerary/trips`)
+      .then(d => setN((d.trips ?? []).length))
+      .catch(() => setN(null));
+  }, [hiveId]);
+  if (n === null || n === 0) return null;
+  return <span className="thub-tile-count">{n} trip{n === 1 ? '' : 's'}</span>;
+}
+
 const TILE_COUNT = {
   find_time: FindTimeCount, split_costs: SplitCostsCount, signups: SignupsCount,
   docs: DocsCount, goals: GoalsCount, coffee_chats: CoffeeChatsCount, mentorship: MentorshipCount,
-  opportunities: OpportunitiesCount, tasks: TasksCount,
+  opportunities: OpportunitiesCount, tasks: TasksCount, itinerary: ItineraryCount,
 };
 
 // A tool lives inside each plan's page rather than getting its own hub tile.
-const PLAN_SCOPED_NO_TILE = new Set(['checkins', 'itinerary', 'rides']);
+// itinerary (Prompt 66) is hive-scoped (its own tile, trips aren't tied to
+// one plan) and rides is 'both'-scope like split_costs/signups (a hub tile
+// AND a plan-page attachment) — only pure plan-scope tools go here.
+const PLAN_SCOPED_NO_TILE = new Set(['checkins']);
 
 export default function HiveToolsHubPage() {
   const { hiveId, hiveTools } = useOutletContext();
