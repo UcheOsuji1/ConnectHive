@@ -15,6 +15,7 @@ const P = {
   note:     <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6" /></>,
   check:    <><path d="M20 6 9 17l-5-5" /></>,
   coffee:   <><path d="M3 9h14v5a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5V9z" /><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" /><path d="M7 2c0 1-1 1-1 2s1 1 1 2M11 2c0 1-1 1-1 2s1 1 1 2" /></>,
+  bulb:     <><path d="M9 18h6M10 21h4" /><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.3h6c0-1 .4-1.8 1-2.3A7 7 0 0 0 12 2z" /></>,
 };
 
 export function Icon({ name, size = 16, className }) {

@@ -1,0 +1,92 @@
+/* Ideas board (Prompt 66 Part 3). Prefix: id- */
+
+.id-page { display: flex; flex-direction: column; gap: 16px; }
+.id-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.id-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.4rem; font-weight: 700; color: var(--hdl-ink); margin: 0; }
+.id-sub { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); margin: 4px 0 0; }
+.id-empty { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-muted); }
+.id-skel { height: 260px; border-radius: 12px; background: var(--hdl-ivory); }
+.id-form-error { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: #c0392b; margin: 0; }
+.id-section-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.05rem; color: var(--hdl-ink); margin: 4px 0 0; }
+.id-plan-msg { font-family: 'DM Sans', sans-serif; font-size: 0.8rem; color: var(--hdl-ink); background: rgba(196,154,40,0.12); border-radius: 8px; padding: 8px 12px; margin: 0; }
+
+.id-btn-gold {
+  background: var(--hdl-gold); color: #1e1b18; border: none; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.8rem; padding: 9px 16px;
+  cursor: pointer; min-height: 40px;
+}
+.id-btn-gold:disabled { opacity: 0.6; cursor: default; }
+.id-btn-ghost {
+  background: none; border: 1px solid var(--hdl-border2); border-radius: 100px; color: var(--hdl-ink);
+  font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.78rem; padding: 8px 14px;
+  cursor: pointer; min-height: 38px;
+}
+.id-btn-text {
+  background: none; border: none; font-family: 'DM Sans', sans-serif; font-size: 0.76rem; font-weight: 600;
+  color: var(--hdl-muted); cursor: pointer; padding: 4px;
+}
+.id-btn-text--danger { color: #c0392b; }
+
+/* ── Filters ── */
+.id-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.id-chip {
+  background: #fff; border: 1px solid var(--hdl-border2); border-radius: 100px; padding: 6px 14px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.76rem; font-weight: 600; color: var(--hdl-muted); cursor: pointer; min-height: 32px;
+}
+.id-chip--on { background: var(--hdl-gold); border-color: var(--hdl-gold); color: #1e1b18; }
+
+/* ── Cards ── */
+.id-list { display: flex; flex-direction: column; gap: 10px; }
+.id-card { background: #fff; border: 1px solid var(--hdl-border2); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.id-card-top { display: flex; gap: 12px; }
+.id-vote-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px; background: var(--hdl-ivory); border: 1px solid var(--hdl-border2);
+  border-radius: 10px; padding: 8px 10px; cursor: pointer; flex-shrink: 0; min-width: 48px;
+}
+.id-vote-btn--on { background: var(--hdl-gold); border-color: var(--hdl-gold); }
+.id-vote-arrow { font-size: 0.7rem; color: var(--hdl-muted); }
+.id-vote-btn--on .id-vote-arrow { color: #1e1b18; }
+.id-vote-count { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.86rem; color: var(--hdl-ink); }
+.id-vote-btn--on .id-vote-count { color: #1e1b18; }
+
+.id-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.id-card-top-row { display: flex; align-items: center; gap: 8px; }
+.id-kind-chip { font-family: 'DM Sans', sans-serif; font-size: 0.68rem; font-weight: 700; color: var(--hdl-gold); background: rgba(196,154,40,0.12); border-radius: 100px; padding: 2px 10px; flex-shrink: 0; }
+.id-card-title { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.92rem; color: var(--hdl-ink); margin: 0; }
+.id-card-meta, .id-card-note, .id-card-by { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-muted); margin: 0; }
+.id-card-link { font-family: 'DM Sans', sans-serif; font-size: 0.78rem; color: var(--hdl-gold); text-decoration: none; }
+.id-card-link:hover { text-decoration: underline; }
+.id-card-actions { display: flex; gap: 12px; }
+
+/* ── Done section ── */
+.id-done-section { display: flex; flex-direction: column; gap: 8px; }
+.id-done-list { display: flex; flex-direction: column; gap: 6px; }
+.id-done-row {
+  display: flex; align-items: center; gap: 10px; background: var(--hdl-ivory); border-radius: 8px; padding: 8px 12px;
+  text-decoration: none; color: inherit;
+}
+.id-done-title { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--hdl-ink); flex: 1; }
+.id-done-link { font-family: 'DM Sans', sans-serif; font-size: 0.76rem; color: var(--hdl-gold); }
+
+/* ── Modal ── */
+.id-scrim { position: fixed; inset: 0; background: rgba(30,27,24,0.4); z-index: 60; }
+.id-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index: 61;
+  background: #fff; border-radius: 14px; padding: 20px 22px; width: min(440px, 92vw);
+  max-height: 86vh; overflow-y: auto;
+}
+.id-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.id-modal-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 1.15rem; color: var(--hdl-ink); margin: 0; }
+.id-modal-x { background: none; border: none; font-size: 1.3rem; color: var(--hdl-muted); cursor: pointer; line-height: 1; }
+.id-modal-foot { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.id-form { display: flex; flex-direction: column; gap: 12px; }
+.id-field { display: flex; flex-direction: column; gap: 4px; font-family: 'DM Sans', sans-serif; font-size: 0.78rem; font-weight: 600; color: var(--hdl-ink); }
+.id-field input, .id-field select, .id-field textarea {
+  border: 1px solid var(--hdl-border2); border-radius: 8px; padding: 8px 10px; font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem; font-weight: 400; color: var(--hdl-ink);
+}
+
+@media (max-width: 760px) {
+  .id-card-top { flex-direction: row; }
+  .id-filters { gap: 6px; }
+}

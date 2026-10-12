@@ -368,6 +368,16 @@ export function FeaturedModule({ module, hiveId }) {
     );
   }
 
+  if (module.kind === 'topIdea') {
+    return (
+      <Card icon="bulb" title="Top idea" className="hh-m-featured" link="Make it a plan →" linkTo={`/hive/${hiveId}/tools/ideas`}>
+        <p className="hh-featured-idea-text">
+          Most wanted: <b>{module.idea.title}</b> · {module.idea.vote_count} vote{module.idea.vote_count === 1 ? '' : 's'}
+        </p>
+      </Card>
+    );
+  }
+
   if (module.kind === 'nextPlanAttendees') {
     return (
       <Card icon="users" title="Who's Going" className="hh-m-featured" link="View plan →" linkTo={`/hive/${hiveId}/events`}>

@@ -29,7 +29,10 @@ export const CATEGORY_CONFIG = {
     defaultRooms: ['general', 'weekend-plans', 'food-spots', 'random'],
     planTypes: ['hangout', 'food_drinks', 'games'],
     labels: { nextPlan: 'Upcoming Plan', goal: 'Hive Goal' },
-    railModule: 'recentMedia',
+    // Rotates with 'Top idea' once the Ideas tool (Prompt 66) is on and has
+    // at least one idea — see hiveHomeController.js's socialFeatured branch.
+    // Off, or with no ideas yet, this is recentMedia exactly as before.
+    railModule: 'socialFeatured',
     planRules: { plan_proposers: 'members', plan_approval: 'vote' },
   },
   'Professional Networking': {

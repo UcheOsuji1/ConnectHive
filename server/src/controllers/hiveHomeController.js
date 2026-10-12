@@ -9,6 +9,7 @@ import { getFeaturedGoalWithProgress } from './goalsController.js';
 import { getFeaturedOpportunities } from './opportunitiesController.js';
 import { getSoonestOpenMilestone } from './tasksController.js';
 import { getPinnedItineraryModule } from './tripsController.js';
+import { getTopIdea } from './ideasController.js';
 import { isToolOn } from '../lib/hiveTools.js';
 
 const ACTIVITY_LIMIT = 8;
@@ -270,6 +271,21 @@ export const getHiveHome = async (req, res) => {
     if (railKind === 'recentMedia') {
       featuredModule = photosRes.rows.length
         ? { kind: 'recentMedia', photos: photosRes.rows } : null;
+    } else if (railKind === 'socialFeatured') {
+      // Social Groups: rotates between Recent media and Top idea once the
+      // Ideas tool is on AND has at least one real idea — never a made-up
+      // rotation with nothing behind it. Deterministic by day-of-month
+      // parity, so both get visibility over time without any stored state.
+      const ideasOn = await isToolOn(hiveId, 'ideas');
+      const topIdea = ideasOn ? await getTopIdea(hiveId) : null;
+      if (!topIdea) {
+        featuredModule = photosRes.rows.length ? { kind: 'recentMedia', photos: photosRes.rows } : null;
+      } else {
+        const preferMedia = new Date().getDate() % 2 === 0 && photosRes.rows.length > 0;
+        featuredModule = preferMedia
+          ? { kind: 'recentMedia', photos: photosRes.rows }
+          : { kind: 'topIdea', idea: topIdea };
+      }
     } else if (railKind === 'nextPlanAttendees') {
       featuredModule = (nextPlan && nextPlan.going_count > 0)
         ? { kind: 'nextPlanAttendees', plan: { headline: nextPlan.headline, event_at: nextPlan.event_at },

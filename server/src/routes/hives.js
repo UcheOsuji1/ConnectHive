@@ -131,6 +131,9 @@ import {
   createRequest as createRideRequest, cancelRequest as cancelRideRequest,
   requestSeat, confirmSeat, declineSeat,
 } from '../controllers/ridesController.js';
+import {
+  listIdeas, createIdea, updateIdea, archiveIdea, voteIdea, unvoteIdea,
+} from '../controllers/ideasController.js';
 import { requireTool } from '../lib/hiveTools.js';
 
 const router = Router();
@@ -393,5 +396,12 @@ router.delete('/:id/tools/rides/requests/:requestId',     requireAuth, requireTo
 router.post('/:id/tools/rides/offers/:offerId/request',   requireAuth, requireTool('rides'), requestSeat);
 router.post('/:id/tools/rides/offers/:offerId/riders/:riderId/confirm', requireAuth, requireTool('rides'), confirmSeat);
 router.post('/:id/tools/rides/offers/:offerId/riders/:riderId/decline', requireAuth, requireTool('rides'), declineSeat);
+
+router.get('/:id/tools/ideas/ideas',                requireAuth, requireTool('ideas'), listIdeas);
+router.post('/:id/tools/ideas/ideas',                requireAuth, requireTool('ideas'), createIdea);
+router.patch('/:id/tools/ideas/ideas/:ideaId',       requireAuth, requireTool('ideas'), updateIdea);
+router.delete('/:id/tools/ideas/ideas/:ideaId',      requireAuth, requireTool('ideas'), archiveIdea);
+router.post('/:id/tools/ideas/ideas/:ideaId/vote',   requireAuth, requireTool('ideas'), voteIdea);
+router.delete('/:id/tools/ideas/ideas/:ideaId/vote', requireAuth, requireTool('ideas'), unvoteIdea);
 
 export default router;
