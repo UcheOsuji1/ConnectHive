@@ -902,6 +902,13 @@
   z-index: 50;
   min-width: 260px;
 }
+/* Flipped when there isn't room above the trigger (EmojiPicker measures
+   this at open time) — opens below instead of clipping under whatever
+   sits above it. */
+.ep-grid--down {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
 
 .ep-emoji {
   background: none;

@@ -378,7 +378,9 @@ function PublicHiveView({ hive, hiveId }) {
   }, [hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tags = safeTags(hive.tags);
-  const meta = [hive.category_name, hive.member_count != null ? `${hive.member_count}${hive.max_members ? ` / ${hive.max_members}` : ''} members` : null, hive.location_type, hive.location].filter(Boolean).join(' · ');
+  const meta = [hive.category_name, hive.member_count != null
+    ? `${hive.member_count}${hive.max_members ? ` / ${hive.max_members} members` : ` member${hive.member_count === 1 ? '' : 's'}`}`
+    : null, hive.location_type, hive.location].filter(Boolean).join(' · ');
 
   if (hive.private) {
     return (

@@ -437,7 +437,7 @@ export const getHive = async (req, res) => {
       `SELECT
          h.*,
          c.category_name,
-         COUNT(DISTINCT hm_all.user_id) FILTER (WHERE hm_all.membership_status = 'active') AS member_count,
+         COUNT(DISTINCT hm_all.user_id) FILTER (WHERE hm_all.membership_status = 'active')::int AS member_count,
          COUNT(DISTINCT hf.user_id)                                                          AS follower_count,
          my_mem.role                                                                          AS my_role,
          my_mem.welcome_seen_at,

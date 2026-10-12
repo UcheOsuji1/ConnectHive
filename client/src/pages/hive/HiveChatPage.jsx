@@ -2107,7 +2107,7 @@ export default function HiveChatPage() {
               aria-label={showContext ? 'Hide the context rail' : 'Show the context rail'}
               aria-expanded={showContext}
             >
-              {memberCount} members <span aria-hidden="true">›</span>
+              {memberCount} member{memberCount === 1 ? '' : 's'} <span aria-hidden="true">›</span>
             </button>
           )}
         </div>

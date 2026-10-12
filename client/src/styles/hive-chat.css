@@ -644,6 +644,14 @@
   box-shadow: 0 4px 16px rgba(23, 18, 10, 0.12);
   min-width: 220px;
 }
+/* A reaction picker on one of the first messages in a scrolled-up room has
+   no room to open upward — EmojiPicker measures this and adds --down. */
+.hc-reactions .ep-grid--down {
+  bottom: auto;
+  top: 100%;
+  margin-bottom: 0;
+  margin-top: 4px;
+}
 .hc-reactions .ep-emoji {
   width: 28px;
   height: 28px;
