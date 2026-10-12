@@ -1272,6 +1272,23 @@ export default function HiveChatPage() {
       // receive_message arrives from channel room — always the active channel
       setMessages(prev => {
         if (prev.some(m => m.message_id === msg.message_id)) return prev;
+        // The server echoes client_nonce back only to the room that sent it —
+        // if it matches a temp placeholder already in state (our own send,
+        // socket winning the race against the POST that created it),
+        // replace that placeholder in place instead of appending a second
+        // copy of the same message under its real id.
+        if (msg.client_nonce) {
+          const idx = prev.findIndex(m => m.message_id === msg.client_nonce);
+          if (idx !== -1) {
+            const next = [...prev];
+            next[idx] = { ...msg, _status: 'sent' };
+            msgCacheRef.current.set(activeChannelIdRef.current, {
+              messages: next,
+              hasMore:  hasMoreRef.current,
+            });
+            return next;
+          }
+        }
         if (!isNearBottomRef.current) setNewMsgCount(c => c + 1);
         const next = [...prev, msg];
         msgCacheRef.current.set(activeChannelIdRef.current, {
@@ -1742,6 +1759,12 @@ export default function HiveChatPage() {
       reactions:   [],
       attachments: capturedAtts,
       _status:     'sending',
+      // Reused as the client_nonce sent to the server, so onReceiveMessage
+      // can tell "this is the socket echo of my own send" apart from a
+      // genuinely new message, and replace this placeholder in place
+      // instead of appending a second copy if the socket wins the race
+      // against this very POST resolving.
+      client_nonce: tempId,
     };
 
     setMessages(prev => [...prev, optimistic]);
@@ -1751,6 +1774,7 @@ export default function HiveChatPage() {
       const payload = {
         reply_to_message_id: capturedReply?.message_id ?? null,
         channel_id:          activeChannelId,
+        client_nonce:        tempId,
       };
       if (text)                  payload.message_text = text;
       if (capturedAtts.length)   payload.attachments  = capturedAtts;
@@ -1764,9 +1788,16 @@ export default function HiveChatPage() {
       mentionedRef.current.clear();
 
       const real = await api.post(`/api/hives/${hiveId}/messages`, payload);
-      setMessages(prev => prev.map(m =>
-        m.message_id === tempId ? { ...real, _status: 'sent' } : m,
-      ));
+      setMessages(prev => {
+        // The socket's receive_message may have already won the race and
+        // replaced the placeholder (matched by client_nonce) with the real
+        // message — if so, just drop the temp entry instead of mapping,
+        // so this never creates a second copy under the real message_id.
+        if (prev.some(m => m.message_id === real.message_id && m.message_id !== tempId)) {
+          return prev.filter(m => m.message_id !== tempId);
+        }
+        return prev.map(m => m.message_id === tempId ? { ...real, _status: 'sent' } : m);
+      });
       markSeen();
       if (isPairActive) loadChats(); // refresh preview text + ordering
     } catch {
@@ -1822,14 +1853,18 @@ export default function HiveChatPage() {
       const payload = {
         reply_to_message_id: msg.reply_to?.message_id ?? null,
         channel_id:          msg.channel_id ?? activeChannelIdRef.current,
+        client_nonce:        tempId,
       };
       if (msg.message_text)         payload.message_text = msg.message_text;
       if (msg.attachments?.length)  payload.attachments  = msg.attachments;
 
       const real = await api.post(`/api/hives/${hiveId}/messages`, payload);
-      setMessages(prev => prev.map(m =>
-        m.message_id === tempId ? { ...real, _status: 'sent' } : m,
-      ));
+      setMessages(prev => {
+        if (prev.some(m => m.message_id === real.message_id && m.message_id !== tempId)) {
+          return prev.filter(m => m.message_id !== tempId);
+        }
+        return prev.map(m => m.message_id === tempId ? { ...real, _status: 'sent' } : m);
+      });
     } catch {
       setMessages(prev => prev.map(m =>
         m.message_id === tempId ? { ...m, _status: 'failed' } : m,
@@ -2142,7 +2177,7 @@ export default function HiveChatPage() {
             )}
 
             {!loading && annotated.map((msg, i) => (
-              <div key={msg.message_id}>
+              <div key={msg.message_id} data-message-id={msg.message_id}>
                 {msg._showDay && (
                   <div className="hc-day-divider">
                     <span className="hc-day-pill">{formatDay(msg.sent_at)}</span>

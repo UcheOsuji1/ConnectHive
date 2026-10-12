@@ -277,9 +277,14 @@ export const createMessage = async (req, res) => {
     await requireMembership(hiveId, req.userId);
 
     const { message_text, reply_to_message_id, attachments: rawAtts,
-            channel_id: reqChannelId, planPostId, mentionUserIds } = req.body ?? {};
+            channel_id: reqChannelId, planPostId, mentionUserIds, client_nonce } = req.body ?? {};
     const text        = (message_text ?? '').trim();
     const attachments = Array.isArray(rawAtts) ? rawAtts : [];
+    // Round-trips to the sender's own socket + POST response only, so the
+    // client can tell "this is the message I just sent" apart from someone
+    // else's — never persisted (client_nonce is not a column on messages).
+    const nonce = typeof client_nonce === 'string' && client_nonce.length > 0 && client_nonce.length <= 64
+      ? client_nonce : null;
 
     // A plan message carries the card instead of text, so it needs neither.
     let planId = null;
@@ -410,7 +415,8 @@ export const createMessage = async (req, res) => {
       }
     }
 
-    const [msg] = await _runEnriched(`WHERE m.message_id = $1`, [ins.message_id], req.userId);
+    const [enriched] = await _runEnriched(`WHERE m.message_id = $1`, [ins.message_id], req.userId);
+    const msg = nonce ? { ...enriched, client_nonce: nonce } : enriched;
     try {
       const io = getIO();
       io.to(`hive:${hiveId}:ch:${channelId}`).emit('receive_message', depersonalise(msg));
