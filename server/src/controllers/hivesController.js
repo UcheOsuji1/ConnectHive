@@ -983,7 +983,7 @@ export const requestToJoin = async (req, res) => {
         const [{ rows: [profile] }, { rows: existingMembers }] = await Promise.all([
           query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
           query(
-            `SELECT user_id FROM hive_members
+            `SELECT user_id, role FROM hive_members
              WHERE hive_id = $1 AND user_id != $2 AND membership_status = 'active'`,
             [hiveId, req.userId],
           ),
@@ -995,9 +995,14 @@ export const requestToJoin = async (req, res) => {
           body: 'Open your Hive to see your welcome.',
           hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
         });
+        // Owners/admins always hear about a new member — 'system' is not
+        // gated by the new_members preference, which stays default-off for
+        // everyone else (correct for a busy Hive; noise for regular members).
         for (const m of existingMembers) {
+          const isOwnerAdmin = m.role === 'owner' || m.role === 'admin';
           await createNotification({
-            userId: m.user_id, type: 'member_joined', category: 'new_members',
+            userId: m.user_id, type: 'member_joined',
+            category: isOwnerAdmin ? 'system' : 'new_members',
             title: `${memberName} joined ${hive.hive_name}`,
             body: 'Give them a warm welcome 👋',
             hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
@@ -1256,7 +1261,7 @@ export const reviewRequest = async (req, res) => {
           ),
           query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]),
           query(
-            `SELECT user_id FROM hive_members
+            `SELECT user_id, role FROM hive_members
              WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
             [hiveId, request.user_id],
           ),
@@ -1287,11 +1292,14 @@ export const reviewRequest = async (req, res) => {
           link: `/hive/${hiveId}`,
         });
 
-        // 2. Notify all other active members (owner + existing)
+        // 2. Notify all other active members (owner + existing). Owners/
+        // admins always hear it ('system', not gated by a preference);
+        // everyone else keeps the default-off new_members category.
         for (const m of existingMembers) {
+          const isOwnerAdmin = m.role === 'owner' || m.role === 'admin';
           await createNotification({
             userId: m.user_id,
-            type: 'member_joined', category: 'new_members',
+            type: 'member_joined', category: isOwnerAdmin ? 'system' : 'new_members',
             title: `${requesterName} joined ${hiveName}`,
             body: 'Give them a warm welcome 👋',
             hiveId,
