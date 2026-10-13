@@ -264,3 +264,61 @@ export async function sendAccountDeletionEmail(to, scheduledFor) {
     text,
   });
 }
+
+// ── Report alert (Prompt 69 Part C) ────────────────────────────────────────────
+// Sent to every address in SITE_ADMIN_EMAILS when a report is filed. Never
+// carries the reporter's identity — only what the content was and where.
+const REASON_LABELS = {
+  harassment:    'Harassment or bullying',
+  safety:        'Safety concern',
+  spam:          'Spam or scam',
+  sexual:        'Sexual or inappropriate content',
+  hate:          'Hate or discrimination',
+  fake_or_minor: 'Fake profile or under 18',
+  other:         'Something else',
+};
+
+export async function sendReportAlert(toAddresses, { reason, targetType, hiveName, snippet }) {
+  if (!toAddresses?.length) return;
+
+  const reasonLabel = REASON_LABELS[reason] ?? reason;
+  const adminLink   = `${CLIENT_URL}/admin/reports`;
+  const snippetLine = snippet ? snippet.slice(0, 300) : null;
+
+  const html = _htmlWrap(`
+    <tr>
+      <td style="padding:36px 40px 24px;">
+        <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                   font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+          New report: ${reasonLabel}
+        </h1>
+        <p style="margin:0 0 8px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">
+          <strong>Target:</strong> ${targetType}${hiveName ? ` in ${hiveName}` : ''}
+        </p>
+        ${snippetLine ? `
+        <p style="margin:0 0 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:14px;color:#7a6a4a;line-height:1.6;background:#F8F4EA;
+                  border-radius:6px;padding:12px 16px;">
+          "${snippetLine}"
+        </p>` : ''}
+        <p style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:14px;color:#7a6a4a;line-height:1.6;">
+          Review it in the admin queue.
+        </p>
+      </td>
+    </tr>
+    ${_ctaButton(adminLink, 'Open Admin Queue')}`);
+
+  const text =
+    `New report: ${reasonLabel}\n\n` +
+    `Target: ${targetType}${hiveName ? ` in ${hiveName}` : ''}\n` +
+    (snippetLine ? `"${snippetLine}"\n\n` : '\n') +
+    `Review it in the admin queue: ${adminLink}\n\n` +
+    `— TrueHive (${CLIENT_URL})`;
+
+  await Promise.all(toAddresses.map(to =>
+    _getResend()?.emails.send({ from: FROM, to, subject: `New report: ${reasonLabel}`, html, text })
+      .catch(e => console.error('[email/sendReportAlert]', e)),
+  ));
+}

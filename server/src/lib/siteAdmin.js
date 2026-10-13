@@ -14,6 +14,12 @@ function _adminEmails() {
   return cachedEmails;
 }
 
+// Raw list of admin addresses, for mailing the queue — never derived from
+// the database, same as isSiteAdmin above.
+export function siteAdminEmails() {
+  return [..._adminEmails()];
+}
+
 export async function isSiteAdmin(userId) {
   const emails = _adminEmails();
   if (emails.size === 0 || !userId) return false;

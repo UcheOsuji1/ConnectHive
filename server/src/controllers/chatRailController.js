@@ -32,15 +32,17 @@ export const getChannelRail = async (req, res) => {
                 m.message_id, m.channel_id
            FROM message_attachments a
            JOIN messages m ON m.message_id = a.message_id
-          WHERE m.channel_id = $1 AND m.deleted_at IS NULL
+          WHERE m.channel_id = $1 AND m.deleted_at IS NULL AND m.hidden_at IS NULL
             AND a.resource_type = 'image'
           ORDER BY a.created_at DESC
           LIMIT ${MEDIA_LIMIT}`,
         [channelId],
       ),
       query(
-        `SELECT m.message_id, m.channel_id, m.message_text, m.sent_at,
-                m.pinned_at, c.name AS channel_name,
+        `SELECT m.message_id, m.channel_id,
+                CASE WHEN m.hidden_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
+                m.hidden_reason AS hidden,
+                m.sent_at, m.pinned_at, c.name AS channel_name,
                 pr.user_id AS sender_user_id, pr.full_name, pr.profile_photo_url
            FROM messages m
            JOIN hive_channels c ON c.channel_id = m.channel_id
@@ -62,7 +64,7 @@ export const getChannelRail = async (req, res) => {
       recentMedia: mediaRes.rows,
       pin: p0 ? {
         message_id: p0.message_id, channel_id: p0.channel_id, channel_name: p0.channel_name,
-        text: p0.message_text, sent_at: p0.sent_at, pinned_at: p0.pinned_at,
+        text: p0.message_text, hidden: p0.hidden, sent_at: p0.sent_at, pinned_at: p0.pinned_at,
         sender: { user_id: p0.sender_user_id, full_name: p0.full_name,
                   profile_photo_url: p0.profile_photo_url },
       } : null,

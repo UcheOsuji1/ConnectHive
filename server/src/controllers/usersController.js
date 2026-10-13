@@ -345,7 +345,10 @@ export const getMemberActivity = async (req, res) => {
     // itself is visibility='public'. A post in a Hive the viewer cannot read
     // never enters the result set — there is no client-side filtering.
     const { rows } = await query(
-      `SELECT hp.post_id, hp.headline, hp.post_type, hp.created_at, hp.visibility,
+      `SELECT hp.post_id,
+              CASE WHEN hp.hidden_at IS NOT NULL THEN NULL ELSE hp.headline END AS headline,
+              hp.hidden_reason AS hidden,
+              hp.post_type, hp.created_at, hp.visibility,
               h.hive_id, h.hive_name
          FROM hive_posts hp
          JOIN hives h ON h.hive_id = hp.hive_id

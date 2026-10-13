@@ -9,6 +9,9 @@ import CreatePostModal from './CreatePostModal.jsx';
 import MemberOnboardingSequence from './MemberOnboardingSequence.jsx';
 import HiveNotificationPrefsBell from './HiveNotificationPrefsBell.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
+import ReportModal from './ReportModal.jsx';
+import { hiddenPlaceholderText } from './HiddenPlaceholder.jsx';
+import '../styles/safety.css';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
 import { joinHive, leaveHive } from '../lib/socket.js';
@@ -370,6 +373,7 @@ function PublicHiveView({ hive, hiveId }) {
   const [members, setMems]  = useState([]);
   const [memsL,  setMemsL]  = useState(true);
   const [tab,    setTab]    = useState('Posts');
+  const [showReport, setShowReport] = useState(false); // R1 — "Report this Hive"
 
   useEffect(() => {
     if (hive.private) { setPostsL(false); setMemsL(false); return; }
@@ -392,8 +396,22 @@ function PublicHiveView({ hive, hiveId }) {
             <div className="dhp-private-sub">This Hive is private. Only members can see its content.</div>
             <FollowButton hiveId={hive.hive_id} initialFollowing={hive.is_following} />
             <Link to="/my-hive" className="dhp-private-back">← Back to My Hives</Link>
+            <button type="button" onClick={() => setShowReport(true)}
+              style={{ background: 'none', border: 'none', color: '#8a8070', fontSize: '0.8rem',
+                       textDecoration: 'underline', cursor: 'pointer', marginTop: 4 }}>
+              Report this Hive
+            </button>
           </div>
         </div>
+        {showReport && (
+          <ReportModal
+            targetType="hive"
+            targetId={hive.hive_id}
+            title={`Report ${hive.hive_name}`}
+            personName={null}
+            onClose={() => setShowReport(false)}
+          />
+        )}
       </div>
     );
   }
@@ -425,6 +443,11 @@ function PublicHiveView({ hive, hiveId }) {
             <div className="dhp-header-actions">
               <FollowButton hiveId={hive.hive_id} initialFollowing={hive.is_following} />
               <JoinBtn hiveId={hive.hive_id} initialPending={Boolean(hive.request_pending)} />
+              <button type="button" onClick={() => setShowReport(true)}
+                style={{ background: 'none', border: 'none', color: '#8a8070', fontSize: '0.78rem',
+                         textDecoration: 'underline', cursor: 'pointer' }}>
+                Report this Hive
+              </button>
             </div>
           </div>
         </div>
@@ -441,7 +464,13 @@ function PublicHiveView({ hive, hiveId }) {
               <div className="hive-dark-card">
                 {postsL ? <div style={{ padding: 20, color: '#8a8070' }}>Loading…</div>
                   : posts.length === 0 ? <div className="dhp-posts-empty"><div className="dhp-posts-empty-title">No posts yet.</div></div>
-                  : posts.map(p => <div key={p.post_id} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(140,127,108,0.15)' }}>{p.headline}</div>)}
+                  : posts.map(p => (
+                      <div key={p.post_id} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(140,127,108,0.15)' }}>
+                        {p.hidden
+                          ? <span style={{ fontStyle: 'italic', color: '#8a8070' }}>{hiddenPlaceholderText('post', p.hidden)}</span>
+                          : p.headline}
+                      </div>
+                    ))}
               </div>
             )}
             {tab === 'Members' && (
@@ -484,6 +513,15 @@ function PublicHiveView({ hive, hiveId }) {
           </div>
         </div>
       </div>
+      {showReport && (
+        <ReportModal
+          targetType="hive"
+          targetId={hive.hive_id}
+          title={`Report ${hive.hive_name}`}
+          personName={null}
+          onClose={() => setShowReport(false)}
+        />
+      )}
     </div>
   );
 }

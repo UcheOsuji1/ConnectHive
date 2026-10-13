@@ -78,7 +78,8 @@ export const getHiveHome = async (req, res) => {
                   p.author_user_id, p.created_at,
                   CASE WHEN p.post_type = 'event' THEN 'created a plan'
                        ELSE 'posted an update' END,
-                  p.headline, p.post_id, NULL::uuid, 0
+                  CASE WHEN p.hidden_at IS NOT NULL THEN NULL ELSE p.headline END,
+                  p.post_id, NULL::uuid, 0
              FROM hive_posts p
              JOIN hive_members hm ON hm.hive_id = p.hive_id
                                  AND hm.user_id = p.author_user_id
@@ -103,7 +104,7 @@ export const getHiveHome = async (req, res) => {
              JOIN hive_members hm  ON hm.hive_id = m.hive_id
                                   AND hm.user_id = m.sender_user_id
                                   AND hm.membership_status = 'active'
-            WHERE m.hive_id = $1 AND m.deleted_at IS NULL
+            WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND m.hidden_at IS NULL
               AND a.resource_type = 'image' AND c.archived_at IS NULL AND c.kind != 'pair'
             GROUP BY m.message_id, m.sender_user_id, m.channel_id, c.name
 
@@ -136,10 +137,11 @@ export const getHiveHome = async (req, res) => {
       // ── recentMessages ────────────────────────────────────────────────────
       query(
         `SELECT m.message_id, m.channel_id, c.name AS channel_name, m.sent_at,
-                LEFT(m.message_text, ${SNIPPET_LEN}) AS text,
-                LENGTH(m.message_text) > ${SNIPPET_LEN} AS truncated,
-                EXISTS(SELECT 1 FROM message_attachments a
-                        WHERE a.message_id = m.message_id) AS has_attachment,
+                CASE WHEN m.hidden_at IS NOT NULL THEN NULL ELSE LEFT(m.message_text, ${SNIPPET_LEN}) END AS text,
+                CASE WHEN m.hidden_at IS NOT NULL THEN FALSE ELSE LENGTH(m.message_text) > ${SNIPPET_LEN} END AS truncated,
+                CASE WHEN m.hidden_at IS NOT NULL THEN FALSE ELSE EXISTS(SELECT 1 FROM message_attachments a
+                        WHERE a.message_id = m.message_id) END AS has_attachment,
+                m.hidden_reason AS hidden,
                 pr.user_id, pr.full_name, pr.profile_photo_url
            FROM messages m
            JOIN hive_channels c ON c.channel_id = m.channel_id
@@ -173,7 +175,7 @@ export const getHiveHome = async (req, res) => {
            FROM message_attachments a
            JOIN messages m      ON m.message_id = a.message_id
            JOIN hive_channels c ON c.channel_id = m.channel_id
-          WHERE m.hive_id = $1 AND m.deleted_at IS NULL
+          WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND m.hidden_at IS NULL
             AND c.archived_at IS NULL AND c.kind != 'pair' AND a.resource_type = 'image'
           ORDER BY a.created_at DESC
           LIMIT ${PHOTO_LIMIT}`,
@@ -302,7 +304,9 @@ export const getHiveHome = async (req, res) => {
         featuredModule = mod ? { kind: 'pinnedItinerary', board: true, ...mod } : null;
       } else {
         const { rows } = await query(
-          `SELECT m.message_id, m.message_text, m.pinned_at, m.channel_id,
+          `SELECT m.message_id,
+                  CASE WHEN m.hidden_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
+                  m.hidden_reason AS hidden, m.pinned_at, m.channel_id,
                   pr.user_id, pr.full_name, pr.profile_photo_url
              FROM messages m
              JOIN hive_channels c ON c.channel_id = m.channel_id
@@ -313,7 +317,7 @@ export const getHiveHome = async (req, res) => {
           [hiveId],
         );
         featuredModule = rows.length
-          ? { kind: 'pinnedItinerary', board: false, message: { text: rows[0].message_text, pinned_at: rows[0].pinned_at,
+          ? { kind: 'pinnedItinerary', board: false, message: { text: rows[0].message_text, hidden: rows[0].hidden, pinned_at: rows[0].pinned_at,
               channel_id: rows[0].channel_id, sender: person(rows[0]) } }
           : null;
       }
@@ -325,7 +329,7 @@ export const getHiveHome = async (req, res) => {
              FROM message_attachments a
              JOIN messages m ON m.message_id = a.message_id
              JOIN hive_channels c ON c.channel_id = m.channel_id
-            WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
+            WHERE m.hive_id = $1 AND m.deleted_at IS NULL AND m.hidden_at IS NULL AND c.archived_at IS NULL AND c.kind != 'pair'
               AND a.resource_type = 'raw'
            UNION ALL
            SELECT u.upload_id AS id, u.file_name, u.mime_type, u.bytes, u.created_at,
@@ -357,7 +361,9 @@ export const getHiveHome = async (req, res) => {
         featuredModule = opps.length ? { kind: 'opportunities', board: true, opportunities: opps } : null;
       } else {
         const { rows } = await query(
-          `SELECT m.message_id, m.message_text, m.sent_at, m.channel_id,
+          `SELECT m.message_id,
+                  CASE WHEN m.hidden_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
+                  m.hidden_reason AS hidden, m.sent_at, m.channel_id,
                   pr.user_id, pr.full_name, pr.profile_photo_url
              FROM messages m
              JOIN hive_channels c ON c.channel_id = m.channel_id
@@ -369,7 +375,7 @@ export const getHiveHome = async (req, res) => {
         );
         featuredModule = rows.length
           ? { kind: 'opportunities', board: false, messages: rows.map(r => ({
-              message_id: r.message_id, channel_id: r.channel_id, sent_at: r.sent_at,
+              message_id: r.message_id, channel_id: r.channel_id, sent_at: r.sent_at, hidden: r.hidden,
               text: r.message_text?.length > SNIPPET_LEN ? `${r.message_text.slice(0, SNIPPET_LEN)}…` : r.message_text,
               sender: person(r),
             })) }
@@ -390,7 +396,9 @@ export const getHiveHome = async (req, res) => {
       },
 
       activity: activityRes.rows.map(r => {
-        const text = r.type === 'upload'
+        const text = r.target == null && (r.type === 'post' || r.type === 'plan' || r.type === 'rsvp')
+          ? (r.type === 'rsvp' ? 'is going to a plan' : r.type === 'plan' ? 'created a plan' : 'posted an update')
+          : r.type === 'upload'
           ? `shared ${r.n} photo${r.n === 1 ? '' : 's'} in #${r.target}`
           : r.type === 'rsvp'       ? `is going to ${r.target}`
           : r.type === 'plan'       ? `created a plan: ${r.target}`

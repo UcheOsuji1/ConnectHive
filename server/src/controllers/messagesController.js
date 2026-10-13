@@ -108,7 +108,7 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
        m.hive_id,
        m.channel_id,
        m.sender_user_id,
-       CASE WHEN m.deleted_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
+       CASE WHEN m.deleted_at IS NOT NULL OR m.hidden_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
        m.sent_at,
        m.edited_at,
        m.pinned_at,
@@ -117,6 +117,7 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
        m.suggestion_id,
        m.time_poll_id,
        (m.deleted_at IS NOT NULL)        AS is_deleted,
+       m.hidden_reason,
        p.full_name                        AS sender_name,
        p.profile_photo_url                AS sender_photo,
        (su.account_status = 'deleted')    AS sender_account_deleted,
@@ -132,11 +133,12 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
          WHEN m.reply_to_message_id IS NULL THEN NULL
          WHEN rm.channel_id IS DISTINCT FROM m.channel_id THEN NULL
          WHEN rm.deleted_at IS NOT NULL      THEN '[deleted]'
+         WHEN rm.hidden_at IS NOT NULL       THEN '[hidden]'
          ELSE LEFT(rm.message_text, 90)
        END                                AS reply_snippet,
        COALESCE(mn.mentions, '[]'::json)   AS mentions,
        COALESCE(rxn.reactions, '[]'::json) AS reactions,
-       CASE WHEN m.deleted_at IS NOT NULL
+       CASE WHEN m.deleted_at IS NOT NULL OR m.hidden_at IS NOT NULL
             THEN '[]'::json
             ELSE COALESCE(att.attachments, '[]'::json)
        END AS attachments
@@ -203,6 +205,7 @@ function _shape(row) {
     sent_at:        row.sent_at,
     edited_at:      row.edited_at ?? null,
     is_deleted:     Boolean(row.is_deleted),
+    hidden:         row.hidden_reason ?? null, // 'auto' | 'removed' | null
     pinned_at:      row.pinned_at ?? null,
     // Kept on the shaped row so _attachPlansAndPolls can resolve them; the
     // attach step replaces them with the enriched `plan` / `poll` objects.

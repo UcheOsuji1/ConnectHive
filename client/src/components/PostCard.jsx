@@ -8,6 +8,8 @@ import EmojiPicker from './EmojiPicker';
 import FollowButton from './FollowButton';
 import Avatar from './Avatar.jsx';
 import BlockModal from './BlockModal.jsx';
+import ReportModal from './ReportModal.jsx';
+import HiddenPlaceholder from './HiddenPlaceholder.jsx';
 import useBlockedIds from '../hooks/useBlockedIds.js';
 import '../styles/post.css';
 import '../styles/safety.css';
@@ -189,6 +191,19 @@ export default function PostCard({ post: initialPost, variant }) {
     setBlockToast(`${name} is blocked.`);
     clearTimeout(blockToastTimer.current);
     blockToastTimer.current = setTimeout(() => setBlockToast(null), 2500);
+  }
+
+  // Report (R1/R2/R3) — reportTarget: { targetType: 'post'|'comment', targetId, personName }.
+  // reportedIds is this session's own "I reported this" set, so the item
+  // hides immediately for the reporter regardless of the server's own
+  // 2-reporter auto-hide threshold.
+  const [reportTarget, setReportTarget] = useState(null);
+  const [reportedIds,  setReportedIds]  = useState(() => new Set());
+  function handleReported() {
+    // Marks the post/comment hidden for the reporter immediately (R3) — the
+    // modal stays open to show its own confirmation; it closes itself via
+    // onClose when the user clicks Done.
+    setReportedIds(prev => new Set(prev).add(reportTarget.targetId));
   }
 
   // ── Reaction picker hover ───────────────────────────────────────────────────
@@ -437,6 +452,7 @@ export default function PostCard({ post: initialPost, variant }) {
     );
   }
 
+  const isPostHidden = Boolean(post.hidden) || reportedIds.has(post.post_id);
   const hasBanner = Boolean(post.banner_url);
   const followBtn = !post.is_member && (
     <FollowButton
@@ -492,14 +508,32 @@ export default function PostCard({ post: initialPost, variant }) {
             Block
           </button>
         )}
+        {post.author_user_id && post.author_user_id !== user?.userId && !isPostHidden && (
+          <button
+            type="button"
+            className="post-author-block-btn"
+            onClick={() => setReportTarget({
+              targetType: 'post', targetId: post.post_id,
+              personName: post.author_deleted ? null : (post.author_name?.split(' ')[0] ?? null),
+            })}
+          >
+            Report
+          </button>
+        )}
       </div>
 
       {/* ── Event badge ── */}
       {post.post_type === 'event' && <div className="post-event-badge">🗓 Event</div>}
 
       {/* ── Content ── */}
-      <div className="post-headline">{post.headline}</div>
-      {post.body && <div className="post-body">{post.body}</div>}
+      {isPostHidden ? (
+        <HiddenPlaceholder kind="post" reason={post.hidden ?? 'auto'} />
+      ) : (
+        <>
+          <div className="post-headline">{post.headline}</div>
+          {post.body && <div className="post-body">{post.body}</div>}
+        </>
+      )}
 
       {/* ── Event meta ── */}
       {post.post_type === 'event' && (post.event_at || post.event_location) && (
@@ -600,6 +634,7 @@ export default function PostCard({ post: initialPost, variant }) {
               <div key={comment.comment_id} className="post-comment-item">
                 <Avatar name={comment.full_name} src={comment.profile_photo_url} size={30} />
                 <div style={{ flex: 1, minWidth: 0 }}>
+                  {(() => { const commentHidden = Boolean(comment.hidden) || reportedIds.has(comment.comment_id); return (
                   <div className="post-comment-bubble">
                     <div className="post-comment-bubble-author">
                       {comment.full_name ?? 'Member'}
@@ -621,8 +656,22 @@ export default function PostCard({ post: initialPost, variant }) {
                           Block
                         </button>
                       )}
+                      {!comment.is_mine && comment.user_id && !commentHidden && (
+                        <button
+                          type="button"
+                          className="post-comment-delete"
+                          onClick={() => setReportTarget({
+                            targetType: 'comment', targetId: comment.comment_id,
+                            personName: comment.full_name?.split(' ')[0] ?? null,
+                          })}
+                        >
+                          Report
+                        </button>
+                      )}
                     </div>
-                    <div className="post-comment-bubble-body">{comment.body}</div>
+                    {commentHidden
+                      ? <HiddenPlaceholder kind="comment" reason={comment.hidden ?? 'auto'} />
+                      : <div className="post-comment-bubble-body">{comment.body}</div>}
                     <div className="post-comment-meta">
                       <span>{relativeTime(comment.commented_at)}</span>
                       <button
@@ -636,6 +685,7 @@ export default function PostCard({ post: initialPost, variant }) {
                       </button>
                     </div>
                   </div>
+                  ); })()}
 
                   {/* Replies */}
                   {(comment.replies ?? []).map(reply => (
@@ -651,6 +701,7 @@ export default function PostCard({ post: initialPost, variant }) {
                         </div>
                       </div>
                     ) : (
+                    (() => { const replyHidden = Boolean(reply.hidden) || reportedIds.has(reply.comment_id); return (
                     <div key={reply.comment_id} className="post-reply-indent">
                       <div className="post-reply-thread-line" />
                       <Avatar name={reply.full_name} src={reply.profile_photo_url} size={24} />
@@ -666,13 +717,28 @@ export default function PostCard({ post: initialPost, variant }) {
                               Delete
                             </button>
                           )}
+                          {!reply.is_mine && reply.user_id && !replyHidden && (
+                            <button
+                              type="button"
+                              className="post-comment-delete"
+                              onClick={() => setReportTarget({
+                                targetType: 'comment', targetId: reply.comment_id,
+                                personName: reply.full_name?.split(' ')[0] ?? null,
+                              })}
+                            >
+                              Report
+                            </button>
+                          )}
                         </div>
-                        <div className="post-comment-bubble-body">{reply.body}</div>
+                        {replyHidden
+                          ? <HiddenPlaceholder kind="comment" reason={reply.hidden ?? 'auto'} />
+                          : <div className="post-comment-bubble-body">{reply.body}</div>}
                         <div className="post-comment-meta">
                           <span>{relativeTime(reply.commented_at)}</span>
                         </div>
                       </div>
                     </div>
+                    ); })()
                     )
                   ))}
 
@@ -768,6 +834,17 @@ export default function PostCard({ post: initialPost, variant }) {
       )}
       {blockToast && (
         <div className="sf-toast-wrap"><div className="sf-toast">{blockToast}</div></div>
+      )}
+
+      {reportTarget && (
+        <ReportModal
+          targetType={reportTarget.targetType}
+          targetId={reportTarget.targetId}
+          title={reportTarget.targetType === 'post' ? 'Report this post' : 'Report this comment'}
+          personName={reportTarget.personName}
+          onClose={() => setReportTarget(null)}
+          onReported={handleReported}
+        />
       )}
     </div>
   );

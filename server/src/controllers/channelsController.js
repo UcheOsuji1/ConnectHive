@@ -330,9 +330,12 @@ export const listMyChats = async (req, res) => {
     const { rows } = await query(
       `SELECT c.channel_id, c.created_for, c.archived_at,
               ARRAY_AGG(hcm2.user_id) FILTER (WHERE hcm2.user_id != $2) AS other_user_ids,
-              (SELECT m.message_text FROM messages m
+              (SELECT CASE WHEN m.hidden_at IS NOT NULL THEN NULL ELSE m.message_text END FROM messages m
                 WHERE m.channel_id = c.channel_id AND m.deleted_at IS NULL
                 ORDER BY m.sent_at DESC LIMIT 1) AS last_text,
+              (SELECT m.hidden_reason FROM messages m
+                WHERE m.channel_id = c.channel_id AND m.deleted_at IS NULL
+                ORDER BY m.sent_at DESC LIMIT 1) AS last_hidden,
               (SELECT m.sent_at FROM messages m
                 WHERE m.channel_id = c.channel_id AND m.deleted_at IS NULL
                 ORDER BY m.sent_at DESC LIMIT 1) AS last_at,
@@ -367,6 +370,7 @@ export const listMyChats = async (req, res) => {
         archived: !!r.archived_at,
         other_members: (r.other_user_ids ?? []).map(id => byId[id] ?? { user_id: id, full_name: 'Member', profile_photo_url: null }),
         last_text: r.last_text,
+        last_hidden: r.last_hidden ?? null,
         last_at: r.last_at,
         unread_count: Math.min(r.unread_count, 99),
         pair_id: r.pair_id ?? null,

@@ -10,6 +10,8 @@ import { PlanMessageCard, PollMessageCard, CreatePollModal, SuggestionMessageCar
 import { api } from '../../lib/api.js';
 import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
 import BlockModal from '../../components/BlockModal.jsx';
+import ReportModal from '../../components/ReportModal.jsx';
+import HiddenPlaceholder from '../../components/HiddenPlaceholder.jsx';
 import useBlockedIds from '../../hooks/useBlockedIds.js';
 import '../../styles/hive-chat.css';
 import '../../styles/hive-chat-redesign.css';
@@ -461,7 +463,7 @@ function MessageRow({
   onReply, onEdit, onDelete, onReaction, isOwner,
   editingId, editText, onEditChange, onEditSave, onEditCancel,
   onRetry, onDiscard,
-  blockedIds, onBlock,
+  blockedIds, onBlock, onReport, reportedByMe,
 }) {
   const [revealed, setRevealed] = useState(false);
   const isEditing       = editingId === msg.message_id;
@@ -471,6 +473,11 @@ function MessageRow({
   const isTemp          = msg.message_id?.startsWith('temp-');
   const hasAttachments  = (msg.attachments?.length ?? 0) > 0;
   const isAttachOnly    = !msg.message_text && hasAttachments;
+  // O3 — hidden server-side (auto, ≥2 reporters) or removed by a Hive admin,
+  // or hidden just for the reporter themselves, client-side, the moment they
+  // sent the report (R3), regardless of whether the server's own threshold
+  // was reached yet.
+  const isHidden        = Boolean(msg.hidden) || reportedByMe;
 
   // Every hook this component uses must run on every render regardless of
   // the collapse check below — a conditional early return BEFORE a hook
@@ -586,25 +593,27 @@ function MessageRow({
               )}
               {isDeleted
                 ? 'Message deleted'
+                : isHidden
+                ? <HiddenPlaceholder kind="message" reason={msg.hidden ?? 'auto'} />
                 : renderWithMentions(msg.message_text, msg.mentions, userId)}
-              {!isDeleted && (msg.plan || msg.plan_removed) && (
+              {!isDeleted && !isHidden && (msg.plan || msg.plan_removed) && (
                 <PlanMessageCard plan={msg.plan} removed={msg.plan_removed}
                                  hiveId={msg.hive_id} onRsvp={onPlanRsvp} />
               )}
-              {!isDeleted && msg.poll && (
+              {!isDeleted && !isHidden && msg.poll && (
                 <PollMessageCard poll={msg.poll} hiveId={msg.hive_id} onVote={onPollVote} />
               )}
-              {!isDeleted && msg.suggestion && (
+              {!isDeleted && !isHidden && msg.suggestion && (
                 <SuggestionMessageCard suggestion={msg.suggestion} hiveId={msg.hive_id}
                                         isOwner={isOwner} viewerId={userId} voteMode={voteMode}
                                         onVote={onSuggestionVote} onApprove={onSuggestionApprove}
                                         onDecline={onSuggestionDecline} onWithdraw={onSuggestionWithdraw}
                                         onPlanRsvp={onPlanRsvp} />
               )}
-              {!isDeleted && msg.time_poll && (
+              {!isDeleted && !isHidden && msg.time_poll && (
                 <TimePollMessageCard poll={msg.time_poll} hiveId={msg.hive_id} />
               )}
-              {!isDeleted && hasAttachments && (
+              {!isDeleted && !isHidden && hasAttachments && (
                 <AttachmentGrid attachments={msg.attachments} />
               )}
             </div>
@@ -661,6 +670,14 @@ function MessageRow({
                     onClick={() => onBlock({ userId: msg.sender.user_id, name: senderName })}
                   >
                     Block
+                  </button>
+                )}
+                {!isOwn && !isTemp && !isHidden && onReport && (
+                  <button
+                    className="hc-action-btn"
+                    onClick={() => onReport({ messageId: msg.message_id, senderId: msg.sender?.user_id, senderName })}
+                  >
+                    Report
                   </button>
                 )}
               </div>
@@ -1039,6 +1056,19 @@ export default function HiveChatPage() {
     setBlockToast(`${name} is blocked.`);
     clearTimeout(blockToastTimer.current);
     blockToastTimer.current = setTimeout(() => setBlockToast(null), 2500);
+  }
+
+  // Report (R1/R2/R3) — reportTarget drives the modal; reportedIds is this
+  // session's own "I reported this" set, so the reporter's view hides the
+  // message immediately regardless of whether the server's 2-reporter
+  // auto-hide threshold was actually reached yet.
+  const [reportTarget, setReportTarget] = useState(null); // { messageId }
+  const [reportedIds,  setReportedIds]  = useState(() => new Set());
+  function handleReported(messageId) {
+    // Marks the message hidden for the reporter immediately (R3) — the modal
+    // stays open so its own confirmation screen shows; it closes itself via
+    // onClose when the user clicks Done.
+    setReportedIds(prev => new Set(prev).add(messageId));
   }
 
   // UI
@@ -2108,6 +2138,17 @@ export default function HiveChatPage() {
         <div className="sf-toast-wrap"><div className="sf-toast">{blockToast}</div></div>
       )}
 
+      {reportTarget && (
+        <ReportModal
+          targetType="message"
+          targetId={reportTarget.messageId}
+          title="Report this message"
+          personName={reportTarget.senderId !== userId ? reportTarget.senderName : null}
+          onClose={() => setReportTarget(null)}
+          onReported={() => handleReported(reportTarget.messageId)}
+        />
+      )}
+
       {showCreateChannel && (
         <CreateChannelModal
           hiveId={hiveId}
@@ -2274,6 +2315,8 @@ export default function HiveChatPage() {
                   onDiscard={handleDiscard}
                   blockedIds={blockedIds}
                   onBlock={setBlockTarget}
+                  onReport={setReportTarget}
+                  reportedByMe={reportedIds.has(msg.message_id)}
                 />
               </div>
             ))}

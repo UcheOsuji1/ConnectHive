@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
 import HoneycombBg from '../components/HoneycombBg.jsx';
 import BlockModal from '../components/BlockModal.jsx';
+import ReportModal from '../components/ReportModal.jsx';
 import { api } from '../lib/api.js';
 import '../styles/profile.css';
 import '../styles/memberprofile.css';
@@ -173,8 +174,9 @@ function CompatibilityCard({ compat, name }) {
 
 // ── Profile ⋯ menu (R4) ─────────────────────────────────────────────────────
 function ProfileMenu({ userId, name, onBlocked }) {
-  const [open, setOpen]           = useState(false);
-  const [showBlock, setShowBlock] = useState(false);
+  const [open, setOpen]             = useState(false);
+  const [showBlock, setShowBlock]   = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const wrapRef = useRef(null);
 
   useEffect(() => {
@@ -196,6 +198,14 @@ function ProfileMenu({ userId, name, onBlocked }) {
           >
             Block {name}
           </button>
+          <div className="sf-menu-divider" />
+          <button
+            type="button"
+            className="mp-menu-item"
+            onClick={() => { setOpen(false); setShowReport(true); }}
+          >
+            Report {name}
+          </button>
         </div>
       )}
       {showBlock && (
@@ -204,6 +214,15 @@ function ProfileMenu({ userId, name, onBlocked }) {
           name={name}
           onClose={() => setShowBlock(false)}
           onBlocked={() => { setShowBlock(false); onBlocked(); }}
+        />
+      )}
+      {showReport && (
+        <ReportModal
+          targetType="user"
+          targetId={userId}
+          title={`Report ${name}`}
+          personName={name}
+          onClose={() => setShowReport(false)}
         />
       )}
     </div>

@@ -8,7 +8,11 @@ export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad', 'wave'];
 export const FEED_SELECT = `
   SELECT
     p.post_id, p.hive_id, p.author_user_id, p.post_type, p.visibility,
-    p.headline, p.body, p.media_url, p.event_at, p.event_location, p.created_at,
+    CASE WHEN p.hidden_at IS NOT NULL THEN NULL ELSE p.headline   END AS headline,
+    CASE WHEN p.hidden_at IS NOT NULL THEN NULL ELSE p.body       END AS body,
+    CASE WHEN p.hidden_at IS NOT NULL THEN NULL ELSE p.media_url  END AS media_url,
+    p.hidden_reason AS hidden,
+    p.event_at, p.event_location, p.created_at,
     h.hive_name, h.creator_user_id, h.banner_url, h.logo_url,
     c.category_name,
     (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active')::int AS member_count,
@@ -127,7 +131,10 @@ async function attachTopComments(posts) {
   const ids = posts.map(p => p.post_id);
   const { rows } = await query(
     `SELECT DISTINCT ON (pc.post_id)
-       pc.post_id, pc.comment_id, pc.body, pc.commented_at,
+       pc.post_id, pc.comment_id,
+       CASE WHEN pc.hidden_at IS NOT NULL THEN NULL ELSE pc.body END AS body,
+       pc.hidden_reason AS hidden,
+       pc.commented_at,
        prof.full_name, prof.profile_photo_url
      FROM post_comments pc
      LEFT JOIN profiles prof ON prof.user_id = pc.user_id
@@ -419,7 +426,9 @@ export const getComments = async (req, res) => {
     const postInfo = await _getPostInfo(req.params.id);
     if (!await _assertCanRead(postInfo, req.userId, res)) return;
     const { rows } = await query(
-      `SELECT pc.*,
+      `SELECT pc.comment_id, pc.post_id, pc.user_id, pc.parent_comment_id, pc.commented_at,
+              CASE WHEN pc.hidden_at IS NOT NULL THEN NULL ELSE pc.body END AS body,
+              pc.hidden_reason AS hidden,
               prof.full_name, prof.profile_photo_url,
               (pc.user_id = $2) AS is_mine
        FROM post_comments pc

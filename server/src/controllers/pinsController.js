@@ -5,8 +5,10 @@ import { requireChannelAccess } from '../lib/hiveChannels.js';
 
 // One pinned message, shaped for the rail and the pins list.
 const PIN_SELECT = `
-  SELECT m.message_id, m.channel_id, m.message_text, m.sent_at,
-         m.pinned_at, m.pinned_by,
+  SELECT m.message_id, m.channel_id,
+         CASE WHEN m.hidden_at IS NOT NULL THEN NULL ELSE m.message_text END AS message_text,
+         m.hidden_reason AS hidden,
+         m.sent_at, m.pinned_at, m.pinned_by,
          c.name AS channel_name,
          pr.user_id AS sender_user_id, pr.full_name, pr.profile_photo_url
     FROM messages m
@@ -19,6 +21,7 @@ const shapePin = (r) => ({
   channel_id:   r.channel_id,
   channel_name: r.channel_name,
   text:         r.message_text,
+  hidden:       r.hidden,
   sent_at:      r.sent_at,
   pinned_at:    r.pinned_at,
   pinned_by:    r.pinned_by,
