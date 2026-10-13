@@ -22,6 +22,7 @@
  * leaves that one row to retry next hour.
  */
 import { query, getClient } from '../db/index.js';
+import { destroyByUrl } from '../lib/cloudinaryDestroy.js';
 
 const INTERVAL_MS = 60 * 60 * 1000; // hourly
 
@@ -67,13 +68,7 @@ async function _purgeUser(client, user, cascadeCols) {
   const { rows: [profileRow] } = await client.query(
     `SELECT profile_photo_url FROM profiles WHERE user_id = $1`, [user.user_id],
   );
-  if (profileRow?.profile_photo_url) {
-    console.warn(
-      `[purgeJob] user ${user.user_id} had a Cloudinary photo (${profileRow.profile_photo_url}) — ` +
-      `reference cleared, but the asset itself was NOT destroyed: this codebase has a signed ` +
-      `upload helper (mediaController.getMediaUploadSignature) but no signed-destroy helper yet.`,
-    );
-  }
+  const photoUrl = profileRow?.profile_photo_url ?? null;
 
   await client.query(
     `UPDATE profiles SET
@@ -100,13 +95,75 @@ async function _purgeUser(client, user, cascadeCols) {
     `${rowsDeleted} rows removed across this account's own tables, profile PII cleared, ` +
     `account_status -> deleted. Authored content (messages, posts, etc.) left in place.`,
   );
+
+  return { photoUrl };
+}
+
+// Media URLs have to be read before the DELETE — hive_uploads and
+// message_attachments both cascade away the instant the Hive row goes, and
+// there would be nothing left to destroy on Cloudinary.
+async function _collectHiveMediaUrls(client, hiveId) {
+  const [{ rows: [hiveRow] }, { rows: uploads }, { rows: attachments }] = await Promise.all([
+    client.query(`SELECT logo_url, banner_url FROM hives WHERE hive_id = $1`, [hiveId]),
+    client.query(`SELECT url FROM hive_uploads WHERE hive_id = $1`, [hiveId]),
+    client.query(
+      `SELECT ma.url FROM message_attachments ma
+         JOIN messages m ON m.message_id = ma.message_id
+        WHERE m.hive_id = $1`,
+      [hiveId],
+    ),
+  ]);
+  const urls = [];
+  if (hiveRow?.logo_url) urls.push(hiveRow.logo_url);
+  if (hiveRow?.banner_url) urls.push(hiveRow.banner_url);
+  for (const u of uploads) urls.push(u.url);
+  for (const a of attachments) urls.push(a.url);
+  return urls;
 }
 
 async function _purgeHive(client, hive) {
+  const mediaUrls = await _collectHiveMediaUrls(client, hive.hive_id);
   const { rowCount } = await client.query(`DELETE FROM hives WHERE hive_id = $1`, [hive.hive_id]);
   console.log(
     `[purgeJob] purged Hive ${hive.hive_id} (${hive.hive_name}) — hard-deleted (${rowCount} row). ` +
     `Every child table cascades or SET NULLs, confirmed at job startup — no orphans possible.`,
+  );
+  return { mediaUrls };
+}
+
+// Destroys a purged account's profile photo on Cloudinary. Always called
+// AFTER that account's transaction has committed — a Cloudinary failure here
+// must never roll back a purge that has already succeeded.
+async function _destroyUserPhoto(userId, photoUrl) {
+  if (!photoUrl) return;
+  const result = await destroyByUrl(photoUrl);
+  if (result.skipped) {
+    console.log(`[purgeJob] user ${userId} photo destroy skipped: ${result.skipped}`);
+  } else if (result.ok) {
+    console.log(`[purgeJob] user ${userId} photo destroyed (public_id=${result.publicId}, result=${result.result})`);
+  } else {
+    console.error(`[purgeJob] user ${userId} photo destroy FAILED (public_id=${result.publicId}): ${result.error}`);
+  }
+}
+
+// Same after-commit timing as the user photo — a failed Cloudinary call
+// never reopens an already-committed Hive deletion.
+async function _destroyHiveMedia(hiveId, mediaUrls) {
+  if (!mediaUrls.length) return;
+  let ok = 0, notFound = 0, failed = 0, skipped = 0;
+  for (const url of mediaUrls) {
+    const result = await destroyByUrl(url);
+    if (result.skipped) skipped++;
+    else if (result.ok && result.result === 'not found') notFound++;
+    else if (result.ok) ok++;
+    else {
+      failed++;
+      console.error(`[purgeJob] Hive ${hiveId} media destroy FAILED (public_id=${result.publicId}): ${result.error}`);
+    }
+  }
+  console.log(
+    `[purgeJob] Hive ${hiveId} media cleanup — ok: ${ok}, not found: ${notFound}, ` +
+    `failed: ${failed}, skipped: ${skipped} (of ${mediaUrls.length}).`,
   );
 }
 
@@ -121,9 +178,10 @@ export async function runPurgeJob() {
   let usersPurged = 0, usersFailed = 0;
   for (const user of dueUsers) {
     const client = await getClient();
+    let photoUrl = null;
     try {
       await client.query('BEGIN');
-      await _purgeUser(client, user, cascadeCols);
+      ({ photoUrl } = await _purgeUser(client, user, cascadeCols));
       await client.query('COMMIT');
       usersPurged++;
     } catch (err) {
@@ -133,6 +191,7 @@ export async function runPurgeJob() {
     } finally {
       client.release();
     }
+    if (photoUrl) await _destroyUserPhoto(user.user_id, photoUrl);
   }
 
   const { rows: dueHives } = await query(
@@ -143,9 +202,10 @@ export async function runPurgeJob() {
   let hivesPurged = 0, hivesFailed = 0;
   for (const hive of dueHives) {
     const client = await getClient();
+    let mediaUrls = [];
     try {
       await client.query('BEGIN');
-      await _purgeHive(client, hive);
+      ({ mediaUrls } = await _purgeHive(client, hive));
       await client.query('COMMIT');
       hivesPurged++;
     } catch (err) {
@@ -155,6 +215,7 @@ export async function runPurgeJob() {
     } finally {
       client.release();
     }
+    await _destroyHiveMedia(hive.hive_id, mediaUrls);
   }
 
   if (dueUsers.length || dueHives.length) {
