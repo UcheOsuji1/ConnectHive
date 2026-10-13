@@ -347,7 +347,7 @@ export default function PostCard({ post: initialPost, variant }) {
         <div className="pc-wl-body-row">
           <Avatar name={post.author_name} src={post.author_photo} size={38} />
           <div className="pc-wl-text">
-            <span className="pc-wl-name">{post.author_name ?? 'A new member'}</span>
+            <span className="pc-wl-name">{post.author_deleted ? 'Deleted member' : (post.author_name ?? 'A new member')}</span>
             {' '}joined{' '}
             <span className="pc-wl-hive">{post.hive_name}</span>
             {post.body && <div className="pc-wl-caption">{post.body}</div>}
@@ -392,7 +392,7 @@ export default function PostCard({ post: initialPost, variant }) {
         <div className="pc-nm-body-row">
           <Avatar name={post.author_name} src={post.author_photo} size={32} />
           <span className="pc-nm-text">
-            <strong className="pc-nm-name">{post.author_name ?? 'A new member'}</strong>
+            <strong className="pc-nm-name">{post.author_deleted ? 'Deleted member' : (post.author_name ?? 'A new member')}</strong>
             {' '}joined{' '}
             <strong className="pc-nm-hive">{post.hive_name}</strong>
           </span>
@@ -446,7 +446,7 @@ export default function PostCard({ post: initialPost, variant }) {
       {/* ── Author ── */}
       <div className="post-author-row">
         <Avatar name={post.author_name} src={post.author_photo} size={30} />
-        <span className="post-author-name">{post.author_name ?? 'Hive Member'}</span>
+        <span className="post-author-name">{post.author_deleted ? 'Deleted member' : (post.author_name ?? 'Hive Member')}</span>
         <span className="post-time">{relativeTime(post.created_at)}</span>
       </div>
 

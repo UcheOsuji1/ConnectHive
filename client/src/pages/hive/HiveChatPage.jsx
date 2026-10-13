@@ -467,7 +467,7 @@ function MessageRow({
   const hasAttachments  = (msg.attachments?.length ?? 0) > 0;
   const isAttachOnly    = !msg.message_text && hasAttachments;
 
-  const senderName = msg.sender?.full_name ?? 'Member';
+  const senderName = msg.sender?.is_deleted ? 'Deleted member' : (msg.sender?.full_name ?? 'Member');
   const senderRole = msg.sender?.role;
   const time       = formatTime(msg.sent_at);
   const timeLabel  = msg.edited_at ? `${time} · edited` : time;

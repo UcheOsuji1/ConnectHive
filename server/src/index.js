@@ -23,6 +23,7 @@ import { startCostNudgeJob } from './jobs/costNudgeJob.js';
 import { startCoffeeChatJob } from './jobs/coffeeChatJob.js';
 import { startOpportunityDigestJob } from './jobs/opportunityDigestJob.js';
 import { startTaskDueJob } from './jobs/taskDueJob.js';
+import { startPurgeJob } from './jobs/purgeJob.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -157,4 +158,5 @@ server.listen(PORT, async () => {
   startCoffeeChatJob();
   startOpportunityDigestJob();
   startTaskDueJob();
+  startPurgeJob();
 });

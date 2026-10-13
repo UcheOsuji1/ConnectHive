@@ -118,6 +118,7 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
        (m.deleted_at IS NOT NULL)        AS is_deleted,
        p.full_name                        AS sender_name,
        p.profile_photo_url                AS sender_photo,
+       (su.account_status = 'deleted')    AS sender_account_deleted,
        COALESCE(hm.role, 'member')        AS sender_role,
        m.reply_to_message_id,
        -- Second layer against a cross-channel reply (Prompt 65 Part 0 #1):
@@ -140,6 +141,7 @@ async function _runEnriched(extraSQL, params, viewerId = null) {
        END AS attachments
      FROM messages m
      LEFT JOIN profiles      p  ON p.user_id    = m.sender_user_id
+     LEFT JOIN users         su ON su.user_id   = m.sender_user_id
      LEFT JOIN hive_members  hm ON hm.hive_id   = m.hive_id
                                 AND hm.user_id   = m.sender_user_id
                                 AND hm.membership_status = 'active'
@@ -212,6 +214,7 @@ function _shape(row) {
       full_name:         row.sender_name ?? null,
       profile_photo_url: row.sender_photo ?? null,
       role:              row.sender_role,
+      is_deleted:        Boolean(row.sender_account_deleted),
     },
     reply_to: row.reply_to_message_id
       ? {

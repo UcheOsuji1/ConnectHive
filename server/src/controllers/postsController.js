@@ -24,11 +24,13 @@ export const FEED_SELECT = `
     EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)                  AS is_following,
     EXISTS(SELECT 1 FROM hive_members   WHERE hive_id = h.hive_id AND user_id = $1
            AND membership_status = 'active')                                                          AS is_member,
-    prof.full_name AS author_name, prof.profile_photo_url AS author_photo
+    prof.full_name AS author_name, prof.profile_photo_url AS author_photo,
+    (au.account_status = 'deleted') AS author_deleted
   FROM hive_posts p
   JOIN hives h ON h.hive_id = p.hive_id
   LEFT JOIN categories c   ON c.category_id = h.category_id
   LEFT JOIN profiles  prof ON prof.user_id   = p.author_user_id
+  LEFT JOIN users      au  ON au.user_id     = p.author_user_id
 `;
 
 // ── Nest flat comment rows into a top-level → replies tree (one level deep) ──
