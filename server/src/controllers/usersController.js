@@ -162,7 +162,7 @@ export const getActivity = async (req, res) => {
          UNION ALL
          SELECT 'Joined ' || h.hive_name AS label, hm.joined_at AS ts, 'hive' AS type
          FROM hive_members hm JOIN hives h ON h.hive_id = hm.hive_id
-         WHERE hm.user_id = $1 AND hm.membership_status = 'active'
+         WHERE hm.user_id = $1 AND hm.membership_status = 'active' AND h.hive_status <> 'deleted'
        ) a
        ORDER BY ts DESC
        LIMIT 5`,
@@ -235,7 +235,7 @@ export const getMemberProfile = async (req, res) => {
                             AND b.membership_status = 'active'
          JOIN hives h        ON h.hive_id = a.hive_id
          LEFT JOIN categories c ON c.category_id = h.category_id
-        WHERE a.user_id = $1 AND a.membership_status = 'active'
+        WHERE a.user_id = $1 AND a.membership_status = 'active' AND h.hive_status <> 'deleted'
         ORDER BY h.hive_name`,
       [viewerId, targetId],
     );
@@ -252,6 +252,7 @@ export const getMemberProfile = async (req, res) => {
          LEFT JOIN categories c ON c.category_id = h.category_id
         WHERE hm.user_id = $2
           AND hm.membership_status = 'active'
+          AND h.hive_status <> 'deleted'
           AND (
             h.discoverable = TRUE
             OR EXISTS(SELECT 1 FROM hive_members v
@@ -338,6 +339,7 @@ export const getMemberActivity = async (req, res) => {
          FROM hive_posts hp
          JOIN hives h ON h.hive_id = hp.hive_id
         WHERE hp.author_user_id = $2
+          AND h.hive_status <> 'deleted'
           AND (
             EXISTS(SELECT 1 FROM hive_members v
                     WHERE v.hive_id = hp.hive_id AND v.user_id = $1

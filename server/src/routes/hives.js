@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
+import { query } from '../db/index.js';
 import {
   getHive,
   getHiveMembers,
@@ -30,6 +31,9 @@ import {
   getUploadSignature,
   updateHiveMedia,
   leaveHive,
+  deleteHive,
+  restoreHive,
+  getMyDeletedHives,
 } from '../controllers/hivesController.js';
 import {
   listMessages,
@@ -161,14 +165,43 @@ router.get('/mine',           requireAuth, getMyHive);
 router.get('/my',             requireAuth, getMyHive);   // alias kept for compat
 router.get('/following',      requireAuth, getFollowedHives);
 router.get('/requests/mine',  requireAuth, getMyRequests);
+router.get('/mine/deleted',   requireAuth, getMyDeletedHives);
 
 // ── Collection ────────────────────────────────────────────────────────────────
 router.post('/',   requireAuth, requireVerifiedEmail, createHive);
+
+// ── Deleted-Hive choke point ──────────────────────────────────────────────────
+// Every route below keyed by :id loses sight of a deleted Hive — it 404s like
+// the Hive never existed — except the two routes that need to see it anyway:
+// DELETE itself (so deleting twice answers "already deleted", not a bare 404)
+// and restore. List/search endpoints above (quickfind, suggestions, mine,
+// following, requests/mine) have their own hive_status filters since they
+// never pass through a :id param at all.
+router.param('id', async (req, res, next, id) => {
+  try {
+    const { rows: [hive] } = await query('SELECT hive_id, hive_status FROM hives WHERE hive_id = $1', [id]);
+    if (!hive) return res.status(404).json({ error: 'Hive not found.' });
+
+    const isRestore = req.method === 'POST'   && /^\/[^/]+\/restore\/?$/.test(req.path);
+    const isDelete  = req.method === 'DELETE' && /^\/[^/]+\/?$/.test(req.path);
+
+    if (hive.hive_status === 'deleted' && !isRestore && !isDelete) {
+      return res.status(404).json({ error: 'Hive not found.' });
+    }
+
+    req.hive = hive;
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ── Single hive by id ─────────────────────────────────────────────────────────
 router.get('/:id',             requireAuth, getHive);
 router.put('/:id',             requireAuth, updateHive);
 router.patch('/:id',           requireAuth, updateHive);
+router.delete('/:id',          requireAuth, deleteHive);
+router.post('/:id/restore',    requireAuth, restoreHive);
 
 // ── Member & follower actions ──────────────────────────────────────────────────
 router.post('/:id/seen',                 requireAuth, markHiveSeen);

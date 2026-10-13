@@ -166,6 +166,13 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
   const [leaving,         setLeaving]          = useState(false);
   const [leaveError,      setLeaveError]       = useState(null);
 
+  // Delete Hive dialog state
+  const [deleteOpen,      setDeleteOpen]      = useState(false);
+  const [confirmNameInput, setConfirmNameInput] = useState('');
+  const [deleting,        setDeleting]        = useState(false);
+  const [deleteError,     setDeleteError]     = useState(null);
+  const isOwner = hive.my_role === 'owner';
+
   function set(key, val) {
     setFields(prev => ({ ...prev, [key]: val }));
   }
@@ -246,6 +253,18 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
     } catch (err) {
       setLeaveError(err.data?.error ?? 'Could not leave. Please try again.');
       setLeaving(false);
+    }
+  }
+
+  async function confirmDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await api.delete(`/api/hives/${hiveId}`, { confirmName: confirmNameInput });
+      navigate('/my-hive');
+    } catch (err) {
+      setDeleteError(err.data?.error ?? 'Could not delete. Please try again.');
+      setDeleting(false);
     }
   }
 
@@ -526,6 +545,62 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
               </button>
             </div>
           </div>
+        )}
+
+        {isOwner && (
+          <>
+            <div className="hw-settings-danger-divider" />
+            {!deleteOpen ? (
+              <div className="hw-settings-danger-row">
+                <div>
+                  <div className="hw-settings-label">Delete this Hive</div>
+                  <div className="hw-settings-hint">
+                    Members lose access immediately. Restorable for 30 days, then permanently removed.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="hw-settings-danger-btn"
+                  onClick={() => { setDeleteOpen(true); setConfirmNameInput(''); setDeleteError(null); }}
+                >
+                  Delete Hive
+                </button>
+              </div>
+            ) : (
+              <div className="hw-leave-dialog">
+                <p className="hw-leave-hint hw-leave-hint--warn">
+                  This removes every member's access right away. Type <strong>{hive.hive_name}</strong> to confirm.
+                </p>
+                <input
+                  type="text"
+                  className="hw-settings-input"
+                  value={confirmNameInput}
+                  onChange={e => setConfirmNameInput(e.target.value)}
+                  placeholder={hive.hive_name}
+                  autoFocus
+                />
+                {deleteError && <p className="hw-leave-error">{deleteError}</p>}
+                <div className="hw-leave-actions">
+                  <button
+                    type="button"
+                    className="hw-leave-cancel-btn"
+                    onClick={() => setDeleteOpen(false)}
+                    disabled={deleting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="hw-settings-danger-btn"
+                    onClick={confirmDelete}
+                    disabled={deleting || confirmNameInput !== hive.hive_name}
+                  >
+                    {deleting ? 'Deleting…' : 'Delete Hive'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

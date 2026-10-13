@@ -552,7 +552,7 @@ export const getMyHive = async (req, res) => {
          LEFT JOIN categories c   ON c.category_id  = h.category_id
          LEFT JOIN hive_members hm2 ON hm2.hive_id  = h.hive_id
          LEFT JOIN hive_last_seen hls ON hls.user_id = $1 AND hls.hive_id = h.hive_id
-         WHERE  hm.user_id = $1 AND hm.membership_status = 'active'
+         WHERE  hm.user_id = $1 AND hm.membership_status = 'active' AND h.hive_status <> 'deleted'
          GROUP  BY h.hive_id, c.category_name, hm.role,
                    COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz)
        ),
@@ -667,7 +667,7 @@ export const getFollowedHives = async (req, res) => {
        JOIN   hives h ON h.hive_id = hf.hive_id
        LEFT JOIN categories c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
-       WHERE  hf.user_id = $1
+       WHERE  hf.user_id = $1 AND h.hive_status <> 'deleted'
        GROUP  BY h.hive_id, c.category_name, hf.followed_at
        ORDER  BY hf.followed_at DESC`,
       [req.userId],
@@ -1353,7 +1353,7 @@ export const getMyRequests = async (req, res) => {
        FROM join_requests jr
        JOIN hives h ON h.hive_id = jr.hive_id
        LEFT JOIN categories c ON c.category_id = h.category_id
-       WHERE jr.user_id = $1
+       WHERE jr.user_id = $1 AND h.hive_status <> 'deleted'
        ORDER BY jr.requested_at DESC`,
       [req.userId],
     );
@@ -1911,5 +1911,183 @@ export const leaveHive = async (req, res) => {
     res.status(500).json({ error: 'Failed to leave Hive.' });
   } finally {
     client.release();
+  }
+};
+
+// ── deleteHive ───────────────────────────────────────────────────────────────
+// Owner-only, soft delete. Requires the caller to type the Hive's exact name,
+// the same confirmation bar as every other irreversible action in this file.
+// Deletion is in-transaction (status flip + plan cancellation); the member
+// notify/evict loop runs after commit as a best-effort ceremony, same pattern
+// as reviewRequest's post-accept notifications.
+const DELETE_PURGE_GRACE_DAYS = 30;
+
+export const deleteHive = async (req, res) => {
+  const hiveId = req.params.id;
+  const { confirmName } = req.body ?? {};
+
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [hive] } = await client.query(
+      `SELECT hive_name, hive_status FROM hives WHERE hive_id = $1 FOR UPDATE`,
+      [hiveId],
+    );
+    if (!hive) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Hive not found.' });
+    }
+    if (hive.hive_status === 'deleted') {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'This Hive has already been deleted.' });
+    }
+
+    const { rows: [member] } = await client.query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (member?.role !== 'owner') {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ error: 'Only the owner can delete this Hive.' });
+    }
+
+    if (typeof confirmName !== 'string' || confirmName !== hive.hive_name) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Type the Hive name exactly to confirm deletion.' });
+    }
+
+    await client.query(
+      `UPDATE hives
+         SET hive_status = 'deleted', deleted_at = NOW(), deleted_by = $2,
+             purge_after = NOW() + INTERVAL '${DELETE_PURGE_GRACE_DAYS} days', updated_at = NOW()
+       WHERE hive_id = $1`,
+      [hiveId, req.userId],
+    );
+
+    // A deleted Hive shouldn't keep paging people to RSVP to plans that will
+    // never happen.
+    await client.query(
+      `UPDATE hive_posts
+         SET cancelled_at = NOW()
+       WHERE hive_id = $1 AND post_type = 'event' AND event_at > NOW() AND cancelled_at IS NULL`,
+      [hiveId],
+    );
+
+    const { rows: members } = await client.query(
+      `SELECT user_id FROM hive_members
+       WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
+      [hiveId, req.userId],
+    );
+
+    await client.query('COMMIT');
+
+    for (const m of members) {
+      try {
+        await createNotification({
+          userId: m.user_id,
+          type: 'hive_deleted',
+          title: `${hive.hive_name} was deleted`,
+          body: `The owner deleted this Hive. It will be permanently removed after ${DELETE_PURGE_GRACE_DAYS} days unless restored.`,
+          hiveId,
+          actorUserId: req.userId,
+          category: 'system',
+        });
+      } catch (notifyErr) {
+        console.error('[hives/deleteHive] notify failed (non-fatal):', notifyErr);
+      }
+      try { await evictUserFromHive(hiveId, m.user_id); } catch { /* socket not yet initialized in tests */ }
+    }
+    try { await evictUserFromHive(hiveId, req.userId); } catch { /* socket not yet initialized in tests */ }
+
+    res.json({ deleted: true, hive_id: hiveId, purge_after_days: DELETE_PURGE_GRACE_DAYS });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[hives/deleteHive]', err);
+    res.status(500).json({ error: 'Failed to delete Hive.' });
+  } finally {
+    client.release();
+  }
+};
+
+// ── restoreHive ──────────────────────────────────────────────────────────────
+// Owner-only. Restoring never un-cancels plans deleteHive cancelled — that is
+// a deliberate choice, not an oversight: a plan that already told everyone
+// "cancelled" doesn't get silently resurrected.
+export const restoreHive = async (req, res) => {
+  const hiveId = req.params.id;
+  try {
+    const { rows: [hive] } = await query(
+      `SELECT hive_name, hive_status FROM hives WHERE hive_id = $1`,
+      [hiveId],
+    );
+    if (!hive) return res.status(404).json({ error: 'Hive not found.' });
+    if (hive.hive_status !== 'deleted') {
+      return res.status(400).json({ error: 'This Hive is not deleted.' });
+    }
+
+    const { rows: [member] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (member?.role !== 'owner') {
+      return res.status(403).json({ error: 'Only the owner can restore this Hive.' });
+    }
+
+    await query(
+      `UPDATE hives
+         SET hive_status = 'active', deleted_at = NULL, deleted_by = NULL,
+             purge_after = NULL, updated_at = NOW()
+       WHERE hive_id = $1`,
+      [hiveId],
+    );
+
+    const { rows: members } = await query(
+      `SELECT user_id FROM hive_members
+       WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
+      [hiveId, req.userId],
+    );
+    for (const m of members) {
+      try {
+        await createNotification({
+          userId: m.user_id,
+          type: 'hive_restored',
+          title: `${hive.hive_name} was restored`,
+          body: 'The owner restored this Hive.',
+          hiveId,
+          actorUserId: req.userId,
+          category: 'system',
+        });
+      } catch (notifyErr) {
+        console.error('[hives/restoreHive] notify failed (non-fatal):', notifyErr);
+      }
+    }
+
+    res.json({ restored: true, hive_id: hiveId });
+  } catch (err) {
+    console.error('[hives/restoreHive]', err);
+    res.status(500).json({ error: 'Failed to restore Hive.' });
+  }
+};
+
+// ── getMyDeletedHives ─────────────────────────────────────────────────────────
+export const getMyDeletedHives = async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT h.hive_id, h.hive_name, h.logo_url, h.banner_url, c.category_name,
+              h.deleted_at, h.purge_after, h.deleted_by, hm.role AS my_role
+       FROM hive_members hm
+       JOIN hives h ON h.hive_id = hm.hive_id
+       LEFT JOIN categories c ON c.category_id = h.category_id
+       WHERE hm.user_id = $1 AND hm.membership_status = 'active' AND h.hive_status = 'deleted'
+       ORDER BY h.deleted_at DESC`,
+      [req.userId],
+    );
+    res.json({ hives: rows });
+  } catch (err) {
+    console.error('[hives/getMyDeletedHives]', err);
+    res.status(500).json({ error: 'Failed to fetch deleted Hives.' });
   }
 };

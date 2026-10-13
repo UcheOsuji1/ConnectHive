@@ -192,16 +192,67 @@ function SectionHead({ title, sub, link, linkLabel }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const ms = new Date(dateStr).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86400000));
+}
+
+function DeletedHiveCard({ hive, onRestored }) {
+  const [restoring, setRestoring] = useState(false);
+  const [error, setError] = useState(null);
+  const days = daysUntil(hive.purge_after);
+
+  async function restore() {
+    setRestoring(true);
+    setError(null);
+    try {
+      await api.post(`/api/hives/${hive.hive_id}/restore`, {});
+      onRestored(hive.hive_id);
+    } catch (err) {
+      setError(err.data?.error ?? 'Could not restore. Please try again.');
+      setRestoring(false);
+    }
+  }
+
+  return (
+    <div className="mhp-deleted-card">
+      <div className="mhp-deleted-info">
+        <div className="mhp-deleted-name">{hive.hive_name}</div>
+        <div className="mhp-deleted-meta">
+          {hive.category_name ? `${hive.category_name} · ` : ''}
+          {days != null ? `Permanently removed in ${days} day${days === 1 ? '' : 's'}` : 'Pending permanent removal'}
+        </div>
+        {error && <div className="mhp-deleted-error">{error}</div>}
+      </div>
+      {hive.my_role === 'owner' && (
+        <button type="button" className="mhp-restore-btn" onClick={restore} disabled={restoring}>
+          {restoring ? 'Restoring…' : 'Restore'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function MyHivePage() {
   const [hives, setHives]     = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletedHives, setDeletedHives] = useState([]);
 
   useEffect(() => {
     api.get('/api/hives/mine')
       .then(d => setHives(d.hives ?? []))
       .catch(() => setHives([]))
       .finally(() => setLoading(false));
+    api.get('/api/hives/mine/deleted')
+      .then(d => setDeletedHives(d.hives ?? []))
+      .catch(() => setDeletedHives([]));
   }, []);
+
+  function handleRestored(hiveId) {
+    setDeletedHives(prev => prev.filter(h => h.hive_id !== hiveId));
+    api.get('/api/hives/mine').then(d => setHives(d.hives ?? [])).catch(() => {});
+  }
 
   // Admins lead a Hive too, and HiveDashboardLayout already treats them as
   // owners for navigation. Splitting on role === 'owner' alone put an
@@ -330,6 +381,21 @@ export default function MyHivePage() {
                   <Link to="/find-your-hive" className="mhp-se-btn">Explore Hives</Link>
                 </div>
               )}
+            </section>
+          )}
+
+          {/* Part 5 — Deleted (owners see Restore; former members see it read-only) */}
+          {deletedHives.length > 0 && (
+            <section className="mhp-section">
+              <SectionHead
+                title="Deleted"
+                sub="Restorable until they're permanently removed."
+              />
+              <div className="mhp-deleted-list">
+                {deletedHives.map(h => (
+                  <DeletedHiveCard key={h.hive_id} hive={h} onRestored={handleRestored} />
+                ))}
+              </div>
             </section>
           )}
 
