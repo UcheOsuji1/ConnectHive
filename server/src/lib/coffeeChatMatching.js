@@ -71,10 +71,16 @@ export function prioritizedMatch(candidateIds, scores, excluded, priorityId) {
 // (sum of both pairwise scores) — "add the leftover person to the
 // best-scoring pair" read as best-scoring *for* them. Returns -1 if there
 // are no pairs to join (the whole candidate pool was just the one person).
-export function bestTrioHost(pairs, leftoverId, scores) {
+//
+// `excluded` carries blocked dyads too (see coffeeChatJob.js), so a pair is
+// skipped entirely — not just scored lower — if the leftover is excluded
+// from either of its members. Greedy pair formation already respects
+// `excluded`; this is the leftover-joins-a-trio path, which didn't.
+export function bestTrioHost(pairs, leftoverId, scores, excluded = new Set()) {
   let bestIdx = -1;
   let bestScore = -Infinity;
   pairs.forEach((p, i) => {
+    if (excluded.has(dyadKey(leftoverId, p[0])) || excluded.has(dyadKey(leftoverId, p[1]))) return;
     const s = (scores.get(dyadKey(leftoverId, p[0])) ?? 0) + (scores.get(dyadKey(leftoverId, p[1])) ?? 0);
     if (s > bestScore) { bestScore = s; bestIdx = i; }
   });

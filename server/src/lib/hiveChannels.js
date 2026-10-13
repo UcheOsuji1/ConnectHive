@@ -1,4 +1,5 @@
 import { query } from '../db/index.js';
+import { isBlockedEitherWay } from './blocks.js';
 
 // ── Pair-chat privacy gate (Prompt 64 Part 1) ────────────────────────────────
 // A pair channel ('coffee_chats'/'mentorship') is a normal hive_channels row
@@ -41,7 +42,20 @@ export async function requireChannelAccess(hiveId, channelId, userId) {
 // both land or neither does. name is an opaque, globally-unique placeholder —
 // pair channels are never shown by name; the UI always renders the other
 // member(s) instead.
+//
+// The final, authoritative block guard: every producer (coffee pairing,
+// mentorship, rides, and whatever's added next) funnels through here, so
+// this one check — not three separate copies — is what makes "never create
+// a pair channel between a blocked pair" actually hold. Returns null
+// instead of creating anything; callers decide what that means for them
+// (skip this match, or 403 the request that triggered it).
 export async function createPairChannel(client, hiveId, userIds, createdFor) {
+  for (let i = 0; i < userIds.length; i++) {
+    for (let j = i + 1; j < userIds.length; j++) {
+      if (await isBlockedEitherWay(userIds[i], userIds[j])) return null;
+    }
+  }
+
   const { rows: [ch] } = await client.query(
     `INSERT INTO hive_channels (hive_id, name, kind, created_for, is_default, position)
      VALUES ($1, gen_random_uuid()::text, 'pair', $2, FALSE, 0)

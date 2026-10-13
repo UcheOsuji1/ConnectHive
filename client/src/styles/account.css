@@ -234,6 +234,30 @@
   color: #8a6510;
 }
 
+/* ── Blocked people (R6) ───────────────────────────────────────── */
+.acct-blocked-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.acct-blocked-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0e8d4;
+}
+.acct-blocked-row:last-child { border-bottom: none; }
+.acct-blocked-name {
+  flex: 1;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--charcoal, #1e1b18);
+}
+
 /* ── Delete account panel ─────────────────────────────────────── */
 .acct-session-row--stacked { flex-direction: column; align-items: stretch; }
 .acct-delete-panel {

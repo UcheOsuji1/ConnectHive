@@ -14,6 +14,7 @@ import messageRoutes      from './routes/messages.js';
 import categoryRoutes     from './routes/categories.js';
 import toolRoutes         from './routes/tools.js';
 import accountRoutes      from './routes/account.js';
+import blockRoutes        from './routes/blocks.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
@@ -131,6 +132,7 @@ app.use('/api/messages',      messageRoutes);
 app.use('/api/categories',    categoryRoutes);
 app.use('/api/tools',         toolRoutes);
 app.use('/api/account',       accountRoutes);
+app.use('/api/blocks',        blockRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

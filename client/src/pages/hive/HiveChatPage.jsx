@@ -9,8 +9,11 @@ import '../../styles/hive-find-time.css';
 import { PlanMessageCard, PollMessageCard, CreatePollModal, SuggestionMessageCard, TimePollMessageCard } from '../../components/chat/ChatCards.jsx';
 import { api } from '../../lib/api.js';
 import { socket, joinHive, leaveHive, onHiveJoinAck } from '../../lib/socket.js';
+import BlockModal from '../../components/BlockModal.jsx';
+import useBlockedIds from '../../hooks/useBlockedIds.js';
 import '../../styles/hive-chat.css';
 import '../../styles/hive-chat-redesign.css';
+import '../../styles/safety.css';
 
 const MAX_ATTACHMENTS       = 6;
 const MAX_ATTACHMENT_BYTES  = 25 * 1024 * 1024;
@@ -458,7 +461,9 @@ function MessageRow({
   onReply, onEdit, onDelete, onReaction, isOwner,
   editingId, editText, onEditChange, onEditSave, onEditCancel,
   onRetry, onDiscard,
+  blockedIds, onBlock,
 }) {
+  const [revealed, setRevealed] = useState(false);
   const isEditing       = editingId === msg.message_id;
   const isDeleted       = msg.is_deleted;
   const isSending       = msg._status === 'sending';
@@ -466,6 +471,37 @@ function MessageRow({
   const isTemp          = msg.message_id?.startsWith('temp-');
   const hasAttachments  = (msg.attachments?.length ?? 0) > 0;
   const isAttachOnly    = !msg.message_text && hasAttachments;
+
+  // Every hook this component uses must run on every render regardless of
+  // the collapse check below — a conditional early return BEFORE a hook
+  // call changes how many hooks fire between renders of the same instance
+  // (shown as a real screenshot bug: "Rendered more hooks than during the
+  // previous render" the moment Show toggled revealed on this row).
+  const editRef = useRef(null);
+  useEffect(() => {
+    if (isEditing && editRef.current) {
+      editRef.current.focus();
+      editRef.current.selectionStart = editRef.current.value.length;
+    }
+  }, [isEditing]);
+
+  // R5 — a blocked sender's message collapses to a placeholder until the
+  // viewer chooses to reveal that one message. Never hidden for your own
+  // messages (isOwn implies not blocked-by-self anyway) or once already sent.
+  const isFromBlocked = !isOwn && !isTemp && blockedIds?.has(msg.sender?.user_id);
+  if (isFromBlocked && !revealed) {
+    return (
+      <div className={['hc-msg-row', msg._grouped ? '' : 'hc-msg-row--first'].filter(Boolean).join(' ')}>
+        {msg._grouped ? <div className="hc-msg-avatar-placeholder" /> : <div className="hc-msg-avatar-col" />}
+        <div className="hc-msg-body">
+          <div className="sf-collapsed">
+            Message from someone you blocked
+            <button type="button" className="sf-collapsed-show" onClick={() => setRevealed(true)}>Show</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const senderName = msg.sender?.is_deleted ? 'Deleted member' : (msg.sender?.full_name ?? 'Member');
   const senderRole = msg.sender?.role;
@@ -477,14 +513,6 @@ function MessageRow({
       .map(id => members.find(m => m.user_id === id)?.full_name ?? 'Someone')
       .join(', ');
   }
-
-  const editRef = useRef(null);
-  useEffect(() => {
-    if (isEditing && editRef.current) {
-      editRef.current.focus();
-      editRef.current.selectionStart = editRef.current.value.length;
-    }
-  }, [isEditing]);
 
   function handleEditKey(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEditSave(msg.message_id); }
@@ -626,6 +654,14 @@ function MessageRow({
                 {canSelfEdit   && <button className="hc-action-btn" onClick={() => onEdit(msg)}>Edit</button>}
                 {(canSelfEdit || canModDelete) && (
                   <button className="hc-action-btn hc-action-btn--del" onClick={() => onDelete(msg.message_id)}>Delete</button>
+                )}
+                {!isOwn && !isTemp && msg.sender?.user_id && onBlock && (
+                  <button
+                    className="hc-action-btn sf-menu-item--danger"
+                    onClick={() => onBlock({ userId: msg.sender.user_id, name: senderName })}
+                  >
+                    Block
+                  </button>
                 )}
               </div>
             )}
@@ -989,6 +1025,21 @@ export default function HiveChatPage() {
   const [editingId,  setEditingId]  = useState(null);
   const [editText,   setEditText]   = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  // Block (R4/R5) — loaded once, used both for the block action and to
+  // collapse a blocked sender's messages (R5) client-side.
+  const { blockedIds, refresh: refreshBlockedIds } = useBlockedIds();
+  const [blockTarget, setBlockTarget] = useState(null); // { userId, name }
+  const [blockToast,  setBlockToast]  = useState(null);
+  const blockToastTimer = useRef(null);
+  useEffect(() => () => clearTimeout(blockToastTimer.current), []);
+  function handleBlocked(name) {
+    setBlockTarget(null);
+    refreshBlockedIds();
+    setBlockToast(`${name} is blocked.`);
+    clearTimeout(blockToastTimer.current);
+    blockToastTimer.current = setTimeout(() => setBlockToast(null), 2500);
+  }
 
   // UI
   // The context rail collapses behind the header's "N members" toggle at
@@ -2045,6 +2096,18 @@ export default function HiveChatPage() {
         />
       )}
 
+      {blockTarget && (
+        <BlockModal
+          userId={blockTarget.userId}
+          name={blockTarget.name}
+          onClose={() => setBlockTarget(null)}
+          onBlocked={() => handleBlocked(blockTarget.name)}
+        />
+      )}
+      {blockToast && (
+        <div className="sf-toast-wrap"><div className="sf-toast">{blockToast}</div></div>
+      )}
+
       {showCreateChannel && (
         <CreateChannelModal
           hiveId={hiveId}
@@ -2209,6 +2272,8 @@ export default function HiveChatPage() {
                   onEditCancel={cancelEdit}
                   onRetry={handleRetry}
                   onDiscard={handleDiscard}
+                  blockedIds={blockedIds}
+                  onBlock={setBlockTarget}
                 />
               </div>
             ))}

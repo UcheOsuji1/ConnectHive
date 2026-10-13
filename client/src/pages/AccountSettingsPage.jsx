@@ -1,9 +1,66 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
+import Avatar from '../components/Avatar.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import '../styles/account.css';
+import '../styles/safety.css';
+
+// R6 — Blocked people, with Unblock. Loads once on mount; an unblock just
+// removes that row locally rather than refetching the whole list.
+function BlockedPeopleCard() {
+  const [blocked, setBlocked] = useState(null); // null = loading
+  const [error, setError] = useState(null);
+  const [unblockingId, setUnblockingId] = useState(null);
+
+  useEffect(() => {
+    api.get('/api/blocks')
+      .then(d => setBlocked(d.blocked ?? []))
+      .catch(() => setError('Could not load your blocked people.'));
+  }, []);
+
+  async function handleUnblock(userId) {
+    setUnblockingId(userId);
+    try {
+      await api.delete(`/api/blocks/${userId}`);
+      setBlocked(prev => prev.filter(b => b.user_id !== userId));
+    } catch {
+      setError('Could not unblock this person. Please try again.');
+    } finally {
+      setUnblockingId(null);
+    }
+  }
+
+  return (
+    <div className="acct-card">
+      <div className="acct-section-label">Blocked people</div>
+      {error && <p className="acct-payments-error">{error}</p>}
+      {blocked === null ? (
+        <p className="acct-session-sub">Loading…</p>
+      ) : blocked.length === 0 ? (
+        <p className="acct-session-sub">You haven't blocked anyone.</p>
+      ) : (
+        <ul className="acct-blocked-list">
+          {blocked.map(b => (
+            <li key={b.user_id} className="acct-blocked-row">
+              <Avatar name={b.full_name} src={b.profile_photo_url} size={36} />
+              <span className="acct-blocked-name">{b.full_name ?? 'Member'}</span>
+              <button
+                type="button"
+                className="acct-btn acct-btn-outline"
+                onClick={() => handleUnblock(b.user_id)}
+                disabled={unblockingId === b.user_id}
+              >
+                {unblockingId === b.user_id ? 'Unblocking…' : 'Unblock'}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 // Delete account (Danger zone) — a blockers/solo-Hives check, then password
 // or Google re-auth if the session isn't fresh (last_login within 10 min).
@@ -377,6 +434,9 @@ export default function AccountSettingsPage() {
               </div>
             </dl>
           </div>
+
+          {/* ── 3a. Blocked people (R6) ── */}
+          <BlockedPeopleCard />
 
           {/* ── 3b. Payments ── */}
           <PaymentsCard />

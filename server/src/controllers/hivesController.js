@@ -13,6 +13,7 @@ import { evictUserFromHive } from '../realtime/socket.js';
 import { getCategoryConfig } from '../lib/categoryConfig.js';
 import { PLAN_END } from './eventsController.js';
 import { getAttendanceRate } from './checkinsController.js';
+import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -93,19 +94,22 @@ export const matchHives = async (req, res) => {
     );
 
     // 4. Score each candidate
+    const blockedIds = await blockedIdsFor(req.userId);
     const scored = [];
     for (const hive of candidates) {
       const { factors: purposeFactors, total: purposeTotal } =
         scorePurpose(enrichedProfile, hive, category || null);
 
-      // Load active members' profiles (excluding caller)
+      // Load active members' profiles (excluding caller and anyone blocked
+      // either way — a blocked pair must never see each other's cards here).
       const { rows: memberProfiles } = await query(
         `SELECT p.*
          FROM hive_members hm
          JOIN profiles p ON p.user_id = hm.user_id
          JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active'
-         WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2`,
-        [hive.hive_id, req.userId],
+         WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2
+           AND hm.user_id != ALL($3)`,
+        [hive.hive_id, req.userId, blockedIds],
       );
 
       // Pairwise scores via the shared 7-day cache (lib/pairScoreCache.js), so
@@ -351,12 +355,19 @@ export const getSuggestions = async (req, res) => {
       picks.push(pool.splice(i, 1)[0]);
     }
 
+    const blockedIds = await blockedIdsFor(req.userId);
     const results = [];
     for (const { hive, factors, total } of picks) {
+      // account_status = 'active' was missed in Prompt 68 Part D's sweep of
+      // this exact pattern elsewhere (matchHives, getHiveMembers, etc.) —
+      // fixed here alongside the block filter since it's the same query.
       const { rows: memberProfiles } = await query(
-        `SELECT p.* FROM hive_members hm JOIN profiles p ON p.user_id = hm.user_id
-         WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2`,
-        [hive.hive_id, req.userId],
+        `SELECT p.* FROM hive_members hm
+         JOIN profiles p ON p.user_id = hm.user_id
+         JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active'
+         WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2
+           AND hm.user_id != ALL($3)`,
+        [hive.hive_id, req.userId, blockedIds],
       );
       // Was scorePair() fresh on every request, which is exactly how this
       // surface drifted from Discovery and the profile page.
@@ -525,6 +536,7 @@ export const getHiveMembers = async (req, res) => {
        LEFT JOIN member_onboarding_progress mop
               ON mop.user_id = hm.user_id AND mop.hive_id = hm.hive_id
        WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND u.account_status = 'active'
+         AND u.user_id != ALL($2)
        GROUP BY hm.hive_id, hm.role, hm.joined_at, hm.onboarding_status,
                 u.user_id, u.presence_status,
                 p.full_name, p.profile_photo_url, p.bio, p.location, p.interests, p.skills,
@@ -532,7 +544,7 @@ export const getHiveMembers = async (req, res) => {
        ORDER BY
          CASE hm.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
          hm.joined_at ASC NULLS LAST`,
-      [req.params.id],
+      [req.params.id, await blockedIdsFor(req.userId)],
     );
     res.json({ members: rows });
   } catch (err) {
@@ -955,6 +967,19 @@ export const requestToJoin = async (req, res) => {
     // Full?
     if (hive.max_members && Number(hive.member_count) >= Number(hive.max_members)) {
       return res.status(400).json({ error: 'This Hive is full.' });
+    }
+
+    // A block between the requester and the owner stops this cold — never
+    // revealed as the reason, same generic message a full Hive doesn't get
+    // either (that one does say "full"; this one must not say "blocked").
+    // Covers all three paths below (simple-join, plain open, and the
+    // request flow) since it runs before any of them.
+    const { rows: [owner] } = await query(
+      `SELECT user_id FROM hive_members WHERE hive_id = $1 AND role = 'owner' AND membership_status = 'active'`,
+      [hiveId],
+    );
+    if (owner && await isBlockedEitherWay(owner.user_id, req.userId)) {
+      return res.status(403).json({ error: "You can't join this Hive." });
     }
 
     // Check onboarding settings before anything else

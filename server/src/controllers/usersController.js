@@ -2,6 +2,7 @@ import { query } from '../db/index.js';
 import { MIN_AGE } from '../lib/policy.js';
 import { flatten, norm } from '../lib/compatibility.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
+import { isBlockedEitherWay } from '../lib/blocks.js';
 
 export const getProfile = async (req, res) => {
   try {
@@ -212,6 +213,12 @@ export const getMemberProfile = async (req, res) => {
       return res.status(400).json({ error: 'Use /api/users/profile for your own profile.' });
     }
 
+    // 404, not 403 — a block is invisible in both directions, same as a
+    // pair chat is to a non-member.
+    if (await isBlockedEitherWay(viewerId, targetId)) {
+      return res.status(404).json({ error: 'Member not found.' });
+    }
+
     const { rows: [target] } = await query(
       `SELECT p.*, u.created_at AS joined_at, u.last_login
          FROM profiles p
@@ -329,6 +336,10 @@ export const getMemberActivity = async (req, res) => {
   try {
     const viewerId = req.userId;
     const targetId = req.params.id;
+
+    if (await isBlockedEitherWay(viewerId, targetId)) {
+      return res.status(404).json({ error: 'Member not found.' });
+    }
 
     // Mirrors _assertCanRead: member of the Hive, OR follower when the post
     // itself is visibility='public'. A post in a Hive the viewer cannot read

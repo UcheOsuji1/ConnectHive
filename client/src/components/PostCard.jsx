@@ -1,12 +1,16 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext.jsx';
 import { REACTIONS, reactionByKey } from '../lib/reactions';
 import ReactionPicker from './ReactionPicker';
 import EmojiPicker from './EmojiPicker';
 import FollowButton from './FollowButton';
 import Avatar from './Avatar.jsx';
+import BlockModal from './BlockModal.jsx';
+import useBlockedIds from '../hooks/useBlockedIds.js';
 import '../styles/post.css';
+import '../styles/safety.css';
 
 // ── Category config ───────────────────────────────────────────────────────────
 const CAT_CONFIG = {
@@ -142,6 +146,7 @@ function ReplyBox({ onSubmit, onCancel, submitting }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function PostCard({ post: initialPost, variant }) {
+  const { user } = useAuth();
   const [post, setPost] = useState(initialPost);
 
   // Reaction picker
@@ -168,6 +173,23 @@ export default function PostCard({ post: initialPost, variant }) {
   // Replies
   const [replyingTo,     setReplyingTo]     = useState(null);   // parent comment_id
   const [submittingReply,setSubmittingReply] = useState(null);  // parent comment_id being replied to
+
+  // Block (R4/R5) — same treatment as chat messages: a blocked author's post
+  // or comment collapses until the viewer chooses to reveal that one item.
+  const { blockedIds, refresh: refreshBlockedIds } = useBlockedIds();
+  const [postRevealed, setPostRevealed] = useState(false);
+  const [revealedComments, setRevealedComments] = useState(() => new Set());
+  const [blockTarget, setBlockTarget] = useState(null); // { userId, name }
+  const [blockToast,  setBlockToast]  = useState(null);
+  const blockToastTimer = useRef(null);
+  useEffect(() => () => clearTimeout(blockToastTimer.current), []);
+  function handleBlocked(name) {
+    setBlockTarget(null);
+    refreshBlockedIds();
+    setBlockToast(`${name} is blocked.`);
+    clearTimeout(blockToastTimer.current);
+    blockToastTimer.current = setTimeout(() => setBlockToast(null), 2500);
+  }
 
   // ── Reaction picker hover ───────────────────────────────────────────────────
   function onWrapEnter() {
@@ -402,6 +424,19 @@ export default function PostCard({ post: initialPost, variant }) {
     );
   }
 
+  // R5 — same collapse treatment as chat messages, for a regular post by a
+  // blocked author.
+  if (blockedIds.has(post.author_user_id) && !postRevealed) {
+    return (
+      <div className={`post-card${variant === 'light' ? ' post-card--light' : ''}`}>
+        <div className="sf-collapsed">
+          Post from someone you blocked
+          <button type="button" className="sf-collapsed-show" onClick={() => setPostRevealed(true)}>Show</button>
+        </div>
+      </div>
+    );
+  }
+
   const hasBanner = Boolean(post.banner_url);
   const followBtn = !post.is_member && (
     <FollowButton
@@ -448,6 +483,15 @@ export default function PostCard({ post: initialPost, variant }) {
         <Avatar name={post.author_name} src={post.author_photo} size={30} />
         <span className="post-author-name">{post.author_deleted ? 'Deleted member' : (post.author_name ?? 'Hive Member')}</span>
         <span className="post-time">{relativeTime(post.created_at)}</span>
+        {post.author_user_id && post.author_user_id !== user?.userId && !post.author_deleted && (
+          <button
+            type="button"
+            className="post-author-block-btn sf-menu-item--danger"
+            onClick={() => setBlockTarget({ userId: post.author_user_id, name: post.author_name?.split(' ')[0] ?? 'this member' })}
+          >
+            Block
+          </button>
+        )}
       </div>
 
       {/* ── Event badge ── */}
@@ -542,6 +586,17 @@ export default function PostCard({ post: initialPost, variant }) {
             </div>
           ) : (
             (comments ?? []).map(comment => (
+              comment.user_id && blockedIds.has(comment.user_id) && !revealedComments.has(comment.comment_id) ? (
+                <div key={comment.comment_id} className="post-comment-item">
+                  <div className="sf-collapsed" style={{ flex: 1 }}>
+                    Comment from someone you blocked
+                    <button type="button" className="sf-collapsed-show"
+                      onClick={() => setRevealedComments(prev => new Set(prev).add(comment.comment_id))}>
+                      Show
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div key={comment.comment_id} className="post-comment-item">
                 <Avatar name={comment.full_name} src={comment.profile_photo_url} size={30} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -555,6 +610,15 @@ export default function PostCard({ post: initialPost, variant }) {
                           onClick={() => handleDeleteComment(comment.comment_id, null)}
                         >
                           Delete
+                        </button>
+                      )}
+                      {!comment.is_mine && comment.user_id && (
+                        <button
+                          type="button"
+                          className="post-comment-delete sf-menu-item--danger"
+                          onClick={() => setBlockTarget({ userId: comment.user_id, name: comment.full_name?.split(' ')[0] ?? 'this member' })}
+                        >
+                          Block
                         </button>
                       )}
                     </div>
@@ -575,6 +639,18 @@ export default function PostCard({ post: initialPost, variant }) {
 
                   {/* Replies */}
                   {(comment.replies ?? []).map(reply => (
+                    reply.user_id && blockedIds.has(reply.user_id) && !revealedComments.has(reply.comment_id) ? (
+                      <div key={reply.comment_id} className="post-reply-indent">
+                        <div className="post-reply-thread-line" />
+                        <div className="sf-collapsed" style={{ flex: 1 }}>
+                          Comment from someone you blocked
+                          <button type="button" className="sf-collapsed-show"
+                            onClick={() => setRevealedComments(prev => new Set(prev).add(reply.comment_id))}>
+                            Show
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
                     <div key={reply.comment_id} className="post-reply-indent">
                       <div className="post-reply-thread-line" />
                       <Avatar name={reply.full_name} src={reply.profile_photo_url} size={24} />
@@ -597,6 +673,7 @@ export default function PostCard({ post: initialPost, variant }) {
                         </div>
                       </div>
                     </div>
+                    )
                   ))}
 
                   {/* Inline reply box */}
@@ -609,6 +686,7 @@ export default function PostCard({ post: initialPost, variant }) {
                   )}
                 </div>
               </div>
+              )
             ))
           )}
 
@@ -678,6 +756,18 @@ export default function PostCard({ post: initialPost, variant }) {
             </div>
           </div>
         </div>
+      )}
+
+      {blockTarget && (
+        <BlockModal
+          userId={blockTarget.userId}
+          name={blockTarget.name}
+          onClose={() => setBlockTarget(null)}
+          onBlocked={() => handleBlocked(blockTarget.name)}
+        />
+      )}
+      {blockToast && (
+        <div className="sf-toast-wrap"><div className="sf-toast">{blockToast}</div></div>
       )}
     </div>
   );

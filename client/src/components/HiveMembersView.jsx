@@ -4,7 +4,9 @@ import Avatar from './Avatar.jsx';
 import { Icon } from './home/HomeBits.jsx';
 import { api } from '../lib/api.js';
 import { socket, joinHive, leaveHive, onHiveJoinAck } from '../lib/socket.js';
+import BlockModal from './BlockModal.jsx';
 import '../styles/hive-members.css';
+import '../styles/safety.css';
 
 const SKILL_CATEGORIES = new Set(['Professional Networking', 'Project Collaboration']);
 const CHIP_CAP = 4;
@@ -146,7 +148,7 @@ function canManage(viewerRole, viewerId, member) {
   return out;
 }
 
-function CardMenu({ member, actions, onPromote, onDemote, onRemove, onNotify }) {
+function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNotify, onBlock }) {
   const [open, setOpen]   = useState(false);
   const [mode, setMode]   = useState(null); // null | 'confirm-remove' | 'notify'
   const [text, setText]   = useState('');
@@ -160,7 +162,10 @@ function CardMenu({ member, actions, onPromote, onDemote, onRemove, onNotify }) 
     return () => document.removeEventListener('mousedown', h);
   }, [open]);
 
-  if (!actions.promote && !actions.demote && !actions.remove && !actions.notify) return null;
+  const hasManageActions = actions.promote || actions.demote || actions.remove || actions.notify;
+  // Block is a personal safety action, available to anyone viewing someone
+  // else's card — not gated by the owner/admin management permissions above.
+  if (!hasManageActions && (isMe || !onBlock)) return null;
 
   function trigger(e) {
     e.preventDefault();
@@ -199,6 +204,15 @@ function CardMenu({ member, actions, onPromote, onDemote, onRemove, onNotify }) 
           {actions.remove && (
             <button type="button" className="hmv2-cardmenu-item hmv2-cardmenu-item--danger"
               onClick={() => setMode('confirm-remove')}>Remove from Hive</button>
+          )}
+          {!isMe && onBlock && (
+            <>
+              {hasManageActions && <div className="sf-menu-divider" />}
+              <button type="button" className="hmv2-cardmenu-item sf-menu-item--danger"
+                onClick={() => { setOpen(false); onBlock(member); }}>
+                Block {member.full_name?.split(' ')[0] ?? 'this member'}
+              </button>
+            </>
           )}
         </div>
       )}
@@ -246,7 +260,7 @@ function PresenceTag({ status }) {
 }
 
 // ── Founder card ───────────────────────────────────────────────────────────────
-function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps, status, onPromote, onDemote, onRemove, onNotify }) {
+function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps, status, onPromote, onDemote, onRemove, onNotify, onBlock }) {
   const isMe = member.user_id === viewerId;
   const bioLines = (member.bio ?? '').split('\n').map(s => s.trim()).filter(Boolean);
   const subtitle = bioLines.length > 1 ? bioLines[0] : null;
@@ -277,7 +291,7 @@ function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps,
             {status && <PresenceTag status={status} />}
           </div>
         </div>
-        <CardMenu member={member} actions={actions} onPromote={onPromote} onDemote={onDemote} onRemove={onRemove} onNotify={onNotify} />
+        <CardMenu member={member} actions={actions} isMe={isMe} onPromote={onPromote} onDemote={onDemote} onRemove={onRemove} onNotify={onNotify} onBlock={onBlock} />
       </div>
 
       {subtitle && <p className="hmv2-founder-subtitle">{subtitle}</p>}
@@ -318,7 +332,7 @@ function OpsInfo({ member }) {
 }
 
 // ── Member card ──────────────────────────────────────────────────────────────
-function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills, canSeeOps, status, onPromote, onDemote, onRemove, onNotify }) {
+function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills, canSeeOps, status, onPromote, onDemote, onRemove, onNotify, onBlock }) {
   const isMe = member.user_id === viewerId;
   const interestChips = dedupe(flattenRaw(member.interests));
   const skillChips    = showSkills ? dedupe(flattenRaw(member.skills)) : [];
@@ -337,7 +351,7 @@ function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills,
                   style={{ background: presenceColor(status) }} />
           )}
         </div>
-        <CardMenu member={member} actions={actions} onPromote={onPromote} onDemote={onDemote} onRemove={onRemove} onNotify={onNotify} />
+        <CardMenu member={member} actions={actions} isMe={isMe} onPromote={onPromote} onDemote={onDemote} onRemove={onRemove} onNotify={onNotify} onBlock={onBlock} />
       </div>
 
       <div className="hmv2-member-namerow">
@@ -479,6 +493,7 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
   const [search,  setSearch]  = useState('');
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [blockTarget, setBlockTarget] = useState(null);
 
   // Live presence — identical approach to Hive Home: shared socket singleton,
   // reference-counted join, rejoin handled centrally in lib/socket.js.
@@ -715,6 +730,7 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
                     onDemote={m2 => handleRoleChange(m2, 'member')}
                     onRemove={handleRemove}
                     onNotify={handleNotify}
+                    onBlock={setBlockTarget}
                   />
                 ))}
               </div>
@@ -739,12 +755,26 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
                     onDemote={m2 => handleRoleChange(m2, 'member')}
                     onRemove={handleRemove}
                     onNotify={handleNotify}
+                    onBlock={setBlockTarget}
                   />
                 ))}
               </div>
             </section>
           )}
         </>
+      )}
+
+      {blockTarget && (
+        <BlockModal
+          userId={blockTarget.user_id}
+          name={blockTarget.full_name?.split(' ')[0] ?? 'this member'}
+          onClose={() => setBlockTarget(null)}
+          onBlocked={() => {
+            setMembers(prev => prev.filter(m => m.user_id !== blockTarget.user_id));
+            flash(`${blockTarget.full_name?.split(' ')[0] ?? 'Member'} is blocked.`);
+            setBlockTarget(null);
+          }}
+        />
       )}
 
     </div>

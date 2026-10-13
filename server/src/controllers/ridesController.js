@@ -5,6 +5,7 @@ import { requireMembership, requireCanPost } from '../lib/hiveMembership.js';
 import { createPairChannel } from '../lib/hiveChannels.js';
 import { createNotification } from './notificationsController.js';
 import { getIO } from '../realtime/socket.js';
+import { isBlockedEitherWay } from '../lib/blocks.js';
 
 function broadcast(hiveId, postId, payload) {
   try { getIO()?.to(`hive:${hiveId}`).emit('rides_updated', { hive_id: hiveId, post_id: postId, ...payload }); }
@@ -353,9 +354,26 @@ export const confirmSeat = async (req, res) => {
       channelId = locked.channel_id;
       if (!channelId) {
         channelId = await createPairChannel(client, hiveId, [offer.driver_id, riderId], 'ride');
+        if (!channelId) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'This rider can’t be confirmed for this offer.' });
+        }
         await client.query(`UPDATE plan_ride_offers SET channel_id = $1 WHERE offer_id = $2`, [channelId, offer.offer_id]);
         justCreatedChannel = true;
       } else {
+        // A ride channel can grow past 2 people — createPairChannel's own
+        // guard only ever sees the first two. Confirming a new rider onto an
+        // already-existing group channel has to check them against every
+        // member already in it, not just the driver.
+        const { rows: existingMembers } = await client.query(
+          `SELECT user_id FROM hive_channel_members WHERE channel_id = $1`, [channelId],
+        );
+        for (const m of existingMembers) {
+          if (await isBlockedEitherWay(riderId, m.user_id)) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: 'This rider can’t be confirmed for this offer.' });
+          }
+        }
         await client.query(
           `INSERT INTO hive_channel_members (channel_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`,
           [channelId, riderId],

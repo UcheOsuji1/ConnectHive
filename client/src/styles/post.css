@@ -96,6 +96,20 @@
   flex-shrink: 0;
 }
 
+.post-author-block-btn {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  opacity: 0.75;
+}
+.post-author-block-btn:hover { opacity: 1; background: rgba(185, 54, 54, 0.12); }
+
 /* Post type badge */
 .post-event-badge {
   display: inline-flex;

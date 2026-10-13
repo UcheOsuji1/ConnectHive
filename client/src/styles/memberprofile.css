@@ -194,6 +194,44 @@
   font-family: 'DM Sans', sans-serif; font-size: .8rem; color: #3a3228; margin: 0;
 }
 
+/* ── Profile ⋯ menu (R4) ──────────────────────────────────────────────────── */
+.mp-menu { position: absolute; top: 18px; right: 18px; z-index: 5; }
+.mp-menu-btn {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  border: 1px solid #e9dfcf;
+  background: #fffdf8;
+  color: #665e53;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+.mp-menu-btn:hover { background: #f5f0e8; color: #17120a; }
+.mp-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 220;
+  background: #fffdf8;
+  border: 1.5px solid #e9dfcf;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(54,42,25,0.14);
+  min-width: 190px;
+  overflow: hidden;
+}
+.mp-menu-item {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 0.83rem;
+  font-family: 'DM Sans', sans-serif;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.mp-menu-item:hover { background: #f5f0e8; }
+
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 @media (max-width: 1000px) {
   .mp-grid { grid-template-columns: 1fr; }

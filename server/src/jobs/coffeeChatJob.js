@@ -121,6 +121,16 @@ export async function runCoffeeChatJob() {
       ? await query(`SELECT user_ids FROM hive_coffee_pairs WHERE round_id = ANY($1)`, [recentRounds.map(r => r.round_id)])
       : { rows: [] };
     const excluded = recentDyads(recentPairRows.map(r => r.user_ids));
+    // Folding blocked pairs into the same "don't match these two" set the
+    // recency rule already uses — the effect wanted (never pair them) is
+    // identical, and createPairChannel's own check below is the backstop
+    // if a blocked pair ever slips past this anyway.
+    const { rows: blockRows } = await query(
+      `SELECT blocker_id, blocked_id FROM user_blocks
+        WHERE blocker_id = ANY($1) AND blocked_id = ANY($1)`,
+      [candidateIds],
+    );
+    for (const b of blockRows) excluded.add(dyadKey(b.blocker_id, b.blocked_id));
 
     let priorityId = null;
     if (recentRounds.length) {
@@ -150,7 +160,7 @@ export async function runCoffeeChatJob() {
 
     if (leftover.length === 1) {
       if (allowTrio && groups.length > 0) {
-        const idx = bestTrioHost(groups, leftover[0], scores);
+        const idx = bestTrioHost(groups, leftover[0], scores, excluded);
         if (idx >= 0) groups[idx].push(leftover[0]);
         else groups.push([leftover[0]]);
       } else {
@@ -172,6 +182,16 @@ export async function runCoffeeChatJob() {
       try {
         await client.query('BEGIN');
         channelId = await createPairChannel(client, hiveId, group, 'coffee_chat');
+        if (!channelId) {
+          // The matching algorithm is already supposed to steer around a
+          // blocked pair via `excluded` below — this is the defense-in-depth
+          // backstop catching it anyway. Whoever's in this group just sits
+          // out the round rather than getting paired with someone they or
+          // their match has blocked.
+          await client.query('ROLLBACK');
+          console.warn(`[coffeeChatJob] skipped group ${JSON.stringify(group)} in hive ${hiveId} — blocked pair`);
+          continue;
+        }
         await client.query(
           `INSERT INTO hive_coffee_pairs (round_id, user_ids, channel_id) VALUES ($1,$2,$3)`,
           [roundId, group, channelId],

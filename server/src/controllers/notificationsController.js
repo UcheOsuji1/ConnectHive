@@ -1,4 +1,5 @@
 import { query } from '../db/index.js';
+import { isBlockedEitherWay } from '../lib/blocks.js';
 
 // ── Noise control (spec §14) ───────────────────────────────────────────────────
 // No row for (hive, user) = every default below applies. A column left NULL
@@ -41,6 +42,12 @@ export async function createNotification({
   hiveId = null, actorUserId = null, link = null,
   category = 'system',
 }) {
+  // The one place this is checked — every createNotification call with an
+  // actor (mentions, reactions, replies, acceptances, everything) gets this
+  // for free. Checked ahead of the category gate so it holds even for
+  // 'system' notifications, which that gate always lets through.
+  if (actorUserId && await isBlockedEitherWay(userId, actorUserId)) return null;
+
   const allowed = await shouldNotify(userId, hiveId, category);
   if (!allowed) return null;
 

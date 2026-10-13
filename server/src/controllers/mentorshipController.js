@@ -5,6 +5,7 @@ import { requireMembership } from '../lib/hiveMembership.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
 import { createPairChannel } from '../lib/hiveChannels.js';
 import { createNotification } from './notificationsController.js';
+import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
 
 const MAX_PENDING_REQUESTS = 3;
 
@@ -120,11 +121,14 @@ export const listMentors = async (req, res) => {
       [hiveId, req.userId],
     );
 
+    const blockedIds = new Set(await blockedIdsFor(req.userId));
+
     const { rows: myProfileRow } = await query(`SELECT * FROM profiles WHERE user_id = $1`, [req.userId]);
     const myFullProfile = myProfileRow[0];
 
     const shaped = [];
     for (const m of mentors) {
+      if (blockedIds.has(m.user_id)) continue;
       const openSpots = await openSpotsFor(hiveId, m.user_id, m.capacity);
       if (openSpots <= 0) continue;
       const overlap = m.topics.filter(t => myTopics.includes(t.toLowerCase()));
@@ -164,6 +168,11 @@ export const createRequest = async (req, res) => {
       return res.status(400).json({ error: 'Message must be 1-500 characters.' });
     }
     if (mentorId === req.userId) return res.status(400).json({ error: 'You can’t request yourself.' });
+    // Generic message, same as a Hive owner's block on a join request —
+    // never reveal that a block is the reason.
+    if (await isBlockedEitherWay(req.userId, mentorId)) {
+      return res.status(400).json({ error: 'This person isn’t accepting mentorship requests right now.' });
+    }
 
     const { rows: [mentor] } = await query(
       `SELECT * FROM hive_mentor_profiles WHERE hive_id = $1 AND user_id = $2`, [hiveId, mentorId]);
@@ -303,6 +312,10 @@ export const acceptRequest = async (req, res) => {
       }
 
       channelId = await createPairChannel(client, hiveId, [existing.mentee_id, existing.mentor_id], 'mentorship');
+      if (!channelId) {
+        await client.query('ROLLBACK');
+        return res.status(403).json({ error: 'This request can no longer be accepted.' });
+      }
       await client.query(
         `UPDATE hive_mentor_requests SET status = 'accepted', channel_id = $1, decided_at = NOW() WHERE request_id = $2`,
         [channelId, existing.request_id],

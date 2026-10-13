@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
 import HoneycombBg from '../components/HoneycombBg.jsx';
+import BlockModal from '../components/BlockModal.jsx';
 import { api } from '../lib/api.js';
 import '../styles/profile.css';
 import '../styles/memberprofile.css';
+import '../styles/safety.css';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -169,13 +171,54 @@ function CompatibilityCard({ compat, name }) {
   );
 }
 
+// ── Profile ⋯ menu (R4) ─────────────────────────────────────────────────────
+function ProfileMenu({ userId, name, onBlocked }) {
+  const [open, setOpen]           = useState(false);
+  const [showBlock, setShowBlock] = useState(false);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function h(e) { if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false); }
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  return (
+    <div className="mp-menu" ref={wrapRef}>
+      <button type="button" className="mp-menu-btn" onClick={() => setOpen(o => !o)} aria-label="Profile actions">⋯</button>
+      {open && (
+        <div className="mp-menu-dropdown">
+          <button
+            type="button"
+            className="mp-menu-item sf-menu-item--danger"
+            onClick={() => { setOpen(false); setShowBlock(true); }}
+          >
+            Block {name}
+          </button>
+        </div>
+      )}
+      {showBlock && (
+        <BlockModal
+          userId={userId}
+          name={name}
+          onClose={() => setShowBlock(false)}
+          onBlocked={() => { setShowBlock(false); onBlocked(); }}
+        />
+      )}
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function MemberProfilePage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [data,     setData]     = useState(undefined);
   const [activity, setActivity] = useState([]);
   const [error,    setError]    = useState(null);
+  const [blocked,  setBlocked]  = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -211,6 +254,23 @@ export default function MemberProfilePage() {
     return (<><Navbar /><div className="mp-state"><p>Loading…</p></div></>);
   }
 
+  function handleBlocked() {
+    setBlocked(true);
+    // The profile 404s for both of us from here on — nothing left to show.
+    setTimeout(() => navigate('/home'), 1400);
+  }
+
+  if (blocked) {
+    const blockedName = data?.profile?.full_name?.split(' ')[0] ?? 'They';
+    return (
+      <>
+        <Navbar />
+        <div className="mp-state"><p>Blocked. Taking you back…</p></div>
+        <div className="sf-toast-wrap"><div className="sf-toast">{blockedName} is blocked.</div></div>
+      </>
+    );
+  }
+
   const { profile: p, compatibility, sharedHives, hiveHistory } = data;
   const interests = arr(p.interests);
   const skills    = arr(p.skills);
@@ -236,6 +296,7 @@ export default function MemberProfilePage() {
               <Avatar name={p.full_name} src={p.profile_photo_url} size={130} className="prof-avatar" />
             </div>
             <div className="prof-hero-body">
+              <ProfileMenu userId={id} name={firstName} onBlocked={handleBlocked} />
               <h1 className="prof-name">{p.full_name ?? 'Member'}</h1>
               <div className="mp-meta">
                 {p.location && <span><PinIcon /> {p.location}</span>}

@@ -3,6 +3,7 @@ import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
 import { getDefaultChannelId, requireChannelAccess, loadChannel, isPairMember } from '../lib/hiveChannels.js';
 import { isEndedMentorshipChannel } from './mentorshipController.js';
+import { isPairChannelBlocked } from '../lib/blocks.js';
 import { getIO } from '../realtime/socket.js';
 import { createNotification } from './notificationsController.js';
 import { PLAN_SELECT, shapePlan } from './eventsController.js';
@@ -331,6 +332,9 @@ export const createMessage = async (req, res) => {
     // new messages — the one place that rule is enforced.
     if (channelKind === 'pair' && await isEndedMentorshipChannel(channelId)) {
       return res.status(400).json({ error: 'This mentorship has ended — the chat is read-only.' });
+    }
+    if (channelKind === 'pair' && await isPairChannelBlocked(channelId)) {
+      return res.status(403).json({ error: "You can't send messages here." });
     }
 
     // Reply target must be in THIS SAME CHANNEL, not merely the same Hive

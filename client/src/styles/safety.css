@@ -1,0 +1,255 @@
+/* ── Report & Block (Prompt 69) — shared across chat, profiles, member cards,
+   posts and Account Settings, so these live in one file rather than being
+   redefined per page. Same ivory/gold/Cormorant Garamond/DM Sans recipe as
+   hive-chat.css's .hc-modal-* and hive-members.css's .hmv2-cardmenu-*. ── */
+
+.sf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 20, 8, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.sf-modal {
+  background: #fffdf8;
+  border: 1px solid #e9dfcf;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(26, 20, 8, 0.18);
+}
+
+.sf-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #e9dfcf;
+}
+.sf-modal-header h2 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #2d2416;
+  margin: 0;
+}
+.sf-modal-close {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #685e54;
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border-radius: 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.sf-modal-close:hover { background: #ede7d9; color: #2d2416; }
+
+.sf-modal-body { padding: 16px 20px; }
+.sf-modal-body p { margin: 0 0 10px; font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.88rem; color: #3a3028; line-height: 1.55; }
+.sf-modal-body p:last-child { margin-bottom: 0; }
+
+.sf-modal-facts {
+  margin: 0 0 4px;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: #3a3028;
+  line-height: 1.5;
+}
+
+.sf-modal-note {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: #f7f1e3;
+  border: 1px solid #e9dfcf;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: #5a4e3c;
+}
+.sf-modal-note--urgent {
+  background: #fef2f2;
+  border-color: #f5c9c9;
+  color: #8a2b2b;
+}
+
+.sf-modal-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #7a6e5e;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}
+.sf-modal-label:first-child { margin-top: 0; }
+
+.sf-modal-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sf-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid #e3dac7;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+.sf-reason:hover { border-color: #c49a28; }
+.sf-reason--active {
+  border-color: #c49a28;
+  background: rgba(196, 154, 40, 0.08);
+}
+.sf-reason input[type="radio"] { margin-top: 2px; accent-color: #c49a28; }
+.sf-reason-text { display: flex; flex-direction: column; gap: 2px; }
+.sf-reason-label { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.86rem; font-weight: 600; color: #2d2416; }
+.sf-reason-sub { font-family: 'DM Sans', system-ui, sans-serif; font-size: 0.76rem; color: #7a6e5e; }
+
+.sf-modal-textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid #d9cfbf;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  color: #2d2416;
+  background: #fff;
+  outline: none;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 64px;
+  transition: border-color 0.15s;
+}
+.sf-modal-textarea:focus { border-color: #c49a28; }
+.sf-modal-charcount { text-align: right; font-size: 0.72rem; color: #9a8c72; margin-top: 4px; }
+
+.sf-modal-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.84rem;
+  color: #3a3028;
+}
+.sf-modal-check input { accent-color: #c49a28; }
+
+.sf-modal-error {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  color: #c0512a;
+}
+
+.sf-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid #e9dfcf;
+}
+.sf-modal-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.12s;
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+.sf-modal-btn--cancel {
+  background: none;
+  border-color: #d9cfbf;
+  color: #7a6e5e;
+}
+.sf-modal-btn--cancel:hover { background: #f5f0e8; }
+.sf-modal-btn--primary {
+  background: #c49a28;
+  color: #fff;
+}
+.sf-modal-btn--primary:hover:not(:disabled) { background: #b08a20; }
+.sf-modal-btn--danger {
+  background: #b93636;
+  color: #fff;
+}
+.sf-modal-btn--danger:hover:not(:disabled) { background: #9c2b2b; }
+.sf-modal-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* ── Menu items (Report/Block appended to an existing ⋯ menu) ──────────── */
+.sf-menu-divider { height: 1px; background: #f0ebe0; margin: 4px 0; }
+.sf-menu-item--danger { color: #b93636 !important; }
+.sf-menu-item--danger:hover { background: #fef2f2 !important; }
+
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+.sf-toast-wrap {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  pointer-events: none;
+}
+.sf-toast {
+  padding: 10px 18px;
+  background: #17120a;
+  color: #f3ecdd;
+  border-radius: 10px;
+  font-size: 0.84rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+}
+
+/* ── Collapsed "blocked" row (R5) ────────────────────────────────────────── */
+.sf-collapsed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin: 4px 0;
+  border: 1px dashed #d9cfbf;
+  border-radius: 8px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.82rem;
+  color: #8a8070;
+}
+.sf-collapsed-show {
+  background: none;
+  border: none;
+  color: #c49a28;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
+.sf-collapsed-show:hover { text-decoration: underline; }
+
+/* ── Hidden content placeholder (O3/O2) ─────────────────────────────────── */
+.sf-hidden-placeholder {
+  padding: 10px 14px;
+  border: 1px dashed #d9cfbf;
+  border-radius: 8px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: #8a8070;
+}
+
+@media (max-width: 480px) {
+  .sf-modal { max-width: 100%; }
+}
