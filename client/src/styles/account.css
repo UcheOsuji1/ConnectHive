@@ -210,6 +210,30 @@
   color: var(--text-muted, #6b6057);
 }
 
+/* ── Email verification row ───────────────────────────────────── */
+.acct-verified-badge,
+.acct-unverified-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.acct-verified-badge {
+  background: rgba(26, 122, 68, 0.1);
+  border: 1px solid rgba(26, 122, 68, 0.3);
+  color: #1a7a44;
+}
+.acct-unverified-badge {
+  background: rgba(196, 154, 40, 0.1);
+  border: 1px solid rgba(196, 154, 40, 0.35);
+  color: #8a6510;
+}
+
 /* ── Delete account panel ─────────────────────────────────────── */
 .acct-session-row--stacked { flex-direction: column; align-items: stretch; }
 .acct-delete-panel {

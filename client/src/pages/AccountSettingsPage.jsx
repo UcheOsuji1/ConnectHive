@@ -228,6 +228,47 @@ function PaymentsCard() {
   );
 }
 
+function EmailVerificationRow({ verified, email }) {
+  const [sending, setSending] = useState(false);
+  const [sent,    setSent]    = useState(false);
+  const [error,   setError]   = useState(null);
+
+  async function handleResend() {
+    if (sending || sent) return;
+    setSending(true);
+    setError(null);
+    try {
+      await api.post('/api/auth/resend-verification');
+      setSent(true);
+    } catch (err) {
+      setError(err.data?.error ?? 'Could not send verification email. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  return (
+    <div className="acct-row">
+      <dt className="acct-row-label">Email verification</dt>
+      <dd className="acct-row-value acct-row-action">
+        <span className={verified ? 'acct-verified-badge' : 'acct-unverified-badge'}>
+          {verified ? 'Verified' : 'Not verified'}
+        </span>
+        {!verified && (
+          sent ? (
+            <span className="acct-payments-success">Sent — check {email || 'your inbox'}.</span>
+          ) : (
+            <button className="acct-btn acct-btn-outline" onClick={handleResend} disabled={sending}>
+              {sending ? 'Sending…' : 'Resend link'}
+            </button>
+          )
+        )}
+        {error && <span className="acct-payments-error" style={{ margin: 0 }}>{error}</span>}
+      </dd>
+    </div>
+  );
+}
+
 export default function AccountSettingsPage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -262,6 +303,7 @@ export default function AccountSettingsPage() {
                 <dt className="acct-row-label">Email</dt>
                 <dd className="acct-row-value">{user?.email || '—'}</dd>
               </div>
+              <EmailVerificationRow verified={user?.emailVerified} email={user?.email} />
               <div className="acct-row">
                 <dt className="acct-row-label">Member ID</dt>
                 <dd className="acct-row-value acct-member-id">{user?.memberId || '—'}</dd>
