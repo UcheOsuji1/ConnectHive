@@ -103,6 +103,7 @@ export const matchHives = async (req, res) => {
         `SELECT p.*
          FROM hive_members hm
          JOIN profiles p ON p.user_id = hm.user_id
+         JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active'
          WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2`,
         [hive.hive_id, req.userId],
       );
@@ -523,7 +524,7 @@ export const getHiveMembers = async (req, res) => {
               ON hls.user_id = hm.user_id AND hls.hive_id = hm.hive_id
        LEFT JOIN member_onboarding_progress mop
               ON mop.user_id = hm.user_id AND mop.hive_id = hm.hive_id
-       WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
+       WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND u.account_status = 'active'
        GROUP BY hm.hive_id, hm.role, hm.joined_at, hm.onboarding_status,
                 u.user_id, u.presence_status,
                 p.full_name, p.profile_photo_url, p.bio, p.location, p.interests, p.skills,
@@ -1115,7 +1116,7 @@ export const getHiveRequests = async (req, res) => {
          (uc.user_b = $2 AND uc.user_a = jr.user_id)
        )
        LEFT JOIN compatibility_scores cs ON (cs.user_id = jr.user_id AND cs.hive_id = $1)
-       WHERE jr.hive_id = $1 AND jr.status = 'pending'
+       WHERE jr.hive_id = $1 AND jr.status = 'pending' AND (u.account_status IS NULL OR u.account_status = 'active')
        ORDER BY cs.total_score DESC NULLS LAST, jr.requested_at ASC`,
       [hiveId, req.userId],
     );

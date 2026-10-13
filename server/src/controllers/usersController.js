@@ -216,7 +216,7 @@ export const getMemberProfile = async (req, res) => {
       `SELECT p.*, u.created_at AS joined_at, u.last_login
          FROM profiles p
          JOIN users u ON u.user_id = p.user_id
-        WHERE p.user_id = $1`,
+        WHERE p.user_id = $1 AND u.account_status = 'active'`,
       [targetId],
     );
     if (!target) return res.status(404).json({ error: 'Member not found.' });

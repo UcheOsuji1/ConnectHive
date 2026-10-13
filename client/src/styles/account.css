@@ -210,6 +210,52 @@
   color: var(--text-muted, #6b6057);
 }
 
+/* ── Delete account panel ─────────────────────────────────────── */
+.acct-session-row--stacked { flex-direction: column; align-items: stretch; }
+.acct-delete-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(239, 68, 68, 0.15);
+}
+.acct-delete-hint {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.84rem;
+  color: var(--text-muted, #6b6057);
+  line-height: 1.5;
+}
+.acct-delete-hint--warn {
+  color: #8a3a18;
+  background: #fdf2ee;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.acct-delete-error { margin: 0; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: #dc2626; }
+.acct-delete-blocker-list {
+  margin: 0;
+  padding-left: 18px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: var(--charcoal, #1e1b18);
+  line-height: 1.6;
+}
+.acct-delete-password {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.86rem;
+  border: 1px solid #ebe1cd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  min-height: 40px;
+  background: #fff;
+  width: 100%;
+  max-width: 320px;
+}
+.acct-delete-password:focus-visible { outline: 2px solid #c49a28; outline-offset: 1px; }
+.acct-delete-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
 /* ── Payments (Prompt 62 Part 1) ──────────────────────────────── */
 .acct-payments-sub {
   font-family: 'DM Sans', sans-serif; font-size: 0.82rem; color: var(--text-muted, #6b6057);

@@ -211,3 +211,56 @@ export async function sendPasswordChangedEmail(to) {
     text,
   });
 }
+
+// ── Account deletion email ─────────────────────────────────────────────────────
+
+export async function sendAccountDeletionEmail(to, scheduledFor) {
+  const dateStr = new Date(scheduledFor).toLocaleDateString('en-US', {
+    month: 'long', day: 'numeric', year: 'numeric',
+  });
+
+  const html = _htmlWrap(`
+    <tr>
+      <td style="padding:36px 40px 36px;">
+        <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                   font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+          Your account is scheduled for deletion
+        </h1>
+        <p style="margin:0 0 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">
+          We received a request to delete your TrueHive account. It will be
+          permanently deleted on <strong>${dateStr}</strong>.
+        </p>
+        <p style="margin:0 0 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">
+          Changed your mind? Simply log back in before then and the deletion
+          is cancelled automatically — your account and any Hives you solely
+          owned come back exactly as they were.
+        </p>
+        <p style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:14px;color:#7a6a4a;line-height:1.6;">
+          If you didn't request this, log in now to cancel it, or contact us
+          at <a href="mailto:hello@truehive.app" style="color:#C9A24A;text-decoration:none;">hello@truehive.app</a>.
+        </p>
+      </td>
+    </tr>`);
+
+  const text =
+    `Your TrueHive account is scheduled for deletion\n\n` +
+    `We received a request to delete your TrueHive account. It will be ` +
+    `permanently deleted on ${dateStr}.\n\n` +
+    `Changed your mind? Simply log back in before then and the deletion is ` +
+    `cancelled automatically — your account and any Hives you solely owned ` +
+    `come back exactly as they were.\n\n` +
+    `If you didn't request this, log in now to cancel it, or contact us at ` +
+    `hello@truehive.app.\n\n` +
+    `— TrueHive (${CLIENT_URL})`;
+
+  await _getResend()?.emails.send({
+    from: FROM,
+    to,
+    subject: 'Your TrueHive account is scheduled for deletion',
+    html,
+    text,
+  });
+}

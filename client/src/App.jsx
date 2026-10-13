@@ -53,6 +53,7 @@ import PlanDetailPage from './pages/hive/PlanDetailPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
+import GoodbyePage from './pages/GoodbyePage';
 
 import AboutPage from './pages/marketing/AboutPage';
 import MissionPage from './pages/marketing/MissionPage';
@@ -74,6 +75,7 @@ export default function App() {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
+      <Route path="/goodbye" element={<GoodbyePage />} />
 
       {/* Marketing routes */}
       <Route element={<MarketingLayout />}>

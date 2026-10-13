@@ -2,11 +2,12 @@ import bcrypt       from 'bcryptjs';
 import jwt           from 'jsonwebtoken';
 import crypto        from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
-import { query }     from '../db/index.js';
+import { query, getClient } from '../db/index.js';
 import {
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendPasswordChangedEmail,
+  sendAccountDeletionEmail,
 } from '../lib/email.js';
 import { invalidateTokenVersion } from '../middleware/auth.js';
 import { disconnectUserSockets }  from '../realtime/socket.js';
@@ -64,6 +65,44 @@ function generateToken() {
 
 function hashToken(rawToken) {
   return crypto.createHash('sha256').update(rawToken).digest('hex');
+}
+
+// A login while account_status = 'pending_deletion' cancels the deletion —
+// the account and any solo-owned Hives it soft-deleted come back. Only Hives
+// deleted by THIS deletion event are restored (deleted_at >= the moment this
+// deletion was requested), so a Hive the user deleted independently via
+// deleteHive, before ever requesting account deletion, is never touched.
+async function _cancelPendingDeletionIfAny(userId) {
+  const { rows: [u] } = await query(
+    `SELECT account_status, deletion_requested_at FROM users WHERE user_id = $1`,
+    [userId],
+  );
+  if (!u || u.account_status !== 'pending_deletion') return;
+
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `UPDATE hives
+          SET hive_status = 'active', deleted_at = NULL, deleted_by = NULL, purge_after = NULL, updated_at = NOW()
+        WHERE deleted_by = $1 AND hive_status = 'deleted' AND deleted_at >= $2`,
+      [userId, u.deletion_requested_at],
+    );
+    await client.query(
+      `UPDATE users
+          SET account_status = 'active', deletion_requested_at = NULL, deletion_scheduled_for = NULL
+        WHERE user_id = $1`,
+      [userId],
+    );
+    await client.query('COMMIT');
+    console.log(`[auth] login cancelled pending deletion for user ${userId} — account and any solo-owned Hives restored.`);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[auth/_cancelPendingDeletionIfAny]', err);
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 async function _createVerificationToken(userId) {
@@ -165,6 +204,9 @@ export async function login(req, res) {
 
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: INVALID });
+
+    await _cancelPendingDeletionIfAny(user.user_id);
+    if (user.account_status === 'pending_deletion') user.account_status = 'active';
 
     query('UPDATE users SET last_login = NOW() WHERE user_id = $1', [user.user_id])
       .catch(e => console.error('[auth/login] last_login update failed:', e.message));
@@ -320,6 +362,7 @@ export async function googleCallback(req, res) {
 
     if (identityRows.length > 0) {
       const { user_id, token_version } = identityRows[0];
+      await _cancelPendingDeletionIfAny(user_id);
       query('UPDATE users SET last_login = NOW() WHERE user_id = $1', [user_id]).catch(() => {});
       const jwtToken = signToken(user_id, token_version);
       res.cookie('token', jwtToken, COOKIE_OPTS);
@@ -339,6 +382,7 @@ export async function googleCallback(req, res) {
       // Link Google identity to the existing account.
       userId       = userRows[0].user_id;
       tokenVersion = userRows[0].token_version;
+      await _cancelPendingDeletionIfAny(userId);
       await query(
         `INSERT INTO auth_identities (user_id, provider, provider_user_id, email)
          VALUES ($1, 'google', $2, $3)
@@ -526,5 +570,152 @@ export async function resetPassword(req, res) {
   } catch (err) {
     console.error('[auth/resetPassword]', err);
     return res.status(500).json({ error: 'Password reset failed — please try again.' });
+  }
+}
+
+// ── Account deletion ──────────────────────────────────────────────────────────
+
+const ACCOUNT_PURGE_GRACE_DAYS = 30;
+const REAUTH_WINDOW_MS = 10 * 60 * 1000;
+
+function _isLoginFresh(lastLogin) {
+  return Boolean(lastLogin) && (Date.now() - new Date(lastLogin).getTime()) < REAUTH_WINDOW_MS;
+}
+
+// Hives this user owns with no other active member — these get soft-deleted
+// alongside the account, the same way leaveHive archives a sole owner's Hive.
+async function _soloOwnedHives(userId) {
+  const { rows } = await query(
+    `SELECT h.hive_id, h.hive_name
+       FROM hive_members hm
+       JOIN hives h ON h.hive_id = hm.hive_id AND h.hive_status = 'active'
+      WHERE hm.user_id = $1 AND hm.role = 'owner' AND hm.membership_status = 'active'
+        AND NOT EXISTS (
+          SELECT 1 FROM hive_members hm2
+           WHERE hm2.hive_id = h.hive_id AND hm2.user_id != $1 AND hm2.membership_status = 'active'
+        )`,
+    [userId],
+  );
+  return rows;
+}
+
+// Hives this user owns WITH other active members — account deletion refuses
+// to silently empty-out a community of other people as a side effect of one
+// person leaving. They must transfer ownership or delete the Hive themselves
+// (deleteHive) first.
+async function _ownershipBlockers(userId) {
+  const { rows } = await query(
+    `SELECT h.hive_id, h.hive_name,
+            COUNT(*) FILTER (WHERE hm2.user_id != $1)::int AS other_members
+       FROM hive_members hm
+       JOIN hives h ON h.hive_id = hm.hive_id AND h.hive_status = 'active'
+       JOIN hive_members hm2 ON hm2.hive_id = hm.hive_id AND hm2.membership_status = 'active'
+      WHERE hm.user_id = $1 AND hm.role = 'owner' AND hm.membership_status = 'active'
+      GROUP BY h.hive_id, h.hive_name
+     HAVING COUNT(*) FILTER (WHERE hm2.user_id != $1) > 0`,
+    [userId],
+  );
+  return rows;
+}
+
+export async function getDeletionCheck(req, res) {
+  try {
+    const userId = req.userId;
+    const { rows: [user] } = await query(
+      `SELECT password_hash, last_login FROM users WHERE user_id = $1`,
+      [userId],
+    );
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const [blockers, soloOwnedHives] = await Promise.all([
+      _ownershipBlockers(userId),
+      _soloOwnedHives(userId),
+    ]);
+
+    const reauthRequired = _isLoginFresh(user.last_login) ? null : (user.password_hash ? 'password' : 'google');
+
+    res.json({ blockers, soloOwnedHives, reauthRequired, canDelete: blockers.length === 0 });
+  } catch (err) {
+    console.error('[auth/getDeletionCheck]', err);
+    res.status(500).json({ error: 'Failed to check deletion eligibility.' });
+  }
+}
+
+export async function deleteAccount(req, res) {
+  try {
+    const userId = req.userId;
+    const { password } = req.body ?? {};
+
+    const { rows: [user] } = await query(
+      `SELECT email, password_hash, last_login, account_status FROM users WHERE user_id = $1`,
+      [userId],
+    );
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    if (user.account_status === 'pending_deletion') {
+      return res.status(400).json({ error: 'Your account is already scheduled for deletion.' });
+    }
+
+    if (!_isLoginFresh(user.last_login)) {
+      if (user.password_hash) {
+        if (!password) {
+          return res.status(403).json({ error: 'Confirm your password to continue.', reauth: 'password' });
+        }
+        const match = await bcrypt.compare(password, user.password_hash);
+        if (!match) return res.status(403).json({ error: 'Incorrect password.', reauth: 'password' });
+      } else {
+        return res.status(403).json({ error: 'Please sign in again with Google to continue.', reauth: 'google' });
+      }
+    }
+
+    const blockers = await _ownershipBlockers(userId);
+    if (blockers.length) {
+      return res.status(400).json({
+        error: 'Transfer ownership or delete these Hives before deleting your account.',
+        blockers,
+      });
+    }
+
+    const soloHives = await _soloOwnedHives(userId);
+    const scheduledFor = new Date(Date.now() + ACCOUNT_PURGE_GRACE_DAYS * 24 * 60 * 60 * 1000);
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      for (const h of soloHives) {
+        await client.query(
+          `UPDATE hives
+              SET hive_status = 'deleted', deleted_at = NOW(), deleted_by = $2,
+                  purge_after = NOW() + INTERVAL '${ACCOUNT_PURGE_GRACE_DAYS} days', updated_at = NOW()
+            WHERE hive_id = $1`,
+          [h.hive_id, userId],
+        );
+      }
+      await client.query(
+        `UPDATE users
+            SET account_status = 'pending_deletion', deletion_requested_at = NOW(),
+                deletion_scheduled_for = NOW() + INTERVAL '${ACCOUNT_PURGE_GRACE_DAYS} days',
+                token_version = token_version + 1
+          WHERE user_id = $1`,
+        [userId],
+      );
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+
+    invalidateTokenVersion(userId);
+    disconnectUserSockets(userId);
+    res.clearCookie('token', COOKIE_OPTS);
+
+    sendAccountDeletionEmail(user.email, scheduledFor)
+      .catch(e => console.error('[auth/deleteAccount] email failed:', e.message));
+
+    res.json({ deleted: true, scheduledFor, soloHivesDeleted: soloHives.length });
+  } catch (err) {
+    console.error('[auth/deleteAccount]', err);
+    res.status(500).json({ error: 'Failed to delete account.' });
   }
 }

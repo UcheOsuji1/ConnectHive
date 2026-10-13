@@ -5,6 +5,153 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import '../styles/account.css';
 
+// Delete account (Danger zone) — a blockers/solo-Hives check, then password
+// or Google re-auth if the session isn't fresh (last_login within 10 min).
+function DeleteAccountRow() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  const [open, setOpen] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [check, setCheck] = useState(null); // { blockers, soloOwnedHives, reauthRequired, canDelete }
+  const [checkError, setCheckError] = useState(null);
+  const [password, setPassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
+  const [reauthNeeded, setReauthNeeded] = useState(null); // set from a 403 on the delete attempt itself
+
+  async function openPanel() {
+    setOpen(true);
+    setCheckError(null);
+    setDeleteError(null);
+    setReauthNeeded(null);
+    setChecking(true);
+    try {
+      const data = await api.get('/api/account/deletion-check');
+      setCheck(data);
+    } catch (err) {
+      setCheckError(err.data?.error ?? 'Could not check your account. Please try again.');
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function confirmDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      const result = await api.post('/api/account/delete', password ? { password } : undefined);
+      await logout();
+      navigate('/goodbye', { state: { scheduledFor: result.scheduledFor } });
+    } catch (err) {
+      if (err.status === 403 && err.data?.reauth) {
+        setReauthNeeded(err.data.reauth);
+        setDeleteError(err.data?.error ?? null);
+      } else {
+        setDeleteError(err.data?.error ?? 'Could not delete your account. Please try again.');
+      }
+      setDeleting(false);
+    }
+  }
+
+  const reauth = reauthNeeded ?? check?.reauthRequired ?? null;
+  const blockers = check?.blockers ?? [];
+  const soloOwnedHives = check?.soloOwnedHives ?? [];
+
+  return (
+    <div className="acct-session-row acct-session-row--stacked">
+      <div className="acct-session-row">
+        <div>
+          <div className="acct-session-title">Delete account</div>
+          <div className="acct-session-sub">Permanently removes your profile and Hives.</div>
+        </div>
+        {!open && (
+          <button className="acct-btn acct-btn-danger" onClick={openPanel}>Delete</button>
+        )}
+      </div>
+
+      {open && (
+        <div className="acct-delete-panel">
+          {checking && <p className="acct-delete-hint">Checking your account…</p>}
+          {checkError && <p className="acct-delete-error">{checkError}</p>}
+
+          {check && blockers.length > 0 && (
+            <>
+              <p className="acct-delete-hint acct-delete-hint--warn">
+                You own {blockers.length === 1 ? 'a Hive' : 'Hives'} with other active members.
+                Transfer ownership or delete {blockers.length === 1 ? 'it' : 'them'} first.
+              </p>
+              <ul className="acct-delete-blocker-list">
+                {blockers.map(b => (
+                  <li key={b.hive_id}>{b.hive_name} — {b.other_members} other member{b.other_members === 1 ? '' : 's'}</li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {check && blockers.length === 0 && (
+            <>
+              {soloOwnedHives.length > 0 && (
+                <p className="acct-delete-hint acct-delete-hint--warn">
+                  {soloOwnedHives.length === 1
+                    ? `"${soloOwnedHives[0].hive_name}" will also be deleted — you're its only member.`
+                    : `${soloOwnedHives.length} Hives you solely own will also be deleted.`}
+                  {' '}Restorable for 30 days if you log back in.
+                </p>
+              )}
+
+              {reauth === 'password' && (
+                <>
+                  <p className="acct-delete-hint">Confirm your password to continue.</p>
+                  <input
+                    type="password"
+                    className="acct-delete-password"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder="Password"
+                    autoFocus
+                  />
+                </>
+              )}
+
+              {reauth === 'google' && (
+                <p className="acct-delete-hint acct-delete-hint--warn">
+                  Your session has aged out. Sign in with Google again, then
+                  come back to this page and click Delete again.
+                </p>
+              )}
+
+              {deleteError && <p className="acct-delete-error">{deleteError}</p>}
+
+              <div className="acct-delete-actions">
+                <button className="acct-btn acct-btn-outline" onClick={() => setOpen(false)} disabled={deleting}>
+                  Cancel
+                </button>
+                {reauth === 'google' ? (
+                  <button
+                    className="acct-btn acct-btn-gold"
+                    onClick={() => { window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/auth/google`; }}
+                  >
+                    Sign in with Google
+                  </button>
+                ) : (
+                  <button
+                    className="acct-btn acct-btn-danger"
+                    onClick={confirmDelete}
+                    disabled={deleting || (reauth === 'password' && !password)}
+                  >
+                    {deleting ? 'Deleting…' : 'Delete My Account'}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Payments (Prompt 62, Part 1) — optional handles used by Split costs to
 // build deep links into each person's own payment app. Never pre-filled with
 // an amount; TrueHive never touches the money itself.
@@ -201,16 +348,7 @@ export default function AccountSettingsPage() {
           {/* ── 6. Danger zone ── */}
           <div className="acct-card acct-card-danger">
             <div className="acct-section-label acct-section-label-danger">Danger zone</div>
-            <div className="acct-session-row">
-              <div>
-                <div className="acct-session-title">Delete account</div>
-                <div className="acct-session-sub">Permanently removes your profile and Hives.</div>
-              </div>
-              <span className="acct-action-group">
-                <button className="acct-btn acct-btn-danger" disabled>Delete</button>
-                <span className="acct-soon">Soon</span>
-              </span>
-            </div>
+            <DeleteAccountRow />
           </div>
 
         </div>

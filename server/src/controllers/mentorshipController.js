@@ -114,6 +114,7 @@ export const listMentors = async (req, res) => {
       `SELECT mp.*, pr.full_name, pr.profile_photo_url
          FROM hive_mentor_profiles mp
          JOIN hive_members hm ON hm.hive_id = mp.hive_id AND hm.user_id = mp.user_id AND hm.membership_status = 'active'
+         JOIN users u ON u.user_id = mp.user_id AND u.account_status = 'active'
          LEFT JOIN profiles pr ON pr.user_id = mp.user_id
         WHERE mp.hive_id = $1 AND mp.role IN ('mentor','both') AND mp.accepting = TRUE AND mp.user_id != $2`,
       [hiveId, req.userId],
