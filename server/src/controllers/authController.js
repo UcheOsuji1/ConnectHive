@@ -307,12 +307,20 @@ export async function getMe(req, res) {
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 
-export function googleRedirect(_req, res) {
+export function googleRedirect(req, res) {
   if (!process.env.GOOGLE_CLIENT_ID) {
     return res.status(503).json({ error: 'Google sign-in is not configured on this server.' });
   }
   const state = crypto.randomBytes(16).toString('hex');
   res.cookie('oauth_state', state, STATE_COOKIE_OPTS);
+
+  // Only the literal value is ever accepted — never a URL. Accepting an
+  // arbitrary redirect target from a query string here would be an open
+  // redirect the moment googleCallback trusted it back.
+  if (req.query?.intent === 'confirm-delete') {
+    res.cookie('oauth_intent', 'confirm-delete', STATE_COOKIE_OPTS);
+  }
+
   const url = googleClient.generateAuthUrl({
     access_type: 'offline',
     scope:       ['openid', 'email', 'profile'],
@@ -330,6 +338,12 @@ export async function googleCallback(req, res) {
     return res.redirect(`${CLIENT_URL}/login?error=oauth_state_mismatch`);
   }
   res.clearCookie('oauth_state', { ...STATE_COOKIE_OPTS, maxAge: 0 });
+
+  // Read and clear unconditionally — whatever happens next, this single-use
+  // cookie doesn't survive the round trip either way.
+  const confirmDelete = req.cookies?.oauth_intent === 'confirm-delete';
+  res.clearCookie('oauth_intent', { ...STATE_COOKIE_OPTS, maxAge: 0 });
+  const postLoginUrl = confirmDelete ? `${CLIENT_URL}/settings?confirmDelete=1` : `${CLIENT_URL}/home`;
 
   try {
     const { tokens } = await googleClient.getToken(code);
@@ -366,7 +380,7 @@ export async function googleCallback(req, res) {
       query('UPDATE users SET last_login = NOW() WHERE user_id = $1', [user_id]).catch(() => {});
       const jwtToken = signToken(user_id, token_version);
       res.cookie('token', jwtToken, COOKIE_OPTS);
-      return res.redirect(`${CLIENT_URL}/home`);
+      return res.redirect(postLoginUrl);
     }
 
     // 2. Does a TrueHive account with this email already exist?
@@ -425,7 +439,7 @@ export async function googleCallback(req, res) {
 
     const jwtToken = signToken(userId, tokenVersion);
     res.cookie('token', jwtToken, COOKIE_OPTS);
-    return res.redirect(`${CLIENT_URL}/home`);
+    return res.redirect(postLoginUrl);
 
   } catch (err) {
     console.error('[auth/googleCallback]', err);

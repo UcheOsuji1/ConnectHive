@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import { useAuth } from '../context/AuthContext.jsx';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import '../styles/account.css';
 
@@ -10,6 +10,7 @@ import '../styles/account.css';
 function DeleteAccountRow() {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -35,6 +36,24 @@ function DeleteAccountRow() {
       setChecking(false);
     }
   }
+
+  // Landed back here from Google's re-confirm redirect
+  // (googleCallback -> /settings?confirmDelete=1). Reopen straight at the
+  // confirm step — the blockers check runs again regardless, so a blocker
+  // that appeared in the meantime still shows step 1, not a stale confirm
+  // screen. The query param is a one-shot trigger, not page state, so it
+  // comes off the URL once handled.
+  useEffect(() => {
+    if (searchParams.get('confirmDelete') === '1') {
+      openPanel();
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.delete('confirmDelete');
+        return next;
+      }, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function confirmDelete() {
     setDeleting(true);
@@ -130,7 +149,7 @@ function DeleteAccountRow() {
                 {reauth === 'google' ? (
                   <button
                     className="acct-btn acct-btn-gold"
-                    onClick={() => { window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/auth/google`; }}
+                    onClick={() => { window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/auth/google?intent=confirm-delete`; }}
                   >
                     Sign in with Google
                   </button>
