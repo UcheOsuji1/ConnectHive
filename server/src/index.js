@@ -36,6 +36,11 @@ import { startPurgeJob } from './jobs/purgeJob.js';
     console.error('\n  Set them in server/.env (copy server/.env.example) and restart.\n');
     process.exit(1);
   }
+  // Optional — no site admins means /api/admin/* and /admin/reports 404 for
+  // everyone, which is a silent total lockout, not a crash. Warn, don't exit.
+  if (!process.env.SITE_ADMIN_EMAILS) {
+    console.warn('  [startup] WARNING — SITE_ADMIN_EMAILS is not set: the TrueHive admin report queue is unreachable by anyone.');
+  }
 }
 
 const app        = express();

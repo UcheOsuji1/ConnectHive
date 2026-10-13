@@ -1480,3 +1480,61 @@ CREATE TABLE IF NOT EXISTS hive_idea_votes (
 -- instant a suggestion is approved, exactly mirroring that existing branch.
 ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS source_idea_id UUID REFERENCES hive_ideas(idea_id) ON DELETE SET NULL;
 ALTER TABLE hive_plan_suggestions ADD COLUMN IF NOT EXISTS source_trip_item_id UUID REFERENCES hive_trip_items(item_id) ON DELETE SET NULL;
+
+-- ─── Report, block and moderation (Prompt 69) ──────────────────────────────────
+
+-- One row per (reporter, thing). Reporters are anonymous to everyone except
+-- TrueHive — hidden-content and Hive-owner review endpoints must never
+-- select reporter_id/reporter name into a payload; only /api/admin/* may.
+CREATE TABLE IF NOT EXISTS reports (
+  report_id        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  reporter_id       UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  target_type       TEXT        NOT NULL CHECK (target_type IN ('message','post','comment','user','hive')),
+  target_id         UUID        NOT NULL,
+  hive_id           UUID        REFERENCES hives(hive_id) ON DELETE CASCADE,
+  is_private        BOOLEAN     NOT NULL DEFAULT FALSE,
+  reason            TEXT        NOT NULL CHECK (reason IN ('harassment','safety','spam','sexual','hate','fake_or_minor','other')),
+  details           TEXT        CHECK (details IS NULL OR char_length(details) <= 500),
+  target_user_id    UUID        REFERENCES users(user_id) ON DELETE SET NULL,
+  -- Posts and comments are hard-deleted when a Hive admin removes them for a
+  -- non-report reason elsewhere in the app, so this is the only evidence of
+  -- a reported item's content that survives a 'remove' resolution here.
+  content_snapshot  TEXT        CHECK (content_snapshot IS NULL OR char_length(content_snapshot) <= 2000),
+  status            TEXT        NOT NULL DEFAULT 'open' CHECK (status IN ('open','actioned','dismissed')),
+  resolved_by       UUID        REFERENCES users(user_id),
+  resolved_at       TIMESTAMPTZ,
+  resolution        TEXT        CHECK (resolution IS NULL OR resolution IN ('removed','removed_and_suspended','kept','member_removed')),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (reporter_id, target_type, target_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reports_status_created ON reports(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_reports_hive_status    ON reports(hive_id, status);
+CREATE INDEX IF NOT EXISTS idx_reports_target         ON reports(target_type, target_id);
+
+-- Blocking is directional in storage (blocker -> blocked) but enforced both
+-- ways everywhere it matters — lib/blocks.js's isBlockedEitherWay/
+-- blockedIdsFor are the single source of truth for that, not ad-hoc queries.
+CREATE TABLE IF NOT EXISTS user_blocks (
+  blocker_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  blocked_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (blocker_id, blocked_id),
+  CHECK (blocker_id <> blocked_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked ON user_blocks(blocked_id);
+
+-- Auto-hide (2 distinct reporters) and admin-removal both use the same two
+-- columns, distinguished by hidden_reason — 'auto' can be reversed by a
+-- Hive admin's "Keep it"; 'removed' is a human decision and stays hidden.
+ALTER TABLE messages      ADD COLUMN IF NOT EXISTS hidden_at     TIMESTAMPTZ;
+ALTER TABLE messages      ADD COLUMN IF NOT EXISTS hidden_reason TEXT CHECK (hidden_reason IS NULL OR hidden_reason IN ('auto','removed'));
+ALTER TABLE hive_posts    ADD COLUMN IF NOT EXISTS hidden_at     TIMESTAMPTZ;
+ALTER TABLE hive_posts    ADD COLUMN IF NOT EXISTS hidden_reason TEXT CHECK (hidden_reason IS NULL OR hidden_reason IN ('auto','removed'));
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS hidden_at     TIMESTAMPTZ;
+ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS hidden_reason TEXT CHECK (hidden_reason IS NULL OR hidden_reason IN ('auto','removed'));
+
+-- Suspension. account_status is plain TEXT with no CHECK constraint (same
+-- finding as Prompt 68 Part B for 'pending_deletion'/'deleted'), so
+-- 'suspended' needs no constraint widening here either.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_at     TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_note  TEXT;

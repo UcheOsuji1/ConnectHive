@@ -20,18 +20,21 @@ import { query } from './index.js';
 const REQUIRED = {
   users: ['member_id', 'date_of_birth', 'terms_accepted_at', 'terms_policy_version',
           'email_verified', 'token_version', 'presence_status',
-          'deletion_requested_at', 'deletion_scheduled_for', 'deleted_at'],
+          'deletion_requested_at', 'deletion_scheduled_for', 'deleted_at',
+          'suspended_at', 'suspension_note'],
   profiles: ['connection_purposes', 'social_preferences', 'venmo_handle', 'cashapp_handle', 'paypal_handle'],
   hives: ['hive_code', 'banner_url', 'logo_url', 'cadence', 'hive_values',
           'tagline', 'purpose', 'founder_note',
           'plan_proposers', 'plan_approval', 'vote_min_yes', 'vote_window_hours', 'suggestions_per_day',
           'deleted_at', 'deleted_by', 'purge_after'],
   hive_members: ['welcome_seen_at', 'onboarding_status', 'onboarding_screen'],
-  hive_posts: ['visibility', 'event_end_at', 'plan_type', 'cancelled_at', 'series_id', 'series_index'],
+  hive_posts: ['visibility', 'event_end_at', 'plan_type', 'cancelled_at', 'series_id', 'series_index',
+               'hidden_at', 'hidden_reason'],
   event_rsvps: ['updated_at'],
   messages: ['channel_id', 'edited_at', 'deleted_at', 'pinned_at', 'pinned_by',
-             'plan_post_id', 'poll_id', 'suggestion_id', 'time_poll_id'],
-  post_comments: ['parent_comment_id'],
+             'plan_post_id', 'poll_id', 'suggestion_id', 'time_poll_id',
+             'hidden_at', 'hidden_reason'],
+  post_comments: ['parent_comment_id', 'hidden_at', 'hidden_reason'],
   // hive_plan_suggestions and hive_time_polls both predate this specific
   // column (the suggestions table from Prompt 60, the polls table created
   // earlier in this same migration) — new columns on a table that already
@@ -41,6 +44,11 @@ const REQUIRED = {
   hive_time_polls: ['pending_suggestion_id'],
   hive_notification_prefs: ['costs', 'matches', 'opportunities', 'tasks'],
   hive_channels: ['kind', 'created_for'],
+  // New tables (Prompt 69) — an empty column list still catches the
+  // "table absent" case via the same loop below, so these aren't skipped
+  // just because schema.sql creates them with CREATE TABLE rather than ALTER.
+  reports: [],
+  user_blocks: [],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -95,6 +103,16 @@ const IMPACT = {
   'hive_notification_prefs.tasks': 'Task board notification preferences fail to save',
   'hive_plan_suggestions.source_idea_id': 'Ideas board — "Make it a plan" via suggestion fails to link back',
   'hive_plan_suggestions.source_trip_item_id': 'Itinerary — "Make this a plan" via suggestion fails to link back',
+  'users.suspended_at':       'account suspension — admin suspend/unsuspend fails',
+  'users.suspension_note':    'account suspension — admin suspend/unsuspend fails',
+  'messages.hidden_at':       'report auto-hide and Hive-admin removal for chat messages fail',
+  'messages.hidden_reason':   'report auto-hide and Hive-admin removal for chat messages fail',
+  'hive_posts.hidden_at':     'report auto-hide and Hive-admin removal for posts fail',
+  'hive_posts.hidden_reason': 'report auto-hide and Hive-admin removal for posts fail',
+  'post_comments.hidden_at':     'report auto-hide and Hive-admin removal for comments fail',
+  'post_comments.hidden_reason': 'report auto-hide and Hive-admin removal for comments fail',
+  'reports (table absent)':    'the entire report/block/moderation system — reporting, auto-hide, and both review queues fail',
+  'user_blocks (table absent)': 'blocking — block/unblock and every block-aware check fail',
 };
 
 let state = { checked: false, ok: true, missing: [] };
