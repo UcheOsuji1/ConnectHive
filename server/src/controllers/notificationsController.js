@@ -63,11 +63,11 @@ export const getNotifications = async (req, res) => {
         [req.userId],
       ),
       query(
-        `SELECT COUNT(*) AS unread_count FROM notifications WHERE user_id = $1 AND read = false`,
+        `SELECT COUNT(*)::int AS unread_count FROM notifications WHERE user_id = $1 AND read = false`,
         [req.userId],
       ),
     ]);
-    res.json({ notifications, unread_count: Number(unread_count) });
+    res.json({ notifications, unread_count });
   } catch (err) {
     console.error('[notifications/getNotifications]', err);
     res.status(500).json({ error: 'Failed to load notifications.' });
@@ -77,10 +77,10 @@ export const getNotifications = async (req, res) => {
 export const getUnreadCount = async (req, res) => {
   try {
     const { rows: [{ unread_count }] } = await query(
-      `SELECT COUNT(*) AS unread_count FROM notifications WHERE user_id = $1 AND read = false`,
+      `SELECT COUNT(*)::int AS unread_count FROM notifications WHERE user_id = $1 AND read = false`,
       [req.userId],
     );
-    res.json({ unread_count: Number(unread_count) });
+    res.json({ unread_count });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load count.' });
   }

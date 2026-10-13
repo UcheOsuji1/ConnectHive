@@ -11,9 +11,9 @@ export const FEED_SELECT = `
     p.headline, p.body, p.media_url, p.event_at, p.event_location, p.created_at,
     h.hive_name, h.creator_user_id, h.banner_url, h.logo_url,
     c.category_name,
-    (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active') AS member_count,
-    (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.post_id)                                  AS reaction_count,
-    (SELECT COUNT(*) FROM post_comments  WHERE post_id = p.post_id)                                  AS comment_count,
+    (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active')::int AS member_count,
+    (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.post_id)::int                                  AS reaction_count,
+    (SELECT COUNT(*) FROM post_comments  WHERE post_id = p.post_id)::int                                  AS comment_count,
     EXISTS(SELECT 1 FROM post_reactions WHERE post_id = p.post_id AND user_id = $1)                  AS reacted,
     (SELECT reaction FROM post_reactions WHERE post_id = p.post_id AND user_id = $1)                 AS my_reaction,
     (SELECT json_agg(x) FROM (
@@ -298,10 +298,10 @@ export const toggleReaction = async (req, res) => {
     }
 
     const { rows: [{ count }] } = await query(
-      'SELECT COUNT(*) FROM post_reactions WHERE post_id=$1', [postId],
+      'SELECT COUNT(*)::int FROM post_reactions WHERE post_id=$1', [postId],
     );
     const reaction_summary = await fetchReactionSummary(postId);
-    const reaction_count = Number(count);
+    const reaction_count = count;
 
     // Aggregated "welcomed" notification for wave reactions on welcome posts
     if (reacted) {

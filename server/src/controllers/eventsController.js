@@ -62,7 +62,7 @@ export const getUpcomingEvents = async (req, res) => {
       ),
       suggestEvents(db, req.userId, { limit: 2 }),
       query(
-        `SELECT COUNT(*) FROM hive_posts p
+        `SELECT COUNT(*)::int FROM hive_posts p
          JOIN hive_members hm ON hm.hive_id = p.hive_id
            AND hm.user_id = $1 AND hm.membership_status = 'active'
          WHERE p.post_type = 'event' AND p.event_at > NOW()`,
@@ -75,7 +75,7 @@ export const getUpcomingEvents = async (req, res) => {
       attachRsvpMeta(suggestedRaw, req.userId),
     ]);
 
-    res.json({ myEvents, suggestedEvents, myEventsTotal: Number(totalRow.count) });
+    res.json({ myEvents, suggestedEvents, myEventsTotal: totalRow.count });
   } catch (err) {
     console.error('[events/getUpcomingEvents]', err);
     res.status(500).json({ error: 'Failed to fetch upcoming events.' });

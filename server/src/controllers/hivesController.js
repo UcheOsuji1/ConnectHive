@@ -69,7 +69,7 @@ export const matchHives = async (req, res) => {
     const { rows: candidates } = await query(
       `SELECT h.*,
               c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count,
               EXISTS(
                 SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1
               ) AS is_following,
@@ -175,7 +175,7 @@ export const matchHives = async (req, res) => {
     let waitingCount = 0;
     if (categoryId) {
       const { rows: [wRow] } = await query(
-        `SELECT COUNT(*) FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
+        `SELECT COUNT(*)::int FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
         [categoryId],
       );
       waitingCount = Number(wRow.count);
@@ -211,7 +211,7 @@ export const quickFindHives = async (req, res) => {
       `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type,
               h.logo_url, h.banner_url, h.description, h.join_policy,
               c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
        FROM hives h
        LEFT JOIN categories c    ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
@@ -318,7 +318,7 @@ export const getSuggestions = async (req, res) => {
 
     const { rows: candidates } = await query(
       `SELECT h.*, c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
        FROM hives h
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
@@ -420,7 +420,7 @@ export const joinWaitlist = async (req, res) => {
     }
 
     const { rows: [{ count }] } = await query(
-      `SELECT COUNT(*) FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
+      `SELECT COUNT(*)::int FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
       [categoryId],
     );
 
@@ -438,7 +438,7 @@ export const getHive = async (req, res) => {
          h.*,
          c.category_name,
          COUNT(DISTINCT hm_all.user_id) FILTER (WHERE hm_all.membership_status = 'active')::int AS member_count,
-         COUNT(DISTINCT hf.user_id)                                                          AS follower_count,
+         COUNT(DISTINCT hf.user_id)::int                                                     AS follower_count,
          my_mem.role                                                                          AS my_role,
          my_mem.welcome_seen_at,
          my_mem.onboarding_status,
@@ -545,7 +545,7 @@ export const getMyHive = async (req, res) => {
     const { rows } = await query(
       `WITH my_hives_base AS (
          SELECT h.*, c.category_name, hm.role,
-                COUNT(DISTINCT hm2.user_id) FILTER (WHERE hm2.membership_status = 'active') AS member_count,
+                COUNT(DISTINCT hm2.user_id) FILTER (WHERE hm2.membership_status = 'active')::int AS member_count,
                 COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz) AS last_seen_at
          FROM   hive_members hm
          JOIN   hives h   ON h.hive_id    = hm.hive_id
@@ -662,7 +662,7 @@ export const getFollowedHives = async (req, res) => {
   try {
     const { rows } = await query(
       `SELECT h.*, c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
        FROM   hive_followers hf
        JOIN   hives h ON h.hive_id = hf.hive_id
        LEFT JOIN categories c  ON c.category_id = h.category_id
@@ -932,7 +932,7 @@ export const requestToJoin = async (req, res) => {
     // Load hive + member count in one query
     const { rows: [hive] } = await query(
       `SELECT h.*,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
        FROM hives h
        LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
        WHERE h.hive_id = $1
@@ -1122,7 +1122,7 @@ export const getHiveRequests = async (req, res) => {
 
     const { rows: [cap] } = await query(
       `SELECT h.max_members,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
        FROM hives h
        LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
        WHERE h.hive_id = $1
@@ -1185,7 +1185,7 @@ export const reviewRequest = async (req, res) => {
           [hiveId],
         );
         const { rows: [countRow] } = await client.query(
-          `SELECT COUNT(*) AS member_count FROM hive_members
+          `SELECT COUNT(*)::int AS member_count FROM hive_members
             WHERE hive_id = $1 AND membership_status = 'active'`,
           [hiveId],
         );
@@ -1244,7 +1244,7 @@ export const reviewRequest = async (req, res) => {
     }
 
     const { rows: [{ count }] } = await query(
-      `SELECT COUNT(*) FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
+      `SELECT COUNT(*)::int FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
       [hiveId],
     );
 
@@ -1381,8 +1381,8 @@ export const getHiveOverview = async (req, res) => {
     // Core metrics
     const { rows: [metrics] } = await query(
       `SELECT h.max_members, h.hive_status,
-              COUNT(DISTINCT hm.user_id) FILTER (WHERE hm.membership_status = 'active') AS member_count,
-              COUNT(DISTINCT jr.request_id) FILTER (WHERE jr.status = 'pending')        AS pending_count
+              COUNT(DISTINCT hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count,
+              COUNT(DISTINCT jr.request_id) FILTER (WHERE jr.status = 'pending')::int        AS pending_count
        FROM hives h
        LEFT JOIN hive_members  hm ON hm.hive_id = h.hive_id
        LEFT JOIN join_requests jr ON jr.hive_id = h.hive_id
@@ -1395,7 +1395,7 @@ export const getHiveOverview = async (req, res) => {
 
     // Members without a completed profile (age not set — proxy for incomplete setup)
     const { rows: [incRow] } = await query(
-      `SELECT COUNT(*) AS cnt
+      `SELECT COUNT(*)::int AS cnt
        FROM hive_members hm
        LEFT JOIN profiles p ON p.user_id = hm.user_id
        WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND p.age IS NULL`,
@@ -1524,8 +1524,8 @@ export const getHiveAnalytics = async (req, res) => {
               AND joined_at < (SELECT MIN(week_start) FROM weeks)
          )
          SELECT w.week_start,
-                (SELECT n FROM base) + SUM(COALESCE(j.n, 0))
-                  OVER (ORDER BY w.week_start ROWS UNBOUNDED PRECEDING) AS cumulative_count
+                ((SELECT n FROM base) + SUM(COALESCE(j.n, 0))
+                  OVER (ORDER BY w.week_start ROWS UNBOUNDED PRECEDING))::int AS cumulative_count
            FROM weeks w
            LEFT JOIN joins j ON j.week_start = w.week_start
           ORDER BY w.week_start`,
@@ -1598,7 +1598,7 @@ export const getHiveAnalytics = async (req, res) => {
 
     res.json({
       days,
-      memberCountByWeek: memberRes.rows.map(r => ({ week: r.week_start, count: Number(r.cumulative_count) })),
+      memberCountByWeek: memberRes.rows.map(r => ({ week: r.week_start, count: r.cumulative_count })),
       messagesByWeek: messageRes.rows.map(r => ({ week: r.week_start, count: r.count })),
       plansByMonth: planRes.rows.map(r => ({ month: r.month_start, plans: r.plans, rsvps: r.rsvps })),
       activeRooms: roomRes.rows.map(r => ({ channel_id: r.channel_id, name: r.name, messageCount: r.message_count })),
@@ -1690,7 +1690,7 @@ export const removeMember = async (req, res) => {
     try { evictUserFromHive(hiveId, targetId); } catch { /* socket not yet initialized in tests */ }
 
     const { rows: [{ member_count }] } = await query(
-      `SELECT COUNT(*) AS member_count FROM hive_members
+      `SELECT COUNT(*)::int AS member_count FROM hive_members
        WHERE hive_id = $1 AND membership_status = 'active'`,
       [hiveId],
     );
