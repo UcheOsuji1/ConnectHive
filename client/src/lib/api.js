@@ -25,6 +25,13 @@ async function request(path, { body, method = 'GET', headers = {} } = {}) {
     data = {};
   }
 
+  // requireConsent's gate — every authenticated route except /api/auth/*
+  // answers 428 until date_of_birth and the current POLICY_VERSION's terms
+  // are on file. One place to catch it, so no individual call site needs to.
+  if (res.status === 428 && data?.needsConsent && !window.location.pathname.startsWith('/confirm-details')) {
+    window.location.href = '/confirm-details';
+  }
+
   if (!res.ok) {
     const err = new Error(data.error ?? `Request failed (${res.status})`);
     err.status = res.status;

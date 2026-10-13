@@ -54,6 +54,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import GoodbyePage from './pages/GoodbyePage';
+import ConfirmDetailsPage from './pages/ConfirmDetailsPage';
 
 import AboutPage from './pages/marketing/AboutPage';
 import MissionPage from './pages/marketing/MissionPage';
@@ -92,6 +93,7 @@ export default function App() {
 
       {/* Protected routes */}
       <Route element={<RequireAuth />}>
+        <Route path="/confirm-details" element={<ConfirmDetailsPage />} />
         <Route path="/profile-setup" element={<ProfileSetupPage />} />
         <Route path="/profile/edit" element={<ProfileSetupPage />} />
         <Route path="/home" element={<HomePage />} />

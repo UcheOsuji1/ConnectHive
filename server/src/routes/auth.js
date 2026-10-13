@@ -11,6 +11,7 @@ import {
   verifyEmail,
   forgotPassword,
   resetPassword,
+  submitConsent,
 } from '../controllers/authController.js';
 import { requireAuth } from '../middleware/auth.js';
 
@@ -68,5 +69,9 @@ router.post('/resend-verification',   requireAuth, resendVerification);
 // Password reset
 router.post('/forgot-password', forgotLimiter, forgotPassword);
 router.post('/reset-password', resetLimiter,   resetPassword);
+
+// Consent (18+ age floor closure) — the requireConsent gate's one exemption
+// besides this whole /api/auth router.
+router.post('/consent', requireAuth, submitConsent);
 
 export default router;

@@ -17,6 +17,7 @@ import accountRoutes      from './routes/account.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
+import { requireConsent } from './middleware/consent.js';
 import { startRsvpReminderJob } from './jobs/rsvpReminderJob.js';
 import { startPlanSuggestionJob } from './jobs/planSuggestionJob.js';
 import { startCostNudgeJob } from './jobs/costNudgeJob.js';
@@ -115,6 +116,7 @@ app.get('/api/config', (_req, res) => {
 
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
+app.use('/api',               requireConsent);
 app.use('/api/hives',         hiveRoutes);
 app.use('/api/users',         userRoutes);
 app.use('/api/posts',         postRoutes);

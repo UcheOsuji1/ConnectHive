@@ -11,7 +11,7 @@ export default function PrivacyPage() {
           <span className="label">Privacy Policy</span>
           <h1 className="section-heading" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)' }}>Privacy Policy</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '40px' }}>
-            Last updated: September 2026
+            Last updated: October 2026
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
@@ -37,7 +37,8 @@ export default function PrivacyPage() {
 
             <div>
               <h2 style={{ fontSize: '1.3rem', marginBottom: '12px' }}>4. Data retention</h2>
-              <p>We retain your data for as long as your account is active. You may request deletion of your account and associated data by emailing <a href="mailto:hello@truehive.app" style={{ color: 'var(--gold-dark)' }}>hello@truehive.app</a>.</p>
+              <p style={{ marginBottom: '12px' }}>We retain your data for as long as your account is active. You can delete your own account at any time from Account Settings — this ends your access immediately.</p>
+              <p>Deleted accounts are held for 30 days before permanent removal, so logging back in during that window cancels the deletion and restores your account. After 30 days, your personal information (name, photo, bio, and similar profile details) is permanently cleared; messages and posts you left in Hives remain, attributed to "Deleted member," so the conversations other members were part of stay intact.</p>
             </div>
 
             <div>

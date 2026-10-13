@@ -13,7 +13,7 @@ const STEPS = [
 
 const PILLS = ['Profile Setup', 'Find Your Hive', 'Your Hive'];
 
-const MIN_AGE = 13;
+const MIN_AGE = 18;
 
 function ageFromDob(dob) {
   const birth = new Date(dob);

@@ -719,3 +719,34 @@ export async function deleteAccount(req, res) {
     res.status(500).json({ error: 'Failed to delete account.' });
   }
 }
+
+// ── Consent (18+ age floor closure, POLICY_VERSION v2) ───────────────────────
+// Closes requireConsent's gate for an account missing date_of_birth (every
+// pre-existing account, plus every Google signup — OAuth never asked for a
+// birth date) or still on an older terms_policy_version.
+export async function submitConsent(req, res) {
+  try {
+    const { dateOfBirth, acceptedTerms } = req.body ?? {};
+    if (!dateOfBirth) {
+      return res.status(400).json({ error: 'Date of birth is required.' });
+    }
+    if (!acceptedTerms) {
+      return res.status(400).json({ error: 'You must accept the Terms of Service and Privacy Policy.' });
+    }
+    const age = ageFromDob(dateOfBirth);
+    if (isNaN(age) || age < MIN_AGE) {
+      return res.status(400).json({ error: `You must be at least ${MIN_AGE} years old to use TrueHive.` });
+    }
+
+    await query(
+      `UPDATE users SET date_of_birth = $2, terms_accepted_at = NOW(), terms_policy_version = $3
+        WHERE user_id = $1`,
+      [req.userId, dateOfBirth, POLICY_VERSION],
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[auth/submitConsent]', err);
+    res.status(500).json({ error: 'Failed to save your details.' });
+  }
+}

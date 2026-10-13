@@ -11,7 +11,7 @@ export default function TermsPage() {
           <span className="label">Terms of Service</span>
           <h1 className="section-heading" style={{ fontSize: 'clamp(1.8rem, 3vw, 2.4rem)' }}>Terms of Service</h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-light)', marginBottom: '40px' }}>
-            Last updated: September 2026
+            Last updated: October 2026
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
@@ -24,7 +24,7 @@ export default function TermsPage() {
             <div>
               <h2 style={{ fontSize: '1.3rem', marginBottom: '12px' }}>2. Your account</h2>
               <p style={{ marginBottom: '12px' }}>You are responsible for maintaining the security of your account. Do not share your credentials with others.</p>
-              <p>You must be 13 years of age or older to use TrueHive. By creating an account, you represent that you meet this requirement.</p>
+              <p>You must be 18 years of age or older to use TrueHive. By creating an account, you represent that you meet this requirement.</p>
             </div>
 
             <div>
@@ -52,7 +52,7 @@ export default function TermsPage() {
 
             <div>
               <h2 style={{ fontSize: '1.3rem', marginBottom: '12px' }}>6. Termination</h2>
-              <p>TrueHive may suspend or terminate accounts that violate these terms. You may close your account at any time by contacting <a href="mailto:hello@truehive.app" style={{ color: 'var(--gold-dark)' }}>hello@truehive.app</a>.</p>
+              <p>TrueHive may suspend or terminate accounts that violate these terms. You may delete your own account at any time from Account Settings. Deletion takes effect immediately — your access ends right away — but the account itself is held for 30 days before permanent removal, so logging back in during that window cancels the deletion and restores it. Questions about deletion: <a href="mailto:hello@truehive.app" style={{ color: 'var(--gold-dark)' }}>hello@truehive.app</a>.</p>
             </div>
 
             <div>
