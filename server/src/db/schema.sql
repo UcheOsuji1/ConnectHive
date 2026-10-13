@@ -34,6 +34,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth        DATE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at    TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_policy_version TEXT;
 
+-- Idempotent: account deletion lifecycle ('active' -> 'pending_deletion' ->
+-- 'deleted'). account_status is plain TEXT with no CHECK constraint, so these
+-- new states need no constraint widening.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deletion_requested_at  TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deletion_scheduled_for TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at             TIMESTAMPTZ;
+
 -- ─── Profiles ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS profiles (
   profile_id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -96,6 +103,13 @@ CREATE TABLE IF NOT EXISTS hives (
 
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS cadence TEXT;
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS hive_values JSONB NOT NULL DEFAULT '[]';
+
+-- Idempotent: Hive deletion lifecycle ('active'/'archived' -> 'deleted').
+-- hive_status is plain TEXT with no CHECK constraint, so this new state
+-- needs no constraint widening.
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS deleted_at   TIMESTAMPTZ;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS deleted_by   UUID REFERENCES users(user_id);
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS purge_after  TIMESTAMPTZ;
 
 -- ─── Hive code (public identifier: TH- + 6 chars) ──────────────────────────────
 -- Never the primary key — sequential UUIDs aren't sequential, but we still don't
