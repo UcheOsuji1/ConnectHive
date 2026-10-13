@@ -77,7 +77,7 @@ async function _purgeUser(client, user, cascadeCols) {
 
   await client.query(
     `UPDATE profiles SET
-        full_name = NULL, age = NULL, location = NULL, school_company = NULL, bio = NULL,
+        full_name = 'Deleted member', age = NULL, location = NULL, school_company = NULL, bio = NULL,
         profile_photo_url = NULL, interests = '[]', skills = '[]', goals = '[]', availability = '[]',
         personality_type = NULL, connection_preference = NULL, connection_purposes = '[]',
         social_preferences = '{}', group_size_preference = NULL,
@@ -96,7 +96,7 @@ async function _purgeUser(client, user, cascadeCols) {
   );
 
   console.log(
-    `[purgeJob] purged user ${user.user_id} (was ${user.email}) — ` +
+    `[purgeJob] purged user ${user.user_id} — ` +
     `${rowsDeleted} rows removed across this account's own tables, profile PII cleared, ` +
     `account_status -> deleted. Authored content (messages, posts, etc.) left in place.`,
   );
@@ -114,7 +114,7 @@ export async function runPurgeJob() {
   const cascadeCols = await _userCascadeColumns();
 
   const { rows: dueUsers } = await query(
-    `SELECT user_id, email, deletion_scheduled_for FROM users
+    `SELECT user_id, deletion_scheduled_for FROM users
       WHERE account_status = 'pending_deletion' AND deletion_scheduled_for <= NOW()`,
   );
 
