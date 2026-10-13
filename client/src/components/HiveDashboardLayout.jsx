@@ -128,7 +128,7 @@ function Ico({ name, size = 16, className }) {
 // Replaces the old wide cover banner: the Hive's identity now lives at the top
 // of the rail, so every page gets the full content width.
 function HiveSidebar({
-  hive, hiveId, isOwner, requestCount, chatUnread, hiveToolsOn,
+  hive, hiveId, isOwner, requestCount, reportCount, chatUnread, hiveToolsOn,
   uploading, uploadError, onEditCover, onEditLogo,
 }) {
   const { pathname } = useLocation();
@@ -153,7 +153,7 @@ function HiveSidebar({
     return pathname === `${base}/${sub}` || pathname.startsWith(`${base}/${sub}/`);
   };
 
-  const NavItem = ({ label, sub, badge, soon, icon }) => {
+  const NavItem = ({ label, sub, badge, badgeVariant, soon, icon }) => {
     if (soon) {
       return (
         <div className="hdl-nav-item hdl-nav-soon">
@@ -173,7 +173,7 @@ function HiveSidebar({
         {icon && <Ico name={icon} className="hdl-nav-ico" />}
         <span className="hdl-nav-label">{label}</span>
         {badge != null && Number(badge) > 0 && (
-          <span className="hdl-nav-badge">{badge}</span>
+          <span className={['hdl-nav-badge', badgeVariant === 'danger' ? 'hdl-nav-badge--danger' : ''].filter(Boolean).join(' ')}>{badge}</span>
         )}
       </NavLink>
     );
@@ -190,6 +190,7 @@ function HiveSidebar({
     { label: 'Join Requests',        sub: 'requests',      badge: requestCount },
     { label: 'Members & Roles',      sub: 'members-roles' },
     { label: 'Rooms',                sub: 'rooms' },
+    { label: 'Reports',              sub: 'reports',       badge: reportCount, badgeVariant: 'danger' },
     { label: 'Tools',                sub: 'manage-tools' },
     { label: 'Appearance',           sub: 'appearance' },
     { label: 'Member Onboarding',    sub: 'onboarding' },
@@ -304,8 +305,10 @@ function HiveSidebar({
             onClick={() => setManageOpen(o => !o)}
           >
             <span className="hdl-nav-label">Manage Hive</span>
-            {!manageOpen && requestCount > 0 && (
-              <span className="hdl-nav-badge">{requestCount}</span>
+            {!manageOpen && (Number(requestCount ?? 0) + Number(reportCount ?? 0)) > 0 && (
+              <span className={['hdl-nav-badge', reportCount > 0 ? 'hdl-nav-badge--danger' : ''].filter(Boolean).join(' ')}>
+                {Number(requestCount ?? 0) + Number(reportCount ?? 0)}
+              </span>
             )}
             <svg className={`hdl-manage-chev${manageOpen ? ' hdl-manage-chev--open' : ''}`}
                  width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -316,7 +319,7 @@ function HiveSidebar({
 
           <div id="hdl-manage-sections" className="hdl-manage-list" hidden={!manageOpen}>
             {MANAGE_SECTIONS.map(s => (
-              <NavItem key={s.sub} label={s.label} sub={s.sub} badge={s.badge} soon={s.soon} />
+              <NavItem key={s.sub} label={s.label} sub={s.sub} badge={s.badge} badgeVariant={s.badgeVariant} soon={s.soon} />
             ))}
           </div>
         </div>
@@ -553,6 +556,7 @@ export default function HiveDashboardLayout() {
   const [loading,           setLoading]           = useState(true);
   const [hiveError,         setHiveError]         = useState(null);
   const [requestCount,      setRequestCount]      = useState(null);
+  const [reportCount,       setReportCount]       = useState(null);
   const [celebrationMember, setCelebrationMember] = useState(null);
   const [postModalOpen,     setPostModalOpen]     = useState(false);
   const [newPost,           setNewPost]           = useState(null);
@@ -633,6 +637,14 @@ export default function HiveDashboardLayout() {
           api.get(`/api/hives/${hiveId}/messages/unread-count`)
             .then(d => setChatUnread(d.count ?? 0))
             .catch(() => {});
+          // Open report-group count for the sidebar badge — 403s quietly for
+          // a plain member (api.get rejects), which is the correct "no badge"
+          // outcome for them anyway.
+          if (['owner', 'admin'].includes(data.hive?.my_role)) {
+            api.get(`/api/hives/${hiveId}/reports?status=open`)
+              .then(d => setReportCount((d.groups ?? []).length))
+              .catch(() => {});
+          }
         }
       })
       .catch(err => setHiveError(err.status === 404 ? 'not_found' : 'error'))
@@ -720,6 +732,8 @@ export default function HiveDashboardLayout() {
     isOwner,
     requestCount,
     setRequestCount,
+    reportCount,
+    setReportCount,
     refreshHive,
     onMemberAccepted: setCelebrationMember,
     openPostModal: isOwner ? () => setPostModalOpen(true) : null,
@@ -784,6 +798,7 @@ export default function HiveDashboardLayout() {
             hiveId={hiveId}
             isOwner={isOwner}
             requestCount={requestCount}
+            reportCount={reportCount}
             chatUnread={chatUnread}
             hiveToolsOn={hiveToolsOn}
             uploading={uploading}

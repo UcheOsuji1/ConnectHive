@@ -268,7 +268,7 @@ export async function sendAccountDeletionEmail(to, scheduledFor) {
 // ── Report alert (Prompt 69 Part C) ────────────────────────────────────────────
 // Sent to every address in SITE_ADMIN_EMAILS when a report is filed. Never
 // carries the reporter's identity — only what the content was and where.
-const REASON_LABELS = {
+export const REASON_LABELS = {
   harassment:    'Harassment or bullying',
   safety:        'Safety concern',
   spam:          'Spam or scam',

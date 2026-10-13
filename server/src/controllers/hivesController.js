@@ -1681,47 +1681,55 @@ export const updateMemberRole = async (req, res) => {
   }
 };
 
+// The actual removal — pulled out of the route handler so the report-review
+// flow's "Remove {name} from Hive" action (reportsController.js) can call the
+// exact same logic instead of a second copy. callerId is trusted to already
+// be an owner/admin of hiveId by the time either caller reaches this.
+export async function removeMemberCore(hiveId, callerId, targetId) {
+  const { rows } = await query(
+    `SELECT hm.user_id, hm.role
+     FROM hive_members hm
+     WHERE hm.hive_id = $1 AND hm.user_id = ANY($2::uuid[]) AND hm.membership_status = 'active'`,
+    [hiveId, [callerId, targetId]],
+  );
+  const callerRow = rows.find(r => r.user_id === callerId);
+  const targetRow = rows.find(r => r.user_id === targetId);
+
+  if (!callerRow || !['owner', 'admin'].includes(callerRow.role)) {
+    const err = new Error('Not authorised.'); err.status = 403; throw err;
+  }
+  if (!targetRow) { const err = new Error('Member not found.'); err.status = 404; throw err; }
+  if (targetRow.role === 'owner') { const err = new Error('Cannot remove the owner.'); err.status = 403; throw err; }
+  if (targetId === callerId) { const err = new Error('Cannot remove yourself here.'); err.status = 403; throw err; }
+  // Admins cannot remove other admins
+  if (callerRow.role === 'admin' && targetRow.role === 'admin') {
+    const err = new Error('Admins cannot remove other admins.'); err.status = 403; throw err;
+  }
+
+  await query(
+    `UPDATE hive_members SET membership_status = 'removed', role = 'member'
+     WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+    [hiveId, targetId],
+  );
+
+  // Kick the evicted user's socket from the hive room immediately
+  try { evictUserFromHive(hiveId, targetId); } catch { /* socket not yet initialized in tests */ }
+
+  const { rows: [{ member_count }] } = await query(
+    `SELECT COUNT(*)::int AS member_count FROM hive_members
+     WHERE hive_id = $1 AND membership_status = 'active'`,
+    [hiveId],
+  );
+  return { removed: true, user_id: targetId, member_count: Number(member_count) };
+}
+
 export const removeMember = async (req, res) => {
   try {
     const { id: hiveId, userId: targetId } = req.params;
-    const callerId = req.userId;
-
-    const { rows } = await query(
-      `SELECT hm.user_id, hm.role
-       FROM hive_members hm
-       WHERE hm.hive_id = $1 AND hm.user_id = ANY($2::uuid[]) AND hm.membership_status = 'active'`,
-      [hiveId, [callerId, targetId]],
-    );
-    const callerRow = rows.find(r => r.user_id === callerId);
-    const targetRow = rows.find(r => r.user_id === targetId);
-
-    if (!callerRow || !['owner', 'admin'].includes(callerRow.role)) {
-      return res.status(403).json({ error: 'Not authorised.' });
-    }
-    if (!targetRow) return res.status(404).json({ error: 'Member not found.' });
-    if (targetRow.role === 'owner')  return res.status(403).json({ error: 'Cannot remove the owner.' });
-    if (targetId === callerId)       return res.status(403).json({ error: 'Cannot remove yourself here.' });
-    // Admins cannot remove other admins
-    if (callerRow.role === 'admin' && targetRow.role === 'admin') {
-      return res.status(403).json({ error: 'Admins cannot remove other admins.' });
-    }
-
-    await query(
-      `UPDATE hive_members SET membership_status = 'removed', role = 'member'
-       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
-      [hiveId, targetId],
-    );
-
-    // Kick the evicted user's socket from the hive room immediately
-    try { evictUserFromHive(hiveId, targetId); } catch { /* socket not yet initialized in tests */ }
-
-    const { rows: [{ member_count }] } = await query(
-      `SELECT COUNT(*)::int AS member_count FROM hive_members
-       WHERE hive_id = $1 AND membership_status = 'active'`,
-      [hiveId],
-    );
-    res.json({ removed: true, user_id: targetId, member_count: Number(member_count) });
+    const result = await removeMemberCore(hiveId, req.userId, targetId);
+    res.json(result);
   } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
     console.error('[hives/removeMember]', err);
     res.status(500).json({ error: 'Failed to remove member.' });
   }

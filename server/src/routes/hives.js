@@ -75,6 +75,7 @@ import {
   approveSuggestion, declineSuggestion, withdrawSuggestion,
 } from '../controllers/planSuggestionsController.js';
 import { getHiveHome } from '../controllers/hiveHomeController.js';
+import { getHiveReports, resolveHiveReport } from '../controllers/reportsController.js';
 import { getChannelRail } from '../controllers/chatRailController.js';
 import { pinMessage, unpinMessage, listPins } from '../controllers/pinsController.js';
 import { createPoll, votePoll, clearVote, listVoters } from '../controllers/pollsController.js';
@@ -436,5 +437,9 @@ router.patch('/:id/tools/ideas/ideas/:ideaId',       requireAuth, requireTool('i
 router.delete('/:id/tools/ideas/ideas/:ideaId',      requireAuth, requireTool('ideas'), archiveIdea);
 router.post('/:id/tools/ideas/ideas/:ideaId/vote',   requireAuth, requireTool('ideas'), voteIdea);
 router.delete('/:id/tools/ideas/ideas/:ideaId/vote', requireAuth, requireTool('ideas'), unvoteIdea);
+
+// ── Reports (Prompt 69 Part D — Hive owners review their Hive) ───────────────
+router.get('/:id/reports',                              requireAuth, getHiveReports);
+router.post('/:id/reports/:targetType/:targetId/resolve', requireAuth, resolveHiveReport);
 
 export default router;

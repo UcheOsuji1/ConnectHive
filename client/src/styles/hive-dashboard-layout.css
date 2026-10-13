@@ -358,6 +358,10 @@
   min-width: 18px;
   text-align: center;
 }
+.hdl-nav-badge--danger {
+  background: #b93636;
+  color: #fff;
+}
 .hdl-soon-pill {
   font-size: 0.6rem;
   font-weight: 700;

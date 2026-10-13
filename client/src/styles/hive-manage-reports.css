@@ -1,0 +1,168 @@
+/* ── Manage Hive › Reports (O1) ──────────────────────────────────────────────
+   Ivory #f5f0e8 bg · Cards #fffdf7 / 1px #ebe1cd / r-16
+   Cormorant Garamond headings · DM Sans body · Gold #c49a28
+───────────────────────────────────────────────────────────────────────────── */
+
+.hmrp-wrap { display: flex; flex-direction: column; gap: 16px; }
+
+.hmrp-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid #ebe1cd;
+}
+.hmrp-tab {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #8a8070;
+  cursor: pointer;
+}
+.hmrp-tab--active {
+  color: #1e1b18;
+  border-bottom-color: #c49a28;
+}
+
+.hmrp-empty {
+  padding: 40px 20px;
+  text-align: center;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  color: #8a8070;
+  background: #fffdf7;
+  border: 1px dashed #d9cfbf;
+  border-radius: 12px;
+}
+
+.hmrp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hmrp-card {
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hmrp-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.hmrp-kind {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #c49a28;
+}
+.hmrp-time {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.76rem;
+  color: #9a8c72;
+}
+
+.hmrp-quote {
+  margin: 0;
+  padding: 10px 14px;
+  background: #f8f4ea;
+  border-left: 3px solid #d9cfbf;
+  border-radius: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.88rem;
+  color: #2d2416;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.hmrp-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.8rem;
+  color: #685e54;
+}
+.hmrp-context-link {
+  color: #c49a28;
+  text-decoration: none;
+  font-weight: 600;
+}
+.hmrp-context-link:hover { text-decoration: underline; }
+
+.hmrp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.hmrp-reason-chip {
+  display: inline-flex;
+  padding: 3px 10px;
+  background: #fef2f2;
+  border: 1px solid #f5c9c9;
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: #8a2b2b;
+}
+.hmrp-auto-chip {
+  display: inline-flex;
+  padding: 3px 10px;
+  background: #f0ece4;
+  border: 1px solid #dfd0b0;
+  border-radius: 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.76rem;
+  color: #685e54;
+}
+
+.hmrp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid #f0e8d4;
+}
+.hmrp-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid #d4c49a;
+  background: transparent;
+  color: #3a3028;
+}
+.hmrp-btn:hover:not(:disabled) { background: #f0e8d4; }
+.hmrp-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.hmrp-btn--danger {
+  border-color: rgba(185, 54, 54, 0.35);
+  color: #b93636;
+}
+.hmrp-btn--danger:hover:not(:disabled) { background: rgba(185, 54, 54, 0.08); }
+
+.hmrp-confirm {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: #3a3028;
+}
+
+@media (max-width: 600px) {
+  .hmrp-actions { flex-direction: column; align-items: stretch; }
+  .hmrp-confirm { flex-direction: column; align-items: flex-start; }
+}
