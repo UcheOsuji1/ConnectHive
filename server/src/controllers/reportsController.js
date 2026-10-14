@@ -25,7 +25,7 @@ function notFound() {
   return err;
 }
 
-async function hiveNameFor(hiveId) {
+export async function hiveNameFor(hiveId) {
   if (!hiveId) return null;
   const { rows: [h] } = await query('SELECT hive_name FROM hives WHERE hive_id = $1', [hiveId]);
   return h?.hive_name ?? null;
@@ -125,7 +125,7 @@ async function resolveTarget(targetType, targetId, reporterId) {
 // Every (table, id column) pair a report target can resolve to — the single
 // place that mapping lives, reused by auto-hide and by the owner-review
 // resolve endpoint below.
-const CONTENT_TABLE = {
+export const CONTENT_TABLE = {
   message: ['messages', 'message_id', 'sender_user_id'],
   post:    ['hive_posts', 'post_id', 'author_user_id'],
   comment: ['post_comments', 'comment_id', 'user_id'],

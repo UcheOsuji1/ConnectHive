@@ -24,6 +24,7 @@ export default function LoginPage() {
         oauth_state_mismatch: 'Sign-in was interrupted — please try again.',
         google_email_unverified: 'Your Google account email is not verified.',
         oauth_failed: 'Google sign-in failed — please try again.',
+        account_suspended: 'Your account is suspended. Contact hello@truehive.app.',
       };
       setError(messages[oauthError] ?? 'Sign-in failed — please try again.');
     }

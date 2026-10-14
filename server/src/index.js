@@ -16,6 +16,7 @@ import toolRoutes         from './routes/tools.js';
 import accountRoutes      from './routes/account.js';
 import blockRoutes        from './routes/blocks.js';
 import reportRoutes       from './routes/reports.js';
+import adminRoutes        from './routes/admin.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
@@ -135,6 +136,7 @@ app.use('/api/tools',         toolRoutes);
 app.use('/api/account',       accountRoutes);
 app.use('/api/blocks',        blockRoutes);
 app.use('/api/reports',       reportRoutes);
+app.use('/api/admin',         adminRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

@@ -205,6 +205,10 @@ export async function login(req, res) {
     const match = await bcrypt.compare(password, user.password_hash);
     if (!match) return res.status(401).json({ error: INVALID });
 
+    if (user.account_status === 'suspended') {
+      return res.status(403).json({ error: 'Your account is suspended. Contact hello@truehive.app.' });
+    }
+
     await _cancelPendingDeletionIfAny(user.user_id);
     if (user.account_status === 'pending_deletion') user.account_status = 'active';
 
@@ -367,12 +371,16 @@ export async function googleCallback(req, res) {
 
     // 1. This Google account already linked to a TrueHive account?
     const { rows: identityRows } = await query(
-      `SELECT u.user_id, u.token_version
+      `SELECT u.user_id, u.token_version, u.account_status
        FROM auth_identities ai
        JOIN users u ON u.user_id = ai.user_id
        WHERE ai.provider = 'google' AND ai.provider_user_id = $1`,
       [googleId],
     );
+
+    if (identityRows.length > 0 && identityRows[0].account_status === 'suspended') {
+      return res.redirect(`${CLIENT_URL}/login?error=account_suspended`);
+    }
 
     if (identityRows.length > 0) {
       const { user_id, token_version } = identityRows[0];
@@ -385,9 +393,13 @@ export async function googleCallback(req, res) {
 
     // 2. Does a TrueHive account with this email already exist?
     const { rows: userRows } = await query(
-      'SELECT user_id, token_version FROM users WHERE email = $1',
+      'SELECT user_id, token_version, account_status FROM users WHERE email = $1',
       [email],
     );
+
+    if (userRows.length > 0 && userRows[0].account_status === 'suspended') {
+      return res.redirect(`${CLIENT_URL}/login?error=account_suspended`);
+    }
 
     let userId;
     let tokenVersion;
