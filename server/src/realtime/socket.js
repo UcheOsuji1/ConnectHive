@@ -5,6 +5,7 @@ import { query } from '../db/index.js';
 import { requireMembership } from '../lib/hiveMembership.js';
 import { requireChannelAccess } from '../lib/hiveChannels.js';
 import { dbTokenVersion } from '../middleware/auth.js';
+import { touchLastActive } from '../lib/activity.js';
 
 let io = null;
 
@@ -132,6 +133,7 @@ export function initSocket(httpServer, allowedOrigins) {
 
     // Personal room — used for targeted events (access revocation, DMs, etc.)
     socket.join(`user:${userId}`);
+    touchLastActive(userId);
 
     // Lazy-load display name and stored presence status once per connection.
     // LEFT JOIN profiles so presence_status loads even before profile setup.

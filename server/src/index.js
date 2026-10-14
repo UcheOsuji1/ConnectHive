@@ -30,6 +30,7 @@ import { startOpportunityDigestJob } from './jobs/opportunityDigestJob.js';
 import { startTaskDueJob } from './jobs/taskDueJob.js';
 import { startPurgeJob } from './jobs/purgeJob.js';
 import { startEmailOutboxJob } from './jobs/emailOutboxJob.js';
+import { startDigestJob } from './jobs/digestJob.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -178,4 +179,5 @@ server.listen(PORT, async () => {
   startTaskDueJob();
   startPurgeJob();
   startEmailOutboxJob();
+  startDigestJob();
 });

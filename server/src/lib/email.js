@@ -531,3 +531,44 @@ export async function sendJoinRequestEmail(recipientId, { hiveId, hiveName, peop
     return { subject, html, text };
   });
 }
+
+// ── E4: activity digest while you're away (Prompt 70 Part D) ──────────────────
+// `lines` is already built by digestJob.js — one line per room, one per Hive
+// with new posts, and at most one aggregated private-chat line. No message
+// text ever reaches this function.
+export async function sendActivityDigestEmail(userId, { messageCount, postCount, lines }) {
+  return sendIfAllowed(userId, 'digest', async () => {
+    const link  = `${CLIENT_URL}/home`;
+    const unsub = unsubscribeUrl(userId, 'digest');
+    const parts = [];
+    if (messageCount > 0) parts.push(`${messageCount} new message${messageCount === 1 ? '' : 's'}`);
+    if (postCount > 0) parts.push(`${postCount} post${postCount === 1 ? '' : 's'}`);
+    const summary = `${parts.join(' and ')} in your Hives`;
+
+    const html = _htmlWrap(`
+      <tr><td style="padding:36px 40px 20px;">
+        <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                   font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+          While you were away
+        </h1>
+        <p style="margin:0 0 20px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">
+          ${summary}.
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${lines.map(line => `
+            <tr><td style="padding:10px 0;border-bottom:1px solid #f0ebe0;
+                           font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                           font-size:14px;color:#1E1B18;">${line}</td></tr>`).join('')}
+        </table>
+      </td></tr>
+      ${_ctaButton(link, 'Catch up')}`,
+      { unsubscribe: unsub });
+
+    const text =
+      `${summary}\n\n${lines.map(l => `- ${l}`).join('\n')}\n\n` +
+      `${link}\n\nUnsubscribe: ${unsub}\n\n— TrueHive (${CLIENT_URL})`;
+
+    return { subject: summary, html, text };
+  });
+}

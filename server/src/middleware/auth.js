@@ -1,5 +1,6 @@
 import jwt   from 'jsonwebtoken';
 import { query } from '../db/index.js';
+import { touchLastActive } from '../lib/activity.js';
 
 // Cache DB token_version lookups to avoid a per-request query.
 // Exported so socket.js can reuse the same cache at connect time.
@@ -39,6 +40,7 @@ export async function requireAuth(req, res, next) {
       }
     }
 
+    touchLastActive(req.userId);
     next();
   } catch {
     return res.status(401).json({ error: 'Session expired — please log in again' });
