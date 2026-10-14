@@ -1,79 +1,12 @@
-import { useState } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { api } from '../lib/api';
 
-function VerifyBanner({ email }) {
-  const [dismissed, setDismissed] = useState(false);
-  const [sending,   setSending]   = useState(false);
-  const [sent,      setSent]      = useState(false);
-
-  if (dismissed) return null;
-
-  const handleResend = async () => {
-    if (sending || sent) return;
-    setSending(true);
-    try {
-      await api.post('/api/auth/resend-verification');
-      setSent(true);
-    } catch { /* non-fatal */ } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div style={{
-      background:    '#fffbea',
-      borderBottom:  '1px solid #e8d87a',
-      padding:       '10px 20px',
-      display:       'flex',
-      alignItems:    'center',
-      gap:           12,
-      fontSize:      13,
-      color:         '#5a4800',
-      flexWrap:      'wrap',
-    }}>
-      <span>
-        Please verify your email address{email ? ` (${email})` : ''} to unlock all features.
-      </span>
-      {!sent ? (
-        <button
-          onClick={handleResend}
-          disabled={sending}
-          style={{
-            background:   'none',
-            border:       '1px solid #c49a28',
-            borderRadius: 6,
-            padding:      '3px 10px',
-            fontSize:     12,
-            color:        '#8a6510',
-            cursor:       'pointer',
-          }}
-        >
-          {sending ? 'Sending…' : 'Resend email'}
-        </button>
-      ) : (
-        <span style={{ color: '#3a7a3a', fontWeight: 500 }}>Verification email sent.</span>
-      )}
-      <button
-        onClick={() => setDismissed(true)}
-        aria-label="Dismiss"
-        style={{
-          marginLeft:   'auto',
-          background:   'none',
-          border:       'none',
-          cursor:       'pointer',
-          fontSize:     16,
-          color:        '#8a7a54',
-          lineHeight:   1,
-        }}
-      >
-        ×
-      </button>
-    </div>
-  );
-}
-
+// The unverified-email notice used to render here, above every page's own
+// <Navbar/>. Since Navbar is fixed-position and RequireAuth's own markup sits
+// in normal flow ahead of it, the banner's top edge was visually covered by
+// the fixed nav drawing over it. It now lives inside Navbar itself (see
+// VerifyStrip in Navbar.jsx) so it can sit truly under the nav bar, on every
+// page that renders one — logged-in or not, Navbar already branches on `user`.
 export default function RequireAuth() {
   const { user, loading } = useAuth();
   const location = useLocation();
@@ -105,12 +38,5 @@ export default function RequireAuth() {
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />;
   }
 
-  return (
-    <>
-      {user.emailVerified === false && (
-        <VerifyBanner email={user.email} />
-      )}
-      <Outlet />
-    </>
-  );
+  return <Outlet />;
 }

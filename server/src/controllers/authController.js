@@ -122,7 +122,7 @@ async function _createVerificationToken(userId) {
 
 export async function register(req, res) {
   try {
-    const { email, password, acceptedTerms, dateOfBirth } = req.body ?? {};
+    const { email, password, acceptedTerms, dateOfBirth, newsOptIn } = req.body ?? {};
 
     if (!email || !isValidEmail(email)) {
       return res.status(400).json({ error: 'A valid email address is required.' });
@@ -147,11 +147,16 @@ export async function register(req, res) {
     }
 
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+    // newsOptIn is opt-in only — the checkbox is never pre-ticked (S2), so a
+    // missing/false value here just leaves email_news at its schema default
+    // (false) with no opted_in_at, same as never touching this at all.
+    const newsOptInBool = newsOptIn === true;
     const { rows } = await query(
-      `INSERT INTO users (email, password_hash, date_of_birth, terms_accepted_at, terms_policy_version)
-       VALUES ($1, $2, $3, NOW(), $4)
+      `INSERT INTO users (email, password_hash, date_of_birth, terms_accepted_at, terms_policy_version,
+                           email_news, email_news_opted_in_at)
+       VALUES ($1, $2, $3, NOW(), $4, $5, CASE WHEN $5 THEN NOW() ELSE NULL END)
        RETURNING user_id, email, account_status, created_at, member_id, token_version`,
-      [email.toLowerCase(), passwordHash, dateOfBirth, POLICY_VERSION],
+      [email.toLowerCase(), passwordHash, dateOfBirth, POLICY_VERSION, newsOptInBool],
     );
     const user = rows[0];
 
@@ -752,7 +757,7 @@ export async function deleteAccount(req, res) {
 // birth date) or still on an older terms_policy_version.
 export async function submitConsent(req, res) {
   try {
-    const { dateOfBirth, acceptedTerms } = req.body ?? {};
+    const { dateOfBirth, acceptedTerms, newsOptIn } = req.body ?? {};
     if (!dateOfBirth) {
       return res.status(400).json({ error: 'Date of birth is required.' });
     }
@@ -770,9 +775,95 @@ export async function submitConsent(req, res) {
       [req.userId, dateOfBirth, POLICY_VERSION],
     );
 
+    // Same opt-in-only rule as register — only ever flips email_news TRUE
+    // here (never clears it), so resubmitting this form with the box
+    // unticked can't silently undo an opt-in made elsewhere (Settings).
+    if (newsOptIn === true) {
+      await query(
+        `UPDATE users SET email_news = TRUE, email_news_opted_in_at = NOW() WHERE user_id = $1`,
+        [req.userId],
+      );
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error('[auth/submitConsent]', err);
     res.status(500).json({ error: 'Failed to save your details.' });
+  }
+}
+
+// ── Email preferences (S1) ───────────────────────────────────────────────────
+// Joining/digest/news flags, read and written from Account & Settings.
+// Turning news on stamps email_news_opted_in_at; turning it off clears the
+// flag but deliberately leaves that timestamp in place as a log of when the
+// opt-in happened, and logs the opt-out loudly for the same reason.
+export async function getEmailPrefs(req, res) {
+  try {
+    const { rows: [row] } = await query(
+      `SELECT email_joins, email_digest, email_news FROM users WHERE user_id = $1`,
+      [req.userId],
+    );
+    if (!row) return res.status(404).json({ error: 'User not found.' });
+    res.json({
+      prefs: {
+        emailJoins:  row.email_joins,
+        emailDigest: row.email_digest,
+        emailNews:   row.email_news,
+      },
+    });
+  } catch (err) {
+    console.error('[auth/getEmailPrefs]', err);
+    res.status(500).json({ error: 'Failed to load your email preferences.' });
+  }
+}
+
+const EMAIL_PREF_FIELDS = { emailJoins: 'email_joins', emailDigest: 'email_digest', emailNews: 'email_news' };
+
+export async function updateEmailPrefs(req, res) {
+  try {
+    const updates = {};
+    for (const [bodyKey, column] of Object.entries(EMAIL_PREF_FIELDS)) {
+      if (typeof req.body?.[bodyKey] === 'boolean') updates[column] = req.body[bodyKey];
+    }
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update.' });
+    }
+
+    if ('email_news' in updates) {
+      const { rows: [before] } = await query(`SELECT email_news FROM users WHERE user_id = $1`, [req.userId]);
+      if (before?.email_news && !updates.email_news) {
+        console.log(`[account/updateEmailPrefs] user ${req.userId} opted out of TrueHive news (opted_in_at timestamp preserved).`);
+      }
+    }
+
+    const setClauses = [];
+    const vals = [];
+    let i = 1;
+    for (const [column, value] of Object.entries(updates)) {
+      setClauses.push(`${column} = $${i}`);
+      vals.push(value);
+      i++;
+      if (column === 'email_news' && value === true) {
+        setClauses.push(`email_news_opted_in_at = NOW()`);
+      }
+    }
+    vals.push(req.userId);
+
+    const { rows: [row] } = await query(
+      `UPDATE users SET ${setClauses.join(', ')} WHERE user_id = $${i}
+       RETURNING email_joins, email_digest, email_news`,
+      vals,
+    );
+
+    res.json({
+      prefs: {
+        emailJoins:  row.email_joins,
+        emailDigest: row.email_digest,
+        emailNews:   row.email_news,
+      },
+    });
+  } catch (err) {
+    console.error('[auth/updateEmailPrefs]', err);
+    res.status(500).json({ error: 'Failed to save your email preferences.' });
   }
 }

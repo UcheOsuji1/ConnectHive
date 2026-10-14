@@ -248,6 +248,33 @@ h1 em, h2 em { font-family: 'Cormorant Garamond', serif; font-style: italic; fon
 }
 .announce-link:hover { color: #e8c84a; }
 
+/* ─── Verify-email strip (V1) ──────────────────────────────── */
+/* Sticks just below the fixed navbar; margin-top clears the navbar's own
+   painted height so the strip never renders underneath it. */
+.verify-strip {
+  position: sticky; top: var(--nav-h); margin-top: var(--nav-h); z-index: 49;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 12px;
+  background: #fffbea; border-bottom: 1px solid #e8d87a;
+  padding: 10px 20px; font-size: .82rem; color: #5a4800;
+}
+.verify-strip-text { flex: 1 1 auto; min-width: 200px; }
+.verify-strip-actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.verify-strip-btn {
+  background: none; border: 1px solid #c49a28; border-radius: 6px;
+  padding: 4px 12px; font-size: .78rem; color: #8a6510; cursor: pointer;
+  white-space: nowrap;
+}
+.verify-strip-btn:disabled { opacity: .6; cursor: default; }
+.verify-strip-sent { font-size: .78rem; color: #3a7a3a; font-weight: 500; white-space: nowrap; }
+.verify-strip-close {
+  background: none; border: none; cursor: pointer; font-size: 16px;
+  color: #8a7a54; line-height: 1; padding: 0 2px;
+}
+@media (max-width: 480px) {
+  .verify-strip { padding: 10px 16px; }
+  .verify-strip-actions { margin-left: 0; width: 100%; justify-content: flex-start; }
+}
+
 @media (max-width: 900px) {
   .nav-links, .nav-signin { display: none; }
   .hamburger { display: flex; }

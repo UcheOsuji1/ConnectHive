@@ -187,6 +187,43 @@
   white-space: nowrap;
 }
 
+/* ── Toggle switch (email prefs) ──────────────────────────────── */
+.acct-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  border-radius: 20px;
+  border: 1px solid #dfd0b0;
+  background: #f0ece4;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 150ms, border-color 150ms;
+}
+.acct-toggle-knob {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(30,27,24,.2);
+  transition: transform 150ms;
+}
+.acct-toggle--on { background: #c49a28; border-color: #c49a28; }
+.acct-toggle--on .acct-toggle-knob { transform: translateX(18px); }
+.acct-toggle:disabled { opacity: .6; cursor: default; }
+.acct-row-sub {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  color: var(--text-muted, #6b6057);
+  margin: 2px 0 0;
+}
+.acct-row-always-on {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b6057);
+}
+
 /* ── Session / Danger rows ────────────────────────────────────── */
 .acct-session-row {
   display: flex;

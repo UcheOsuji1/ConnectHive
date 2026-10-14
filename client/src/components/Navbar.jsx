@@ -5,6 +5,7 @@ import Avatar from './Avatar.jsx';
 import NotificationBell from './NotificationBell.jsx';
 import TrueHiveMark from './TrueHiveMark.jsx';
 import TrueHiveWordmark from './TrueHiveWordmark.jsx';
+import VerifyStrip from './VerifyStrip.jsx';
 
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
@@ -128,6 +129,10 @@ export default function Navbar() {
           </button>
         </div>
       </nav>
+
+      {!loading && user && user.emailVerified === false && (
+        <VerifyStrip email={user.email} />
+      )}
 
       <div className={`mobile-menu${menuOpen ? ' open' : ''}`} role="dialog" aria-label="Mobile navigation">
         {loading ? null : user ? (

@@ -304,6 +304,83 @@ function PaymentsCard() {
   );
 }
 
+// Email notifications (S1) — GET/PATCH /api/account/email-prefs. Each row
+// saves independently on toggle, same optimistic-then-reconcile shape as a
+// per-Hive notification pref toggle elsewhere in the app.
+const EMAIL_PREF_ROWS = [
+  { key: 'emailJoins',  label: 'Joining Hives',    sub: 'When someone joins your Hive, requests to join, or you join one yourself.' },
+  { key: 'emailDigest', label: 'Activity digest',  sub: "A summary of what you missed, sent only while you've been away." },
+  { key: 'emailNews',   label: 'TrueHive news',    sub: 'New features and events near you. Unsubscribe any time.' },
+];
+
+function EmailPrefsCard() {
+  const [prefs, setPrefs] = useState(null);
+  const [error, setError] = useState(null);
+  const [pending, setPending] = useState(null);
+
+  useEffect(() => {
+    api.get('/api/account/email-prefs')
+      .then(d => setPrefs(d.prefs))
+      .catch(() => setError('Could not load your email preferences.'));
+  }, []);
+
+  async function toggle(key) {
+    if (!prefs || pending) return;
+    const next = !prefs[key];
+    setPending(key);
+    setError(null);
+    try {
+      const { prefs: saved } = await api.patch('/api/account/email-prefs', { [key]: next });
+      setPrefs(saved);
+    } catch {
+      setError('Could not save that change. Please try again.');
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <div className="acct-card">
+      <div className="acct-section-label">Notifications — Email</div>
+      {error && <p className="acct-payments-error">{error}</p>}
+      <dl className="acct-rows">
+        {EMAIL_PREF_ROWS.map(row => (
+          <div className="acct-row" key={row.key}>
+            <dt className="acct-row-label">
+              {row.label}
+              <p className="acct-row-sub">{row.sub}</p>
+            </dt>
+            <dd className="acct-row-value acct-row-action">
+              {prefs && (
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={prefs[row.key]}
+                  aria-label={`${prefs[row.key] ? 'Turn off' : 'Turn on'} ${row.label}`}
+                  className={`acct-toggle${prefs[row.key] ? ' acct-toggle--on' : ''}`}
+                  disabled={pending === row.key}
+                  onClick={() => toggle(row.key)}
+                >
+                  <span className="acct-toggle-knob" />
+                </button>
+              )}
+            </dd>
+          </div>
+        ))}
+        <div className="acct-row">
+          <dt className="acct-row-label">
+            Account and security
+            <p className="acct-row-sub">Verification, password resets, and security alerts.</p>
+          </dt>
+          <dd className="acct-row-value acct-row-action">
+            <span className="acct-row-always-on">Always on</span>
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 function EmailVerificationRow({ verified, email }) {
   const [sending, setSending] = useState(false);
   const [sent,    setSent]    = useState(false);
@@ -441,18 +518,8 @@ export default function AccountSettingsPage() {
           {/* ── 3b. Payments ── */}
           <PaymentsCard />
 
-          {/* ── 4. Notifications ── */}
-          <div className="acct-card">
-            <div className="acct-section-label">Notifications</div>
-            <dl className="acct-rows">
-              <div className="acct-row">
-                <dt className="acct-row-label">Email notifications</dt>
-                <dd className="acct-row-value acct-row-action">
-                  <span className="acct-soon">Soon</span>
-                </dd>
-              </div>
-            </dl>
-          </div>
+          {/* ── 4. Notifications — Email ── */}
+          <EmailPrefsCard />
 
           {/* ── 5. Session ── */}
           <div className="acct-card">

@@ -24,6 +24,7 @@ function ageFromDob(dob) {
 export default function ConfirmDetailsPage() {
   const [dob,        setDob]        = useState('');
   const [agreed,     setAgreed]     = useState(false);
+  const [newsOptIn,  setNewsOptIn]  = useState(false);
   const [error,      setError]      = useState('');
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
@@ -48,7 +49,7 @@ export default function ConfirmDetailsPage() {
     }
     setSubmitting(true);
     try {
-      await api.post('/api/auth/consent', { dateOfBirth: dob, acceptedTerms: agreed });
+      await api.post('/api/auth/consent', { dateOfBirth: dob, acceptedTerms: agreed, newsOptIn });
       navigate('/home');
     } catch (err) {
       setError(err.data?.error ?? 'Could not save your details. Please try again.');
@@ -100,6 +101,22 @@ export default function ConfirmDetailsPage() {
             <Link to="/terms" className="su-gold-link">Terms of Service</Link>
             {' '}and{' '}
             <Link to="/privacy" className="su-gold-link">Privacy Policy</Link>.
+          </label>
+        </div>
+
+        <div className="su-terms" style={{ textAlign: 'left', marginTop: '10px' }}>
+          <input
+            type="checkbox"
+            className="su-check"
+            id="cd-news"
+            checked={newsOptIn}
+            onChange={e => setNewsOptIn(e.target.checked)}
+          />
+          <label htmlFor="cd-news" className="su-terms-text">
+            Send me TrueHive news
+            <span style={{ display: 'block', fontSize: '11.5px', color: '#9a8c72', marginTop: '2px' }}>
+              New features and events near you. Unsubscribe any time.
+            </span>
           </label>
         </div>
 

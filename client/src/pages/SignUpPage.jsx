@@ -31,6 +31,7 @@ export default function SignUpPage() {
   const [password,   setPassword]   = useState('');
   const [dob,        setDob]        = useState('');
   const [agreed,     setAgreed]     = useState(false);
+  const [newsOptIn,  setNewsOptIn]  = useState(false);
   const [error,      setError]      = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -67,7 +68,7 @@ export default function SignUpPage() {
     if (!validateConsent()) return;
     setSubmitting(true);
     try {
-      await register(email, password, agreed, dob);
+      await register(email, password, agreed, dob, newsOptIn);
       navigate(nextPath);
     } catch (err) {
       setError(err.message || 'Something went wrong, please try again.');
@@ -309,6 +310,23 @@ export default function SignUpPage() {
               {' '}and{' '}
               <Link to="/privacy" className="su-gold-link">Privacy Policy</Link>
               . I'm ready to find my Hive.
+            </label>
+          </div>
+
+          {/* News opt-in (S2) — unticked by default, never set elsewhere */}
+          <div className="su-terms">
+            <input
+              type="checkbox"
+              className="su-check"
+              id="su-news"
+              checked={newsOptIn}
+              onChange={e => setNewsOptIn(e.target.checked)}
+            />
+            <label htmlFor="su-news" className="su-terms-text">
+              Send me TrueHive news
+              <span style={{ display: 'block', fontSize: '11.5px', color: '#9a8c72', marginTop: '2px' }}>
+                New features and events near you. Unsubscribe any time.
+              </span>
             </label>
           </div>
 
