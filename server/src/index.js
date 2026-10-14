@@ -17,6 +17,7 @@ import accountRoutes      from './routes/account.js';
 import blockRoutes        from './routes/blocks.js';
 import reportRoutes       from './routes/reports.js';
 import adminRoutes        from './routes/admin.js';
+import emailRoutes        from './routes/email.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
@@ -28,6 +29,7 @@ import { startCoffeeChatJob } from './jobs/coffeeChatJob.js';
 import { startOpportunityDigestJob } from './jobs/opportunityDigestJob.js';
 import { startTaskDueJob } from './jobs/taskDueJob.js';
 import { startPurgeJob } from './jobs/purgeJob.js';
+import { startEmailOutboxJob } from './jobs/emailOutboxJob.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -124,6 +126,9 @@ app.get('/api/config', (_req, res) => {
 
 // ── API routes ────────────────────────────────────────────────────────────────
 app.use('/api/auth',          authRoutes);
+// No login needed — same reasoning as /api/auth, so it sits ahead of
+// requireConsent too, not behind it.
+app.use('/api/email',         emailRoutes);
 app.use('/api',               requireConsent);
 app.use('/api/hives',         hiveRoutes);
 app.use('/api/users',         userRoutes);
@@ -172,4 +177,5 @@ server.listen(PORT, async () => {
   startOpportunityDigestJob();
   startTaskDueJob();
   startPurgeJob();
+  startEmailOutboxJob();
 });

@@ -14,6 +14,7 @@ import { getCategoryConfig } from '../lib/categoryConfig.js';
 import { PLAN_END } from './eventsController.js';
 import { getAttendanceRate } from './checkinsController.js';
 import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
+import { sendYoureInEmail } from '../lib/email.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -1018,13 +1019,16 @@ export const requestToJoin = async (req, res) => {
       );
       // Best-effort: welcome notification + notify existing members
       try {
-        const [{ rows: [profile] }, { rows: existingMembers }] = await Promise.all([
+        const [{ rows: [profile] }, { rows: existingMembers }, { rows: [catRow] }] = await Promise.all([
           query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
           query(
             `SELECT user_id, role FROM hive_members
              WHERE hive_id = $1 AND user_id != $2 AND membership_status = 'active'`,
             [hiveId, req.userId],
           ),
+          hive.category_id
+            ? query(`SELECT category_name FROM categories WHERE category_id = $1`, [hive.category_id])
+            : Promise.resolve({ rows: [] }),
         ]);
         const memberName = profile?.full_name ?? 'A new member';
         await createNotification({
@@ -1045,6 +1049,28 @@ export const requestToJoin = async (req, res) => {
             body: 'Give them a warm welcome 👋',
             hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
           });
+        }
+
+        // E1 — "You're in!" (instant join: no one to thank, so "You joined…").
+        await sendYoureInEmail(req.userId, {
+          hiveId, hiveName: hive.hive_name,
+          categoryName: catRow?.category_name ?? null,
+          location: hive.location ?? null,
+          firstLine: `You joined ${hive.hive_name}.`,
+          memberName,
+          memberNo: existingMembers.length + 1,
+          maxMembers: hive.max_members ?? null,
+          joinedAt: new Date(),
+        }).catch(e => console.error('[hives/requestToJoin] E1 email failed (non-fatal):', e));
+
+        // E2 — queue "{name} joined {Hive}" for the owner only.
+        const owner = existingMembers.find(m => m.role === 'owner');
+        if (owner) {
+          await query(
+            `INSERT INTO email_outbox (recipient_id, hive_id, kind, subject_user_id)
+             VALUES ($1, $2, 'member_joined', $3)`,
+            [owner.user_id, hiveId, req.userId],
+          );
         }
       } catch (e) {
         console.error('[hives/requestToJoin] simple-join notification failed (non-fatal):', e);
@@ -1073,6 +1099,7 @@ export const requestToJoin = async (req, res) => {
       [hiveId, req.userId],
     );
 
+    let thisRequestId;
     if (existingReq) {
       if (existingReq.status === 'pending') {
         return res.status(400).json({ error: 'Request already pending.' });
@@ -1085,12 +1112,14 @@ export const requestToJoin = async (req, res) => {
          WHERE hive_id = $1 AND user_id = $2`,
         [hiveId, req.userId, message?.trim() || null],
       );
+      thisRequestId = existingReq.request_id;
     } else {
-      await query(
+      const { rows: [inserted] } = await query(
         `INSERT INTO join_requests (hive_id, user_id, request_message)
-         VALUES ($1, $2, $3)`,
+         VALUES ($1, $2, $3) RETURNING request_id`,
         [hiveId, req.userId, message?.trim() || null],
       );
+      thisRequestId = inserted.request_id;
     }
 
     // Notify hive owners/admins (best-effort)
@@ -1098,7 +1127,7 @@ export const requestToJoin = async (req, res) => {
       const [{ rows: [requester] }, { rows: ownerAdmins }] = await Promise.all([
         query(`SELECT full_name FROM profiles WHERE user_id = $1`, [req.userId]),
         query(
-          `SELECT user_id FROM hive_members
+          `SELECT user_id, role FROM hive_members
            WHERE hive_id = $1 AND role IN ('owner','admin') AND membership_status = 'active'`,
           [hiveId],
         ),
@@ -1113,6 +1142,17 @@ export const requestToJoin = async (req, res) => {
           actorUserId: req.userId,
           link: `/hive/${hiveId}`,
         });
+      }
+
+      // E3 — queue "{name} wants to join {Hive}" for the owner only (not
+      // admins), approval Hives only (this branch only runs for those).
+      const owner = ownerAdmins.find(m => m.role === 'owner');
+      if (owner) {
+        await query(
+          `INSERT INTO email_outbox (recipient_id, hive_id, kind, subject_user_id, request_id)
+           VALUES ($1, $2, 'join_request', $3, $4)`,
+          [owner.user_id, hiveId, req.userId, thisRequestId],
+        );
       }
     } catch (e) {
       console.error('[hives/requestToJoin] notification failed (non-fatal):', e);
@@ -1290,14 +1330,19 @@ export const reviewRequest = async (req, res) => {
     let newMember = null;
     if (action === 'accept') {
       try {
-        const [{ rows: [requester] }, { rows: [hiveRow] }, { rows: existingMembers }, { rows: [memberRow] }] = await Promise.all([
+        const [{ rows: [requester] }, { rows: [hiveRow] }, { rows: existingMembers }, { rows: [memberRow] }, { rows: [ownerProfile] }] = await Promise.all([
           query(
             `SELECT p.full_name, p.profile_photo_url, u.member_id
              FROM profiles p JOIN users u ON u.user_id = p.user_id
              WHERE p.user_id = $1`,
             [request.user_id],
           ),
-          query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]),
+          query(
+            `SELECT h.hive_name, h.max_members, h.location, c.category_name
+               FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
+              WHERE h.hive_id = $1`,
+            [hiveId],
+          ),
           query(
             `SELECT user_id, role FROM hive_members
              WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
@@ -1306,6 +1351,11 @@ export const reviewRequest = async (req, res) => {
           query(
             `SELECT joined_at FROM hive_members WHERE hive_id = $1 AND user_id = $2`,
             [hiveId, request.user_id],
+          ),
+          query(
+            `SELECT p.full_name FROM hive_members hm JOIN profiles p ON p.user_id = hm.user_id
+              WHERE hm.hive_id = $1 AND hm.role = 'owner' AND hm.membership_status = 'active'`,
+            [hiveId],
           ),
         ]);
 
@@ -1363,6 +1413,30 @@ export const reviewRequest = async (req, res) => {
            `Welcome ${requesterName} to ${hiveName}!`,
            `Introduce yourself and give them a warm hello! 👋`],
         );
+
+        // 5. E1 — "You're in!" to the new member (Prompt 70 Part C).
+        const ownerFirstName = (ownerProfile?.full_name ?? 'The owner').split(' ')[0];
+        await sendYoureInEmail(request.user_id, {
+          hiveId, hiveName,
+          categoryName: hiveRow?.category_name ?? null,
+          location: hiveRow?.location ?? null,
+          firstLine: `${ownerFirstName} accepted your request.`,
+          memberName: requesterName,
+          memberNo: existingMembers.length + 1,
+          maxMembers: hiveRow?.max_members ?? null,
+          joinedAt: memberRow?.joined_at ?? new Date(),
+        }).catch(e => console.error('[hives/reviewRequest] E1 email failed (non-fatal):', e));
+
+        // 6. E2 — queue "{name} joined {Hive}" for the owner only (not
+        // admins), bundled and sent by jobs/emailOutboxJob.js.
+        const owner = existingMembers.find(m => m.role === 'owner');
+        if (owner) {
+          await query(
+            `INSERT INTO email_outbox (recipient_id, hive_id, kind, subject_user_id)
+             VALUES ($1, $2, 'member_joined', $3)`,
+            [owner.user_id, hiveId, request.user_id],
+          );
+        }
       } catch (ceremonyErr) {
         console.error('[hives/reviewRequest] ceremony failed (non-fatal):', ceremonyErr);
       }

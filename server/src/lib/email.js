@@ -1,4 +1,8 @@
 import { Resend } from 'resend';
+// Both modules only touch this import inside function bodies (never at
+// top-level load time), so the circular reference (emailPrefs.js imports
+// sendEmail back from here) resolves fine once the app has finished booting.
+import { unsubscribeUrl, sendIfAllowed } from './emailPrefs.js';
 
 const FROM       = process.env.EMAIL_FROM ?? 'TrueHive <hello@send.truehive.app>';
 const CLIENT_URL = process.env.CLIENT_URL;
@@ -20,6 +24,14 @@ function _getResend() {
   return _resend;
 }
 
+// Low-level send, shared by every email in this file — including
+// lib/emailPrefs.js's sendIfAllowed, which is how every join/digest/news
+// email actually reaches Resend. headers carries Part C's List-Unsubscribe
+// pair for anything that isn't an account email.
+export async function sendEmail({ to, subject, html, text, headers }) {
+  return _getResend()?.emails.send({ from: FROM, to, subject, html, text, headers });
+}
+
 // ── Shared layout helpers ──────────────────────────────────────────────────────
 
 function _htmlHeader() {
@@ -34,7 +46,10 @@ function _htmlHeader() {
     </tr>`;
 }
 
-function _htmlFooter() {
+// unsubscribe is omitted for account emails (verify/reset/deletion), which
+// carry no preference to turn off, and included for everything else — the
+// footer link alongside the List-Unsubscribe header Part C adds at send time.
+function _htmlFooter({ unsubscribe } = {}) {
   return `
     <tr>
       <td style="padding:20px 40px 28px;border-top:1px solid #eee8dc;">
@@ -43,13 +58,15 @@ function _htmlFooter() {
           You received this because of your TrueHive account.<br>
           Questions? Reply to this email or write to
           <a href="mailto:hello@truehive.app" style="color:#9a8a6a;">hello@truehive.app</a><br>
+          ${unsubscribe ? `<a href="${unsubscribe}" style="color:#9a8a6a;">Unsubscribe</a> ·
+          <a href="${CLIENT_URL}/settings" style="color:#9a8a6a;">Manage email preferences</a><br>` : ''}
           &copy; ${new Date().getFullYear()} TrueHive
         </p>
       </td>
     </tr>`;
 }
 
-function _htmlWrap(bodyRows) {
+function _htmlWrap(bodyRows, footerOpts) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -66,7 +83,7 @@ function _htmlWrap(bodyRows) {
                     overflow:hidden;box-shadow:0 2px 12px rgba(30,27,24,0.08);">
         ${_htmlHeader()}
         ${bodyRows}
-        ${_htmlFooter()}
+        ${_htmlFooter(footerOpts)}
       </table>
     </td>
   </tr>
@@ -321,4 +338,196 @@ export async function sendReportAlert(toAddresses, { reason, targetType, hiveNam
     _getResend()?.emails.send({ from: FROM, to, subject: `New report: ${reasonLabel}`, html, text })
       .catch(e => console.error('[email/sendReportAlert]', e)),
   ));
+}
+
+// ── E1: "You're in!" (Prompt 70 Part C) ────────────────────────────────────────
+// Sent to the new member themselves, from reviewRequest's accept branch and
+// the 'simple'+'open' instant-join path — the two places a join actually
+// completes with a ceremony to hang this off of. The Hive ID card is tables
+// and inline styles, not an image, so it survives a client that strips
+// remote images; the gradient falls back to the Resend-shell's own
+// #1E1B18 wherever gradients aren't supported.
+export async function sendYoureInEmail(userId, {
+  hiveId, hiveName, categoryName, location, firstLine,
+  memberName, memberNo, maxMembers, joinedAt,
+}) {
+  return sendIfAllowed(userId, 'joins', async () => {
+    const link = `${CLIENT_URL}/hive/${hiveId}`;
+    const unsub = unsubscribeUrl(userId, 'joins');
+    const joinedDate = new Date(joinedAt ?? Date.now())
+      .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    const memberNoText = maxMembers ? `#${memberNo} of ${maxMembers}` : `#${memberNo}`;
+    const subtitle = [categoryName, location].filter(Boolean).join(' · ');
+
+    const card = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+             style="background-color:#1E1B18;background-image:linear-gradient(135deg,#2a2318,#1E1B18);border-radius:10px;">
+        <tr><td style="padding:26px;">
+          <span style="display:inline-block;padding:4px 12px;background-color:rgba(201,162,74,0.15);
+                       border:1px solid rgba(201,162,74,0.4);border-radius:20px;color:#C9A24A;
+                       font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:11px;font-weight:700;
+                       letter-spacing:0.08em;text-transform:uppercase;">Member</span>
+          <h2 style="margin:16px 0 4px;color:#ffffff;font-family:Georgia,'Times New Roman',serif;font-size:22px;font-weight:700;">
+            ${hiveName}
+          </h2>
+          <p style="margin:0 0 22px;color:#c9bfae;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;font-size:13px;">
+            ${subtitle || '&nbsp;'}
+          </p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+            <tr>
+              <td width="33%" style="padding-right:10px;">
+                <p style="margin:0;color:#8a8070;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                          font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Member</p>
+                <p style="margin:3px 0 0;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                          font-size:14px;font-weight:600;">${memberName}</p>
+              </td>
+              <td width="33%" style="padding-right:10px;">
+                <p style="margin:0;color:#8a8070;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                          font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Member no.</p>
+                <p style="margin:3px 0 0;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                          font-size:14px;font-weight:600;">${memberNoText}</p>
+              </td>
+              <td width="33%">
+                <p style="margin:0;color:#8a8070;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                          font-size:10px;text-transform:uppercase;letter-spacing:0.06em;">Joined</p>
+                <p style="margin:3px 0 0;color:#ffffff;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                          font-size:14px;font-weight:600;">${joinedDate}</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+      </table>`;
+
+    const html = _htmlWrap(`
+      <tr>
+        <td style="padding:36px 40px 24px;">
+          <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                     font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+            You're in!
+          </h1>
+          <p style="margin:0 0 20px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                    font-size:15px;color:#3a2e1a;line-height:1.6;">
+            ${firstLine}
+          </p>
+        </td>
+      </tr>
+      <tr><td style="padding:0 40px 28px;">${card}</td></tr>
+      ${_ctaButton(link, `Open ${hiveName}`)}`,
+      { unsubscribe: unsub });
+
+    const text =
+      `You're in! Welcome to ${hiveName}\n\n${firstLine}\n\n` +
+      `${hiveName}${subtitle ? `\n${subtitle}` : ''}\n` +
+      `Member: ${memberName}\nMember no.: ${memberNoText}\nJoined: ${joinedDate}\n\n` +
+      `${link}\n\nUnsubscribe: ${unsub}\n\n— TrueHive (${CLIENT_URL})`;
+
+    return { subject: `You're in! Welcome to ${hiveName}`, html, text };
+  });
+}
+
+// One row in E2/E3's person list — reused by both, score lines and the
+// quoted request message only appear when the caller provides them (E3 only).
+function _personRow({ name, photoUrl, fitScore, withScore, requestMessage }) {
+  const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+  const avatar = photoUrl
+    ? `<img src="${photoUrl}" width="40" height="40" alt="" style="border-radius:50%;display:block;" />`
+    : `<div style="width:40px;height:40px;border-radius:50%;background-color:#C9A24A;color:#1E1B18;
+                   font-family:Georgia,'Times New Roman',serif;font-size:16px;font-weight:700;
+                   text-align:center;line-height:40px;">${initial}</div>`;
+  const scores = [
+    fitScore != null ? `Hive fit ${fitScore}%` : null,
+    withScore != null ? `${withScore}% with you` : null,
+  ].filter(Boolean).join(' · ');
+  return `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #f0ebe0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td width="40" style="vertical-align:top;">${avatar}</td>
+            <td style="padding-left:12px;vertical-align:top;">
+              <p style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                        font-size:14px;font-weight:600;color:#1E1B18;">${name}</p>
+              ${scores ? `<p style="margin:2px 0 0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                        font-size:12px;color:#8a6510;">${scores}</p>` : ''}
+              ${requestMessage ? `<p style="margin:4px 0 0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                        font-size:13px;color:#3a2e1a;font-style:italic;">"${requestMessage}"</p>` : ''}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`;
+}
+
+// ── E2: "{Name} joined {Hive}" (Prompt 70 Part C) ──────────────────────────────
+// Sent only to the owner (never admins), built from a group of email_outbox
+// rows by jobs/emailOutboxJob.js — one person or several, bundled within an
+// hour of the first.
+export async function sendMemberJoinedEmail(recipientId, { hiveId, hiveName, people }) {
+  return sendIfAllowed(recipientId, 'joins', async () => {
+    const link  = `${CLIENT_URL}/hive/${hiveId}/members`;
+    const unsub = unsubscribeUrl(recipientId, 'joins');
+    const n = people.length;
+    const subject = n === 1 ? `${people[0].name} joined ${hiveName}` : `${n} people joined ${hiveName}`;
+    const intro = n === 1 ? `${people[0].name} just joined ${hiveName}.` : `${n} people just joined ${hiveName}.`;
+
+    const html = _htmlWrap(`
+      <tr><td style="padding:36px 40px 20px;">
+        <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                   font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+          ${n === 1 ? 'New member' : 'New members'}
+        </h1>
+        <p style="margin:0 0 20px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">
+          ${intro}
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${people.map(p => _personRow(p)).join('')}
+        </table>
+      </td></tr>
+      ${_ctaButton(link, 'View members')}`,
+      { unsubscribe: unsub });
+
+    const text =
+      `${intro}\n\n${people.map(p => `- ${p.name}`).join('\n')}\n\n` +
+      `${link}\n\nUnsubscribe: ${unsub}\n\n— TrueHive (${CLIENT_URL})`;
+
+    return { subject, html, text };
+  });
+}
+
+// ── E3: "{Name} wants to join {Hive}" (Prompt 70 Part C) ───────────────────────
+// Sent only to the owner, approval Hives only. Each person carries both
+// scores (Hive fit, and "with you" from the shared pairScoreCache) and their
+// request message.
+export async function sendJoinRequestEmail(recipientId, { hiveId, hiveName, people }) {
+  return sendIfAllowed(recipientId, 'joins', async () => {
+    const link  = `${CLIENT_URL}/hive/${hiveId}/requests`;
+    const unsub = unsubscribeUrl(recipientId, 'joins');
+    const n = people.length;
+    const subject = n === 1 ? `${people[0].name} wants to join ${hiveName}` : `${n} people want to join ${hiveName}`;
+    const intro = n === 1 ? `${people[0].name} wants to join ${hiveName}.` : `${n} people want to join ${hiveName}.`;
+
+    const html = _htmlWrap(`
+      <tr><td style="padding:36px 40px 20px;">
+        <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                   font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+          ${n === 1 ? 'Join request' : 'Join requests'}
+        </h1>
+        <p style="margin:0 0 20px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">
+          ${intro}
+        </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          ${people.map(p => _personRow(p)).join('')}
+        </table>
+      </td></tr>
+      ${_ctaButton(link, 'Review requests')}`,
+      { unsubscribe: unsub });
+
+    const text =
+      `${intro}\n\n${people.map(p => `- ${p.name}`).join('\n')}\n\n` +
+      `${link}\n\nUnsubscribe: ${unsub}\n\n— TrueHive (${CLIENT_URL})`;
+
+    return { subject, html, text };
+  });
 }
