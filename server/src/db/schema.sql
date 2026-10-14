@@ -1538,3 +1538,56 @@ ALTER TABLE post_comments ADD COLUMN IF NOT EXISTS hidden_reason TEXT CHECK (hid
 -- 'suspended' needs no constraint widening here either.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_at     TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS suspension_note  TEXT;
+
+-- ─── Notifications, Hive emails, digest and newsletter (Prompt 70) ─────────────
+
+-- Grouped notifications: a group_key'd row is upserted (count bumped, title/
+-- body/actor/link replaced with the latest, updated_at touched) instead of
+-- inserting a new row each time — one running "4 new messages in #general"
+-- row, not four. The partial unique index is what makes the upsert's
+-- ON CONFLICT possible: at most one UNREAD row per (user, group_key); once
+-- that row is read, the next event starts a fresh group from zero.
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS group_key    TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS group_count  INT NOT NULL DEFAULT 1;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW();
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_unread_group
+  ON notifications(user_id, group_key) WHERE read = false AND group_key IS NOT NULL;
+
+-- New posts join the existing per-Hive notification categories.
+ALTER TABLE hive_notification_prefs ADD COLUMN IF NOT EXISTS posts BOOLEAN;
+
+-- Email preferences live on users, not per-Hive — a join/digest/news email
+-- is about the person's whole TrueHive presence, not one Hive.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_joins             BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_digest            BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_news              BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_news_opted_in_at  TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at          TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_digest_sent_at     TIMESTAMPTZ;
+
+-- Bundled owner emails ("3 people joined", "3 people want to join") — a row
+-- per event, sent_at IS NULL means still pending. emailOutboxJob.js groups
+-- by (recipient_id, hive_id, kind) and only sends a group once nothing of
+-- that kind went to that recipient for that Hive in the last 60 minutes.
+CREATE TABLE IF NOT EXISTS email_outbox (
+  outbox_id        UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  recipient_id     UUID        REFERENCES users(user_id) ON DELETE CASCADE,
+  hive_id          UUID        REFERENCES hives(hive_id) ON DELETE CASCADE,
+  kind             TEXT        CHECK (kind IN ('member_joined','join_request')),
+  subject_user_id  UUID        REFERENCES users(user_id) ON DELETE CASCADE,
+  request_id       UUID,
+  created_at       TIMESTAMPTZ DEFAULT NOW(),
+  sent_at          TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_email_outbox_pending ON email_outbox(sent_at, recipient_id, hive_id, kind);
+
+-- One row per newsletter send, for the admin page's "last 5 sends" list and
+-- as the audit trail for who a given blast actually reached.
+CREATE TABLE IF NOT EXISTS newsletter_sends (
+  send_id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject          TEXT        NOT NULL,
+  body             TEXT        NOT NULL,
+  sent_by          UUID        REFERENCES users(user_id),
+  recipient_count  INT         NOT NULL DEFAULT 0,
+  sent_at          TIMESTAMPTZ DEFAULT NOW()
+);

@@ -21,7 +21,9 @@ const REQUIRED = {
   users: ['member_id', 'date_of_birth', 'terms_accepted_at', 'terms_policy_version',
           'email_verified', 'token_version', 'presence_status',
           'deletion_requested_at', 'deletion_scheduled_for', 'deleted_at',
-          'suspended_at', 'suspension_note'],
+          'suspended_at', 'suspension_note',
+          'email_joins', 'email_digest', 'email_news', 'email_news_opted_in_at',
+          'last_active_at', 'last_digest_sent_at'],
   profiles: ['connection_purposes', 'social_preferences', 'venmo_handle', 'cashapp_handle', 'paypal_handle'],
   hives: ['hive_code', 'banner_url', 'logo_url', 'cadence', 'hive_values',
           'tagline', 'purpose', 'founder_note',
@@ -42,13 +44,16 @@ const REQUIRED = {
   hive_plan_suggestions: ['source_poll_id', 'source_slot_id', 'series_rule', 'series_count',
                            'source_idea_id', 'source_trip_item_id'],
   hive_time_polls: ['pending_suggestion_id'],
-  hive_notification_prefs: ['costs', 'matches', 'opportunities', 'tasks'],
+  hive_notification_prefs: ['costs', 'matches', 'opportunities', 'tasks', 'posts'],
   hive_channels: ['kind', 'created_for'],
-  // New tables (Prompt 69) — an empty column list still catches the
+  notifications: ['group_key', 'group_count', 'updated_at'],
+  // New tables (Prompt 69/70) — an empty column list still catches the
   // "table absent" case via the same loop below, so these aren't skipped
   // just because schema.sql creates them with CREATE TABLE rather than ALTER.
   reports: [],
   user_blocks: [],
+  email_outbox: [],
+  newsletter_sends: [],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -113,6 +118,18 @@ const IMPACT = {
   'post_comments.hidden_reason': 'report auto-hide and Hive-admin removal for comments fail',
   'reports (table absent)':    'the entire report/block/moderation system — reporting, auto-hide, and both review queues fail',
   'user_blocks (table absent)': 'blocking — block/unblock and every block-aware check fail',
+  'users.email_joins':             'Settings — email preferences fail to save, and join/request emails cannot check the flag',
+  'users.email_digest':            'Settings — email preferences fail to save, and the activity digest job fails',
+  'users.email_news':              'Settings and signup — the news opt-in cannot be recorded, and the newsletter has no recipient list',
+  'users.email_news_opted_in_at':  'Settings and signup — the news opt-in consent timestamp cannot be recorded',
+  'users.last_active_at':          'the activity digest — recipients cannot be determined',
+  'users.last_digest_sent_at':     'the activity digest — the 12-hour cooldown cannot be enforced',
+  'hive_notification_prefs.posts': 'New posts notification preference fails to save',
+  'notifications.group_key':       'grouped chat-activity and private-chat notifications fail — every message notification becomes a separate row',
+  'notifications.group_count':     'grouped notification counts fail to display',
+  'notifications.updated_at':      'grouped notifications fail to sort to the top on a new event',
+  'email_outbox (table absent)':   'bundled owner emails ("N people joined", "N people want to join") — nothing is queued, so none are ever sent',
+  'newsletter_sends (table absent)': 'the TrueHive newsletter — sending and the admin page\'s send history both fail',
 };
 
 let state = { checked: false, ok: true, missing: [] };
