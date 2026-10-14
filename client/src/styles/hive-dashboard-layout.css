@@ -205,6 +205,14 @@
   box-shadow: 0 16px 44px rgba(23,18,10,.3); padding: 14px;
   color: #17120a; font-family: 'DM Sans', system-ui, sans-serif;
 }
+/* Rendered through a portal into document.body — the sidebar rail's own
+   overflow-y: auto clips an absolutely-positioned child (both axes, not
+   just the scrolling one), so this variant escapes it via position:fixed
+   and coordinates measured from the bell button instead. */
+.hnp-panel--portal {
+  position: fixed;
+  top: auto; left: auto; /* overridden inline by the measured coords */
+}
 .hnp-panel-title { font-size: .84rem; font-weight: 700; margin-bottom: 10px; }
 .hnp-loading { font-size: .8rem; color: #665e53; }
 .hnp-error { font-size: .76rem; color: #c0392b; margin-bottom: 8px; }

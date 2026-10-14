@@ -1171,8 +1171,13 @@ export default function HiveChatPage() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mark seen ──────────────────────────────────────────────────────────────
+  // channelId clears that room's grouped "N new messages" notification row
+  // (Prompt 70 Part B #4) in addition to the existing whole-Hive seen stamp —
+  // read via the ref, not the activeChannelId state, so every call site
+  // (including socket handlers that would otherwise close over a stale
+  // value) always reports the room actually open right now.
   const markSeen = useCallback(() => {
-    api.post(`/api/hives/${hiveId}/seen`, {}).catch(() => {});
+    api.post(`/api/hives/${hiveId}/seen`, { channelId: activeChannelIdRef.current }).catch(() => {});
     if (typeof setChatUnread === 'function') setChatUnread(0);
   }, [hiveId, setChatUnread]);
 

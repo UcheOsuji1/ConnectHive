@@ -2,6 +2,35 @@ import { query } from '../db/index.js';
 import { createNotification } from './notificationsController.js';
 import { getMembership } from '../lib/hiveMembership.js';
 
+// Post-creation fan-out for Prompt 70 Part B #2: every active member except
+// the author, category 'posts' (default on). No groupKey — Hive posts are
+// low-volume since only owners/admins can write them, so each gets its own
+// row rather than bunching like chat activity does. The system-written types
+// (milestone/welcome) never actually reach createPost in practice — they're
+// inserted directly by onboardingController.js/hivesController.js — but the
+// guard is explicit anyway, matching the prompt's own wording rather than
+// relying on that being true incidentally.
+async function notifyNewPost(post, authorName, hiveName) {
+  if (!['update', 'event'].includes(post.post_type)) return;
+  if (post.hidden) return;
+
+  const { rows: members } = await query(
+    `SELECT user_id FROM hive_members
+      WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
+    [post.hive_id, post.author_user_id],
+  );
+  const preview = (post.body?.trim() || post.headline).slice(0, 80);
+  await Promise.all(members.map(m => createNotification({
+    userId: m.user_id,
+    type: 'new_post', category: 'posts',
+    title: `${authorName} posted in ${hiveName}`,
+    body: preview,
+    hiveId: post.hive_id,
+    actorUserId: post.author_user_id,
+    link: `/hive/${post.hive_id}`,
+  }).catch(e => console.error('[posts/notifyNewPost]', e))));
+}
+
 export const REACTIONS = ['like', 'love', 'haha', 'wow', 'sad', 'wave'];
 
 // ── Shared SELECT (userId always = $1; caller appends WHERE/ORDER/LIMIT) ─────
@@ -185,6 +214,8 @@ export const createPost = async (req, res) => {
       [req.userId, inserted.post_id],
     );
     res.status(201).json({ post });
+    notifyNewPost(post, post.author_name ?? 'Someone', post.hive_name)
+      .catch(e => console.error('[posts/createPost] notify failed', e));
   } catch (err) {
     console.error('[posts/createPost]', err);
     res.status(500).json({ error: 'Failed to create post.' });

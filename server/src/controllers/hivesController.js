@@ -619,6 +619,18 @@ export const markHiveSeen = async (req, res) => {
        ON CONFLICT (user_id, hive_id) DO UPDATE SET last_seen_at = NOW()`,
       [req.userId, req.params.id],
     );
+    // Opening a room clears its grouped "N new messages" row (Prompt 70
+    // Part B #4) — both the room and the pair-chat group key, so one call
+    // site covers either kind of channel the client might report.
+    const channelId = req.body?.channelId;
+    if (channelId) {
+      await query(
+        `UPDATE notifications SET read = true
+          WHERE user_id = $1 AND read = false
+            AND group_key IN ($2, $3)`,
+        [req.userId, `chat:${channelId}`, `pair:${channelId}`],
+      );
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('[hives/markHiveSeen]', err);

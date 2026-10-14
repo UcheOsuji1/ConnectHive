@@ -5,7 +5,7 @@ import { getDefaultChannelId, requireChannelAccess, loadChannel, isPairMember } 
 import { isEndedMentorshipChannel } from './mentorshipController.js';
 import { isPairChannelBlocked } from '../lib/blocks.js';
 import { getIO } from '../realtime/socket.js';
-import { createNotification } from './notificationsController.js';
+import { createNotification, DEFAULTS as NOTIF_DEFAULTS } from './notificationsController.js';
 import { PLAN_SELECT, shapePlan } from './eventsController.js';
 import { shapePolls } from './pollsController.js';
 import { shapeSuggestions } from './planSuggestionsController.js';
@@ -249,6 +249,101 @@ async function _resolveChannel(hiveId, requestedId, userId) {
   return { channel_id, kind: 'room' };
 }
 
+// ── Chat activity fan-out (Prompt 70 Part B #3) ───────────────────────────────
+// Runs after the HTTP response (via setImmediate from the caller) so a busy
+// Hive never slows down sending. One fetchSockets call and, for a room, one
+// batched prefs read cover the whole recipient set — not one each per
+// recipient — per the fan-out's own query-count budget.
+const PAIR_LABELS = { coffee_chat: 'coffee', mentorship: 'mentorship', ride: 'ride' };
+
+async function notifyChatActivity({ hiveId, channelId, channelKind, senderId, senderName, mentionedIds }) {
+  try {
+    // Who has this room open right now? Skip them entirely.
+    const viewing = new Set();
+    try {
+      const sockets = await getIO().in(`hive:${hiveId}:ch:${channelId}`).fetchSockets();
+      for (const s of sockets) if (s.data?.userId) viewing.add(s.data.userId);
+    } catch { /* no socket in tests */ }
+
+    if (channelKind === 'pair') {
+      const { rows: members } = await query(
+        `SELECT user_id FROM hive_channel_members WHERE channel_id = $1`, [channelId],
+      );
+      const isOneToOne = members.length === 2; // sender + exactly one other
+      const recipients = members
+        .map(r => r.user_id)
+        .filter(id => id !== senderId && !viewing.has(id) && !mentionedIds.has(id));
+      if (!recipients.length) return;
+
+      const { rows: [hiveRow] } = await query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]);
+      const hiveName = hiveRow?.hive_name ?? 'your Hive';
+      const link = `/hive/${hiveId}/chat/${channelId}`;
+
+      if (isOneToOne) {
+        await Promise.all(recipients.map(userId => createNotification({
+          userId, type: 'pair_activity', category: 'system',
+          title: `${senderName} sent you a message`, body: hiveName,
+          hiveId, actorUserId: senderId, link,
+          groupKey: `pair:${channelId}`,
+        })));
+        return;
+      }
+
+      const { rows: [chRow] } = await query(`SELECT created_for FROM hive_channels WHERE channel_id = $1`, [channelId]);
+      const label = PAIR_LABELS[chRow?.created_for] ?? 'private';
+      await Promise.all(recipients.map(userId => createNotification({
+        userId, type: 'pair_activity', category: 'system',
+        title: `${senderName} sent you a message`, body: hiveName, // overwritten by buildGrouped below
+        hiveId, actorUserId: senderId, link,
+        groupKey: `pair:${channelId}`,
+        buildGrouped: (n) => ({ title: `${n} new messages in your ${label} chat`, body: hiveName }),
+      })));
+      return;
+    }
+
+    // Room — one shared read each for membership and prefs, not per recipient.
+    const { rows: members } = await query(
+      `SELECT user_id FROM hive_members WHERE hive_id = $1 AND membership_status = 'active' AND user_id != $2`,
+      [hiveId, senderId],
+    );
+    const recipients = members.map(r => r.user_id).filter(id => !viewing.has(id) && !mentionedIds.has(id));
+    if (!recipients.length) return;
+
+    const { rows: prefRows } = await query(
+      `SELECT user_id, all_messages FROM hive_notification_prefs WHERE hive_id = $1 AND user_id = ANY($2)`,
+      [hiveId, recipients],
+    );
+    const prefMap = new Map(prefRows.map(r => [r.user_id, r.all_messages]));
+    const allowed = recipients.filter(id => {
+      const v = prefMap.get(id);
+      return v === null || v === undefined ? NOTIF_DEFAULTS.all_messages : v;
+    });
+    if (!allowed.length) return;
+
+    const [{ rows: [hiveRow] }, { rows: [chRow] }] = await Promise.all([
+      query(`SELECT hive_name FROM hives WHERE hive_id = $1`, [hiveId]),
+      query(`SELECT name FROM hive_channels WHERE channel_id = $1`, [channelId]),
+    ]);
+    const hiveName = hiveRow?.hive_name ?? 'your Hive';
+    const roomName = chRow?.name ?? 'chat';
+    const link = `/hive/${hiveId}/chat/${channelId}`;
+
+    await Promise.all(allowed.map(userId => createNotification({
+      userId, type: 'room_activity', category: 'all_messages',
+      title: `1 new message in #${roomName} · ${hiveName}`, body: `Latest from ${senderName}`,
+      hiveId, actorUserId: senderId, link,
+      groupKey: `chat:${channelId}`,
+      skipPrefsCheck: true, // already filtered against DEFAULTS.all_messages above
+      buildGrouped: (n) => ({
+        title: `${n} new message${n === 1 ? '' : 's'} in #${roomName} · ${hiveName}`,
+        body: `Latest from ${senderName}`,
+      }),
+    })));
+  } catch (err) {
+    console.error('[messages/notifyChatActivity]', err);
+  }
+}
+
 // ── Controllers ───────────────────────────────────────────────────────────────
 
 export const listMessages = async (req, res) => {
@@ -458,6 +553,17 @@ export const createMessage = async (req, res) => {
     }
 
     res.status(201).json(msg);
+
+    // After the response — a busy Hive's send latency never waits on this.
+    const mentionedIds = new Set(mentioned.map(r => r.user_id));
+    setImmediate(() => {
+      notifyChatActivity({
+        hiveId, channelId, channelKind,
+        senderId: req.userId,
+        senderName: msg.sender?.full_name ?? 'Someone',
+        mentionedIds,
+      });
+    });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error('[messages/create]', err);

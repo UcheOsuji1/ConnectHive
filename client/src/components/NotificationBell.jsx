@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import Avatar from './Avatar.jsx';
 
 const POLL_MS = 30_000;
 
@@ -9,6 +10,56 @@ const TYPE_ICON = {
   request_accepted: '✓',
   join_request:     '✉',
 };
+
+// N1's 5 kinds: mentions/replies and member/join events show the actor's
+// own avatar (a specific person did this); grouped room activity has no
+// single actor worth naming (the group_count can span several senders), so
+// it shows the Hive's own hex tile instead. Same small palette as
+// HiveDashboardLayout.jsx's / HomePage.jsx's own HexTile — not shared as a
+// component, same as those two don't share one with each other.
+const CAT_CFG = {
+  'Social Groups':           { color: '#5dcaa5', icon: '👥' },
+  'Professional Networking': { color: '#c49a28', icon: '💼' },
+  'Travel Buddies':          { color: '#4db6c4', icon: '✈️' },
+  'Project Collaboration':   { color: '#f08a4b', icon: '🚀' },
+  'Event Buddies':           { color: '#e86a7c', icon: '🎟️' },
+  'Specialized Groups':      { color: '#a59ae8', icon: '⭐' },
+};
+
+function HexTile({ categoryName, logoUrl, size = 32 }) {
+  const cfg = CAT_CFG[categoryName] ?? { color: '#8a8070', icon: '✦' };
+  if (logoUrl) {
+    return (
+      <img src={logoUrl} alt="" style={{
+        width: size, height: size, flexShrink: 0, objectFit: 'cover',
+        clipPath: 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)',
+      }} />
+    );
+  }
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg viewBox="0 0 36 36" width={size} height={size} style={{ position: 'absolute', inset: 0 }}>
+        <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" fill={cfg.color} fillOpacity="0.22" stroke={cfg.color} strokeWidth="1.5" />
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.45 }}>
+        {cfg.icon}
+      </div>
+    </div>
+  );
+}
+
+// 'room_activity' is the one kind with no single actor worth naming; every
+// other kind (mentions, pair activity, new posts, member/join events) shows
+// whoever actually did the thing.
+function NotifAvatar({ n }) {
+  if (n.type === 'room_activity') {
+    return <HexTile categoryName={n.hive_category_name} logoUrl={n.hive_logo_url} />;
+  }
+  if (n.actor_user_id) {
+    return <Avatar name={n.actor_name ?? 'Member'} src={n.actor_photo} size={32} />;
+  }
+  return <span className="nb-icon">{TYPE_ICON[n.type] ?? '•'}</span>;
+}
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -122,9 +173,12 @@ export default function NotificationBell() {
                   className={`nb-row${n.read ? '' : ' nb-unread'}`}
                   onClick={() => handleRow(n)}
                 >
-                  <span className="nb-icon">{TYPE_ICON[n.type] ?? '•'}</span>
+                  <NotifAvatar n={n} />
                   <div className="nb-content">
-                    <div className="nb-title">{n.title}</div>
+                    <div className="nb-title">
+                      {n.title}
+                      {n.group_count > 1 && <span className="nb-count-chip">{n.group_count}</span>}
+                    </div>
                     {n.body && <div className="nb-body">{n.body}</div>}
                     <div className="nb-time">{timeAgo(n.created_at)}</div>
                   </div>

@@ -1063,6 +1063,18 @@ svg { display: block; }
   box-shadow: 0 8px 32px rgba(0,0,0,0.28);
   overflow: hidden;
 }
+/* A 320px panel anchored right:0 off a bell near the nav's own right edge
+   runs well past the left edge of a narrow screen — pin it to the viewport
+   instead of the bell at that width. */
+@media (max-width: 420px) {
+  .nb-panel {
+    position: fixed;
+    top: var(--header-h, 60px);
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+}
 
 .nb-panel-header {
   display: flex;
@@ -1138,6 +1150,21 @@ svg { display: block; }
   font-weight: 500;
   color: #e8ddc8;
   line-height: 1.35;
+}
+.nb-count-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: #C89B2C;
+  color: #1a1508;
+  font-size: 0.68rem;
+  font-weight: 700;
+  vertical-align: middle;
 }
 .nb-body {
   font-size: 0.76rem;

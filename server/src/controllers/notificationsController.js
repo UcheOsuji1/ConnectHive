@@ -6,15 +6,19 @@ import { isBlockedEitherWay } from '../lib/blocks.js';
 // within an existing row falls back to its own default too, so a future
 // category added to the table doesn't silently mute everyone who saved prefs
 // before it existed.
-const CATEGORIES = ['mentions', 'plans', 'rsvp_reminders', 'new_members', 'announcements', 'all_messages', 'costs', 'matches', 'opportunities', 'tasks'];
-const DEFAULTS = {
+export const CATEGORIES = ['mentions', 'plans', 'rsvp_reminders', 'new_members', 'announcements', 'all_messages', 'costs', 'matches', 'opportunities', 'tasks', 'posts'];
+export const DEFAULTS = {
   mentions: true, plans: true, rsvp_reminders: true,
-  new_members: false, announcements: true, all_messages: false, costs: true, matches: true, opportunities: true, tasks: true,
+  // all_messages ("Chat activity") defaults on as of Prompt 70 — the old
+  // per-message noise is gone now that it's one grouped row per room while
+  // you're away, not one row per message.
+  new_members: false, announcements: true, all_messages: true, costs: true, matches: true, opportunities: true, tasks: true,
+  posts: true,
 };
 
 export async function getPrefsRow(hiveId, userId) {
   const { rows: [row] } = await query(
-    `SELECT mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs, matches, opportunities, tasks
+    `SELECT mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs, matches, opportunities, tasks, posts
        FROM hive_notification_prefs WHERE hive_id = $1 AND user_id = $2`,
     [hiveId, userId],
   );
@@ -40,7 +44,12 @@ export async function shouldNotify(userId, hiveId, category) {
 export async function createNotification({
   userId, type, title, body = null,
   hiveId = null, actorUserId = null, link = null,
-  category = 'system',
+  category = 'system', groupKey = null, buildGrouped = null,
+  // Set by a caller that already batched its own shouldNotify-equivalent
+  // check across a whole recipient set in one query (Prompt 70 Part B's
+  // chat-activity fan-out) — skips the per-call prefs lookup below, which
+  // is otherwise an N+1 against the very batching that caller just did.
+  skipPrefsCheck = false,
 }) {
   // The one place this is checked — every createNotification call with an
   // actor (mentions, reactions, replies, acceptances, everything) gets this
@@ -48,8 +57,46 @@ export async function createNotification({
   // 'system' notifications, which that gate always lets through.
   if (actorUserId && await isBlockedEitherWay(userId, actorUserId)) return null;
 
-  const allowed = await shouldNotify(userId, hiveId, category);
-  if (!allowed) return null;
+  if (!skipPrefsCheck) {
+    const allowed = await shouldNotify(userId, hiveId, category);
+    if (!allowed) return null;
+  }
+
+  // Grouped: upsert into the person's one unread row for this group_key —
+  // bump the count, replace title/body/actor/link with the latest, and
+  // touch updated_at so the row moves to the top of the bell. The partial
+  // unique index (user_id, group_key) WHERE read=false AND group_key IS NOT
+  // NULL is the arbiter; once that row is marked read, the next event for
+  // the same key starts a fresh group at count 1, which is the point.
+  if (groupKey) {
+    const { rows: [row] } = await query(
+      `INSERT INTO notifications
+         (user_id, type, title, body, hive_id, actor_user_id, link, group_key, group_count, updated_at, read)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,1,NOW(),false)
+       ON CONFLICT (user_id, group_key) WHERE read = false AND group_key IS NOT NULL
+       DO UPDATE SET
+         type = EXCLUDED.type,
+         title = EXCLUDED.title,
+         body = EXCLUDED.body,
+         actor_user_id = EXCLUDED.actor_user_id,
+         link = EXCLUDED.link,
+         group_count = notifications.group_count + 1,
+         updated_at = NOW()
+       RETURNING notification_id, group_count`,
+      [userId, type, title, body, hiveId, actorUserId, link, groupKey],
+    );
+    // The real "N new messages" count is only known after the increment
+    // above — buildGrouped formats title/body from that count instead of
+    // the caller having to guess it ahead of the write.
+    if (buildGrouped) {
+      const content = buildGrouped(row.group_count);
+      await query(
+        `UPDATE notifications SET title = $1, body = $2 WHERE notification_id = $3`,
+        [content.title, content.body ?? null, row.notification_id],
+      );
+    }
+    return row.notification_id;
+  }
 
   const { rows: [row] } = await query(
     `INSERT INTO notifications (user_id, type, title, body, hive_id, actor_user_id, link)
@@ -64,9 +111,16 @@ export const getNotifications = async (req, res) => {
   try {
     const [{ rows: notifications }, { rows: [{ unread_count }] }] = await Promise.all([
       query(
-        `SELECT notification_id, type, title, body, hive_id, actor_user_id, link, read, created_at
-         FROM notifications WHERE user_id = $1
-         ORDER BY created_at DESC LIMIT 30`,
+        `SELECT n.notification_id, n.type, n.title, n.body, n.hive_id, n.actor_user_id, n.link, n.read, n.created_at,
+                n.updated_at, n.group_key, n.group_count,
+                ap.full_name AS actor_name, ap.profile_photo_url AS actor_photo,
+                h.hive_name, h.logo_url AS hive_logo_url, c.category_name AS hive_category_name
+           FROM notifications n
+           LEFT JOIN profiles ap ON ap.user_id = n.actor_user_id
+           LEFT JOIN hives h     ON h.hive_id = n.hive_id
+           LEFT JOIN categories c ON c.category_id = h.category_id
+          WHERE n.user_id = $1
+          ORDER BY n.updated_at DESC LIMIT 30`,
         [req.userId],
       ),
       query(
@@ -152,14 +206,14 @@ export const updateHiveNotificationPrefs = async (req, res) => {
 
     await query(
       `INSERT INTO hive_notification_prefs
-         (hive_id, user_id, mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs, matches, opportunities, tasks, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NOW())
+         (hive_id, user_id, mentions, plans, rsvp_reminders, new_members, announcements, all_messages, costs, matches, opportunities, tasks, posts, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW())
        ON CONFLICT (hive_id, user_id) DO UPDATE SET
          mentions = EXCLUDED.mentions, plans = EXCLUDED.plans, rsvp_reminders = EXCLUDED.rsvp_reminders,
          new_members = EXCLUDED.new_members, announcements = EXCLUDED.announcements,
          all_messages = EXCLUDED.all_messages, costs = EXCLUDED.costs, matches = EXCLUDED.matches,
-         opportunities = EXCLUDED.opportunities, tasks = EXCLUDED.tasks, updated_at = NOW()`,
-      [hiveId, req.userId, next.mentions, next.plans, next.rsvp_reminders, next.new_members, next.announcements, next.all_messages, next.costs, next.matches, next.opportunities, next.tasks],
+         opportunities = EXCLUDED.opportunities, tasks = EXCLUDED.tasks, posts = EXCLUDED.posts, updated_at = NOW()`,
+      [hiveId, req.userId, next.mentions, next.plans, next.rsvp_reminders, next.new_members, next.announcements, next.all_messages, next.costs, next.matches, next.opportunities, next.tasks, next.posts],
     );
 
     res.json({ prefs: next });
