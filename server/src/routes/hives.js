@@ -76,6 +76,7 @@ import {
 } from '../controllers/planSuggestionsController.js';
 import { getHiveHome } from '../controllers/hiveHomeController.js';
 import { getHiveReports, resolveHiveReport } from '../controllers/reportsController.js';
+import { LIMITS } from '../lib/limits.js';
 import { getChannelRail } from '../controllers/chatRailController.js';
 import { pinMessage, unpinMessage, listPins } from '../controllers/pinsController.js';
 import { createPoll, votePoll, clearVote, listVoters } from '../controllers/pollsController.js';
@@ -155,6 +156,23 @@ const quickFindLimiter = rateLimit({
   message: { error: 'Too many searches — slow down and try again shortly.' },
 });
 
+// Keyed on the authenticated user, not IP — requireAuth runs first on both
+// routes these guard, so req.userId is always set by the time they run.
+const hiveCreationLimiter = rateLimit({
+  ...LIMITS.hiveCreation,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId,
+  message: { error: 'Too many Hives created — try again tomorrow.' },
+});
+const hiveJoinLimiter = rateLimit({
+  ...LIMITS.hiveJoins,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId,
+  message: { error: 'Too many join attempts — slow down and try again later.' },
+});
+
 // ── Static paths (must come before /:id) ─────────────────────────────────────
 router.post('/match',         requireAuth, matchHives);
 router.get('/quickfind',      requireAuth, quickFindLimiter, quickFindHives);
@@ -169,7 +187,7 @@ router.get('/requests/mine',  requireAuth, getMyRequests);
 router.get('/mine/deleted',   requireAuth, getMyDeletedHives);
 
 // ── Collection ────────────────────────────────────────────────────────────────
-router.post('/',   requireAuth, requireVerifiedEmail, createHive);
+router.post('/',   requireAuth, requireVerifiedEmail, hiveCreationLimiter, createHive);
 
 // ── Deleted-Hive choke point ──────────────────────────────────────────────────
 // Every route below keyed by :id loses sight of a deleted Hive — it 404s like
@@ -214,7 +232,7 @@ router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
 router.post('/:id/members/:userId/notify', requireAuth, notifyMember);
 router.delete('/:id/members/:userId',      requireAuth, removeMember);
 router.post('/:id/leave',                requireAuth, leaveHive);
-router.post('/:id/request',              requireAuth, requireVerifiedEmail, requestToJoin);
+router.post('/:id/request',              requireAuth, requireVerifiedEmail, hiveJoinLimiter, requestToJoin);
 router.get('/:id/requests',              requireAuth, getHiveRequests);
 router.post('/:id/requests/:requestId',  requireAuth, reviewRequest);
 router.get('/:id/messages/unread-count',             requireAuth, getUnreadCount);
