@@ -1591,3 +1591,53 @@ CREATE TABLE IF NOT EXISTS newsletter_sends (
   recipient_count  INT         NOT NULL DEFAULT 0,
   sent_at          TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- ─── Metro areas (Prompt 71) ─────────────────────────────────────────────────
+-- A metro is a named search area (a Census CBSA, loosely) with a centre point
+-- for "use my current location". A place is one city or neighborhood inside
+-- a metro, keyed by its normalized name so autocomplete and resolveMetro()
+-- agree on the same string every time.
+CREATE TABLE IF NOT EXISTS metros (
+  metro_key    TEXT              PRIMARY KEY,
+  name         TEXT              NOT NULL,
+  state_codes  TEXT[]            NOT NULL DEFAULT '{}',
+  lat          DOUBLE PRECISION,
+  lng          DOUBLE PRECISION,
+  rank         INT
+);
+
+CREATE TABLE IF NOT EXISTS metro_places (
+  place_key     TEXT  PRIMARY KEY,
+  display_name  TEXT  NOT NULL,
+  state_code    TEXT,
+  metro_key     TEXT  REFERENCES metros(metro_key),
+  kind          TEXT  CHECK (kind IN ('city','neighborhood'))
+);
+-- text_pattern_ops supports a fast LIKE 'prefix%' scan for autocomplete.
+CREATE INDEX IF NOT EXISTS idx_metro_places_prefix ON metro_places (place_key text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_metro_places_metro  ON metro_places (metro_key);
+
+ALTER TABLE hives    ADD COLUMN IF NOT EXISTS metro_key TEXT REFERENCES metros(metro_key);
+ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS metro_key TEXT REFERENCES metros(metro_key);
+
+-- Mirrored exactly by normalizePlace() in server/src/lib/metros.js — the two
+-- must always agree, or a place inserted by one and looked up by the other
+-- silently misses. lower+trim, strip a trailing ", USA", "st."->"saint" and
+-- "ft."->"fort" (before punctuation is stripped, or the "." is already gone),
+-- drop remaining punctuation, then collapse whitespace.
+CREATE OR REPLACE FUNCTION normalize_place(input TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  s TEXT;
+BEGIN
+  IF input IS NULL THEN RETURN NULL; END IF;
+  s := lower(trim(input));
+  s := regexp_replace(s, ',?\s*usa\s*$', '');
+  s := trim(s);
+  s := regexp_replace(s, '\mst\.', 'saint', 'g');
+  s := regexp_replace(s, '\mft\.', 'fort', 'g');
+  s := regexp_replace(s, '[^a-z0-9\s]', '', 'g');
+  s := regexp_replace(s, '\s+', ' ', 'g');
+  RETURN trim(s);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;

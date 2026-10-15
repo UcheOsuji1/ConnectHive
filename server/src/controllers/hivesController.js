@@ -15,6 +15,7 @@ import { PLAN_END } from './eventsController.js';
 import { getAttendanceRate } from './checkinsController.js';
 import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
 import { sendYoureInEmail } from '../lib/email.js';
+import { resolveMetro } from '../lib/metros.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -712,7 +713,7 @@ export const createHive = async (req, res) => {
       name, category, description, tags, idealMembers,
       joinPolicy, discoverable, maxMembers, activationThreshold,
       meetingType, location, cadence, pinnedGoal, groundRules, icebreaker,
-      hiveValues, onboarding,
+      hiveValues, onboarding, metroKey,
     } = req.body;
 
     if (!name || !name.trim() || !category) {
@@ -739,6 +740,11 @@ export const createHive = async (req, res) => {
 
     const locationType = meetingType ? meetingType.toLowerCase() : null;
 
+    // An explicit metroKey from the create-Hive autocomplete (Part D) wins;
+    // otherwise resolve it from the typed location text so metro_key stays
+    // right even for a client that hasn't picked up the autocomplete yet.
+    const resolvedMetroKey = metroKey || (location ? await resolveMetro(location) : null);
+
     // Hive, owner membership, default channel and onboarding settings are one
     // unit of work. Previously these were separate pool queries with a
     // hand-rolled compensating DELETE for the membership step, and no channel
@@ -753,8 +759,8 @@ export const createHive = async (req, res) => {
           creator_user_id, category_id, hive_name, description, ideal_members,
           max_members, activation_threshold, tags, join_policy, discoverable,
           location_type, location, cadence, pinned_goal, ground_rules, icebreaker,
-          hive_values
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+          hive_values, metro_key
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
         RETURNING *`,
         [
           userId,
@@ -774,6 +780,7 @@ export const createHive = async (req, res) => {
           groundRules || null,
           icebreaker || null,
           JSON.stringify(Array.isArray(hiveValues) ? hiveValues : []),
+          resolvedMetroKey,
         ],
       );
 
@@ -884,6 +891,7 @@ export const updateHive = async (req, res) => {
       'description', 'pinned_goal', 'ground_rules', 'icebreaker',
       'cadence', 'location', 'location_type', 'max_members',
       'join_policy', 'discoverable', 'tagline', 'purpose', 'founder_note',
+      'metro_key',
     ];
     const updates = {};
     for (const key of WHITELIST) {
@@ -893,6 +901,13 @@ export const updateHive = async (req, res) => {
     }
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update.' });
+    }
+
+    // An explicit metro_key (from the General-tab autocomplete) wins; a
+    // location edit with no explicit metro_key re-resolves from the new
+    // text, so a plain-text save still keeps metro_key right.
+    if ('location' in updates && !('metro_key' in updates)) {
+      updates.metro_key = updates.location ? await resolveMetro(updates.location) : null;
     }
 
     // Invite-only Hives never appear in search — true whether THIS request is

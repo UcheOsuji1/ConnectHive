@@ -198,11 +198,64 @@ function SuspendedTable({ users, onUnsuspend }) {
   );
 }
 
+function NoAreaTable({ hives, metros, onSetMetro }) {
+  const [picking, setPicking] = useState(null); // hive_id currently choosing a metro
+  const [saving, setSaving] = useState(null);
+
+  async function save(hiveId, metroKey) {
+    if (!metroKey) return;
+    setSaving(hiveId);
+    try {
+      await onSetMetro(hiveId, metroKey);
+      setPicking(null);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  return (
+    <div className="admrp-table-wrap">
+      <table className="admrp-table">
+        <thead>
+          <tr><th>Hive</th><th>Category</th><th>Location</th><th>Type</th><th>Area</th></tr>
+        </thead>
+        <tbody>
+          {hives.map(h => (
+            <tr key={h.hive_id}>
+              <td>{h.hive_name}</td>
+              <td>{h.category_name ?? '—'}</td>
+              <td>{h.location ?? '—'}</td>
+              <td>{h.location_type ?? '—'}</td>
+              <td>
+                {picking === h.hive_id ? (
+                  <select
+                    className="hw-settings-select"
+                    defaultValue=""
+                    disabled={saving === h.hive_id}
+                    onChange={e => save(h.hive_id, e.target.value)}
+                  >
+                    <option value="" disabled>Choose an area…</option>
+                    {metros.map(m => <option key={m.metro_key} value={m.metro_key}>{m.name}</option>)}
+                  </select>
+                ) : (
+                  <button type="button" className="hw-action-link" onClick={() => setPicking(h.hive_id)}>Set area</button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function AdminReportsPage() {
   const [allowed, setAllowed] = useState(null); // null = checking, true/false once known
   const [tab, setTab] = useState('open');
   const [groups, setGroups] = useState(null);
   const [suspended, setSuspended] = useState(null);
+  const [noArea, setNoArea] = useState(null);
+  const [metros, setMetros] = useState([]);
   const [error, setError] = useState(null);
   const [reviewing, setReviewing] = useState(null);
 
@@ -224,10 +277,23 @@ export default function AdminReportsPage() {
       .catch(e => { if (e.status === 404) setAllowed(false); });
   }, []);
 
+  const loadNoArea = useCallback(() => {
+    setNoArea(null);
+    api.get('/api/admin/hives-without-area')
+      .then(d => { setAllowed(true); setNoArea(d.hives ?? []); setMetros(d.metros ?? []); })
+      .catch(e => { if (e.status === 404) setAllowed(false); });
+  }, []);
+
+  async function handleSetMetro(hiveId, metroKey) {
+    await api.post(`/api/admin/hives/${hiveId}/metro`, { metroKey });
+    setNoArea(prev => (prev ?? []).filter(h => h.hive_id !== hiveId));
+  }
+
   useEffect(() => {
     if (tab === 'suspended') loadSuspended();
+    else if (tab === 'no-area') loadNoArea();
     else loadReports(tab);
-  }, [tab, loadReports, loadSuspended]);
+  }, [tab, loadReports, loadSuspended, loadNoArea]);
 
   function handleResolved(group) {
     setGroups(prev => (prev ?? []).filter(g => !(g.target_type === group.target_type && g.target_id === group.target_id)));
@@ -251,11 +317,11 @@ export default function AdminReportsPage() {
       </div>
 
       <div className="hmrp-tabs" role="tablist">
-        {['open', 'resolved', 'suspended'].map(t => (
+        {['open', 'resolved', 'suspended', 'no-area'].map(t => (
           <button key={t} type="button" role="tab" aria-selected={tab === t}
                   className={['hmrp-tab', tab === t ? 'hmrp-tab--active' : ''].join(' ').trim()}
                   onClick={() => setTab(t)}>
-            {t === 'open' ? 'Open' : t === 'resolved' ? 'Resolved' : 'Suspended accounts'}
+            {t === 'open' ? 'Open' : t === 'resolved' ? 'Resolved' : t === 'suspended' ? 'Suspended accounts' : 'Hives without an area'}
           </button>
         ))}
       </div>
@@ -266,6 +332,10 @@ export default function AdminReportsPage() {
         suspended === null ? <div className="hw-feed-skel"><div className="hw-skel-card" style={{ height: 120 }} /></div>
         : suspended.length === 0 ? <div className="hmrp-empty">No suspended accounts.</div>
         : <SuspendedTable users={suspended} onUnsuspend={handleUnsuspend} />
+      ) : tab === 'no-area' ? (
+        noArea === null ? <div className="hw-feed-skel"><div className="hw-skel-card" style={{ height: 120 }} /></div>
+        : noArea.length === 0 ? <div className="hmrp-empty">Every in-person or hybrid Hive has an area.</div>
+        : <NoAreaTable hives={noArea} metros={metros} onSetMetro={handleSetMetro} />
       ) : (
         groups === null && allowed !== false ? <div className="hw-feed-skel"><div className="hw-skel-card" style={{ height: 120 }} /></div>
         : groups && groups.length === 0 ? <div className="hmrp-empty">Nothing here.</div>

@@ -4,6 +4,7 @@ import { createNotification } from './notificationsController.js';
 import { invalidateTokenVersion } from '../middleware/auth.js';
 import { disconnectUserSockets } from '../realtime/socket.js';
 import { REASON_LABELS } from '../lib/email.js';
+import { listMetros } from '../lib/metros.js';
 
 const PRIORITY_REASONS = new Set(['safety', 'fake_or_minor']);
 
@@ -369,5 +370,44 @@ export const getSuspendedUsers = async (req, res) => {
   } catch (err) {
     console.error('[admin/getSuspendedUsers]', err);
     res.status(500).json({ error: 'Failed to load suspended accounts.' });
+  }
+};
+
+// "Hives without an area" (Prompt 71 Part A) — the backfill migration leaves
+// a Hive's metro_key NULL rather than guess at an ambiguous bare city name;
+// this tab is how Uche fixes those leftovers by hand.
+export const getHivesWithoutArea = async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT h.hive_id, h.hive_name, h.location, h.location_type, c.category_name
+         FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
+        WHERE h.hive_status = 'active' AND h.location_type IN ('in-person', 'hybrid')
+          AND h.metro_key IS NULL
+        ORDER BY h.created_at DESC`,
+    );
+    const metros = await listMetros();
+    res.json({ hives: rows, metros });
+  } catch (err) {
+    console.error('[admin/getHivesWithoutArea]', err);
+    res.status(500).json({ error: 'Failed to load Hives without an area.' });
+  }
+};
+
+export const setHiveMetro = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { metroKey } = req.body ?? {};
+    if (!metroKey) return res.status(400).json({ error: 'metroKey is required.' });
+
+    const { rows: [metro] } = await query(`SELECT metro_key FROM metros WHERE metro_key = $1`, [metroKey]);
+    if (!metro) return res.status(400).json({ error: 'Unknown metro.' });
+
+    const { rowCount } = await query(`UPDATE hives SET metro_key = $1, updated_at = NOW() WHERE hive_id = $2`, [metroKey, id]);
+    if (!rowCount) return res.status(404).json({ error: 'Hive not found.' });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[admin/setHiveMetro]', err);
+    res.status(500).json({ error: 'Failed to set this Hive\'s area.' });
   }
 };

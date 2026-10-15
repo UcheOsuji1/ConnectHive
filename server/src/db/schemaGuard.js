@@ -28,7 +28,8 @@ const REQUIRED = {
   hives: ['hive_code', 'banner_url', 'logo_url', 'cadence', 'hive_values',
           'tagline', 'purpose', 'founder_note',
           'plan_proposers', 'plan_approval', 'vote_min_yes', 'vote_window_hours', 'suggestions_per_day',
-          'deleted_at', 'deleted_by', 'purge_after'],
+          'deleted_at', 'deleted_by', 'purge_after', 'metro_key'],
+  waitlist: ['metro_key'],
   hive_members: ['welcome_seen_at', 'onboarding_status', 'onboarding_screen'],
   hive_posts: ['visibility', 'event_end_at', 'plan_type', 'cancelled_at', 'series_id', 'series_index',
                'hidden_at', 'hidden_reason'],
@@ -54,6 +55,8 @@ const REQUIRED = {
   user_blocks: [],
   email_outbox: [],
   newsletter_sends: [],
+  metros: [],
+  metro_places: [],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -130,6 +133,10 @@ const IMPACT = {
   'notifications.updated_at':      'grouped notifications fail to sort to the top on a new event',
   'email_outbox (table absent)':   'bundled owner emails ("N people joined", "N people want to join") — nothing is queued, so none are ever sent',
   'newsletter_sends (table absent)': 'the TrueHive newsletter — sending and the admin page\'s send history both fail',
+  'hives.metro_key':              'Find Your Hive area filter and location labels — Hives created/edited after this cannot be matched by area',
+  'waitlist.metro_key':           'the founder waitlist — queue counts cannot be scoped to an area',
+  'metros (table absent)':        'Find Your Hive — area search, current-location matching and the outside-LA screen all fail',
+  'metro_places (table absent)':  'Find Your Hive — city/neighborhood autocomplete fails',
 };
 
 let state = { checked: false, ok: true, missing: [] };
