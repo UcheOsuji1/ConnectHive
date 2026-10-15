@@ -2,7 +2,8 @@ import { Resend } from 'resend';
 // Both modules only touch this import inside function bodies (never at
 // top-level load time), so the circular reference (emailPrefs.js imports
 // sendEmail back from here) resolves fine once the app has finished booting.
-import { unsubscribeUrl, sendIfAllowed } from './emailPrefs.js';
+import { unsubscribeUrl, sendIfAllowed, unsubscribeHeaders } from './emailPrefs.js';
+import { renderNewsletterBody } from './newsletterFormat.js';
 
 const FROM       = process.env.EMAIL_FROM ?? 'TrueHive <hello@send.truehive.app>';
 const CLIENT_URL = process.env.CLIENT_URL;
@@ -571,4 +572,46 @@ export async function sendActivityDigestEmail(userId, { messageCount, postCount,
 
     return { subject: summary, html, text };
   });
+}
+
+// ── E5: newsletter (Prompt 70 Part F) ──────────────────────────────────────────
+// `body` is already markdown-subset-rendered HTML from renderNewsletterBody —
+// everything that isn't **bold** or an autolinked URL arrived escaped, so a
+// <script> tag in the raw text can never reach this as markup.
+export function buildNewsletterEmail({ subject, body, userId, to }) {
+  const unsub = unsubscribeUrl(userId, 'news');
+  const bodyHtml = renderNewsletterBody(body);
+
+  const html = _htmlWrap(`
+    <tr><td style="padding:36px 40px 20px;">
+      <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                 font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+        ${subject}
+      </h1>
+      ${bodyHtml}
+    </td></tr>
+    ${_ctaButton(CLIENT_URL, 'Visit TrueHive')}`,
+    { unsubscribe: unsub });
+
+  // Plain-text version strips tags from the already-rendered HTML rather
+  // than re-deriving from the raw markdown, so both versions always agree.
+  const text = body.trim() + `\n\n${CLIENT_URL}\n\nUnsubscribe: ${unsub}\n\n— TrueHive (${CLIENT_URL})`;
+
+  return { from: FROM, to, subject, html, text, headers: unsubscribeHeaders(userId, 'news') };
+}
+
+// Thin wrapper so Resend access stays inside this file — chunks the list
+// into groups of 100 (Resend's batch endpoint limit) and sends each chunk
+// as its own batch call.
+export async function sendNewsletterBatch(emails) {
+  const resend = _getResend();
+  if (!resend) return { sent: 0, chunks: 0 };
+  let sent = 0, chunks = 0;
+  for (let i = 0; i < emails.length; i += 100) {
+    const chunk = emails.slice(i, i + 100);
+    await resend.batch.send(chunk);
+    sent += chunk.length;
+    chunks++;
+  }
+  return { sent, chunks };
 }

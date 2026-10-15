@@ -1,0 +1,100 @@
+/* ── TrueHive Admin › Newsletter (E5) ────────────────────────────────────── */
+
+.admnl-card {
+  background: #fffdf7;
+  border: 1px solid #ebe1cd;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admnl-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: 'DM Sans', sans-serif;
+}
+.admnl-field > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #8a8070;
+}
+.admnl-field input,
+.admnl-field textarea {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: #1e1b18;
+  border: 1px solid #ebe1cd;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  resize: vertical;
+}
+.admnl-field input:focus,
+.admnl-field textarea:focus {
+  outline: none;
+  border-color: #c49a28;
+}
+
+.admnl-error {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: #c0512a;
+}
+.admnl-success {
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem;
+  color: #3a7a3a;
+}
+.admnl-empty {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.85rem;
+  color: #8a8070;
+  margin: 0;
+}
+
+.admnl-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admnl-send-btn {
+  background: #c49a28;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admnl-send-btn:disabled {
+  background: #e3dac2;
+  color: #a89b7e;
+  cursor: default;
+}
+
+.admnl-confirm {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.86rem;
+  color: #3a3028;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .admnl-actions { flex-direction: column; align-items: stretch; }
+  .admnl-confirm { flex-direction: column; align-items: stretch; }
+}

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { getAdminReports, resolveAdminReport, unsuspendUser, getSuspendedUsers } from '../controllers/adminController.js';
+import { getNewsletterStatus, testNewsletter, sendNewsletter } from '../controllers/newsletterController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireSiteAdmin } from '../lib/siteAdmin.js';
 
@@ -14,5 +15,9 @@ router.get('/reports',                              getAdminReports);
 router.post('/reports/:targetType/:targetId/resolve', resolveAdminReport);
 router.post('/users/:id/unsuspend',                  unsuspendUser);
 router.get('/suspended',                             getSuspendedUsers);
+
+router.get('/newsletter/status',  getNewsletterStatus);
+router.post('/newsletter/test',   testNewsletter);
+router.post('/newsletter/send',   sendNewsletter);
 
 export default router;

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import NotFoundPage from './NotFoundPage.jsx';
 import '../styles/safety.css';
@@ -244,8 +245,9 @@ export default function AdminReportsPage() {
 
   return (
     <div className="admrp-wrap">
-      <div className="admrp-header">
+      <div className="admrp-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <h1>TrueHive Report Queue</h1>
+        <Link to="/admin/newsletter" className="hw-action-link">Newsletter →</Link>
       </div>
 
       <div className="hmrp-tabs" role="tablist">
