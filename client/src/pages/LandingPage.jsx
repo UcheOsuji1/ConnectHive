@@ -262,7 +262,7 @@ export default function LandingPage() {
               Find Your <em>Hive.</em>
             </h1>
             <p className="hero-sub reveal reveal-delay-2">
-              Making friends as an adult is harder than anyone admits. TrueHive finds you a group that already shares your purpose, then gives you somewhere to actually talk.
+              Finding like minded friends as an adult is harder than anyone admits. TrueHive finds you a group that already shares your purpose, then gives you somewhere to actually talk.
             </p>
             <p className="hero-support reveal reveal-delay-3">
               New to a city. Building a career. Looking for people to travel with, or to build something with. You pick what you're looking for, we match you to Hives that fit, and you're in a real group chat the same day.
