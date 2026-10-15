@@ -44,6 +44,31 @@ const BG_HEXES = [
 const MATCH_FLOOR_MS   = 2500;
 const MATCH_CEILING_MS = 25000;
 
+// Every category's "What city or area are you in?" question id — only one
+// is ever populated per search, since only one category's deep-dive runs.
+const LOCATION_IDS = ['social-location', 'event-location', 'professional-location', 'travel-location', 'project-location', 'spec-location'];
+
+// An old saved cards[id] may still be a plain string (from before ages went
+// multi-select) — read it as a one-item array either way.
+function asArray(v) { return Array.isArray(v) ? v : (v ? [v] : []); }
+
+// Derives the new area-search fields from whichever *-location question the
+// user actually answered. "Online community only" wins outright; otherwise
+// a resolved metro_key (from current-location or autocomplete) is used.
+function deriveSearchFields(chips, metroKeys, placeLabels) {
+  for (const id of LOCATION_IDS) {
+    if (chips?.[id]?.[0] === '💻 Online community only') {
+      return { searchMode: 'online', searchMetroKey: null, searchPlaceLabel: null };
+    }
+  }
+  for (const id of LOCATION_IDS) {
+    if (metroKeys?.[id]) {
+      return { searchMode: 'area', searchMetroKey: metroKeys[id], searchPlaceLabel: placeLabels?.[id] ?? null };
+    }
+  }
+  return { searchMode: 'area', searchMetroKey: null, searchPlaceLabel: null };
+}
+
 function HexOutline({ size }) {
   const pad = 2;
   const r = (size - pad * 2) / 2;
@@ -525,10 +550,14 @@ export default function HiveDiscoveryPage() {
   const chips      = state.chips      ?? {};
   const cards      = state.cards      ?? {};
   const textValues = state.textValues ?? {};
-  const prefillData = { chips, cards, textValues };
+  const metroKeys   = state.metroKeys   ?? {};
+  const placeLabels = state.placeLabels ?? {};
+  const { searchMode, searchMetroKey, searchPlaceLabel } = deriveSearchFields(chips, metroKeys, placeLabels);
+  const ageBands = asArray(cards['social-age']).length ? asArray(cards['social-age']) : asArray(cards['event-age']);
+  const prefillData = { chips, cards, textValues, searchMetroKey, searchMode, searchPlaceLabel, ageBands };
 
   const categoryLabel = CATEGORY_LABELS[category] ?? 'Hive';
-  const city = textValues['social-city'] || textValues['event-city'] || null;
+  const city = searchPlaceLabel || textValues['social-city'] || textValues['event-city'] || null;
   const scanLine = city
     ? `Scanning ${categoryLabel} Hives near ${city}`
     : category

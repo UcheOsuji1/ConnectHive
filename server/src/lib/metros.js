@@ -56,8 +56,24 @@ export async function resolveMetro(locationText) {
   return distinctMetros.size === 1 ? rows[0].metro_key : null;
 }
 
+// Each metro's own first 4 principal (kind='city') places, alphabetically —
+// used client-side for the Q2 "Includes X, Y, Z and the rest of {metro}"
+// sub-line on every metro except Los Angeles, which gets fixed launch copy.
 export async function listMetros() {
-  const { rows } = await query(`SELECT metro_key, name, lat, lng FROM metros ORDER BY rank ASC NULLS LAST`);
+  const { rows } = await query(
+    `SELECT m.metro_key, m.name, m.lat, m.lng,
+            COALESCE(pc.cities, '{}') AS "principalCities"
+       FROM metros m
+       LEFT JOIN LATERAL (
+         SELECT array_agg(display_name ORDER BY display_name) AS cities
+           FROM (
+             SELECT display_name FROM metro_places
+              WHERE metro_key = m.metro_key AND kind = 'city'
+              ORDER BY display_name ASC LIMIT 4
+           ) sub
+       ) pc ON true
+      ORDER BY m.rank ASC NULLS LAST`,
+  );
   return rows;
 }
 
@@ -80,14 +96,4 @@ export async function metroByKey(metroKey) {
   if (!metroKey) return null;
   const { rows: [row] } = await query(`SELECT metro_key, name, lat, lng FROM metros WHERE metro_key = $1`, [metroKey]);
   return row ?? null;
-}
-
-// First N principal (kind='city') places for a metro, by display_name —
-// used for the Q2 "Includes X, Y, Z and the rest of {metro}" sub-line.
-export async function principalCities(metroKey, n = 4) {
-  const { rows } = await query(
-    `SELECT display_name FROM metro_places WHERE metro_key = $1 AND kind = 'city' ORDER BY display_name ASC LIMIT $2`,
-    [metroKey, n],
-  );
-  return rows.map(r => r.display_name);
 }

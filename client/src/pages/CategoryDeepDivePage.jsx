@@ -1,8 +1,22 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
+import { getCachedMetros, nearestMetro, metroSubline, searchPlacesApi } from '../lib/geo.js';
 import '../styles/category-deep-dive.css';
+
+// An old saved cards[id] may still be a plain string (single-select, from
+// before ages went multi-select) — read it as a one-item array either way.
+function asAgeArray(v) {
+  if (Array.isArray(v)) return v;
+  return v ? [v] : [];
+}
+
+const LOCATION_CHIPS = [
+  '📍 Use my current location',
+  '💻 Online community only',
+  "✍️ I'll type it in",
+];
 
 // ── Social Groups content data ────────────────────────────────
 
@@ -33,11 +47,6 @@ const SOCIAL_CARDS_SIZE = [
   { emoji: '👥', name: 'Small',       desc: '5–10 people, tight-knit crew' },
   { emoji: '🌐', name: 'Medium',      desc: '10–20 people, more variety' },
   { emoji: '🎉', name: 'Large',       desc: '20+ people, big energy' },
-];
-const SOCIAL_CHIPS_LOCATION = [
-  '📍 Use my current location',
-  '💻 Online community only',
-  "✍️ I'll type it in",
 ];
 const SOCIAL_CHIPS_STATUS = [
   '🆕 New to the city',
@@ -376,11 +385,6 @@ const EVENT_CARDS_BUDGET = [
   { emoji: '💎', name: 'Premium',          range: '$150–$500' },
   { emoji: '🏆', name: 'VIP / Luxury',     range: '$500+' },
   { emoji: '🔀', name: 'Flexible',         range: 'Depends on event' },
-];
-const EVENT_CHIPS_LOCATION = [
-  '📍 Use my current location',
-  '💻 Online events only',
-  "✍️ I'll type it in",
 ];
 const EVENT_CHIPS_AGE = ['18–22', '21–26', '25–32', '30–40', '40+', 'Any age'];
 const EVENT_CHIPS_DISCOVERY = [
@@ -777,6 +781,169 @@ function ChipGroup({
   );
 }
 
+// The one "What city or area are you in?" question, reused identically by
+// every category. Lifts its resolved value (chip, typed text, metro_key,
+// place label) to the parent via the on*Change callbacks, so handleNext can
+// forward it straight into route state the same way chips/cards/textValues
+// already are. Coordinates from navigator.geolocation never leave this
+// component — only the nearest metro's metro_key is reported upward.
+function LocationQuestion({
+  selectedChip, onSelectChip,
+  cityText, onCityTextChange,
+  onMetroKeyChange,
+  onPlaceLabelChange,
+}) {
+  const [geoStatus, setGeoStatus] = useState('idle'); // idle | locating | confirmed | failed
+  const [confirmedMetro, setConfirmedMetro] = useState(null);
+  const [subline, setSubline] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef(null);
+  const debounceRef = useRef(null);
+
+  async function handleUseLocation() {
+    onSelectChip('📍 Use my current location');
+    setGeoStatus('locating');
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) { reject(new Error('unsupported')); return; }
+        navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, maximumAge: 600000 });
+      });
+      const metros = await getCachedMetros();
+      const nearest = nearestMetro(pos.coords.latitude, pos.coords.longitude, metros);
+      if (nearest) {
+        onMetroKeyChange(nearest.metro_key);
+        onPlaceLabelChange(nearest.name);
+        setConfirmedMetro(nearest);
+        setSubline(metroSubline(nearest));
+        setGeoStatus('confirmed');
+      } else {
+        fallbackToTyping();
+      }
+    } catch {
+      fallbackToTyping();
+    }
+  }
+
+  function fallbackToTyping() {
+    setGeoStatus('failed');
+    onSelectChip("✍️ I'll type it in");
+    onMetroKeyChange(null);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function handleChange() {
+    onSelectChip(null);
+    onMetroKeyChange(null);
+    onPlaceLabelChange('');
+    setConfirmedMetro(null);
+    setGeoStatus('idle');
+  }
+
+  function handleChipClick(chip) {
+    if (chip === '📍 Use my current location') { handleUseLocation(); return; }
+    if (chip === '💻 Online community only') {
+      onSelectChip(chip);
+      onMetroKeyChange(null);
+      onPlaceLabelChange('');
+      setGeoStatus('idle');
+      return;
+    }
+    // "I'll type it in"
+    setGeoStatus('idle');
+    onSelectChip(chip);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  }
+
+  function handleTypeInput(val) {
+    onCityTextChange(val);
+    onMetroKeyChange(null);
+    onPlaceLabelChange('');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!val.trim()) { setSuggestions([]); setShowSuggestions(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchPlacesApi(val);
+        setSuggestions(results);
+        setShowSuggestions(true);
+      } catch { /* autocomplete is best-effort */ }
+    }, 200);
+  }
+
+  function pickSuggestion(s) {
+    onCityTextChange(s.display_name);
+    onMetroKeyChange(s.metro_key);
+    onPlaceLabelChange(`${s.display_name} · ${s.metro_name}`);
+    setSuggestions([]);
+    setShowSuggestions(false);
+  }
+
+  const showTyping = selectedChip === "✍️ I'll type it in" || geoStatus === 'failed';
+
+  return (
+    <div>
+      <div className="cdd-chip-row">
+        {LOCATION_CHIPS.map(chip => (
+          <button
+            key={chip}
+            type="button"
+            className={`cdd-chip${selectedChip === chip ? ' selected' : ''}`}
+            onClick={() => handleChipClick(chip)}
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+
+      {geoStatus === 'locating' && (
+        <p className="cdd-location-status">Finding your area…</p>
+      )}
+
+      {geoStatus === 'confirmed' && confirmedMetro && (
+        <div className="cdd-location-confirm">
+          <span className="cdd-location-confirm-main">📍 {confirmedMetro.name}</span>
+          <button type="button" className="cdd-location-change" onClick={handleChange}>Change</button>
+          {subline && <span className="cdd-location-confirm-sub">{subline}</span>}
+        </div>
+      )}
+
+      {showTyping && (
+        <div className="cdd-location-field">
+          <input
+            ref={inputRef}
+            type="text"
+            className="cdd-custom-input"
+            style={{ width: '100%', marginTop: '10px' }}
+            placeholder="e.g. Los Angeles, CA / New York, NY..."
+            value={cityText}
+            onChange={e => handleTypeInput(e.target.value)}
+            onFocus={() => suggestions.length && setShowSuggestions(true)}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+          />
+          {geoStatus === 'failed' && (
+            <p className="cdd-location-error">We couldn't find your area. Type your city instead.</p>
+          )}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="cdd-location-suggestions">
+              {suggestions.map(s => (
+                <button
+                  key={`${s.display_name}-${s.state_code}`}
+                  type="button"
+                  className="cdd-location-suggestion"
+                  onMouseDown={e => e.preventDefault()}
+                  onClick={() => pickSuggestion(s)}
+                >
+                  {s.display_name} · {s.metro_name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CardGrid({ id, cards, selectedCard, onSelect }) {
   return (
     <div className="cdd-card-grid">
@@ -835,12 +1002,16 @@ function EventBudgetCardGrid({ id, cards, selectedCard, onSelect }) {
   );
 }
 
-function EventAgeChipRow({ id, chips: ageChips, selectedCard, onSelect }) {
+// Multi-select: picking "Any age" clears every other band, and picking any
+// band clears "Any age" — the two are mutually exclusive, everything else
+// stacks freely. `asAgeArray` (below) lets this read an old single-value
+// cards[id] (a plain string, from before multi-select) as a one-item array.
+function EventAgeChipRow({ id, chips: ageChips, selected, onToggle }) {
   const [hovered, setHovered] = useState(null);
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
       {ageChips.map(chip => {
-        const sel = selectedCard === chip;
+        const sel = selected.includes(chip);
         const hov = hovered === chip;
         return (
           <div
@@ -861,11 +1032,11 @@ function EventAgeChipRow({ id, chips: ageChips, selectedCard, onSelect }) {
               color: sel || hov ? '#8a6510' : '#1a1508',
               transition: 'border-color 0.15s, background 0.15s, color 0.15s',
             }}
-            onClick={() => onSelect(id, chip)}
+            onClick={() => onToggle(id, chip)}
             onMouseEnter={() => setHovered(chip)}
             onMouseLeave={() => setHovered(null)}
           >
-            {chip}
+            {sel ? '✓ ' : ''}{chip}
           </div>
         );
       })}
@@ -1261,6 +1432,8 @@ export default function CategoryDeepDivePage() {
   const [customInput,   setCustomInput]   = useState({});  // { id: string }
   const [customAdded,   setCustomAdded]   = useState({});  // { id: string[] }
   const [textValues,    setTextValues]    = useState({});  // { id: string }
+  const [metroKeys,     setMetroKeys]     = useState({});  // { id: metro_key|null } — one per *-location question
+  const [placeLabels,   setPlaceLabels]   = useState({});  // { id: string } — display label for the resolved place
 
   // ── Handlers ──
   const toggleChip = (id, label, single = false) =>
@@ -1276,6 +1449,28 @@ export default function CategoryDeepDivePage() {
 
   const toggleCard = (id, label) =>
     setCards(prev => ({ ...prev, [id]: prev[id] === label ? null : label }));
+
+  // Multi-select ages — "Any age" and a specific band are mutually
+  // exclusive; picking one clears the other kind. Reads an old single-value
+  // string via asAgeArray so a stale saved state still loads correctly.
+  const toggleAgeBand = (id, label) =>
+    setCards(prev => {
+      const cur = asAgeArray(prev[id]);
+      let next;
+      if (label === 'Any age') {
+        next = cur.includes('Any age') ? [] : ['Any age'];
+      } else {
+        const withoutAny = cur.filter(c => c !== 'Any age');
+        next = withoutAny.includes(label) ? withoutAny.filter(c => c !== label) : [...withoutAny, label];
+      }
+      return { ...prev, [id]: next };
+    });
+
+  // Single-select setter for a *-location chip row, used by LocationQuestion.
+  const setLocationChip = (id, label) =>
+    setChips(prev => ({ ...prev, [id]: label ? [label] : [] }));
+  const setMetroKey   = (id, key)   => setMetroKeys(prev => ({ ...prev, [id]: key }));
+  const setPlaceLabel = (id, label) => setPlaceLabels(prev => ({ ...prev, [id]: label }));
 
   const showCustom = (id) =>
     setCustomVisible(prev => ({ ...prev, [id]: !prev[id] }));
@@ -1295,7 +1490,7 @@ export default function CategoryDeepDivePage() {
   // ── Progress ──
   const progress = useMemo(() => {
     const chipCount = Object.values(chips).reduce((n, arr) => n + arr.length, 0);
-    const cardCount = Object.values(cards).filter(Boolean).length;
+    const cardCount = Object.values(cards).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length;
     const textCount = Object.values(textValues).filter(v => v.trim()).length;
     const total = chipCount + cardCount + textCount;
     return Math.min((total / (content.totalItems * 0.2)) * 100, 100);
@@ -1309,7 +1504,7 @@ export default function CategoryDeepDivePage() {
 
   // ── Navigate next ──
   const handleNext = () =>
-    navigate('/hive-discovery', { state: { category, chips, cards, textValues } });
+    navigate('/hive-discovery', { state: { category, chips, cards, textValues, metroKeys, placeLabels } });
 
   return (
     <div className="cdd-root">
@@ -1402,44 +1597,22 @@ export default function CategoryDeepDivePage() {
             <EventAgeChipRow
               id="social-age"
               chips={EVENT_CHIPS_AGE}
-              selectedCard={cards['social-age'] ?? null}
-              onSelect={toggleCard}
+              selected={asAgeArray(cards['social-age'])}
+              onToggle={toggleAgeBand}
             />
+            <p className="cdd-hint">Pick as many as you like.</p>
           </div>
 
           <div className="cdd-section">
             <div className="cdd-section-label">What city or area are you in?</div>
-            <ChipGroup
-              id="social-location"
-              chips={SOCIAL_CHIPS_LOCATION}
-              selected={chips['social-location'] || []}
-              onToggle={toggleChip}
-              single
+            <LocationQuestion
+              selectedChip={chips['social-location']?.[0] ?? null}
+              onSelectChip={label => setLocationChip('social-location', label)}
+              cityText={textValues['social-city'] || ''}
+              onCityTextChange={val => setTextValues(prev => ({ ...prev, 'social-city': val }))}
+              onMetroKeyChange={key => setMetroKey('social-location', key)}
+              onPlaceLabelChange={label => setPlaceLabel('social-location', label)}
             />
-            {chips['social-location']?.[0] === "✍️ I'll type it in" && (
-              <input
-                type="text"
-                style={{
-                  marginTop: '10px',
-                  width: '100%',
-                  height: '40px',
-                  border: '0.5px solid #d8d0bc',
-                  borderRadius: '8px',
-                  background: '#fff',
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '13px',
-                  color: '#1a1508',
-                  boxSizing: 'border-box',
-                  padding: '0 12px',
-                  outline: 'none',
-                }}
-                placeholder="e.g. Los Angeles, CA / New York, NY..."
-                value={textValues['social-city'] || ''}
-                onChange={e => setTextValues(prev => ({ ...prev, 'social-city': e.target.value }))}
-                onFocus={e => { e.target.style.borderColor = '#c49a28'; }}
-                onBlur={e => { e.target.style.borderColor = '#d8d0bc'; }}
-              />
-            )}
           </div>
 
           <div className="cdd-section">
@@ -1531,6 +1704,18 @@ export default function CategoryDeepDivePage() {
               onCustomAdd={addCustom}
               customLabel="+ Something else"
               customPlaceholder="Describe what you need from this Hive..."
+            />
+          </div>
+
+          <div className="cdd-section">
+            <div className="cdd-section-label">What city or area are you in?</div>
+            <LocationQuestion
+              selectedChip={chips['professional-location']?.[0] ?? null}
+              onSelectChip={label => setLocationChip('professional-location', label)}
+              cityText={textValues['professional-city'] || ''}
+              onCityTextChange={val => setTextValues(prev => ({ ...prev, 'professional-city': val }))}
+              onMetroKeyChange={key => setMetroKey('professional-location', key)}
+              onPlaceLabelChange={label => setPlaceLabel('professional-location', label)}
             />
           </div>
 
@@ -1649,6 +1834,18 @@ export default function CategoryDeepDivePage() {
               onCustomAdd={addCustom}
               customLabel="+ Something else"
               customPlaceholder="Describe the travel experience you're looking for..."
+            />
+          </div>
+
+          <div className="cdd-section">
+            <div className="cdd-section-label">What city or area are you in?</div>
+            <LocationQuestion
+              selectedChip={chips['travel-location']?.[0] ?? null}
+              onSelectChip={label => setLocationChip('travel-location', label)}
+              cityText={textValues['travel-city'] || ''}
+              onCityTextChange={val => setTextValues(prev => ({ ...prev, 'travel-city': val }))}
+              onMetroKeyChange={key => setMetroKey('travel-location', key)}
+              onPlaceLabelChange={label => setPlaceLabel('travel-location', label)}
             />
           </div>
 
@@ -1796,6 +1993,18 @@ export default function CategoryDeepDivePage() {
               onCustomAdd={addCustom}
               customLabel="+ Something else"
               customPlaceholder="Describe your project type..."
+            />
+          </div>
+
+          <div className="cdd-section">
+            <div className="cdd-section-label">What city or area are you in?</div>
+            <LocationQuestion
+              selectedChip={chips['project-location']?.[0] ?? null}
+              onSelectChip={label => setLocationChip('project-location', label)}
+              cityText={textValues['project-city'] || ''}
+              onCityTextChange={val => setTextValues(prev => ({ ...prev, 'project-city': val }))}
+              onMetroKeyChange={key => setMetroKey('project-location', key)}
+              onPlaceLabelChange={label => setPlaceLabel('project-location', label)}
             />
           </div>
 
@@ -2063,37 +2272,14 @@ export default function CategoryDeepDivePage() {
 
           <div className="cdd-section">
             <div className="cdd-section-label">What city or area are you in?</div>
-            <ChipGroup
-              id="event-location"
-              chips={EVENT_CHIPS_LOCATION}
-              selected={chips['event-location'] || []}
-              onToggle={toggleChip}
-              single
+            <LocationQuestion
+              selectedChip={chips['event-location']?.[0] ?? null}
+              onSelectChip={label => setLocationChip('event-location', label)}
+              cityText={textValues['event-city'] || ''}
+              onCityTextChange={val => setTextValues(prev => ({ ...prev, 'event-city': val }))}
+              onMetroKeyChange={key => setMetroKey('event-location', key)}
+              onPlaceLabelChange={label => setPlaceLabel('event-location', label)}
             />
-            {chips['event-location']?.[0] === "✍️ I'll type it in" && (
-              <input
-                type="text"
-                style={{
-                  marginTop: '10px',
-                  width: '100%',
-                  height: '40px',
-                  border: '0.5px solid #d8d0bc',
-                  borderRadius: '8px',
-                  background: '#fff',
-                  fontFamily: "'DM Sans', sans-serif",
-                  fontSize: '13px',
-                  color: '#1a1508',
-                  boxSizing: 'border-box',
-                  padding: '0 12px',
-                  outline: 'none',
-                }}
-                placeholder="e.g. Los Angeles, CA / New York, NY / Chicago, IL..."
-                value={textValues['event-city'] || ''}
-                onChange={e => setTextValues(prev => ({ ...prev, 'event-city': e.target.value }))}
-                onFocus={e => { e.target.style.borderColor = '#c49a28'; }}
-                onBlur={e => { e.target.style.borderColor = '#d8d0bc'; }}
-              />
-            )}
           </div>
 
           <div className="cdd-section">
@@ -2101,9 +2287,10 @@ export default function CategoryDeepDivePage() {
             <EventAgeChipRow
               id="event-age"
               chips={EVENT_CHIPS_AGE}
-              selectedCard={cards['event-age'] ?? null}
-              onSelect={toggleCard}
+              selected={asAgeArray(cards['event-age'])}
+              onToggle={toggleAgeBand}
             />
+            <p className="cdd-hint">Pick as many as you like.</p>
           </div>
 
           <div className="cdd-section">
@@ -2183,6 +2370,18 @@ export default function CategoryDeepDivePage() {
               onCustomAdd={addCustom}
               customLabel="+ Something else"
               customPlaceholder="Describe your specialized group..."
+            />
+          </div>
+
+          <div className="cdd-section">
+            <div className="cdd-section-label">What city or area are you in?</div>
+            <LocationQuestion
+              selectedChip={chips['spec-location']?.[0] ?? null}
+              onSelectChip={label => setLocationChip('spec-location', label)}
+              cityText={textValues['spec-city'] || ''}
+              onCityTextChange={val => setTextValues(prev => ({ ...prev, 'spec-city': val }))}
+              onMetroKeyChange={key => setMetroKey('spec-location', key)}
+              onPlaceLabelChange={label => setPlaceLabel('spec-location', label)}
             />
           </div>
 
