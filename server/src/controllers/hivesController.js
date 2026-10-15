@@ -7,6 +7,7 @@ import {
   blendScores,
   buildReasons,
   norm,
+  ageInBand,
 } from '../lib/compatibility.js';
 import { createNotification } from './notificationsController.js';
 import { evictUserFromHive } from '../realtime/socket.js';
@@ -15,7 +16,7 @@ import { PLAN_END } from './eventsController.js';
 import { getAttendanceRate } from './checkinsController.js';
 import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
 import { sendYoureInEmail } from '../lib/email.js';
-import { resolveMetro } from '../lib/metros.js';
+import { resolveMetro, metroByKey, LAUNCH_METROS } from '../lib/metros.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -28,7 +29,7 @@ export const CATEGORY_NAME_MAP = {
 
 export const matchHives = async (req, res) => {
   try {
-    const { category, textValues } = req.body;
+    const { category, textValues, searchMetroKey, searchMode, ageBands } = req.body;
 
     // 1. Load caller profile
     const { rows: [profile] } = await query(
@@ -37,16 +38,29 @@ export const matchHives = async (req, res) => {
     );
     if (!profile) return res.json({ hives: [], waitingCount: 0, needsProfile: true });
 
-    // Enrich profile location with search-form city if profile has none
+    // Enrich profile location with search-form city if profile has none. The
+    // search answer wins over a saved profile city — someone searching from
+    // a different city than their profile's is answering about THIS search,
+    // not updating their profile.
     const locationFromSearch =
-      textValues?.['social-city'] ||
-      textValues?.['event-city']  ||
-      textValues?.['professional-city'] ||
+      textValues?.['social-city'] || textValues?.['event-city'] || textValues?.['professional-city'] ||
+      textValues?.['travel-city'] || textValues?.['project-city'] || textValues?.['spec-city'] ||
       null;
     const enrichedProfile = {
       ...profile,
-      location: profile.location || locationFromSearch,
+      location: locationFromSearch || profile.location,
     };
+
+    // The search wins: an explicit searchMetroKey from current-location/
+    // autocomplete, else resolve the typed city text, else fall back to the
+    // profile's own saved location. Only area-mode searches resolve this —
+    // an explicit "online only" search has no area to find.
+    let resolvedMetroKey = searchMetroKey || null;
+    if (!resolvedMetroKey && searchMode !== 'online') {
+      if (locationFromSearch) resolvedMetroKey = await resolveMetro(locationFromSearch);
+      if (!resolvedMetroKey && profile.location) resolvedMetroKey = await resolveMetro(profile.location);
+    }
+    const needsArea = searchMode !== 'online' && !resolvedMetroKey;
 
     // 2. Resolve category → category_id
     let categoryId = null;
@@ -69,6 +83,16 @@ export const matchHives = async (req, res) => {
       categoryFilter = `AND h.category_id = $${candidateParams.length}`;
     }
 
+    // Area filter: an explicit "online only" search (or no area at all —
+    // needsArea covers that case client-side) only ever returns online
+    // Hives; an area search returns online Hives PLUS in-person/hybrid
+    // Hives in that metro.
+    let areaFilter = `AND h.location_type = 'online'`;
+    if (searchMode !== 'online' && resolvedMetroKey) {
+      candidateParams.push(resolvedMetroKey);
+      areaFilter = `AND (h.location_type = 'online' OR h.metro_key = $${candidateParams.length})`;
+    }
+
     const { rows: candidates } = await query(
       `SELECT h.*,
               c.category_name,
@@ -83,6 +107,7 @@ export const matchHives = async (req, res) => {
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.discoverable = TRUE
+         ${areaFilter}
          AND h.hive_status  = 'active'
          AND NOT EXISTS(
            SELECT 1 FROM hive_members
@@ -97,6 +122,7 @@ export const matchHives = async (req, res) => {
 
     // 4. Score each candidate
     const blockedIds = await blockedIdsFor(req.userId);
+    const hasAgeBands = Array.isArray(ageBands) && ageBands.length > 0 && !ageBands.includes('Any age');
     const scored = [];
     for (const hive of candidates) {
       const { factors: purposeFactors, total: purposeTotal } =
@@ -131,6 +157,23 @@ export const matchHives = async (req, res) => {
       const peopleFit  = aggregatePeopleFit(pairResults.map(p => p.pair_score));
       const matchScore = blendScores(purposeTotal, peopleFit);
 
+      // Ages are a ranking signal, not a filter — never changes which Hives
+      // appear, only their order. Needs at least 2 members with a known age
+      // to be meaningful; otherwise the score is left untouched. Computed
+      // from the blended score already persisted below, so the stored
+      // compatibility_scores row stays a stable, search-independent fact —
+      // only this response's match_score carries the penalty.
+      let ageShare = null;
+      let finalScore = matchScore;
+      if (hasAgeBands) {
+        const withAge = memberProfiles.filter(mp => mp.age != null);
+        if (withAge.length >= 2) {
+          const inBand = withAge.filter(mp => ageBands.some(b => ageInBand(mp.age, b))).length;
+          ageShare = inBand / withAge.length;
+          finalScore = Math.max(0, matchScore - Math.round(15 * (1 - ageShare)));
+        }
+      }
+
       // Persist blended score to compatibility_scores
       await query(
         `INSERT INTO compatibility_scores
@@ -164,9 +207,10 @@ export const matchHives = async (req, res) => {
 
       scored.push({
         ...hive,
-        match_score:       matchScore,
+        match_score:       finalScore,
         purpose_score:     purposeTotal,
         people_score:      peopleFit,
+        age_share:         ageShare,
         member_matches,
         reasons,
         _category_score:   purposeFactors.category,
@@ -188,7 +232,12 @@ export const matchHives = async (req, res) => {
       waitingCount = Number(wRow.count);
     }
 
-    res.json({ hives: results, waitingCount, needsProfile: false });
+    // 7. Area info for the client — name lookup only when something resolved.
+    const resolvedMetro = resolvedMetroKey ? await metroByKey(resolvedMetroKey) : null;
+    const area = resolvedMetro ? { metro_key: resolvedMetro.metro_key, name: resolvedMetro.name } : null;
+    const isLaunchArea = LAUNCH_METROS.includes(resolvedMetroKey);
+
+    res.json({ hives: results, waitingCount, needsProfile: false, area, isLaunchArea, needsArea });
   } catch (err) {
     console.error('[hives/matchHives]', err);
     res.status(500).json({ error: 'Failed to run matching.' });
