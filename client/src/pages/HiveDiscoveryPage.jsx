@@ -177,18 +177,13 @@ function HiveMatchCard({ hive, autoFetch = false }) {
           </svg>
           {Number(hive.member_count)}/{hive.max_members ?? '∞'} members
         </span>
-        {hive.location && (
-          <span className="hmd-stat">
-            <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
-              <path d="M5 0C2.79 0 1 1.79 1 4c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z" fill="#8a6510" opacity=".7"/>
-              <circle cx="5" cy="4" r="1.5" fill="#fff"/>
-            </svg>
-            {hive.location}
+        {hive.location_type === 'online' ? (
+          <span className="hmd-location-pill hmd-location-pill--online">💻 Online</span>
+        ) : hive.location ? (
+          <span className="hmd-location-pill hmd-location-pill--inperson">
+            📍 {hive.location} · {hive.location_type === 'hybrid' ? 'Hybrid' : 'In person'}
           </span>
-        )}
-        {hive.location_type === 'online' && (
-          <span className="hmd-stat hmd-stat-online">Online</span>
-        )}
+        ) : null}
       </div>
 
       {/* ── Why you match ── */}
@@ -300,51 +295,93 @@ function HiveMatchCard({ hive, autoFetch = false }) {
 }
 
 // ── MatchResults ──────────────────────────────────────────────────────────────
-function MatchResults({ hives, waitingCount, categoryLabel, city, category, onWaitlistJoined }) {
+function MatchResults({ hives, waitingCount, categoryLabel, city, category, area, prefillData, needsArea, questionState, onWaitlistJoined, outsideLaunch = false }) {
   const navigate = useNavigate();
   const [waitlistDone,    setWaitlistDone]    = useState(false);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
   const [liveCount,       setLiveCount]       = useState(waitingCount);
+  const [waitlistError, setWaitlistError] = useState(null);
+  const ages = prefillData.ageBands.filter(b => b !== 'Any age');
+  const displayCity = city || area?.name || 'your area';
+  const create = () => navigate('/create-hive', { state: { category, prefillData } });
+  const editArea = () => navigate('/category-deep-dive', { state: questionState });
 
   async function handleJoinWaitlist() {
     if (waitlistDone || waitlistLoading) return;
     setWaitlistLoading(true);
+    setWaitlistError(null);
     try {
-      const result = await api.post('/api/hives/waitlist', { category, location: city || null });
+      const result = await api.post('/api/hives/waitlist', { category, location: city || null, metro_key: area?.metro_key ?? null });
       setLiveCount(result.waitingCount);
       if (onWaitlistJoined) onWaitlistJoined(result.waitingCount);
-    } catch { /* silent */ }
-    setWaitlistDone(true);
-    setWaitlistLoading(false);
+      setWaitlistDone(true);
+    } catch (err) { setWaitlistError(err.message || 'Could not save your spot. Try again.'); }
+    finally { setWaitlistLoading(false); }
   }
 
   return (
-    <div className="hmd-results">
+    <div className={`hmd-results hmd-results--discovery${outsideLaunch ? ' hmd-results--outside' : ''}`}>
 
       {/* Header */}
       <div className="hmd-results-head">
         <div className="hd-eyebrow">
           <div className="hd-eyebrow-line" />
           <span className="hd-eyebrow-text">
-            {hives.length} Compatible Hive{hives.length !== 1 ? 's' : ''} Found
+            {outsideLaunch ? area.name : `${hives.length} Compatible Hive${hives.length !== 1 ? 's' : ''} Found`}
           </span>
         </div>
-        <h1 className="hd-headline">Your <em>matches</em> are ready</h1>
+        <h1 className="hd-headline">{outsideLaunch ? <>TrueHive is in <em>Los Angeles first</em></> : <>Your <em>matches</em> are ready</>}</h1>
+        {outsideLaunch && (
+          <p className="hmd-outside-copy">
+            There are no in-person {categoryLabel} Hives near {displayCity} yet.{' '}
+            {hives.length > 0 ? `Here ${hives.length === 1 ? 'is' : 'are'} ${hives.length} online Hive${hives.length === 1 ? '' : 's'} you can join today, or start the first one in ${displayCity}.` : `Start the first one in ${displayCity}.`}
+          </p>
+        )}
+        <div className="hmd-search-filters" aria-label="Your search">
+          <span>{categoryLabel}</span>
+          {area && <span>📍 {area.name}</span>}
+          {prefillData.searchMode === 'online' && <span>💻 Online community only</span>}
+          {ages.length > 0 && <span>Ages {ages.join(', ')}</span>}
+        </div>
       </div>
 
-      {/* Cards */}
-      <div className="hmd-cards">
+      {needsArea && (
+        <p className="hmd-area-prompt">Add your city to see in-person Hives near you.{' '}
+          <button className="es-alt-btn" onClick={editArea}>Add your city →</button>
+        </p>
+      )}
+      {outsideLaunch && (
+        <div className="hmd-outside-actions">
+          <button className="es-btn-gold" onClick={create}>Become the founder in {displayCity}</button>
+          <button className="es-btn-outline" disabled={waitlistDone || waitlistLoading} onClick={handleJoinWaitlist}>
+            {waitlistDone ? `We'll email you when ${displayCity} opens.` : waitlistLoading ? 'Saving…' : `Tell me when ${displayCity} opens`}
+          </button>
+          {waitlistError && <p role="alert" className="hmd-join-error">{waitlistError}</p>}
+        </div>
+      )}
+      <div className="hmd-results-columns">
+        <div className="hmd-cards">
         {hives.map((hive, idx) => (
           <HiveMatchCard key={hive.hive_id} hive={hive} autoFetch={idx < 3} />
         ))}
-      </div>
-
-      {/* Waitlist nudge */}
-      {liveCount > 0 && (
+        </div>
+        {!outsideLaunch && <aside className="hmd-founder-panel">
+          <div className="hmd-create-panel">
+            <TrueHiveMark size={56} />
+            <h2>Don't see your Hive?</h2>
+            <p>Start one. We'll match people like you straight into it.</p>
+            <dl className="hmd-search-summary">
+              <div><dt>Category</dt><dd>{categoryLabel}</dd></div>
+              <div><dt>Area</dt><dd>{prefillData.searchMode === 'online' ? 'Online' : area?.name || city || 'Add your city'}</dd></div>
+              <div><dt>Ages</dt><dd>{ages.length ? ages.join(', ') : 'Any age'}</dd></div>
+            </dl>
+            <button className="es-btn-gold" onClick={create}>Create a Hive</button>
+            <p className="hmd-prefill-note">Your answers are filled in. You can change anything.</p>
+          </div>
         <div className="hmd-waitlist-nudge">
           <p className="hmd-waitlist-text">
-            <strong>{liveCount} others</strong> near {city || 'you'} are also waiting for a{' '}
-            {categoryLabel} Hive. Join the queue to be notified of new openings.
+            {liveCount > 0 ? <><strong>{liveCount} {liveCount === 1 ? 'person is' : 'people are'}</strong> waiting for a {categoryLabel} Hive near {displayCity}.</> : <>Be the first to join the queue for a {categoryLabel} Hive near {displayCity}.</>}{' '}
+            Join the queue to be notified of new openings.
           </p>
           <button
             className="hmd-waitlist-btn"
@@ -353,8 +390,10 @@ function MatchResults({ hives, waitingCount, categoryLabel, city, category, onWa
           >
             {waitlistDone ? 'You\'re in the queue ✓' : waitlistLoading ? 'Saving…' : 'Join the queue'}
           </button>
+          {waitlistError && <p role="alert" className="hmd-join-error">{waitlistError}</p>}
         </div>
-      )}
+        </aside>}
+      </div>
 
       <p className="es-alt-link" style={{ marginTop: '12px' }}>
         Not quite right?{' '}
@@ -380,6 +419,7 @@ function FounderEmptyState({ categoryLabel, city, category, waitingCount: initia
   const [queueLoading, setQueueLoading] = useState(false);
   const [hovCard,      setHovCard]      = useState(null);
   const [liveCount,    setLiveCount]    = useState(initialCount);
+  const [queueError, setQueueError] = useState(null);
 
   const displayCity   = city || 'your area';
   const hasWaiting    = liveCount >= 1;
@@ -388,20 +428,23 @@ function FounderEmptyState({ categoryLabel, city, category, waitingCount: initia
   async function handleHoldSpot() {
     if (queueJoined || queueLoading) return;
     setQueueLoading(true);
+    setQueueError(null);
     try {
       const result = await api.post('/api/hives/waitlist', {
         category,
         location: city || null,
+        metro_key: prefillData.searchMetroKey ?? null,
       });
       setLiveCount(result.waitingCount);
       if (onWaitlistJoined) onWaitlistJoined(result.waitingCount);
-    } catch { /* silent — button still flips */ }
-    setQueueJoined(true);
-    setQueueLoading(false);
+      setQueueJoined(true);
+    } catch (err) { setQueueError(err.message || 'Could not save your spot. Try again.'); }
+    finally { setQueueLoading(false); }
   }
 
   return (
     <div className="hd-founder-stage">
+      {queueError && <p role="alert" className="hmd-join-error">{queueError}</p>}
 
       {/* ── Badge ── */}
       <div className="hd-founder-badge-wrap">
@@ -557,7 +600,7 @@ export default function HiveDiscoveryPage() {
   const prefillData = { chips, cards, textValues, searchMetroKey, searchMode, searchPlaceLabel, ageBands };
 
   const categoryLabel = CATEGORY_LABELS[category] ?? 'Hive';
-  const city = searchPlaceLabel || textValues['social-city'] || textValues['event-city'] || null;
+  const city = searchPlaceLabel || textValues['social-city'] || textValues['event-city'] || textValues['professional-city'] || textValues['travel-city'] || textValues['project-city'] || textValues['spec-city'] || null;
   const scanLine = city
     ? `Scanning ${categoryLabel} Hives near ${city}`
     : category
@@ -567,6 +610,10 @@ export default function HiveDiscoveryPage() {
   // ── Matching flow state ───────────────────────────────────────
   const [status,      setStatus]      = useState('loading');
   const [matchResult, setMatchResult] = useState({ hives: [], waitingCount: 0 });
+  const area = matchResult.area ?? null;
+  const resolvedPrefills = { ...prefillData, searchMetroKey: area?.metro_key ?? searchMetroKey, searchPlaceLabel: city || area?.name || null };
+  const outsideLaunch = searchMode !== 'online' && area && matchResult.isLaunchArea === false && !matchResult.hives.some(h => h.location_type === 'in-person' || h.location_type === 'hybrid');
+  const questionState = { category, chips, cards, textValues, metroKeys, placeLabels };
 
   useEffect(() => {
     let cancelled = false;
@@ -669,7 +716,7 @@ export default function HiveDiscoveryPage() {
     <div className="hd-root">
       <Navbar />
 
-      <div className="hd-page">
+      <div className={`hd-page${status !== 'loading' ? ' hd-page--finished' : ''}`}>
 
         {/* Decorative background hexagons */}
         <div className="hd-bg-hexes">
@@ -689,26 +736,36 @@ export default function HiveDiscoveryPage() {
           </div>
         )}
 
-        {status === 'empty' && (
+        {matchResult.needsArea && status === 'empty' && !outsideLaunch && (
+          <p className="hmd-area-prompt">Add your city to see in-person Hives near you.{' '}
+            <button className="es-alt-btn" onClick={() => navigate('/category-deep-dive', { state: questionState })}>Add your city →</button>
+          </p>
+        )}
+        {status === 'empty' && !outsideLaunch && (
           <FounderEmptyState
             categoryLabel={categoryLabel}
             city={city}
             category={category}
             waitingCount={matchResult.waitingCount}
-            prefillData={prefillData}
+            prefillData={resolvedPrefills}
             onWaitlistJoined={count =>
               setMatchResult(prev => ({ ...prev, waitingCount: count }))
             }
           />
         )}
 
-        {status === 'results' && (
+        {(status === 'results' || (status === 'empty' && outsideLaunch)) && (
           <MatchResults
             hives={matchResult.hives}
             waitingCount={matchResult.waitingCount}
             categoryLabel={categoryLabel}
             city={city}
             category={category}
+            area={area}
+            prefillData={resolvedPrefills}
+            needsArea={matchResult.needsArea}
+            questionState={questionState}
+            outsideLaunch={outsideLaunch}
             onWaitlistJoined={count =>
               setMatchResult(prev => ({ ...prev, waitingCount: count }))
             }

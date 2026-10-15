@@ -3,9 +3,11 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
 import '../styles/create-hive.css';
+import '../styles/category-deep-dive.css'; // reuses .cdd-location-* autocomplete styles
 import { SKILL_CATS } from '../data/skillTaxonomy.js';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
 import { MATTERS } from '../data/mattersTaxonomy.js';
+import { searchPlacesApi } from '../lib/geo.js';
 
 // Flat chip list shared with profile taxonomy — drives tag suggestions
 const ALL_TAXONOMY_CHIPS = [
@@ -124,7 +126,10 @@ function derivePrefills(category, prefillData) {
   const textValues = prefillData?.textValues ?? {};
 
   const tags        = chips['types'] ?? [];
-  const city        = (textValues['social-city'] || textValues['event-city'] || '').trim();
+  const city        = (prefillData?.searchPlaceLabel ||
+    textValues['social-city'] || textValues['event-city'] || textValues['professional-city'] ||
+    textValues['travel-city'] || textValues['project-city'] || textValues['spec-city'] || '').trim();
+  const metroKey    = prefillData?.searchMetroKey ?? null;
   const whoFor      = (textValues['social-notes'] || textValues['spec-notes'] || '').trim();
   const descDefault = CATEGORY_DESCRIPTIONS[category] ?? '';
 
@@ -139,7 +144,8 @@ function derivePrefills(category, prefillData) {
   // Meeting type
   const locationChip = (chips['social-location'] ?? [])[0] ?? '';
   let meetType = '';
-  if (locationChip.includes('Online')) meetType = 'Online';
+  if (prefillData?.searchMode === 'online' || locationChip.includes('Online')) meetType = 'Online';
+  else if (city) meetType = 'In-person';
   else if (chips['spec-format']) {
     const fmts = chips['spec-format'];
     if      (fmts.some(f => f === 'In-person'))                    meetType = 'In-person';
@@ -155,7 +161,7 @@ function derivePrefills(category, prefillData) {
   else if (freqRaw.includes('monthly'))                                    cadence = 'Monthly';
   else if (freqRaw.includes('casual') || freqRaw.includes('flexible'))    cadence = 'Flexible';
 
-  return { tags, city, whoFor, descDefault, sizeKey, meetType, cadence };
+  return { tags, city, whoFor, descDefault, sizeKey, meetType, cadence, metroKey };
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -195,7 +201,6 @@ export default function CreateHivePage() {
   const waitingCount = routeState.waitingCount ?? 0;
   const hasPrefill  = !!(routeState.category || routeState.prefillData);
 
-  const meta = CATEGORY_META[category] ?? null;
 
   const {
     tags:        prefillTags,
@@ -205,11 +210,14 @@ export default function CreateHivePage() {
     sizeKey:     prefillSizeKey,
     meetType:    prefillMeetType,
     cadence:     prefillCadence,
+    metroKey:    prefillMetroKey,
   } = derivePrefills(category, prefillData);
 
   // ── Section 1 ──────────────────────────────────────────────────
   const [hiveName,     setHiveName]     = useState('');
   const [selectedCat,  setSelectedCat]  = useState(category);
+  const [editingCategory, setEditingCategory] = useState(false);
+  const meta = CATEGORY_META[selectedCat] ?? null;
   const [description,  setDescription]  = useState(descDefault);
   const [tags,         setTags]         = useState(prefillTags);
   const [whoFor,       setWhoFor]       = useState(prefillWhoFor);
@@ -236,6 +244,7 @@ export default function CreateHivePage() {
   // ── Section 4 ──────────────────────────────────────────────────
   const [meetType,    setMeetType]    = useState(prefillMeetType || '');
   const [locationVal, setLocationVal] = useState(prefillCity);
+  const [metroKey,    setMetroKey]    = useState(prefillMetroKey || null);
   const [cadence,     setCadence]     = useState(prefillCadence || '');
 
   // ── Section 5 ──────────────────────────────────────────────────
@@ -260,6 +269,39 @@ export default function CreateHivePage() {
   const hiveNameRef  = useRef(null);
   const catFieldRef  = useRef(null);
   const descRef      = useRef(null);
+  const locationDebounceRef = useRef(null);
+  const locationRequestRef = useRef(0);
+  useEffect(() => () => { clearTimeout(locationDebounceRef.current); locationRequestRef.current++; }, []);
+
+  // ── Location autocomplete (same source as the deep-dive's Q3) ───
+  const [locationSuggestions, setLocationSuggestions] = useState([]);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+
+  function handleLocationInput(val) {
+    const requestId = ++locationRequestRef.current;
+    setShowLocationSuggestions(false);
+    setLocationVal(val);
+    setMetroKey(null); // cleared until a suggestion is picked, or re-resolved server-side on save
+    if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
+    if (!val.trim()) { setLocationSuggestions([]); return; }
+    locationDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await searchPlacesApi(val);
+        if (requestId !== locationRequestRef.current) return;
+        setLocationSuggestions(results);
+        setShowLocationSuggestions(true);
+      } catch { /* autocomplete is best-effort */ }
+    }, 200);
+  }
+
+  function pickLocationSuggestion(s) {
+    locationRequestRef.current++;
+    clearTimeout(locationDebounceRef.current);
+    setLocationVal(`${s.display_name}, ${s.state_code}`);
+    setMetroKey(s.metro_key);
+    setLocationSuggestions([]);
+    setShowLocationSuggestions(false);
+  }
 
   // ── Helpers ────────────────────────────────────────────────────
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
@@ -294,6 +336,7 @@ export default function CreateHivePage() {
     activationThreshold: Number(activateAt),
     meetingType:         meetType,
     location:            locationVal.trim(),
+    metroKey,
     cadence,
     hiveValues,
     pinnedGoal:          pinnedGoal.trim(),
@@ -458,13 +501,13 @@ export default function CreateHivePage() {
               Category
               {category && <span className="ch-sub-label">— SET FROM YOUR SEARCH</span>}
             </div>
-            {category ? (
+            {category && !editingCategory ? (
               <div className="ch-locked-field">
                 <div className="ch-locked-field-left">
                   <span>{meta?.icon}</span>
                   <span>{meta?.label ?? category}</span>
                 </div>
-                <span className="ch-locked-badge">LOCKED</span>
+                <button type="button" className="ch-locked-badge" style={{ border: 0, cursor: 'pointer' }} onClick={() => setEditingCategory(true)}>Change</button>
               </div>
             ) : (
               <>
@@ -703,12 +746,36 @@ export default function CreateHivePage() {
                 Location
                 {flagCity && <PreTag />}
               </div>
-              <input
-                className="ch-input"
-                placeholder="e.g. Austin, TX"
-                value={locationVal}
-                onChange={e => setLocationVal(e.target.value)}
-              />
+              <div className="cdd-location-field">
+                <input
+                  className="ch-input"
+                  placeholder="e.g. Austin, TX"
+                  value={locationVal}
+                  onChange={e => handleLocationInput(e.target.value)}
+                  onFocus={() => locationSuggestions.length && setShowLocationSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
+                />
+                {showLocationSuggestions && locationSuggestions.length > 0 && (
+                  <div className="cdd-location-suggestions">
+                    {locationSuggestions.map(s => (
+                      <button
+                        key={`${s.display_name}-${s.state_code}`}
+                        type="button"
+                        className="cdd-location-suggestion"
+                        onMouseDown={e => e.preventDefault()}
+                        onClick={() => pickLocationSuggestion(s)}
+                      >
+                        {s.display_name} · {s.metro_name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {!metroKey && locationVal.trim() && (
+                <p className="cdd-location-error">
+                  We couldn't place this city. Members searching nearby may not find your Hive.
+                </p>
+              )}
             </div>
           )}
 

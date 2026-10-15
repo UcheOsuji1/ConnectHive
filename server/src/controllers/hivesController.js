@@ -55,10 +55,10 @@ export const matchHives = async (req, res) => {
     // autocomplete, else resolve the typed city text, else fall back to the
     // profile's own saved location. Only area-mode searches resolve this —
     // an explicit "online only" search has no area to find.
-    let resolvedMetroKey = searchMetroKey || null;
+    let resolvedMetroKey = searchMode === 'online' ? null : (searchMetroKey || null);
     if (!resolvedMetroKey && searchMode !== 'online') {
       if (locationFromSearch) resolvedMetroKey = await resolveMetro(locationFromSearch);
-      if (!resolvedMetroKey && profile.location) resolvedMetroKey = await resolveMetro(profile.location);
+      if (!locationFromSearch && profile.location) resolvedMetroKey = await resolveMetro(profile.location);
     }
     const needsArea = searchMode !== 'online' && !resolvedMetroKey;
 
@@ -90,7 +90,7 @@ export const matchHives = async (req, res) => {
     let areaFilter = `AND h.location_type = 'online'`;
     if (searchMode !== 'online' && resolvedMetroKey) {
       candidateParams.push(resolvedMetroKey);
-      areaFilter = `AND (h.location_type = 'online' OR h.metro_key = $${candidateParams.length})`;
+      areaFilter = `AND (h.location_type = 'online' OR (h.location_type IN ('in-person', 'hybrid') AND h.metro_key = $${candidateParams.length}))`;
     }
 
     const { rows: candidates } = await query(
@@ -211,6 +211,7 @@ export const matchHives = async (req, res) => {
         purpose_score:     purposeTotal,
         people_score:      peopleFit,
         age_share:         ageShare,
+        ageShare,
         member_matches,
         reasons,
         _category_score:   purposeFactors.category,
@@ -222,12 +223,14 @@ export const matchHives = async (req, res) => {
     if (category) results = results.filter(h => h._category_score > 0);
     results = results.map(({ _category_score, ...h }) => h).slice(0, 20);
 
-    // 6. waitingCount for the resolved category
+    // 6. waitingCount for this category AND area — a queue for "Social in
+    // Miami" is a different promise than one for "Social in LA".
     let waitingCount = 0;
     if (categoryId) {
       const { rows: [wRow] } = await query(
-        `SELECT COUNT(*)::int FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
-        [categoryId],
+        `SELECT COUNT(*)::int FROM waitlist
+          WHERE category_id = $1 AND metro_key IS NOT DISTINCT FROM $2 AND status = 'waiting'`,
+        [categoryId, resolvedMetroKey],
       );
       waitingCount = Number(wRow.count);
     }
@@ -457,6 +460,9 @@ export const getSuggestions = async (req, res) => {
 export const joinWaitlist = async (req, res) => {
   try {
     const { category, location } = req.body;
+    const metroKey = Object.prototype.hasOwnProperty.call(req.body, 'metro_key') ? req.body.metro_key
+      : Object.prototype.hasOwnProperty.call(req.body, 'metroKey') ? req.body.metroKey
+      : (location ? await resolveMetro(location) : null);
     if (!category) return res.status(400).json({ error: 'Category is required.' });
 
     const catName = CATEGORY_NAME_MAP[category] ?? null;
@@ -468,23 +474,25 @@ export const joinWaitlist = async (req, res) => {
     );
     const categoryId = cat?.category_id ?? null;
 
-    // Dedupe: only insert if not already waiting for this category
+    // Dedupe and count scope to (category, metro) — IS NOT DISTINCT FROM so
+    // a metro-less wait (e.g. an online-only search) is its own bucket too,
+    // same as a plain `= $n` would be if metro_key were never NULL.
     const { rows: [existing] } = await query(
       `SELECT waitlist_id FROM waitlist
-       WHERE user_id = $1 AND category_id = $2 AND status = 'waiting'`,
-      [req.userId, categoryId],
+       WHERE user_id = $1 AND category_id = $2 AND metro_key IS NOT DISTINCT FROM $3 AND status = 'waiting'`,
+      [req.userId, categoryId, metroKey ?? null],
     );
     if (!existing) {
       await query(
-        `INSERT INTO waitlist (user_id, category_id, location, status)
-         VALUES ($1, $2, $3, 'waiting')`,
-        [req.userId, categoryId, location ?? null],
+        `INSERT INTO waitlist (user_id, category_id, location, metro_key, status)
+         VALUES ($1, $2, $3, $4, 'waiting')`,
+        [req.userId, categoryId, location ?? null, metroKey ?? null],
       );
     }
 
     const { rows: [{ count }] } = await query(
-      `SELECT COUNT(*)::int FROM waitlist WHERE category_id = $1 AND status = 'waiting'`,
-      [categoryId],
+      `SELECT COUNT(*)::int FROM waitlist WHERE category_id = $1 AND metro_key IS NOT DISTINCT FROM $2 AND status = 'waiting'`,
+      [categoryId, metroKey ?? null],
     );
 
     res.json({ joined: true, waitingCount: Number(count) });
@@ -955,7 +963,7 @@ export const updateHive = async (req, res) => {
     // An explicit metro_key (from the General-tab autocomplete) wins; a
     // location edit with no explicit metro_key re-resolves from the new
     // text, so a plain-text save still keeps metro_key right.
-    if ('location' in updates && !('metro_key' in updates)) {
+    if ('location' in updates && !updates.metro_key) {
       updates.metro_key = updates.location ? await resolveMetro(updates.location) : null;
     }
 

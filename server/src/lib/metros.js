@@ -15,7 +15,7 @@ export function normalizePlace(input) {
   s = s.replace(/\bft\./g, 'fort');
   s = s.replace(/[^a-z0-9\s]/g, '');
   s = s.replace(/\s+/g, ' ').trim();
-  return s || null;
+  return s;
 }
 
 // "City, ST" or "City ST" (comma optional) — the trailing two-letter token,

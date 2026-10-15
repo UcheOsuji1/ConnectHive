@@ -565,6 +565,38 @@
   width: 100%;
 }
 
+/* Prompt 71: existing cards retain their styling; the founder panel shares the workspace palette. */
+.hd-page--finished { overflow: clip; flex-direction: column; }
+.hmd-results--discovery { max-width: 1120px; }
+.hmd-results-columns { display: grid; grid-template-columns: minmax(0, 1fr) 310px; gap: 24px; width: 100%; align-items: start; }
+.hmd-results-columns > * { min-width: 0; }
+.hmd-founder-panel { position: sticky; top: calc(var(--nav-h, 72px) + 20px); }
+.hmd-create-panel { padding: 24px; background: #fffdf7; border: 1px solid #d8d0bc; border-radius: 16px; }
+.hmd-create-panel h2 { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 500; color: #1a1508; margin: 16px 0 10px; }
+.hmd-create-panel p, .hmd-outside-copy { font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.7; color: #786d56; }
+.hmd-search-summary { font: 12px/1.6 'DM Sans', sans-serif; margin: 20px 0; }
+.hmd-search-summary div { display: grid; grid-template-columns: 65px minmax(0, 1fr); gap: 8px; margin: 8px 0; }
+.hmd-search-summary dt { color: #96886a; }
+.hmd-search-summary dd { margin: 0; color: #342c1e; overflow-wrap: anywhere; }
+.hmd-create-panel .hmd-prefill-note { font-size: 11px; margin-bottom: 0; }
+.hmd-search-filters { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 14px; }
+.hmd-search-filters span { font: 12px/1.5 'DM Sans', sans-serif; color: #78652f; padding: 5px 11px; border: 1px solid #ddd1b5; border-radius: 20px; background: #fbf8f0; }
+.hmd-founder-panel .hmd-waitlist-nudge { flex-direction: column; align-items: stretch; margin-top: 14px; }
+.hmd-founder-panel .hmd-waitlist-btn { white-space: normal; }
+.hmd-area-prompt { position: relative; z-index: 1; font: 13px/1.7 'DM Sans', sans-serif; color: #78652f; width: 100%; text-align: center; margin: 0 0 20px; }
+.hmd-results--outside { max-width: 760px; }
+.hmd-results--outside .hmd-results-columns { grid-template-columns: minmax(0, 1fr); }
+.hmd-outside-copy { max-width: 620px; text-align: center; margin: 12px 0 0; }
+.hmd-outside-actions { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; width: 100%; margin-bottom: 24px; }
+.hmd-outside-actions button { width: auto; max-width: 100%; white-space: normal; padding: 12px 18px; }
+.hmd-results .hmd-location-pill { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 759px) {
+  .hmd-results-columns { grid-template-columns: minmax(0, 1fr); }
+  .hmd-founder-panel { position: static; }
+  .hmd-outside-actions { flex-direction: column; }
+  .hmd-outside-actions button { width: 100%; }
+}
+
 /* ── Match card ─────────────────────────────────────────────── */
 .hmd-card {
   background: #fff;
@@ -661,6 +693,29 @@
 .hmd-stat-online {
   color: #1a7a44;
   font-weight: 500;
+}
+
+/* ── Location pill (R1) ─────────────────────────────────────── */
+.hmd-location-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  border-radius: 20px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.hmd-location-pill--inperson {
+  color: #8a6510;
+  background: #fdf3d6;
+  border: 0.5px solid #d8c080;
+}
+.hmd-location-pill--online {
+  color: #1a5c9a;
+  background: #e8f1fb;
+  border: 0.5px solid #a8c8e8;
 }
 
 /* ── Why you match ──────────────────────────────────────────── */

@@ -800,6 +800,8 @@ function LocationQuestion({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef(null);
   const debounceRef = useRef(null);
+  const requestRef = useRef(0);
+  useEffect(() => () => { clearTimeout(debounceRef.current); requestRef.current++; }, []);
 
   async function handleUseLocation() {
     onSelectChip('📍 Use my current location');
@@ -850,12 +852,16 @@ function LocationQuestion({
       return;
     }
     // "I'll type it in"
+    onMetroKeyChange(null);
+    onPlaceLabelChange('');
     setGeoStatus('idle');
     onSelectChip(chip);
     setTimeout(() => inputRef.current?.focus(), 0);
   }
 
   function handleTypeInput(val) {
+    const requestId = ++requestRef.current;
+    setShowSuggestions(false);
     onCityTextChange(val);
     onMetroKeyChange(null);
     onPlaceLabelChange('');
@@ -864,6 +870,7 @@ function LocationQuestion({
     debounceRef.current = setTimeout(async () => {
       try {
         const results = await searchPlacesApi(val);
+        if (requestId !== requestRef.current) return;
         setSuggestions(results);
         setShowSuggestions(true);
       } catch { /* autocomplete is best-effort */ }
@@ -871,9 +878,11 @@ function LocationQuestion({
   }
 
   function pickSuggestion(s) {
-    onCityTextChange(s.display_name);
+    requestRef.current++;
+    clearTimeout(debounceRef.current);
+    onCityTextChange(`${s.display_name}, ${s.state_code}`);
     onMetroKeyChange(s.metro_key);
-    onPlaceLabelChange(`${s.display_name} · ${s.metro_name}`);
+    onPlaceLabelChange(s.display_name);
     setSuggestions([]);
     setShowSuggestions(false);
   }
@@ -1426,14 +1435,14 @@ export default function CategoryDeepDivePage() {
   const content  = CATEGORY_CONTENT[category] ?? CATEGORY_CONTENT.social;
 
   // ── State ──
-  const [chips,         setChips]         = useState({});  // { id: string[] }
-  const [cards,         setCards]         = useState({});  // { id: string|null }
+  const [chips,         setChips]         = useState(location.state?.chips ?? {});  // { id: string[] }
+  const [cards,         setCards]         = useState(location.state?.cards ?? {});  // ages may be arrays or legacy strings
   const [customVisible, setCustomVisible] = useState({});  // { id: bool }
   const [customInput,   setCustomInput]   = useState({});  // { id: string }
   const [customAdded,   setCustomAdded]   = useState({});  // { id: string[] }
-  const [textValues,    setTextValues]    = useState({});  // { id: string }
-  const [metroKeys,     setMetroKeys]     = useState({});  // { id: metro_key|null } — one per *-location question
-  const [placeLabels,   setPlaceLabels]   = useState({});  // { id: string } — display label for the resolved place
+  const [textValues,    setTextValues]    = useState(location.state?.textValues ?? {});
+  const [metroKeys,     setMetroKeys]     = useState(location.state?.metroKeys ?? {});
+  const [placeLabels,   setPlaceLabels]   = useState(location.state?.placeLabels ?? {});
 
   // ── Handlers ──
   const toggleChip = (id, label, single = false) =>
@@ -1503,8 +1512,22 @@ export default function CategoryDeepDivePage() {
   }, [category, navigate]);
 
   // ── Navigate next ──
-  const handleNext = () =>
-    navigate('/hive-discovery', { state: { category, chips, cards, textValues, metroKeys, placeLabels } });
+  const handleNext = () => {
+    const answers = { category, chips, cards, textValues, metroKeys, placeLabels };
+    // Preserve this history entry so browser Back restores the search answers.
+    window.history.replaceState({ ...window.history.state, usr: answers }, '');
+    navigate('/hive-discovery', { state: answers });
+  };
+  const createPrefills = () => {
+    const locationId = `${category === 'specialized' ? 'spec' : category}-location`;
+    return {
+      chips, cards, textValues,
+      searchMetroKey: metroKeys[locationId] ?? null,
+      searchPlaceLabel: placeLabels[locationId] || null,
+      searchMode: chips[locationId]?.[0] === '💻 Online community only' ? 'online' : 'area',
+      ageBands: asAgeArray(cards['social-age'] ?? cards['event-age']),
+    };
+  };
 
   return (
     <div className="cdd-root">
@@ -2503,7 +2526,7 @@ export default function CategoryDeepDivePage() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <CreateBtn
               text={content.createText}
-              onClick={() => navigate('/create-hive', { state: { category, prefillData: { chips, cards, textValues } } })}
+              onClick={() => navigate('/create-hive', { state: { category, prefillData: createPrefills() } })}
             />
             <button type="button" className="cdd-nav-next" onClick={handleNext}>
               {content.nextText}
