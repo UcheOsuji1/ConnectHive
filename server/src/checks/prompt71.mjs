@@ -40,6 +40,9 @@ async function seedHive(owner, location, meetingType, category = 'social') {
 }
 try {
   await client.query('BEGIN');
+  // Geographic fixtures intentionally create five Hives for one synthetic
+  // owner. Product quotas are tested separately in prompt73.mjs.
+  await client.query('ALTER TABLE hives DISABLE TRIGGER billing_hive_creation_limit');
   const samples = [null, '', '   ', 'Silver Lake', '  Santa   Monica, CA ', 'DTLA', 'St. Louis', 'Ft. Worth', 'Miami Beach, FL', 'Los Angeles, USA', 'Hollywood!', "O'Fallon", 'Winston-Salem', 'Springfield', 'Burbank', 'New York', 'Echo\tPark', 'San Pedro', 'Irvine', '...'];
   for (const sample of samples) {
     const { rows: [row] } = await client.query('SELECT normalize_place($1) AS value', [sample]);

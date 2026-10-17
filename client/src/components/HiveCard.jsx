@@ -180,6 +180,7 @@ export default function HiveCard({ hive, index = 0 }) {
 
           {/* Row 2 */}
           {meta && <p className="hc-meta">{meta}</p>}
+          {hive.paid_membership && <Link className="bill-paid-link" to={`/paid-hive/${hive.hive_id}`}>Paid ? ${(hive.paid_membership.monthly_price_cents/100).toFixed(2)} / month</Link>}
 
           {/* Row 3 — members and last-active side by side, no rule between */}
           <div className="hc-status">

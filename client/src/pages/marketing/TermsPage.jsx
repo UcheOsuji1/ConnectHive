@@ -75,6 +75,14 @@ export default function TermsPage() {
         </div>
       </section>
 
+      <section className="section"><div className="container" style={{ maxWidth: 800 }}>
+        <h2>Proposed subscription and paid membership terms</h2>
+        <p><strong>Draft for legal review before live billing activation.</strong> The following billing provisions have not been legally approved.</p>
+        <p>TrueHive Plus ($7.99 monthly or $69.99 annually) and paid Hive memberships are distinct subscriptions. Paid Hive members do not need Plus. Plus renews at the chosen interval; paid Hive memberships renew monthly at the price disclosed before Checkout until canceled.</p>
+        <p>Cancel in Account &amp; Settings before renewal to stop future billing. Cancellation normally takes effect at the end of the paid period, with access retained through the paid-through date. Failed renewals retain previously paid access with a three-day grace period. Refunds, moderation decisions, or other applicable policies may change access.</p>
+        <p>Hive owners provide their own ongoing benefits and are responsible for member-facing obligations and handling refund requests, subject to applicable law and Stripe/platform procedures. Members can contact the owner through the Hive’s About page. TrueHive retains a 10% platform fee on paid Hive subscription revenue. Processing fees are separate; refunds, disputes, chargebacks, and payout adjustments may reduce owner proceeds. Estimated proceeds are not guaranteed payouts.</p>
+        <p>Closing a paid Hive disables new subscriptions and cancels future renewals while preserving each member’s paid-through access and historical billing records. Owners must resolve outstanding subscriptions, refunds, disputes, and payouts before account deletion. Safety and fraud restrictions may require separate access and refund review. Financial responsibility depends on the Stripe Connect account and charge configuration; these terms do not disclaim obligations imposed by law.</p>
+      </div></section>
       <section className="final-cta">
         <div className="container">
           <h2>Questions about these terms?</h2>

@@ -11,6 +11,8 @@ import {
 } from '../lib/email.js';
 import { invalidateTokenVersion } from '../middleware/auth.js';
 import { disconnectUserSockets }  from '../realtime/socket.js';
+import { financialBlockers, assertNoFinancialBlockers } from '../lib/billingStore.js';
+import { BILLING_DELETE_MESSAGE } from '../lib/billingPolicy.js';
 import { POLICY_VERSION, MIN_AGE, ageFromDob } from '../lib/policy.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -621,6 +623,7 @@ async function _soloOwnedHives(userId) {
        FROM hive_members hm
        JOIN hives h ON h.hive_id = hm.hive_id AND h.hive_status = 'active'
       WHERE hm.user_id = $1 AND hm.role = 'owner' AND hm.membership_status = 'active'
+        AND NOT EXISTS(SELECT 1 FROM hive_monetization m WHERE m.hive_id=h.hive_id)
         AND NOT EXISTS (
           SELECT 1 FROM hive_members hm2
            WHERE hm2.hive_id = h.hive_id AND hm2.user_id != $1 AND hm2.membership_status = 'active'
@@ -665,7 +668,9 @@ export async function getDeletionCheck(req, res) {
 
     const reauthRequired = _isLoginFresh(user.last_login) ? null : (user.password_hash ? 'password' : 'google');
 
-    res.json({ blockers, soloOwnedHives, reauthRequired, canDelete: blockers.length === 0 });
+    const paidBlockers = await financialBlockers(userId);
+    const { rows: recurring } = await query(`SELECT 1 FROM billing_subscriptions WHERE user_id=$1 AND status NOT IN ('canceled','expired','incomplete_expired','refunded') AND NOT cancel_at_period_end`, [userId]);
+    res.json({ blockers, soloOwnedHives, reauthRequired, paidBlockers, billingMessage: paidBlockers.length ? BILLING_DELETE_MESSAGE : recurring.length ? 'Cancel your subscriptions in Billing & Subscriptions before deleting your account.' : null, canDelete: blockers.length === 0 && paidBlockers.length === 0 && recurring.length === 0 });
   } catch (err) {
     console.error('[auth/getDeletionCheck]', err);
     res.status(500).json({ error: 'Failed to check deletion eligibility.' });
@@ -698,6 +703,7 @@ export async function deleteAccount(req, res) {
       }
     }
 
+    if ((await financialBlockers(userId)).length) return res.status(409).json({ error: BILLING_DELETE_MESSAGE });
     const blockers = await _ownershipBlockers(userId);
     if (blockers.length) {
       return res.status(400).json({
@@ -712,6 +718,8 @@ export async function deleteAccount(req, res) {
     const client = await getClient();
     try {
       await client.query('BEGIN');
+      await client.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE', [userId]);
+      await assertNoFinancialBlockers(userId, client);
       for (const h of soloHives) {
         await client.query(
           `UPDATE hives
@@ -747,6 +755,7 @@ export async function deleteAccount(req, res) {
     res.json({ deleted: true, scheduledFor, soloHivesDeleted: soloHives.length });
   } catch (err) {
     console.error('[auth/deleteAccount]', err);
+    if (err.status) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: 'Failed to delete account.' });
   }
 }

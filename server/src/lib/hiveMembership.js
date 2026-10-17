@@ -4,7 +4,10 @@ export async function getMembership(hiveId, userId) {
   const { rows: [row] } = await query(
     `SELECT role, membership_status, onboarding_status, onboarding_screen
      FROM hive_members
-     WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+     WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'
+       AND (role='owner' OR NOT EXISTS(SELECT 1 FROM hive_monetization m WHERE m.hive_id=hive_members.hive_id)
+         OR EXISTS(SELECT 1 FROM billing_subscriptions s WHERE s.hive_id=hive_members.hive_id AND s.user_id=$2
+           AND s.access_until>NOW() AND NOT s.access_revoked))`,
     [hiveId, userId],
   );
   return row ?? null;

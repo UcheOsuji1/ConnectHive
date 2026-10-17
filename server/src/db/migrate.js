@@ -53,6 +53,7 @@ async function migrate() {
     // ── 2. Structural baseline ────────────────────────────────────
     console.log('\n  Applying schema.sql (structural, re-runnable) …');
     await client.query(readFileSync(join(__dirname, 'schema.sql'), 'utf8'));
+    await client.query(readFileSync(join(__dirname, 'billing.sql'), 'utf8'));
     console.log('  ✓ structure up to date');
 
     // ── 3. One-time migrations ────────────────────────────────────

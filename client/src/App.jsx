@@ -1,3 +1,6 @@
+import PaidHivePage from './pages/PaidHivePage.jsx';
+import HiveBillingPage from './pages/hive/HiveBillingPage.jsx';
+import AdminMonetizationPage from './pages/AdminMonetizationPage.jsx';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
 import SignUpPage from './pages/SignUpPage';
@@ -150,12 +153,14 @@ export default function App() {
           <Route path="analytics" element={<HiveAnalyticsPage />} />
           <Route path="roles" element={<HiveSoonPage feature="Roles & Permissions" />} />
           <Route path="integrations" element={<HiveSoonPage feature="Integrations" />} />
-          <Route path="billing" element={<HiveSoonPage feature="Billing" />} />
+          <Route path="billing" element={<HiveBillingPage />} />
         </Route>
 
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:id" element={<MemberProfilePage />} />
         <Route path="/settings" element={<AccountSettingsPage />} />
+        <Route path="/paid-hive/:id" element={<PaidHivePage />} />
+        <Route path="/admin/monetization" element={<AdminMonetizationPage />} />
         <Route path="/welcome/hive/:hiveId" element={<MemberWelcomePage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/admin/newsletter" element={<AdminNewsletterPage />} />

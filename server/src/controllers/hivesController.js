@@ -19,6 +19,9 @@ import { sendYoureInEmail } from '../lib/email.js';
 import { resolveMetro, resolveLocationMetro, metroByKey, LAUNCH_METROS } from '../lib/metros.js';
 import { validateMaxMembers } from '../lib/policy.js';
 import { readRefineFilters, matchesRefine, sizeBucket } from '../lib/discoveryFilters.js';
+import { hasPlus, fail } from '../lib/billingStore.js';
+import { validatePaidConfig } from '../lib/billingPolicy.js';
+import { withPaidOffers } from '../lib/paidOffers.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -120,7 +123,7 @@ export const matchHives = async (req, res) => {
        FROM hives h
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
-       WHERE h.discoverable = TRUE
+       WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active')
          ${areaFilter}
          ${refineClauses.join('\n')}
          AND h.hive_status  = 'active'
@@ -255,7 +258,7 @@ export const matchHives = async (req, res) => {
     const area = resolvedMetro ? { metro_key: resolvedMetro.metro_key, name: resolvedMetro.name } : null;
     const isLaunchArea = LAUNCH_METROS.includes(resolvedMetroKey);
 
-    res.json({ hives: results, waitingCount, needsProfile: false, area, isLaunchArea, needsArea });
+    res.json({ hives: await withPaidOffers(results), waitingCount, needsProfile: false, area, isLaunchArea, needsArea });
   } catch (err) {
     console.error('[hives/matchHives]', err);
     res.status(500).json({ error: 'Failed to run matching.' });
@@ -291,7 +294,7 @@ export const quickFindHives = async (req, res) => {
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.hive_status = 'active'
          AND (
-           (h.discoverable = TRUE AND h.hive_name ILIKE $1)
+           (h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_name ILIKE $1)
            OR h.hive_code = $2
          )
        GROUP BY h.hive_id, c.category_name
@@ -300,7 +303,7 @@ export const quickFindHives = async (req, res) => {
       [namePattern, codeGuess, limit],
     );
 
-    res.json({ hives: rows });
+    res.json({ hives: await withPaidOffers(rows) });
   } catch (err) {
     console.error('[hives/quickFindHives]', err);
     res.status(500).json({ error: 'Search failed.' });
@@ -314,7 +317,7 @@ export const getCategoryCounts = async (req, res) => {
       `SELECT c.category_name, COUNT(h.hive_id)::int AS hive_count
        FROM categories c
        LEFT JOIN hives h ON h.category_id = c.category_id
-                         AND h.discoverable = TRUE AND h.hive_status = 'active'
+                         AND h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
        GROUP BY c.category_id, c.category_name`,
     );
     res.json({ counts: rows });
@@ -335,7 +338,7 @@ export const getFilterFacets = async (req, res) => {
     const { rows: hives } = await query(
       `SELECT h.hive_id, h.location, h.metro_key, h.location_type, h.max_members, h.cadence, c.category_name
        FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
-       WHERE h.discoverable = TRUE AND h.hive_status = 'active'`,
+       WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'`,
     );
 
     const filters = await readRefineFilters(req.query);
@@ -365,7 +368,7 @@ export const getFilterFacets = async (req, res) => {
     res.json({ locations, connectionOptions, sizeOptions, cadenceOptions, categoryCounts, metroKey: selMetro });
   } catch (err) {
     console.error('[hives/getFilterFacets]', err);
-    if (err.status) return res.status(err.status).json({ error: err.message });
+    if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to load filters.' });
   }
 };
@@ -386,7 +389,7 @@ export const getSuggestions = async (req, res) => {
        FROM hives h
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
-       WHERE h.discoverable = TRUE AND h.hive_status = 'active'
+       WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
          AND NOT EXISTS (
            SELECT 1 FROM hive_members
            WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active'
@@ -456,10 +459,10 @@ export const getSuggestions = async (req, res) => {
       });
     }
 
-    res.json({ hives: results });
+    res.json({ hives: await withPaidOffers(results) });
   } catch (err) {
     console.error('[hives/getSuggestions]', err);
-    if (err.status) return res.status(err.status).json({ error: err.message });
+    if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to load suggestions.' });
   }
 };
@@ -509,7 +512,7 @@ export const joinWaitlist = async (req, res) => {
     res.json({ joined: true, waitingCount: Number(count) });
   } catch (err) {
     console.error('[hives/joinWaitlist]', err);
-    if (err.status) return res.status(err.status).json({ error: err.message });
+    if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to join waitlist.' });
   }
 };
@@ -564,7 +567,7 @@ export const getHive = async (req, res) => {
       });
     }
 
-    res.json({ hive: row });
+    res.json({ hive: (await withPaidOffers([row]))[0] });
   } catch (err) {
     console.error('[hives/getHive]', err);
     res.status(500).json({ error: 'Failed to fetch Hive.' });
@@ -675,7 +678,7 @@ export const getMyHive = async (req, res) => {
        ORDER BY (new_posts + new_members) DESC, last_activity_at DESC NULLS LAST`,
       [req.userId],
     );
-    res.json({ hives: rows });
+    res.json({ hives: await withPaidOffers(rows) });
   } catch (err) {
     console.error('[hives/getMyHive]', err);
     res.status(500).json({ error: 'Failed to fetch your Hives.' });
@@ -768,7 +771,7 @@ export const getFollowedHives = async (req, res) => {
        ORDER  BY hf.followed_at DESC`,
       [req.userId],
     );
-    res.json({ hives: rows });
+    res.json({ hives: await withPaidOffers(rows) });
   } catch (err) {
     console.error('[hives/getFollowedHives]', err);
     res.status(500).json({ error: 'Failed to fetch followed Hives.' });
@@ -784,6 +787,10 @@ export const createHive = async (req, res) => {
       meetingType, location, cadence, pinnedGoal, groundRules, icebreaker,
       hiveValues, onboarding, metroKey,
     } = req.body;
+    const paidConfig = req.body.monetization?.mode === 'paid' ? validatePaidConfig(req.body.monetization) : null;
+    if (paidConfig && (!await hasPlus(userId) || (joinPolicy && joinPolicy !== 'open'))) {
+      return res.status(403).json({ error: 'Paid Hives require active Plus and open admission after payment.' });
+    }
 
     if (!name || !name.trim() || !category) {
       return res.status(400).json({ error: 'Hive name and category are required.' });
@@ -828,6 +835,10 @@ export const createHive = async (req, res) => {
     try {
       await client.query('BEGIN');
 
+      if (paidConfig) {
+        await client.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE',[userId]);
+        if (!await hasPlus(userId,client)) fail('An active TrueHive Plus subscription is required.',403);
+      }
       const { rows: [hive] } = await client.query(
         `INSERT INTO hives (
           creator_user_id, category_id, hive_name, description, ideal_members,
@@ -867,6 +878,10 @@ export const createHive = async (req, res) => {
       );
 
       const catConfig = categoryName ? getCategoryConfig(categoryName) : null;
+      if (paidConfig) {
+        await client.query(`INSERT INTO hive_monetization(hive_id,owner_id,state,monthly_price_cents,benefits,description,cancellation_policy)
+          VALUES($1,$2,'awaiting_verification',$3,$4,$5,$6)`, [hive.hive_id,userId,paidConfig.price,paidConfig.benefits,paidConfig.description,paidConfig.cancellationPolicy]);
+      }
 
       // How plans get made (Prompt 60, decision 6) — a new Hive gets its
       // category's default; a category with no planRules (or no category at
@@ -944,7 +959,7 @@ export const createHive = async (req, res) => {
     }
   } catch (err) {
     console.error('[hives/createHive]', err);
-    if (err.status) return res.status(err.status).json({ error: err.message });
+    if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to create Hive.' });
   }
 };
@@ -969,6 +984,9 @@ export const updateHive = async (req, res) => {
       'metro_key',
     ];
     const updates = {};
+    if (req.body.join_policy && req.body.join_policy !== 'open' && (await query('SELECT 1 FROM hive_monetization WHERE hive_id=$1', [hiveId])).rows.length) {
+      return res.status(409).json({ error: 'Paid Hives use open admission after verified payment.' });
+    }
     for (const key of WHITELIST) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
         updates[key] = req.body[key];
@@ -1054,7 +1072,7 @@ export const updateHive = async (req, res) => {
     res.json({ hive: updated });
   } catch (err) {
     console.error('[hives/updateHive]', err);
-    if (err.status) return res.status(err.status).json({ error: err.message });
+    if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to update Hive.' });
   }
 };
@@ -1063,6 +1081,9 @@ export const updateHive = async (req, res) => {
 export const requestToJoin = async (req, res) => {
   try {
     const hiveId = req.params.id;
+    if ((await query('SELECT 1 FROM hive_monetization WHERE hive_id=$1', [hiveId])).rows.length) {
+      return res.status(402).json({ error: 'This Hive requires a paid membership. Review its benefits and subscribe to join.', membershipUrl: `/paid-hive/${hiveId}` });
+    }
     const { message } = req.body;
 
     // Load hive + member count in one query
@@ -1271,6 +1292,7 @@ export const requestToJoin = async (req, res) => {
     res.json({ requested: true });
   } catch (err) {
     console.error('[hives/requestToJoin]', err);
+    if (/^P730/.test(err.code || '')) return res.status(409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to submit request.' });
   }
 };
@@ -1909,6 +1931,8 @@ export async function removeMemberCore(hiveId, callerId, targetId) {
   );
 
   // Kick the evicted user's socket from the hive room immediately
+  const { rows: paidSubs } = await query(`UPDATE billing_subscriptions SET access_revoked=TRUE,access_until=NULL WHERE hive_id=$1 AND user_id=$2 RETURNING id`, [hiveId,targetId]);
+  for (const sub of paidSubs) await query(`INSERT INTO billing_tasks(subscription_id,action) VALUES($1,'cancel_at_period_end') ON CONFLICT DO NOTHING`, [sub.id]);
   try { evictUserFromHive(hiveId, targetId); } catch { /* socket not yet initialized in tests */ }
 
   const { rows: [{ member_count }] } = await query(
@@ -1925,7 +1949,7 @@ export const removeMember = async (req, res) => {
     const result = await removeMemberCore(hiveId, req.userId, targetId);
     res.json(result);
   } catch (err) {
-    if (err.status) return res.status(err.status).json({ error: err.message });
+    if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
     console.error('[hives/removeMember]', err);
     res.status(500).json({ error: 'Failed to remove member.' });
   }
@@ -2075,6 +2099,11 @@ export const leaveHive = async (req, res) => {
       return res.status(403).json({ error: 'You are not an active member of this Hive.' });
     }
 
+    const paid = (await client.query('SELECT 1 FROM hive_monetization WHERE hive_id=$1', [hiveId])).rows.length;
+    if (paid) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: caller.role === 'owner' ? 'Paid Hive owners must use Close Hive; financial responsibility cannot be transferred here.' : 'Cancel your paid membership in Billing & Subscriptions. Access remains until your paid period ends.' });
+    }
     if (caller.role !== 'owner') {
       // Non-owner: leave immediately; demote role so a rejoin gets plain member
       await client.query(
@@ -2181,6 +2210,11 @@ export const deleteHive = async (req, res) => {
     if (member?.role !== 'owner') {
       await client.query('ROLLBACK');
       return res.status(403).json({ error: 'Only the owner can delete this Hive.' });
+    }
+
+    if ((await client.query('SELECT 1 FROM hive_monetization WHERE hive_id=$1', [hiveId])).rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Paid Hives must be closed, not deleted. Financial and membership history is retained.' });
     }
 
     if (typeof confirmName !== 'string' || confirmName !== hive.hive_name) {
@@ -2315,7 +2349,7 @@ export const getMyDeletedHives = async (req, res) => {
        ORDER BY h.deleted_at DESC`,
       [req.userId],
     );
-    res.json({ hives: rows });
+    res.json({ hives: await withPaidOffers(rows) });
   } catch (err) {
     console.error('[hives/getMyDeletedHives]', err);
     res.status(500).json({ error: 'Failed to fetch deleted Hives.' });

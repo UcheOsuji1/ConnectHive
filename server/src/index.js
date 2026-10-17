@@ -20,6 +20,9 @@ import reportRoutes       from './routes/reports.js';
 import adminRoutes        from './routes/admin.js';
 import emailRoutes        from './routes/email.js';
 import metroRoutes        from './routes/metros.js';
+import billingRoutes from './routes/billing.js';
+import { webhook } from './lib/billingEvents.js';
+import { startBillingJob } from './jobs/billingJob.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
@@ -95,6 +98,8 @@ app.use(cors({
   },
   credentials: true,
 }));
+// Stripe needs the original bytes. Register before JSON parsing AND consent/auth.
+app.post('/api/billing/webhooks/:source(platform|connect)', express.raw({ type: 'application/json', limit: '1mb' }), webhook);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -152,6 +157,7 @@ app.use('/api/blocks',        blockRoutes);
 app.use('/api/reports',       reportRoutes);
 app.use('/api/admin',         adminRoutes);
 app.use('/api/metros',        metroRoutes);
+app.use('/api/billing',       billingRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -195,4 +201,5 @@ server.listen(PORT, async () => {
   startPurgeJob();
   startEmailOutboxJob();
   startDigestJob();
+  startBillingJob();
 });

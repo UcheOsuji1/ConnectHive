@@ -2,6 +2,7 @@ import jwt   from 'jsonwebtoken';
 import * as Sentry from '@sentry/node';
 import { query } from '../db/index.js';
 import { touchLastActive } from '../lib/activity.js';
+import { expireEntitlements } from '../lib/billingStore.js';
 
 // Cache DB token_version lookups to avoid a per-request query.
 // Exported so socket.js can reuse the same cache at connect time.
@@ -43,6 +44,9 @@ export async function requireAuth(req, res, next) {
     }
 
     touchLastActive(req.userId);
+    // Existing controllers also read hive_members directly; expire before ANY
+    // authenticated API can use a stale active row.
+    await expireEntitlements(req.userId);
     next();
   } catch {
     return res.status(401).json({ error: 'Session expired — please log in again' });

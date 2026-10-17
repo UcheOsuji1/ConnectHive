@@ -21,6 +21,9 @@ async function seedUser(name) {
   return u.user_id;
 }
 try {
+  // Existing geographic fixtures need five Hives for one owner. Isolated only;
+  // Prompt 73's own suite tests the enabled quota trigger and failure paths.
+  await pool.query('ALTER TABLE hives DISABLE TRIGGER billing_hive_creation_limit');
   check((await searchPlaces('Santa Monica')).some(p => p.display_name === 'Santa Monica' && p.state_code === 'CA' && p.metro_key === 'los-angeles'), 'city autocomplete retains state and correct metro');
   check((await searchPlaces('Silver')).some(p => p.display_name === 'Silver Lake' && p.metro_key === 'los-angeles'), 'neighborhood autocomplete retains correct metro');
   check((await searchPlaces('Santa Monica, CA')).some(p => p.display_name === 'Santa Monica'), 'pasted city/state label remains searchable');

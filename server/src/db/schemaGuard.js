@@ -57,6 +57,17 @@ const REQUIRED = {
   email_outbox: [],
   newsletter_sends: [],
   metros: [],
+  billing_accounts: ['status', 'payouts_resolved'],
+  hive_monetization: ['state', 'revision', 'approved_revision'],
+  billing_subscriptions: ['access_until', 'paid_through', 'access_revoked'],
+  billing_checkouts: [],
+  billing_events: [],
+  billing_invoices: [],
+  billing_disputes: [],
+  billing_refunds: [],
+  billing_refund_requests: [],
+  billing_tasks: [],
+  billing_audit: [],
   metro_places: [],
 };
 

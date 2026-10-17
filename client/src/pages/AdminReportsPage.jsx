@@ -314,6 +314,7 @@ export default function AdminReportsPage() {
       <div className="admrp-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
         <h1>TrueHive Report Queue</h1>
         <Link to="/admin/newsletter" className="hw-action-link">Newsletter →</Link>
+        <Link to="/admin/monetization" className="hw-action-link">Paid Hive review →</Link>
       </div>
 
       <div className="hmrp-tabs" role="tablist">
