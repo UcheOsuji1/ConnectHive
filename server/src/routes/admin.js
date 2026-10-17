@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getAdminReports, resolveAdminReport, unsuspendUser, getSuspendedUsers, getHivesWithoutArea, setHiveMetro } from '../controllers/adminController.js';
 import { getNewsletterStatus, testNewsletter, sendNewsletter } from '../controllers/newsletterController.js';
+import { getSignupFunnel } from '../controllers/funnelController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireSiteAdmin } from '../lib/siteAdmin.js';
 
@@ -21,5 +22,7 @@ router.post('/hives/:id/metro',                      setHiveMetro);
 router.get('/newsletter/status',  getNewsletterStatus);
 router.post('/newsletter/test',   testNewsletter);
 router.post('/newsletter/send',   sendNewsletter);
+
+router.get('/funnel', getSignupFunnel);
 
 export default router;

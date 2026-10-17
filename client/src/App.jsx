@@ -16,6 +16,7 @@ import MemberProfilePage from './pages/MemberProfilePage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import AdminNewsletterPage from './pages/AdminNewsletterPage';
+import AdminFunnelPage from './pages/AdminFunnelPage';
 import MemberWelcomePage from './pages/MemberWelcomePage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -159,6 +160,7 @@ export default function App() {
         <Route path="/welcome/hive/:hiveId" element={<MemberWelcomePage />} />
         <Route path="/admin/reports" element={<AdminReportsPage />} />
         <Route path="/admin/newsletter" element={<AdminNewsletterPage />} />
+        <Route path="/admin/funnel" element={<AdminFunnelPage />} />
       </Route>
 
       <Route path="*" element={<NotFoundPage />} />

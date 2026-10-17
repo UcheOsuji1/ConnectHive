@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import NotFoundPage from './NotFoundPage.jsx';
 import '../styles/admin-reports.css';
@@ -83,8 +84,12 @@ export default function AdminNewsletterPage() {
 
   return (
     <div className="admrp-wrap">
-      <div className="admrp-header">
+      <div className="admrp-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <h1>Newsletter</h1>
+        <div style={{ display: 'flex', gap: 14 }}>
+          <Link to="/admin/reports" className="hw-action-link">Reports →</Link>
+          <Link to="/admin/funnel" className="hw-action-link">Funnel →</Link>
+        </div>
       </div>
 
       <div className="admnl-card">

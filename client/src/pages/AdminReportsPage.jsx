@@ -311,9 +311,12 @@ export default function AdminReportsPage() {
 
   return (
     <div className="admrp-wrap">
-      <div className="admrp-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+      <div className="admrp-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <h1>TrueHive Report Queue</h1>
-        <Link to="/admin/newsletter" className="hw-action-link">Newsletter →</Link>
+        <div style={{ display: 'flex', gap: 14 }}>
+          <Link to="/admin/funnel" className="hw-action-link">Funnel →</Link>
+          <Link to="/admin/newsletter" className="hw-action-link">Newsletter →</Link>
+        </div>
       </div>
 
       <div className="hmrp-tabs" role="tablist">
