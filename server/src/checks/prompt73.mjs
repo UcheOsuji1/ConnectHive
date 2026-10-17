@@ -118,6 +118,7 @@ try{
  await rejects(async()=>checkout(await user('late'),{hiveId},sdk),/not accepting/,'closed/closing Hive blocks new purchases');
  const updateSubscription=sdk.subscriptions.update;let failOnce=true;sdk.subscriptions.update=async(...args)=>{if(failOnce){failOnce=false;throw Object.assign(new Error('Simulated Stripe outage'),{code:'fixture_outage'});}return updateSubscription(...args);};
  await runBillingMaintenance(sdk);check((await query('SELECT 1 FROM billing_tasks WHERE done_at IS NULL AND attempts>0')).rows.length>0,'failed Stripe cancellation remains queued for retry');
+ await query('UPDATE billing_tasks SET next_attempt_at=NOW() WHERE done_at IS NULL');
  await runBillingMaintenance(sdk);check(live2.cancel_at_period_end&&live.cancel_at_period_end,'closure worker retries and cancels individual renewals');
  const boundaries=(await query('SELECT paid_through FROM billing_subscriptions WHERE hive_id=$1 ORDER BY paid_through',[hiveId])).rows;check(new Date(boundaries[0].paid_through).getTime()!==new Date(boundaries[1].paid_through).getTime(),'closure retains different paid-through dates');
  check(Boolean(await requireMembership(hiveId,other)),'closing does not revoke already paid access');

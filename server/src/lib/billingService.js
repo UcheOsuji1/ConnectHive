@@ -1,7 +1,7 @@
 import { query } from '../db/index.js';
 import { stripe, stripeOptions, clientURL } from './stripe.js';
 import { accountStatus, PLUS_PRICES, PLATFORM_FEE_PERCENT, validatePaidConfig } from './billingPolicy.js';
-import { transaction, fail, hasPlus, requireOwner, audit } from './billingStore.js';
+import { transaction, fail, hasPlus, requireOwner, audit, lockSubscription } from './billingStore.js';
 import { isBlockedEitherWay } from './blocks.js';
 
 export async function refreshAccount(userId, sdk = stripe()) {
@@ -86,6 +86,8 @@ export async function publish(hiveId, userId, sdk = stripe()) {
   });
 }
 export async function checkout(userId, body, sdk = stripe()) {
+  if(!body||typeof body!=='object'||Array.isArray(body))fail('Invalid checkout request.');
+  if(body.hiveId&&!/^[0-9a-f-]{36}$/i.test(body.hiveId))fail('Invalid Hive identifier.');
   const kind = body.hiveId ? 'hive' : 'plus';
   const interval = kind === 'hive' ? 'month' : body.interval;
   if (!PLUS_PRICES[interval]) fail('Choose monthly or annual billing.');
@@ -154,11 +156,25 @@ export async function checkout(userId, body, sdk = stripe()) {
   return { url: session.url };
 }
 export async function cancelSubscription(userId, id, sdk = stripe()) {
-  const { rows: [sub] } = await query('SELECT * FROM billing_subscriptions WHERE id=$1 AND user_id=$2', [id, userId]);
-  if (!sub?.stripe_subscription_id) fail('Subscription not found.', 404);
-  await sdk.subscriptions.update(sub.stripe_subscription_id, { cancel_at_period_end: true }, stripeOptions(sub.stripe_account_id));
-  await query('UPDATE billing_subscriptions SET cancel_at_period_end=TRUE,updated_at=NOW() WHERE id=$1', [id]);
-  return { cancelAtPeriodEnd: true, paidThrough: sub.paid_through };
+  const sub=await transaction(async db=>{
+    const found=(await db.query('SELECT id FROM billing_subscriptions WHERE id=$1 AND user_id=$2',[id,userId])).rows[0];
+    if(!found)fail('Subscription not found.',404);
+    const locked=await lockSubscription(db,id);
+    if(!locked.stripe_subscription_id)fail('Subscription not found.',404);
+    await db.query('UPDATE billing_subscriptions SET cancellation_requested_at=COALESCE(cancellation_requested_at,NOW()) WHERE id=$1',[id]);
+    await db.query(`INSERT INTO billing_tasks(subscription_id,action) VALUES($1,'cancel_at_period_end') ON CONFLICT(subscription_id,action) DO UPDATE SET done_at=NULL,next_attempt_at=NOW()`,[id]);
+    return locked;
+  });
+  try {
+    await sdk.subscriptions.update(sub.stripe_subscription_id,{cancel_at_period_end:true},stripeOptions(sub.stripe_account_id));
+    return await transaction(async db=>{
+      const local=await lockSubscription(db,id);
+      const {reconcileSubscription}=await import('./billingEvents.js');
+      const current=await reconcileSubscription(db,local,sub.stripe_subscription_id,sdk);
+      if(!current.cancelAtPeriodEnd&&!['canceled','incomplete_expired'].includes(current.status))fail('Stripe has not confirmed cancellation.',503);
+      return {cancelAtPeriodEnd:true,paidThrough:sub.paid_through};
+    });
+  } catch {fail('Your cancellation request is saved. Stripe confirmation is pending; automatic retries will continue.',503);}
 }
 export async function portal(userId, id, sdk = stripe()) {
   const { rows: [sub] } = await query('SELECT * FROM billing_subscriptions WHERE id=$1 AND user_id=$2', [id, userId]);
@@ -174,6 +190,7 @@ export async function portal(userId, id, sdk = stripe()) {
 }
 export async function closeHive(hiveId, userId) {
   return transaction(async db => {
+    await db.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE',[userId]);
     await requireOwner(hiveId, userId, db);
     await db.query('SELECT hive_id FROM hives WHERE hive_id=$1 FOR UPDATE', [hiveId]);
     const { rows: [m] } = await db.query('SELECT * FROM hive_monetization WHERE hive_id=$1 FOR UPDATE', [hiveId]);

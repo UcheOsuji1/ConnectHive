@@ -52,7 +52,7 @@ export default function TermsPage() {
 
             <div>
               <h2 style={{ fontSize: '1.3rem', marginBottom: '12px' }}>6. Termination</h2>
-              <p>TrueHive may suspend or terminate accounts that violate these terms. You may delete your own account at any time from Account Settings. Deletion takes effect immediately — your access ends right away — but the account itself is held for 30 days before permanent removal, so logging back in during that window cancels the deletion and restores it. Questions about deletion: <a href="mailto:hello@truehive.app" style={{ color: 'var(--gold-dark)' }}>hello@truehive.app</a>.</p>
+              <p>TrueHive may suspend or terminate accounts that violate these terms. You may request account deletion from Account Settings after canceling future renewals and resolving applicable paid Hive obligations. Deletion takes effect immediately — your access ends right away — but the account itself is held for 30 days before permanent removal, so logging back in during that window cancels the deletion and restores it. Questions about deletion: <a href="mailto:hello@truehive.app" style={{ color: 'var(--gold-dark)' }}>hello@truehive.app</a>.</p>
             </div>
 
             <div>
@@ -81,6 +81,7 @@ export default function TermsPage() {
         <p>TrueHive Plus ($7.99 monthly or $69.99 annually) and paid Hive memberships are distinct subscriptions. Paid Hive members do not need Plus. Plus renews at the chosen interval; paid Hive memberships renew monthly at the price disclosed before Checkout until canceled.</p>
         <p>Cancel in Account &amp; Settings before renewal to stop future billing. Cancellation normally takes effect at the end of the paid period, with access retained through the paid-through date. Failed renewals retain previously paid access with a three-day grace period. Refunds, moderation decisions, or other applicable policies may change access.</p>
         <p>Hive owners provide their own ongoing benefits and are responsible for member-facing obligations and handling refund requests, subject to applicable law and Stripe/platform procedures. Members can contact the owner through the Hive’s About page. TrueHive retains a 10% platform fee on paid Hive subscription revenue. Processing fees are separate; refunds, disputes, chargebacks, and payout adjustments may reduce owner proceeds. Estimated proceeds are not guaranteed payouts.</p>
+        <p>Payment and financial audit records may be retained after account deletion for applicable legal, tax, dispute, and fraud-prevention obligations. Final retention periods and notices require legal review. Owner identification and responsible-operator disclosures must be verified before live publication.</p>
         <p>Closing a paid Hive disables new subscriptions and cancels future renewals while preserving each member’s paid-through access and historical billing records. Owners must resolve outstanding subscriptions, refunds, disputes, and payouts before account deletion. Safety and fraud restrictions may require separate access and refund review. Financial responsibility depends on the Stripe Connect account and charge configuration; these terms do not disclaim obligations imposed by law.</p>
       </div></section>
       <section className="final-cta">

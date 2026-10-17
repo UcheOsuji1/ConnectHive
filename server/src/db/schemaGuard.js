@@ -66,7 +66,9 @@ const REQUIRED = {
   billing_disputes: [],
   billing_refunds: [],
   billing_refund_requests: [],
-  billing_tasks: [],
+  billing_tasks: ['claim_token','lease_until','next_attempt_at'],
+  billing_webhook_attempts: [],
+  billing_worker_heartbeats: [],
   billing_audit: [],
   metro_places: [],
 };

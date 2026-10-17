@@ -1,15 +1,16 @@
 // Browser UI contracts use intercepted fixtures. Never connects to Stripe/API.
-import { chromium } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import { expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-const dir=join(tmpdir(),'truehive-prompt73');await mkdir(dir,{recursive:true});
-const browser=await chromium.launch();const base=process.env.P73_BASE_URL||'http://127.0.0.1:5175';let checks=0;const shots=[],requests=[];
+const browserName=process.env.P73_BROWSER||'chromium';
+const dir=process.env.P73A_BROWSER_RUN==='1'?join(tmpdir(),'truehive-prompt73a',browserName):join(tmpdir(),'truehive-prompt73');await mkdir(dir,{recursive:true});
+const browser=await ({chromium,firefox,webkit}[browserName]).launch();const base=process.env.P73_BASE_URL||'http://127.0.0.1:5175';let checks=0;const shots=[],requests=[];
 function check(ok,name){assert.ok(ok,name);checks++;console.log(`PASS ${name}`);}
 const offering={hive_id:'fixture',hive_name:'The Sunday Workshop',state:'active',monthly_price_cents:1200,benefits:'Weekly guided sessions, a curated resource library, and a monthly workshop.',description:'A thoughtful space to learn, practise, and make progress alongside your community.',cancellation_policy:'Cancel at the end of your current paid period. Access continues through your paid-through date.',available:true};
-async function screenshot(page,name){const file=join(dir,`${name}.png`);await page.screenshot({path:file,fullPage:false});shots.push(file);}
+async function screenshot(page,name){await page.waitForTimeout(250);const file=join(dir,`${name}.png`);await page.screenshot({path:file,fullPage:false});shots.push(file);}
 try{
 for(const width of [1440,390])for(const reducedMotion of ['no-preference','reduce']){
  const ctx=await browser.newContext({viewport:{width,height:1000},reducedMotion,recordVideo:{dir,size:{width,height:1000}}});
@@ -57,7 +58,7 @@ for(const width of [1440,390])for(const reducedMotion of ['no-preference','reduc
  await page.goto(`${base}/hive/fixture/billing`);await expect(page.getByRole('heading',{name:'Monetization',exact:true})).toBeVisible();await expect(page.getByText('Gross collected')).toBeVisible();check(true,'owner dashboard shows separate revenue and processing costs');
  if(reducedMotion==='no-preference'){if(width===390)await page.getByRole('button',{name:/Manage Hive/}).click();await page.getByRole('heading',{name:'Monetization',exact:true}).evaluate(e=>e.scrollIntoView({block:'start'}));await page.evaluate(()=>window.scrollBy(0,-90));await page.waitForTimeout(300);await screenshot(page,`owner-monetization-${width}`);}
  await page.getByRole('button',{name:'Close paid Hive'}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.getByLabel('Type CLOSE to confirm').fill('CLOSE');await page.getByRole('button',{name:'Close Hive',exact:true}).click();await expect(page.getByRole('heading',{name:'Closing your paid Hive'})).toBeVisible();await expect(page.getByText('20 members retain paid access.',{exact:false})).toBeVisible();check(true,'closure preserves subscriber dates and displays pending cancellations');
- await page.goto(`${base}/create-hive`);await page.getByLabel('Paid monthly membership').check();await expect(page.getByLabel('Monthly price (USD)')).toBeVisible();await page.getByLabel('Monthly price (USD)').fill('12.00');await expect(page.getByText('$1.20',{exact:true})).toBeVisible();await expect(page.getByText('Vary by payment method')).toBeVisible();check(true,'Create Hive has paid configuration and variable processing disclosure');
+ await page.goto(`${base}/create-hive`);await expect(page.getByLabel('Paid monthly membership')).toBeEnabled();await page.getByLabel('Paid monthly membership').evaluate(e=>e.scrollIntoView({block:'center',behavior:'instant'}));await page.getByLabel('Paid monthly membership').check();await expect(page.getByLabel('Monthly price (USD)')).toBeVisible();await page.getByLabel('Monthly price (USD)').fill('12.00');await expect(page.getByText('$1.20',{exact:true})).toBeVisible();await expect(page.getByText('Vary by payment method')).toBeVisible();check(true,'Create Hive has paid configuration and variable processing disclosure');
  if(reducedMotion==='no-preference'){await page.getByText('Build something worth belonging to').scrollIntoViewIfNeeded();await screenshot(page,`create-paid-${width}`);}
  await page.goto(`${base}/admin/monetization`);await expect(page.getByRole('heading',{name:'Paid Hive review'})).toBeVisible();await expect(page.getByLabel('Review reason')).toBeVisible();check(true,'staff review UI supports reasoned approval');
  const overflow=await page.locator('.bill-root button,.bill-root input,.bill-root textarea,.bill-card').evaluateAll(elements=>elements.filter(e=>{const b=e.getBoundingClientRect();return b.width>0&&(b.left< -1||b.right>innerWidth+1);}).map(e=>e.tagName));check(!overflow.length,`element bounds remain inside ${width}px viewport`);

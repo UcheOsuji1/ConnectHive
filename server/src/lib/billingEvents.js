@@ -1,7 +1,8 @@
 import { reportProblem } from './reportProblem.js';
+import { query } from '../db/index.js';
 import { stripe, stripeOptions } from './stripe.js';
 import { GRACE_SECONDS, PLATFORM_FEE_PERCENT } from './billingPolicy.js';
-import { transaction, fail, audit } from './billingStore.js';
+import { transaction, fail, audit, lockSubscription } from './billingStore.js';
 import { disconnectUserSockets } from '../realtime/socket.js';
 
 const idOf = value => typeof value === 'string' ? value : value?.id;
@@ -41,7 +42,7 @@ export async function reconcileSubscription(db, local, stripeId, sdk = stripe())
     if (idOf(session.subscription) !== stripeId || session.client_reference_id !== local.id) fail('Subscription does not belong to the authorized Checkout Session.');
   }
   const live = await sdk.subscriptions.retrieve(stripeId, { expand: ['latest_invoice.charge.balance_transaction'] }, stripeOptions(local.stripe_account_id));
-  if (live.livemode || live.metadata?.truehive_subscription_id !== local.id) fail('Unrecognized subscription.');
+  if (live.livemode || (local.stripe_customer_id && idOf(live.customer)!==local.stripe_customer_id) || live.metadata?.truehive_subscription_id !== local.id) fail('Unrecognized subscription.');
   const item = live.items?.data?.[0];
   if (live.items?.data?.length !== 1 || item.quantity !== 1 || item.price?.unit_amount !== local.price_cents || item.price?.currency !== 'usd' || item.price?.recurring?.interval !== local.interval || item.price?.recurring?.interval_count !== 1 || (local.kind === 'hive' && live.application_fee_percent !== PLATFORM_FEE_PERCENT)) fail('Stripe subscription does not match the approved product.');
   const invoice = live.latest_invoice;
@@ -67,7 +68,7 @@ export async function reconcileSubscription(db, local, stripeId, sdk = stripe())
   if (local.status !== status && ['past_due','unpaid','active','canceled','refunded'].includes(status)) await notify(db, local.user_id, local.hive_id, status === 'active' ? 'Membership payment confirmed' : 'Subscription status updated', `Status: ${status}. Review your paid-through date and billing options in Settings.`);
   if (local.kind === 'hive') {
     const { rows: [m] } = await db.query('SELECT state FROM hive_monetization WHERE hive_id=$1', [local.hive_id]);
-    if (m && ['closing','closed'].includes(m.state) || revoked) {
+    if ((m && ['closing','closed'].includes(m.state)) || revoked || local.cancellation_requested_at) {
       if (!live.cancel_at_period_end && !['canceled','incomplete_expired'].includes(live.status)) await db.query(`INSERT INTO billing_tasks(subscription_id,action) VALUES($1,'cancel_at_period_end') ON CONFLICT(subscription_id,action) DO UPDATE SET done_at=NULL`, [local.id]);
     }
     if (accessUntil > new Date() && !revoked) {
@@ -80,7 +81,9 @@ export async function reconcileSubscription(db, local, stripeId, sdk = stripe())
       await db.query(`UPDATE hive_members SET membership_status='expired' WHERE hive_id=$1 AND user_id=$2 AND role<>'owner' AND membership_status='active'`, [local.hive_id, local.user_id]);
     }
   }
-  return { status, accessUntil };
+  if(local.cancellation_requested_at&&!live.cancel_at_period_end&&!['canceled','incomplete_expired'].includes(live.status))
+    await db.query(`INSERT INTO billing_tasks(subscription_id,action) VALUES($1,'cancel_at_period_end') ON CONFLICT(subscription_id,action) DO UPDATE SET done_at=NULL,next_attempt_at=NOW()`,[local.id]);
+  return { status, stripeStatus:live.status, accessUntil, cancelAtPeriodEnd: live.cancel_at_period_end };
 }
 
 export async function processEvent(event, sdk = stripe()) {
@@ -90,6 +93,20 @@ export async function processEvent(event, sdk = stripe()) {
     const inserted = await db.query(`INSERT INTO billing_events(event_id,account_id,event_type,event_created) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING RETURNING event_id`, [event.id, account, event.type, event.created]);
     if (!inserted.rows.length) return { duplicate: true };
     const obj = event.data.object;
+    if (['application_fee.created','application_fee.refunded','application_fee.refund.updated'].includes(event.type)) {
+      if(account!=='platform')fail('Application fees require platform context.');
+      const fee=await sdk.applicationFees.retrieve(event.type==='application_fee.refund.updated'?idOf(obj.fee):obj.id);
+      if(fee.livemode)fail('Live fees are disabled.');
+      const {rows:[invoice]}=await db.query(`SELECT subscription_id,stripe_invoice_id FROM billing_invoices
+        WHERE stripe_account_id=$1 AND charge_id=$2`,[idOf(fee.account),idOf(fee.charge)]);
+      if(!invoice)fail('Application fee invoice is not yet reconciled; retry.',503);
+      const local=await lockSubscription(db,invoice.subscription_id);
+      if(local.kind!=='hive'||local.stripe_account_id!==idOf(fee.account))fail('Application fee account mismatch.');
+      await db.query(`UPDATE billing_invoices SET platform_fee_cents=$3 WHERE stripe_account_id=$1 AND stripe_invoice_id=$2`,
+        [local.stripe_account_id,invoice.stripe_invoice_id,fee.amount-fee.amount_refunded]);
+      await db.query('UPDATE billing_accounts SET payouts_resolved=FALSE WHERE user_id=(SELECT owner_id FROM hive_monetization WHERE hive_id=$1)',[local.hive_id]);
+      return {processed:true};
+    }
     if (event.type === 'account.updated' || event.type === 'account.application.deauthorized') {
       const accountId = event.type === 'account.updated' ? obj.id : event.account;
       const { accountStatus } = await import('./billingPolicy.js');
@@ -127,8 +144,8 @@ export async function processEvent(event, sdk = stripe()) {
       const snapshot = await sdk.subscriptions.retrieve(stripeId, {}, stripeOptions(account));
       const localId = snapshot.metadata?.truehive_subscription_id;
       if (!localId || !/^[0-9a-f-]{36}$/i.test(localId)) return { ignored: true };
-      const { rows: [local] } = await db.query('SELECT * FROM billing_subscriptions WHERE id=$1 AND stripe_account_id=$2 FOR UPDATE', [localId, account]);
-      if (!local) return { ignored: true };
+      const local=await lockSubscription(db,localId);
+      if(local.stripe_account_id!==account)return {ignored:true};
       const reconciled = await reconcileSubscription(db, local, stripeId, sdk);
       // An older paid invoice can arrive after a newer renewal. Preserve its
       // ledger independently of the current entitlement snapshot.
@@ -151,7 +168,7 @@ export async function processEvent(event, sdk = stripe()) {
         if (charge?.invoice) fail('Invoice has not been reconciled yet; retry event.', 503);
         return { ignored: true };
       }
-      const { rows: [local] } = await db.query('SELECT * FROM billing_subscriptions WHERE id=$1 FOR UPDATE', [invoice.subscription_id]);
+      const local=await lockSubscription(db,invoice.subscription_id);
       if (local.hive_id) await db.query('UPDATE billing_accounts SET payouts_resolved=FALSE WHERE user_id=(SELECT owner_id FROM hive_monetization WHERE hive_id=$1)', [local.hive_id]);
       if (event.type.startsWith('charge.dispute.')) {
         const dispute = await sdk.disputes.retrieve(obj.id, {}, stripeOptions(account));
@@ -198,6 +215,7 @@ export async function processEvent(event, sdk = stripe()) {
   return result;
 }
 
+let invalidSignatureCount=0,signatureWindow=0;
 export async function webhook(req, res) {
   let event;
   try {
@@ -206,11 +224,21 @@ export async function webhook(req, res) {
     if (!secret) return res.status(503).json({ error: 'Webhook is not configured.' });
     event = stripe().webhooks.constructEvent(req.body, req.headers['stripe-signature'], secret);
     if ((req.params.source === 'connect') !== Boolean(event.account)) return res.status(400).json({ error: 'Incorrect event destination.' });
-  } catch { return res.status(400).json({ error: 'Invalid Stripe signature or configuration.' }); }
-  try { res.json(await processEvent(event)); }
+  } catch {
+    if(Date.now()-signatureWindow>60_000){signatureWindow=Date.now();invalidSignatureCount=0;}
+    if(++invalidSignatureCount===5)reportProblem('[billing/webhook] repeated invalid signatures',{count:invalidSignatureCount});
+    return res.status(400).json({ error: 'Invalid Stripe signature or configuration.' });
+  }
+  try {
+    await query(`INSERT INTO billing_webhook_attempts(event_id,attempts) VALUES($1,1) ON CONFLICT(event_id) DO UPDATE SET attempts=billing_webhook_attempts.attempts+1,last_attempt_at=NOW()`,[event.id]);
+    const result=await processEvent(event);
+    await query(`UPDATE billing_webhook_attempts SET processed_at=NOW(),last_error_code=NULL WHERE event_id=$1`,[event.id]);
+    res.json(result);
+  }
   catch (e) {
     // Do not log Stripe error payloads, raw events, signatures, or customer data.
     reportProblem('[billing/webhook] processing failed', { eventId: event.id, eventType: event.type, code: e.code || 'processing_error' });
+    await query('UPDATE billing_webhook_attempts SET last_error_code=$2 WHERE event_id=$1',[event.id,String(e.code||'processing_error').replace(/[^a-zA-Z0-9_]/g,'').slice(0,64)]).catch(()=>{});
     res.status(503).json({ error: 'Event processing failed; safe to retry.' });
   }
 }

@@ -1,3 +1,4 @@
+import { redirectToStripe, trustedStripeURL } from '../../lib/billingLinks.js';
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -17,7 +18,7 @@ export default function BillingPanel() {
   useEffect(() => { if (new URLSearchParams(window.location.search).get('billing') === 'connect') api.post('/api/billing/connect/refresh').then(load).catch(e => setError(e.message)); }, [load]);
   async function act(path, body, redirect = false) {
     setBusy(true); setError('');
-    try { const result = await api.post(path,body); if (redirect && result?.url?.startsWith('https://')) window.location.assign(result.url); else { setCancel(null); setRefund(null); await load(); } }
+    try { const result = await api.post(path,body); if (redirect) redirectToStripe(result?.url,path.includes('/connect/')?'connect':path.endsWith('/portal')?'portal':'checkout'); else { setCancel(null); setRefund(null); await load(); } }
     catch(e) { setError(e.message); }
     finally { setBusy(false); }
   }
@@ -37,6 +38,7 @@ export default function BillingPanel() {
         <div className="bill-subscriptions">{data.subscriptions.map(sub => <Panel key={sub.id}>
           <div className="bill-row"><h3>{sub.kind==='plus' ? 'TrueHive Plus' : sub.hive_name}</h3><Status value={sub.status} /></div>
           <p className="bill-price">{money(sub.price_cents)} <small>/ {sub.interval}</small></p>
+          {sub.cancellation_requested_at&&!sub.cancel_at_period_end&&<Notice>Cancellation requested. Waiting for Stripe confirmation; retries continue automatically.</Notice>}
           <p>{sub.cancel_at_period_end ? 'Cancellation scheduled · paid through' : 'Paid through'} {day(sub.paid_through)}</p>
           {sub.access_until && <p className="bill-muted">Access through {day(sub.access_until)}</p>}
           {['past_due','unpaid'].includes(sub.status) && <Notice error>Payment needs attention. Update your payment method. Failed renewals retain paid access with a three-day grace period.</Notice>}
@@ -49,7 +51,7 @@ export default function BillingPanel() {
         {!data.subscriptions.length && <p>No subscriptions yet. Free membership remains $0.</p>}
         {(data.refunds||[]).map(r=><div className="bill-row" key={r.stripe_refund_id}><span>Refund ? {r.hive_name||'TrueHive Plus'} ? {money(r.amount_cents)}</span><Status value={r.status}/></div>)}
         {(data.refundRequests||[]).map(r=><Panel key={r.id}><h3>Refund request ? {r.hive_name}</h3><Status value={r.state}/><p>{r.reason}</p>{r.owner_response&&<p>Owner response: {r.owner_response}</p>}</Panel>)}
-        <ExpandableDetails title="Invoice history">{data.invoices.map(i => <div className="bill-row" key={i.stripe_invoice_id}><span>{i.hive_name || 'TrueHive Plus'} · {day(i.created_at)}</span><span>{money(i.amount_paid_cents)} {i.hosted_invoice_url && <a href={i.hosted_invoice_url} target="_blank" rel="noreferrer">View invoice</a>}</span></div>)}{!data.invoices.length && <p>No invoices yet.</p>}</ExpandableDetails>
+        <ExpandableDetails title="Invoice history">{data.invoices.map(i => <div className="bill-row" key={i.stripe_invoice_id}><span>{i.hive_name || 'TrueHive Plus'} · {day(i.created_at)}</span><span>{money(i.amount_paid_cents)} {trustedStripeURL(i.hosted_invoice_url,'invoice') && <a href={trustedStripeURL(i.hosted_invoice_url,'invoice')} target="_blank" rel="noreferrer">View invoice</a>}</span></div>)}{!data.invoices.length && <p>No invoices yet.</p>}</ExpandableDetails>
       </> : <>
         <div className="bill-row"><h3>Your Stripe connection</h3><Status value={data.connection?.status} /></div><p>Stripe handles identity verification and payout details. Keep your paid members informed about benefits, cancellations, and refund requests.</p>
         <div className="bill-actions"><Button disabled={busy || !data.plus} onClick={() => act('/api/billing/connect/onboard',{},true)}>{data.connection ? 'Resume Stripe onboarding' : 'Connect with Stripe'}</Button><Button className="bill-secondary" disabled={busy || !data.connection} onClick={() => act('/api/billing/connect/refresh')}>Refresh verification</Button><Button className="bill-secondary" disabled={busy || !data.connection} onClick={async () => { setBusy(true); try { setFinances(await api.get('/api/billing/connect/finances')); } catch(e) { setError(e.message); } finally {setBusy(false);} }}>View balances &amp; payouts</Button></div>

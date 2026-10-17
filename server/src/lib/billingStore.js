@@ -8,6 +8,17 @@ export async function transaction(fn) {
   catch (e) { await db.query('ROLLBACK'); throw e; }
   finally { db.release(); }
 }
+// Shared lock order: users (sorted UUIDs), Hive, subscription. Never hold a task
+// row lock across Stripe calls; queue claims use expiring leases instead.
+export async function lockSubscription(db,id) {
+  const {rows:[ref]}=await db.query(`SELECT s.user_id,s.hive_id,m.owner_id FROM billing_subscriptions s
+    LEFT JOIN hive_monetization m ON m.hive_id=s.hive_id WHERE s.id=$1`,[id]);
+  if(!ref)fail('Subscription not found.',404);
+  const users=[...new Set([ref.user_id,ref.owner_id].filter(Boolean))].sort();
+  await db.query('SELECT user_id FROM users WHERE user_id=ANY($1::uuid[]) ORDER BY user_id FOR UPDATE',[users]);
+  if(ref.hive_id)await db.query('SELECT hive_id FROM hives WHERE hive_id=$1 FOR UPDATE',[ref.hive_id]);
+  return (await db.query('SELECT * FROM billing_subscriptions WHERE id=$1 FOR UPDATE',[id])).rows[0];
+}
 export async function hasPlus(userId, db = { query }) {
   return (await db.query('SELECT billing_has_plus($1) AS plus', [userId])).rows[0].plus;
 }
