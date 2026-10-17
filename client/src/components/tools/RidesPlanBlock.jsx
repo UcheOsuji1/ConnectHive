@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import { socket } from '../../lib/socket.js';
 import Avatar from '../Avatar.jsx';
+import AreaLocationInput from '../AreaLocationInput.jsx';
 import '../../styles/hive-rides.css';
 
 function fmtDepart(iso) {
@@ -191,7 +192,7 @@ function OfferForm({ hiveId, postId, onDone }) {
         </label>
         <label className="rd-field">
           Leaving from (an area)
-          <input value={leavingFrom} maxLength={80} onChange={e => setLeavingFrom(e.target.value)} placeholder="Koreatown" />
+          <AreaLocationInput label="Leaving from" value={leavingFrom} maxLength={80} onChange={setLeavingFrom} placeholder="Koreatown" />
         </label>
       </div>
       <label className="rd-field">
@@ -232,7 +233,7 @@ function RequestForm({ hiveId, postId, onDone }) {
     <form className="rd-form" onSubmit={submit}>
       <label className="rd-field">
         Your area
-        <input value={fromArea} maxLength={80} onChange={e => setFromArea(e.target.value)} placeholder="Silver Lake" />
+        <AreaLocationInput label="Pickup area" value={fromArea} maxLength={80} onChange={setFromArea} placeholder="Silver Lake" />
       </label>
       <label className="rd-field">
         Note (optional)

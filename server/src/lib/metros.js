@@ -33,7 +33,7 @@ function splitCityState(text) {
 // same rule the one-time backfill migration uses, so the two never disagree.
 export async function resolveMetro(locationText) {
   if (!locationText) return null;
-  const { city, state } = splitCityState(locationText);
+  const { city, state } = splitCityState(String(locationText).replace(/,\s*USA\s*$/i, ''));
   const normCity = normalizePlace(city);
   if (!normCity) return null;
 
@@ -42,14 +42,25 @@ export async function resolveMetro(locationText) {
       `SELECT metro_key FROM metro_places WHERE place_key = $1`,
       [`${normCity}|${state.toLowerCase()}`],
     );
-    return rows[0]?.metro_key ?? null;
+    if (rows[0]) return rows[0].metro_key;
+    const { rows: areas } = await query(
+      `SELECT metro_key FROM metros WHERE normalize_place(name) = $1 AND $2 = ANY(state_codes)`,
+      [normCity, state],
+    );
+    return areas.length === 1 ? areas[0].metro_key : null;
   }
 
   const { rows } = await query(
     `SELECT DISTINCT metro_key, state_code FROM metro_places WHERE place_key LIKE $1`,
     [`${normCity}|%`],
   );
-  if (rows.length === 0) return null;
+  if (rows.length === 0) {
+    const { rows: areas } = await query(
+      `SELECT metro_key FROM metros WHERE normalize_place(name) = $1 OR replace(metro_key, '-', ' ') = $1`,
+      [normCity],
+    );
+    return areas.length === 1 ? areas[0].metro_key : null;
+  }
   const distinctStates = new Set(rows.map(r => r.state_code));
   if (distinctStates.size > 1) return null; // ambiguous — don't guess
   const distinctMetros = new Set(rows.map(r => r.metro_key));
@@ -78,18 +89,37 @@ export async function listMetros() {
 }
 
 export async function searchPlaces(q, limit = 8) {
-  const norm = normalizePlace(q);
+  const parsed = /,\s*[a-z]{2}$/i.test(q) || /\s[A-Z]{2}$/.test(q)
+    ? splitCityState(q) : { city: q, state: null };
+  const norm = normalizePlace(parsed.city);
   if (!norm) return [];
   const { rows } = await query(
-    `SELECT mp.display_name, mp.state_code, mp.metro_key, m.name AS metro_name
-       FROM metro_places mp
-       JOIN metros m ON m.metro_key = mp.metro_key
-      WHERE mp.place_key LIKE $1
-      ORDER BY (split_part(mp.place_key, '|', 1) = $2) DESC, m.rank ASC NULLS LAST, mp.display_name ASC
-      LIMIT $3`,
-    [`${norm}%`, norm, limit],
+    `SELECT display_name, state_code, metro_key, metro_name, kind FROM (
+       SELECT mp.display_name, mp.state_code, mp.metro_key, m.name AS metro_name, mp.kind,
+              CASE WHEN split_part(mp.place_key, '|', 1) = $2 THEN 0 ELSE 1 END AS match_rank, m.rank
+         FROM metro_places mp JOIN metros m ON m.metro_key = mp.metro_key
+        WHERE mp.place_key LIKE $1 AND ($4::text IS NULL OR mp.state_code = $4)
+       UNION ALL
+       SELECT m.name, NULL::text, m.metro_key, m.name, 'metro',
+              CASE WHEN normalize_place(m.name) = $2 THEN 0 ELSE 2 END, m.rank
+         FROM metros m WHERE (normalize_place(m.name) LIKE $1 OR replace(m.metro_key, '-', ' ') LIKE $1)
+           AND ($4::text IS NULL OR $4 = ANY(m.state_codes))
+     ) candidates ORDER BY match_rank, rank ASC NULLS LAST, display_name ASC LIMIT $3`,
+    [`${norm}%`, norm, limit, parsed.state],
   );
   return rows;
+}
+
+// A supplied key is a hint, never authority to attach unrelated free text to an area.
+// Unknown manual text stays intact with a NULL association; no records are backfilled.
+export async function resolveLocationMetro(locationText, suppliedKey = null) {
+  const resolved = await resolveMetro(locationText);
+  if (suppliedKey && suppliedKey !== resolved) {
+    const err = new Error('The selected area does not match this location. Choose a suggestion or keep the location as manual text.');
+    err.status = 400;
+    throw err;
+  }
+  return resolved;
 }
 
 export async function metroByKey(metroKey) {

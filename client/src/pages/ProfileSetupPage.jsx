@@ -924,7 +924,7 @@ export default function ProfileSetupPage() {
                 <input type="number" className="ps-input" placeholder="24" min="18" max="99" value={form1.age} onChange={e => f1('age', e.target.value)}/>
               </div>
               <div className="ps-field">
-                <label className="ps-label">Location</label>
+                <label className="ps-label" htmlFor="profile-area-location">Location</label>
                 <AreaLocationInput id="profile-area-location" inputClassName="ps-input" placeholder="Los Angeles, CA" value={form1.location} onChange={val => f1('location', val)}/>
               </div>
             </div>

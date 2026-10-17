@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
@@ -7,7 +7,7 @@ import '../styles/category-deep-dive.css'; // reuses .cdd-location-* autocomplet
 import { SKILL_CATS } from '../data/skillTaxonomy.js';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
 import { MATTERS } from '../data/mattersTaxonomy.js';
-import { searchPlacesApi } from '../lib/geo.js';
+import AreaLocationInput from '../components/AreaLocationInput.jsx';
 
 // Flat chip list shared with profile taxonomy — drives tag suggestions
 const ALL_TAXONOMY_CHIPS = [
@@ -269,41 +269,6 @@ export default function CreateHivePage() {
   const hiveNameRef  = useRef(null);
   const catFieldRef  = useRef(null);
   const descRef      = useRef(null);
-  const locationDebounceRef = useRef(null);
-  const locationRequestRef = useRef(0);
-  useEffect(() => () => { clearTimeout(locationDebounceRef.current); locationRequestRef.current++; }, []);
-
-  // ── Location autocomplete (same source as the deep-dive's Q3) ───
-  const [locationSuggestions, setLocationSuggestions] = useState([]);
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
-
-  function handleLocationInput(val) {
-    const requestId = ++locationRequestRef.current;
-    setShowLocationSuggestions(false);
-    setLocationVal(val);
-    setMetroKey(null); // cleared until a suggestion is picked, or re-resolved server-side on save
-    if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
-    if (!val.trim()) { setLocationSuggestions([]); return; }
-    locationDebounceRef.current = setTimeout(async () => {
-      try {
-        const results = await searchPlacesApi(val);
-        if (requestId !== locationRequestRef.current) return;
-        setLocationSuggestions(results);
-        setShowLocationSuggestions(true);
-      } catch { /* autocomplete is best-effort */ }
-    }, 200);
-  }
-
-  function pickLocationSuggestion(s) {
-    locationRequestRef.current++;
-    clearTimeout(locationDebounceRef.current);
-    setLocationVal(`${s.display_name}, ${s.state_code}`);
-    setMetroKey(s.metro_key);
-    setLocationSuggestions([]);
-    setShowLocationSuggestions(false);
-  }
-
-  // ── Helpers ────────────────────────────────────────────────────
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const commitTag = () => {
     const val = tagInputVal.trim();
@@ -746,31 +711,9 @@ export default function CreateHivePage() {
                 Location
                 {flagCity && <PreTag />}
               </div>
-              <div className="cdd-location-field">
-                <input
-                  className="ch-input"
-                  placeholder="e.g. Austin, TX"
-                  value={locationVal}
-                  onChange={e => handleLocationInput(e.target.value)}
-                  onFocus={() => locationSuggestions.length && setShowLocationSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
-                />
-                {showLocationSuggestions && locationSuggestions.length > 0 && (
-                  <div className="cdd-location-suggestions">
-                    {locationSuggestions.map(s => (
-                      <button
-                        key={`${s.display_name}-${s.state_code}`}
-                        type="button"
-                        className="cdd-location-suggestion"
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => pickLocationSuggestion(s)}
-                      >
-                        {s.display_name} · {s.metro_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <AreaLocationInput id="create-hive-location" inputClassName="ch-input" placeholder="e.g. Austin, TX"
+                value={locationVal} onChange={val => { setLocationVal(val); setMetroKey(null); }}
+                onSelect={({ metroKey }) => setMetroKey(metroKey)} />
               {!metroKey && locationVal.trim() && (
                 <p className="cdd-location-error">
                   We couldn't place this city. Members searching nearby may not find your Hive.

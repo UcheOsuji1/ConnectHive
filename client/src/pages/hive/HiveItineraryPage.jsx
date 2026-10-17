@@ -3,6 +3,7 @@ import { useParams, useOutletContext, useNavigate, Link } from 'react-router-dom
 import { api } from '../../lib/api.js';
 import { planCreateMode } from '../../lib/plans.js';
 import CreatePlanModal from '../../components/plans/CreatePlanModal.jsx';
+import AreaLocationInput from '../../components/AreaLocationInput.jsx';
 import '../../styles/hive-itinerary.css';
 
 function fmtDate(d) {
@@ -80,7 +81,7 @@ function NewTripModal({ hiveId, costGroups, onClose, onCreated }) {
           </label>
           <label className="it-field">
             Destination
-            <input value={destination} onChange={e => setDestination(e.target.value)} maxLength={120} placeholder="Big Sur, CA" />
+            <AreaLocationInput label="Trip destination" value={destination} onChange={setDestination} maxLength={120} placeholder="Big Sur, CA" />
           </label>
           <div className="it-field-row">
             <label className="it-field">

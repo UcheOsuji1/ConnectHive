@@ -1,0 +1,12 @@
+.area-location-input { position: relative; width: 100%; min-width: 0; }
+.area-location-input input { max-width: 100%; }
+.area-location-input input:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+.area-location-popup { position: fixed; z-index: 10000; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; padding: 5px; color: #342c1e; background: #fffdf8; border: 1px solid #d8c9a8; border-radius: 10px; box-shadow: 0 8px 24px #211a1226; font: 13px/1.5 'DM Sans', sans-serif; animation: area-location-enter 120ms ease-out; }
+.area-location-option { display: block; width: 100%; min-height: 44px; padding: 9px 11px; text-align: left; background: transparent; color: inherit; border: 0; border-radius: 6px; cursor: pointer; white-space: normal; overflow-wrap: anywhere; transition: background-color 120ms ease, color 120ms ease; }
+.area-location-option small { display: block; color: #827453; font-size: 11px; }
+.area-location-popup { transition: opacity 120ms ease, transform 120ms ease; }
+.area-location-popup.is-closing { opacity: 0; transform: translateY(-3px); pointer-events: none; }
+.area-location-option:hover, .area-location-option.is-active { background: #f6ecd6; color: #6e5114; }
+.area-location-message { padding: 12px 11px; color: #827453; font-size: 12px; }
+@keyframes area-location-enter { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .area-location-popup { animation: none; transition: none; } .area-location-option { transition: none; } }

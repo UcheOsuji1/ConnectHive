@@ -1,8 +1,9 @@
+import AreaLocationInput from '../components/AreaLocationInput.jsx';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
-import { getCachedMetros, nearestMetro, metroSubline, searchPlacesApi } from '../lib/geo.js';
+import { getCachedMetros, nearestMetro, metroSubline } from '../lib/geo.js';
 import '../styles/category-deep-dive.css';
 
 // An old saved cards[id] may still be a plain string (single-select, from
@@ -789,6 +790,7 @@ function ChipGroup({
 // component — only the nearest metro's metro_key is reported upward.
 function LocationQuestion({
   selectedChip, onSelectChip,
+  savedMetroKey,
   cityText, onCityTextChange,
   onMetroKeyChange,
   onPlaceLabelChange,
@@ -796,14 +798,23 @@ function LocationQuestion({
   const [geoStatus, setGeoStatus] = useState('idle'); // idle | locating | confirmed | failed
   const [confirmedMetro, setConfirmedMetro] = useState(null);
   const [subline, setSubline] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef(null);
-  const debounceRef = useRef(null);
-  const requestRef = useRef(0);
-  useEffect(() => () => { clearTimeout(debounceRef.current); requestRef.current++; }, []);
+  const geoRequest = useRef(0);
+  useEffect(() => () => { geoRequest.current++; }, []);
+  useEffect(() => {
+    let cancelled = false;
+    if (selectedChip === '📍 Use my current location' && savedMetroKey) {
+      getCachedMetros().then(metros => {
+        if (cancelled) return;
+        const area = metros.find(m => m.metro_key === savedMetroKey);
+        if (area) { setConfirmedMetro(area); setSubline(metroSubline(area)); setGeoStatus('confirmed'); }
+      }).catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [selectedChip, savedMetroKey]);
 
   async function handleUseLocation() {
+    const requestId = ++geoRequest.current;
     onSelectChip('📍 Use my current location');
     setGeoStatus('locating');
     try {
@@ -812,6 +823,7 @@ function LocationQuestion({
         navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, maximumAge: 600000 });
       });
       const metros = await getCachedMetros();
+      if (requestId !== geoRequest.current) return;
       const nearest = nearestMetro(pos.coords.latitude, pos.coords.longitude, metros);
       if (nearest) {
         onMetroKeyChange(nearest.metro_key);
@@ -823,7 +835,7 @@ function LocationQuestion({
         fallbackToTyping();
       }
     } catch {
-      fallbackToTyping();
+      if (requestId === geoRequest.current) fallbackToTyping();
     }
   }
 
@@ -835,6 +847,7 @@ function LocationQuestion({
   }
 
   function handleChange() {
+    geoRequest.current++;
     onSelectChip(null);
     onMetroKeyChange(null);
     onPlaceLabelChange('');
@@ -843,6 +856,7 @@ function LocationQuestion({
   }
 
   function handleChipClick(chip) {
+    geoRequest.current++;
     if (chip === '📍 Use my current location') { handleUseLocation(); return; }
     if (chip === '💻 Online community only') {
       onSelectChip(chip);
@@ -857,34 +871,6 @@ function LocationQuestion({
     setGeoStatus('idle');
     onSelectChip(chip);
     setTimeout(() => inputRef.current?.focus(), 0);
-  }
-
-  function handleTypeInput(val) {
-    const requestId = ++requestRef.current;
-    setShowSuggestions(false);
-    onCityTextChange(val);
-    onMetroKeyChange(null);
-    onPlaceLabelChange('');
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!val.trim()) { setSuggestions([]); setShowSuggestions(false); return; }
-    debounceRef.current = setTimeout(async () => {
-      try {
-        const results = await searchPlacesApi(val);
-        if (requestId !== requestRef.current) return;
-        setSuggestions(results);
-        setShowSuggestions(true);
-      } catch { /* autocomplete is best-effort */ }
-    }, 200);
-  }
-
-  function pickSuggestion(s) {
-    requestRef.current++;
-    clearTimeout(debounceRef.current);
-    onCityTextChange(`${s.display_name}, ${s.state_code}`);
-    onMetroKeyChange(s.metro_key);
-    onPlaceLabelChange(s.display_name);
-    setSuggestions([]);
-    setShowSuggestions(false);
   }
 
   const showTyping = selectedChip === "✍️ I'll type it in" || geoStatus === 'failed';
@@ -918,35 +904,14 @@ function LocationQuestion({
 
       {showTyping && (
         <div className="cdd-location-field">
-          <input
-            ref={inputRef}
-            type="text"
-            className="cdd-custom-input"
-            style={{ width: '100%', marginTop: '10px' }}
-            placeholder="e.g. Los Angeles, CA / New York, NY..."
-            value={cityText}
-            onChange={e => handleTypeInput(e.target.value)}
-            onFocus={() => suggestions.length && setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          />
+          <AreaLocationInput inputRef={inputRef} inputClassName="cdd-custom-input" inputStyle={{ width: '100%', marginTop: 10 }}
+            placeholder="e.g. Los Angeles, CA / New York, NY..." value={cityText}
+            onChange={val => { onCityTextChange(val); onMetroKeyChange(null); onPlaceLabelChange(''); }}
+            onSelect={({ metroKey, place }) => { onMetroKeyChange(metroKey); onPlaceLabelChange(place.display_name); }} />
           {geoStatus === 'failed' && (
             <p className="cdd-location-error">We couldn't find your area. Type your city instead.</p>
           )}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="cdd-location-suggestions">
-              {suggestions.map(s => (
-                <button
-                  key={`${s.display_name}-${s.state_code}`}
-                  type="button"
-                  className="cdd-location-suggestion"
-                  onMouseDown={e => e.preventDefault()}
-                  onClick={() => pickSuggestion(s)}
-                >
-                  {s.display_name} · {s.metro_name}
-                </button>
-              ))}
-            </div>
-          )}
+
         </div>
       )}
     </div>
@@ -1513,7 +1478,7 @@ export default function CategoryDeepDivePage() {
 
   // ── Navigate next ──
   const handleNext = () => {
-    const answers = { category, chips, cards, textValues, metroKeys, placeLabels };
+    const answers = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters: location.state?.refineFilters };
     // Preserve this history entry so browser Back restores the search answers.
     window.history.replaceState({ ...window.history.state, usr: answers }, '');
     navigate('/hive-discovery', { state: answers });
@@ -1630,6 +1595,7 @@ export default function CategoryDeepDivePage() {
             <div className="cdd-section-label">What city or area are you in?</div>
             <LocationQuestion
               selectedChip={chips['social-location']?.[0] ?? null}
+              savedMetroKey={metroKeys['social-location']}
               onSelectChip={label => setLocationChip('social-location', label)}
               cityText={textValues['social-city'] || ''}
               onCityTextChange={val => setTextValues(prev => ({ ...prev, 'social-city': val }))}
@@ -1734,6 +1700,7 @@ export default function CategoryDeepDivePage() {
             <div className="cdd-section-label">What city or area are you in?</div>
             <LocationQuestion
               selectedChip={chips['professional-location']?.[0] ?? null}
+              savedMetroKey={metroKeys['professional-location']}
               onSelectChip={label => setLocationChip('professional-location', label)}
               cityText={textValues['professional-city'] || ''}
               onCityTextChange={val => setTextValues(prev => ({ ...prev, 'professional-city': val }))}
@@ -1864,6 +1831,7 @@ export default function CategoryDeepDivePage() {
             <div className="cdd-section-label">What city or area are you in?</div>
             <LocationQuestion
               selectedChip={chips['travel-location']?.[0] ?? null}
+              savedMetroKey={metroKeys['travel-location']}
               onSelectChip={label => setLocationChip('travel-location', label)}
               cityText={textValues['travel-city'] || ''}
               onCityTextChange={val => setTextValues(prev => ({ ...prev, 'travel-city': val }))}
@@ -2023,6 +1991,7 @@ export default function CategoryDeepDivePage() {
             <div className="cdd-section-label">What city or area are you in?</div>
             <LocationQuestion
               selectedChip={chips['project-location']?.[0] ?? null}
+              savedMetroKey={metroKeys['project-location']}
               onSelectChip={label => setLocationChip('project-location', label)}
               cityText={textValues['project-city'] || ''}
               onCityTextChange={val => setTextValues(prev => ({ ...prev, 'project-city': val }))}
@@ -2297,6 +2266,7 @@ export default function CategoryDeepDivePage() {
             <div className="cdd-section-label">What city or area are you in?</div>
             <LocationQuestion
               selectedChip={chips['event-location']?.[0] ?? null}
+              savedMetroKey={metroKeys['event-location']}
               onSelectChip={label => setLocationChip('event-location', label)}
               cityText={textValues['event-city'] || ''}
               onCityTextChange={val => setTextValues(prev => ({ ...prev, 'event-city': val }))}
@@ -2400,6 +2370,7 @@ export default function CategoryDeepDivePage() {
             <div className="cdd-section-label">What city or area are you in?</div>
             <LocationQuestion
               selectedChip={chips['spec-location']?.[0] ?? null}
+              savedMetroKey={metroKeys['spec-location']}
               onSelectChip={label => setLocationChip('spec-location', label)}
               cityText={textValues['spec-city'] || ''}
               onCityTextChange={val => setTextValues(prev => ({ ...prev, 'spec-city': val }))}
