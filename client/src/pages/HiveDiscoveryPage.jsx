@@ -597,7 +597,7 @@ export default function HiveDiscoveryPage() {
   const placeLabels = state.placeLabels ?? {};
   const { searchMode, searchMetroKey, searchPlaceLabel } = deriveSearchFields(chips, metroKeys, placeLabels);
   const ageBands = asArray(cards['social-age']).length ? asArray(cards['social-age']) : asArray(cards['event-age']);
-  const prefillData = { chips, cards, textValues, searchMetroKey, searchMode, searchPlaceLabel, ageBands };
+  const prefillData = { chips, cards, textValues, searchMetroKey, searchMode, searchPlaceLabel, ageBands, refineFilters: state.refineFilters };
 
   const categoryLabel = CATEGORY_LABELS[category] ?? 'Hive';
   const city = searchPlaceLabel || textValues['social-city'] || textValues['event-city'] || textValues['professional-city'] || textValues['travel-city'] || textValues['project-city'] || textValues['spec-city'] || null;
@@ -613,7 +613,7 @@ export default function HiveDiscoveryPage() {
   const area = matchResult.area ?? null;
   const resolvedPrefills = { ...prefillData, searchMetroKey: area?.metro_key ?? searchMetroKey, searchPlaceLabel: city || area?.name || null };
   const outsideLaunch = searchMode !== 'online' && area && matchResult.isLaunchArea === false && !matchResult.hives.some(h => h.location_type === 'in-person' || h.location_type === 'hybrid');
-  const questionState = { category, chips, cards, textValues, metroKeys, placeLabels };
+  const questionState = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters: state.refineFilters };
 
   useEffect(() => {
     let cancelled = false;

@@ -2,8 +2,17 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
+import AreaLocationInput from '../components/AreaLocationInput.jsx';
 import '../styles/hive-discovery.css';
 import '../styles/find-your-hive.css';
+
+function filterParams(filters) {
+  const params = new URLSearchParams();
+  if (filters.location) params.set('location', filters.location);
+  if (filters.metroKey) params.set('metro_key', filters.metroKey);
+  for (const key of ['connection', 'groupSize', 'cadence']) if (filters[key].length) params.set(key, filters[key].join(','));
+  return params;
+}
 
 // ── Category data ────────────────────────────────────────────────────────────
 // icon paths are reused verbatim from the reference mock (discover.html) —
@@ -241,14 +250,10 @@ function RefineRail({ filters, setFilters, facets }) {
 
       <div className="fg">
         <h4>Location</h4>
-        <select
-          className="sel"
-          value={filters.location}
-          onChange={(e) => setFilters(prev => ({ ...prev, location: e.target.value }))}
-        >
-          <option value="">Anywhere</option>
-          {facets.locations.map(loc => <option key={loc} value={loc}>{loc}</option>)}
-        </select>
+        <AreaLocationInput inputClassName="sel" placeholder="Anywhere" value={filters.location}
+          onChange={location => setFilters(prev => ({ ...prev, location, metroKey: null }))}
+          onSelect={({ metroKey }) => setFilters(prev => ({ ...prev, metroKey }))} />
+        {filters.location && <button type="button" className="fyh-area-clear" onClick={() => setFilters(prev => ({ ...prev, location: '', metroKey: null }))}>Anywhere · Clear location</button>}
       </div>
 
       <div className="fg">
@@ -355,23 +360,25 @@ function SuggestCard({ hive, navigate }) {
   );
 }
 
-function MightSuitYou({ navigate }) {
+function MightSuitYou({ navigate, filters }) {
   const [hives, setHives]     = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const requestRef = useRef(0);
   const load = useCallback(async () => {
+    const requestId = ++requestRef.current;
     setLoading(true);
     try {
-      const { hives: h } = await api.get('/api/hives/suggestions');
-      setHives(h);
+      const { hives: h } = await api.get(`/api/hives/suggestions?${filterParams(filters)}`);
+      if (requestId === requestRef.current) setHives(h);
     } catch {
-      setHives([]);
+      if (requestId === requestRef.current) setHives([]);
     } finally {
-      setLoading(false);
+      if (requestId === requestRef.current) setLoading(false);
     }
-  }, []);
+  }, [filters]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { const timer = setTimeout(load, 200); return () => { clearTimeout(timer); requestRef.current++; }; }, [load]);
 
   if (!loading && hives.length === 0) return null;
 
@@ -395,30 +402,21 @@ function MightSuitYou({ navigate }) {
 export default function FindYourHivePage() {
   const [selected, setSelected] = useState(null);
   const [categoryCounts, setCategoryCounts] = useState({});
-  const [filters, setFilters] = useState({ location: '', connection: [], groupSize: [], cadence: [] });
+  const [filters, setFilters] = useState({ location: '', metroKey: null, connection: [], groupSize: [], cadence: [] });
   const [facets, setFacets] = useState({ locations: [], connectionOptions: [], sizeOptions: [], cadenceOptions: [] });
   const [refineOpen, setRefineOpen] = useState(false); // mobile accordion
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get('/api/hives/category-counts')
-      .then(({ counts }) => {
-        const map = {};
-        counts.forEach(c => { map[c.category_name] = c.hive_count; });
-        setCategoryCounts(map);
-      })
-      .catch(() => setCategoryCounts({}));
-  }, []);
-
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (filters.location) params.set('location', filters.location);
-    if (filters.connection.length) params.set('connection', filters.connection.join(','));
-    if (filters.groupSize.length) params.set('groupSize', filters.groupSize.join(','));
-    if (filters.cadence.length) params.set('cadence', filters.cadence.join(','));
-    api.get(`/api/hives/filter-facets?${params.toString()}`)
-      .then(setFacets)
-      .catch(() => {});
+    let cancelled = false;
+    const params = filterParams(filters);
+    const timer = setTimeout(() => api.get(`/api/hives/filter-facets?${params.toString()}`)
+      .then(data => { if (!cancelled) {
+        setFacets(data);
+        if (data.categoryCounts) setCategoryCounts(Object.fromEntries(CATEGORIES.map(c => [c.dbName, data.categoryCounts[c.dbName] ?? 0])));
+      } })
+      .catch(() => {}), 200);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [filters]);
 
   const toggleHex = useCallback((name) => {
@@ -432,7 +430,15 @@ export default function FindYourHivePage() {
   const findHive = () => {
     if (!selected) return;
     const key = CATEGORY_KEY[selected] ?? selected.toLowerCase().replace(/\s+/g, '-');
-    navigate('/category-deep-dive', { state: { category: key } });
+    const locationId = `${key === 'specialized' ? 'spec' : key}-location`;
+    const cityId = `${key === 'specialized' ? 'spec' : key}-city`;
+    navigate('/category-deep-dive', { state: {
+      category: key, refineFilters: filters,
+      ...(filters.location ? {
+        chips: { [locationId]: ["✍️ I'll type it in"] }, textValues: { [cityId]: filters.location },
+        metroKeys: { [locationId]: filters.metroKey }, placeLabels: { [locationId]: filters.location },
+      } : {}),
+    } });
   };
 
   const desktopRows = [CATEGORIES.slice(0, 3), CATEGORIES.slice(3, 6)];
@@ -498,7 +504,7 @@ export default function FindYourHivePage() {
             </button>
           </div>
 
-          <MightSuitYou navigate={navigate} />
+          <MightSuitYou navigate={navigate} filters={filters} />
 
           <div className="fyh-page-footer">
             Already know what you want?{' '}

@@ -9,6 +9,7 @@ import { MATTERS } from '../data/mattersTaxonomy.js';
 import '../styles/profile-setup.css';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
+import AreaLocationInput from '../components/AreaLocationInput.jsx';
 
 // ── Data ──────────────────────────────────────────────────────
 
@@ -923,8 +924,8 @@ export default function ProfileSetupPage() {
                 <input type="number" className="ps-input" placeholder="24" min="18" max="99" value={form1.age} onChange={e => f1('age', e.target.value)}/>
               </div>
               <div className="ps-field">
-                <label className="ps-label">Location</label>
-                <input type="text" className="ps-input" placeholder="Los Angeles, CA" value={form1.location} onChange={e => f1('location', e.target.value)}/>
+                <label className="ps-label" htmlFor="profile-area-location">Location</label>
+                <AreaLocationInput id="profile-area-location" inputClassName="ps-input" placeholder="Los Angeles, CA" value={form1.location} onChange={val => f1('location', val)}/>
               </div>
             </div>
 

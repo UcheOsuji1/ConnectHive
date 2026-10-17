@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { api } from '../../lib/api.js';
 import Avatar from '../../components/Avatar.jsx';
+import AreaLocationInput from '../../components/AreaLocationInput.jsx';
 import '../../styles/hive-opportunities.css';
 
 const KIND_LABELS = { job: 'Job', internship: 'Internship', gig: 'Gig', intro: 'Intro', event: 'Event', other: 'Other' };
@@ -92,7 +93,7 @@ function PostModal({ hiveId, existing, onClose, onSaved }) {
           <div className="op-field-row">
             <label className="op-field">
               Location
-              <input value={location} onChange={e => setLocation(e.target.value)} maxLength={120} disabled={remote} />
+              <AreaLocationInput label="Opportunity location" value={location} onChange={setLocation} maxLength={120} disabled={remote} />
             </label>
             <label className="op-check-row" style={{ alignSelf: 'flex-end', paddingBottom: 10 }}>
               <input type="checkbox" checked={remote} onChange={e => setRemote(e.target.checked)} />

@@ -45,7 +45,7 @@ async function context(width, geo = { latitude: 34.087, longitude: -118.27 }, de
   const page = await ctx.newPage();
   page.on('pageerror', e => errors.push(e.message));
   async function open(path, state = {}) {
-    await page.goto(`http://127.0.0.1:5173${path}`);
+    await page.goto(`${process.env.P71_BASE_URL || "http://127.0.0.1:5173"}${path}`);
     await page.evaluate(state => history.replaceState({ ...history.state, usr: state }, ''), state);
     await page.reload();
   }
@@ -71,9 +71,9 @@ try {
     await page.getByRole('button', { name: 'Change', exact: true }).click();
     await page.getByRole('button', { name: "✍️ I'll type it in", exact: true }).click();
     await page.getByPlaceholder('e.g. Los Angeles, CA / New York, NY...').fill('Silver');
-    await page.getByRole('button', { name: 'Silver Lake · Los Angeles area', exact: true }).waitFor();
+    await page.getByRole('option', { name: /Silver Lake.*Los Angeles area/ }).waitFor();
     await shot(page, `q3-${width}`);
-    await page.getByRole('button', { name: 'Silver Lake · Los Angeles area', exact: true }).click();
+    await page.getByRole('option', { name: /Silver Lake.*Los Angeles area/ }).click();
     await page.locator('.cdd-nav-next').click();
     await page.getByRole('heading', { name: "Don't see your Hive?" }).waitFor();
     check(t.bodies.at(-1).searchMetroKey === 'los-angeles' && t.bodies.at(-1).ageBands.includes('21–26'), `answers reach runMatching at ${width}`);

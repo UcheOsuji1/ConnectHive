@@ -7,6 +7,8 @@ import { pool } from '../db/index.js';
 import { normalizePlace, resolveMetro } from '../lib/metros.js';
 import { matchHives, createHive, updateHive, joinWaitlist } from '../controllers/hivesController.js';
 
+assert.equal(process.env.P71B_ISOLATED, '1', 'Use --import ./src/checks/prompt71b-isolated.mjs; do not run fixtures against production.');
+
 const log = console.log;
 console.log = (...args) => { if (!String(args[0]).startsWith('[db]')) log(...args); };
 const client = await pool.connect();

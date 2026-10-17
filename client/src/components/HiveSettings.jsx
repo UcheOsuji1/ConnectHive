@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
-import { searchPlacesApi } from '../lib/geo.js';
+import AreaLocationInput from './AreaLocationInput.jsx';
 import '../styles/category-deep-dive.css'; // reuses .cdd-location-* autocomplete styles
 
 // ── How plans get made (Prompt 60) ──────────────────────────────────────────
@@ -162,38 +162,6 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
 
   // Location autocomplete (same source as Find Your Hive's Q3)
   const [metroKey, setMetroKey] = useState(hive.metro_key ?? null);
-  const [locationSuggestions, setLocationSuggestions] = useState([]);
-  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
-  const locationDebounceRef = useRef(null);
-  const locationRequestRef = useRef(0);
-  useEffect(() => () => { clearTimeout(locationDebounceRef.current); locationRequestRef.current++; }, []);
-
-  function handleLocationInput(val) {
-    const requestId = ++locationRequestRef.current;
-    setShowLocationSuggestions(false);
-    set('location', val);
-    setMetroKey(null);
-    if (locationDebounceRef.current) clearTimeout(locationDebounceRef.current);
-    if (!val.trim()) { setLocationSuggestions([]); return; }
-    locationDebounceRef.current = setTimeout(async () => {
-      try {
-        const results = await searchPlacesApi(val);
-        if (requestId !== locationRequestRef.current) return;
-        setLocationSuggestions(results);
-        setShowLocationSuggestions(true);
-      } catch { /* autocomplete is best-effort */ }
-    }, 200);
-  }
-
-  function pickLocationSuggestion(s) {
-    locationRequestRef.current++;
-    clearTimeout(locationDebounceRef.current);
-    set('location', `${s.display_name}, ${s.state_code}`);
-    setMetroKey(s.metro_key);
-    setLocationSuggestions([]);
-    setShowLocationSuggestions(false);
-  }
-
   // Leave Hive dialog state
   const [leaveOpen,       setLeaveOpen]       = useState(false);
   const [leaveMembers,    setLeaveMembers]     = useState(null); // null = not loaded
@@ -250,6 +218,7 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
         founder_note:  fields.founder_note.trim() || null,
       };
       const result = await api.patch(`/api/hives/${hiveId}`, payload);
+      setMetroKey(result.hive?.metro_key ?? null);
       setSuccess(true);
       if (onSaved) onSaved(result.hive);
       setTimeout(() => setSuccess(false), 4000);
@@ -468,32 +437,9 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
           <div className="hw-settings-row2">
             <div className="hw-settings-field">
               <label className="hw-settings-label">Location</label>
-              <div className="cdd-location-field">
-                <input
-                  type="text"
-                  className="hw-settings-input"
-                  value={fields.location}
-                  onChange={e => handleLocationInput(e.target.value)}
-                  onFocus={() => locationSuggestions.length && setShowLocationSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowLocationSuggestions(false), 150)}
-                  placeholder="City, country, or online"
-                />
-                {showLocationSuggestions && locationSuggestions.length > 0 && (
-                  <div className="cdd-location-suggestions">
-                    {locationSuggestions.map(s => (
-                      <button
-                        key={`${s.display_name}-${s.state_code}`}
-                        type="button"
-                        className="cdd-location-suggestion"
-                        onMouseDown={e => e.preventDefault()}
-                        onClick={() => pickLocationSuggestion(s)}
-                      >
-                        {s.display_name} · {s.metro_name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <AreaLocationInput id="hive-settings-location" inputClassName="hw-settings-input" placeholder="City, country, or online"
+                value={fields.location} onChange={val => { set('location', val); setMetroKey(null); }}
+                onSelect={({ metroKey }) => setMetroKey(metroKey)} />
               {!metroKey && fields.location.trim() && (
                 <p className="cdd-location-error">
                   We couldn't place this city. Members searching nearby may not find your Hive.

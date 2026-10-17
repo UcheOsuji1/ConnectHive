@@ -16,7 +16,8 @@ import { PLAN_END } from './eventsController.js';
 import { getAttendanceRate } from './checkinsController.js';
 import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
 import { sendYoureInEmail } from '../lib/email.js';
-import { resolveMetro, metroByKey, LAUNCH_METROS } from '../lib/metros.js';
+import { resolveMetro, resolveLocationMetro, metroByKey, LAUNCH_METROS } from '../lib/metros.js';
+import { readRefineFilters, matchesRefine, sizeBucket } from '../lib/discoveryFilters.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -29,7 +30,7 @@ export const CATEGORY_NAME_MAP = {
 
 export const matchHives = async (req, res) => {
   try {
-    const { category, textValues, searchMetroKey, searchMode, ageBands } = req.body;
+    const { category, textValues, searchMetroKey, searchMode, ageBands, refineFilters } = req.body;
 
     // 1. Load caller profile
     const { rows: [profile] } = await query(
@@ -93,6 +94,18 @@ export const matchHives = async (req, res) => {
       areaFilter = `AND (h.location_type = 'online' OR (h.location_type IN ('in-person', 'hybrid') AND h.metro_key = $${candidateParams.length}))`;
     }
 
+    const refineClauses = [];
+    for (const [key, expression] of [
+      ['connection', 'h.location_type'],
+      ['groupSize', "CASE WHEN h.max_members IS NULL OR h.max_members > 30 THEN 'large' WHEN h.max_members <= 10 THEN 'small' ELSE 'medium' END"],
+      ['cadence', 'lower(trim(h.cadence))'],
+    ]) {
+      const values = refineFilters?.[key];
+      if (Array.isArray(values) && values.length) {
+        candidateParams.push(values.filter(v => typeof v === 'string'));
+        refineClauses.push(`AND ${expression} = ANY($${candidateParams.length}::text[])`);
+      }
+    }
     const { rows: candidates } = await query(
       `SELECT h.*,
               c.category_name,
@@ -108,6 +121,7 @@ export const matchHives = async (req, res) => {
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.discoverable = TRUE
          ${areaFilter}
+         ${refineClauses.join('\n')}
          AND h.hive_status  = 'active'
          AND NOT EXISTS(
            SELECT 1 FROM hive_members
@@ -318,27 +332,14 @@ export const getCategoryCounts = async (req, res) => {
 export const getFilterFacets = async (req, res) => {
   try {
     const { rows: hives } = await query(
-      `SELECT hive_id, location, location_type, max_members, cadence
-       FROM hives WHERE discoverable = TRUE AND hive_status = 'active'`,
+      `SELECT h.hive_id, h.location, h.metro_key, h.location_type, h.max_members, h.cadence, c.category_name
+       FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
+       WHERE h.discoverable = TRUE AND h.hive_status = 'active'`,
     );
 
-    const parseList = (v) => (v ? String(v).split(',').filter(Boolean) : []);
-    const selLocation = req.query.location || null;
-    const selConn     = parseList(req.query.connection);
-    const selSize     = parseList(req.query.groupSize);
-    const selCadence  = parseList(req.query.cadence);
-
-    const sizeBucket = (max) =>
-      max == null ? 'large' : max <= 10 ? 'small' : max <= 30 ? 'medium' : 'large';
-
-    const matches = (h, skip = {}) => {
-      if (!skip.location && selLocation && h.location !== selLocation) return false;
-      if (!skip.conn && selConn.length && !selConn.includes(h.location_type)) return false;
-      if (!skip.size && selSize.length && !selSize.includes(sizeBucket(h.max_members))) return false;
-      if (!skip.cadence && selCadence.length &&
-          !selCadence.includes(norm(h.cadence))) return false;
-      return true;
-    };
+    const filters = await readRefineFilters(req.query);
+    const selMetro = filters.metroKey;
+    const matches = (h, skip = {}) => matchesRefine(h, filters, skip);
 
     const locations = [...new Set(hives.map(h => h.location).filter(Boolean))].sort();
 
@@ -358,9 +359,12 @@ export const getFilterFacets = async (req, res) => {
       count: hives.filter(h => norm(h.cadence) === value && matches(h, { cadence: true })).length,
     }));
 
-    res.json({ locations, connectionOptions, sizeOptions, cadenceOptions });
+    const categoryCounts = {};
+    for (const h of hives.filter(h => matches(h))) categoryCounts[h.category_name] = (categoryCounts[h.category_name] || 0) + 1;
+    res.json({ locations, connectionOptions, sizeOptions, cadenceOptions, categoryCounts, metroKey: selMetro });
   } catch (err) {
     console.error('[hives/getFilterFacets]', err);
+    if (err.status) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: 'Failed to load filters.' });
   }
 };
@@ -392,7 +396,8 @@ export const getSuggestions = async (req, res) => {
       [req.userId],
     );
 
-    const scored = candidates
+    const filters = await readRefineFilters(req.query);
+    const scored = candidates.filter(hive => matchesRefine(hive, filters))
       .map(hive => {
         const { factors, total } = scorePurpose(profile, hive, null);
         return { hive, factors, total };
@@ -453,6 +458,7 @@ export const getSuggestions = async (req, res) => {
     res.json({ hives: results });
   } catch (err) {
     console.error('[hives/getSuggestions]', err);
+    if (err.status) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: 'Failed to load suggestions.' });
   }
 };
@@ -463,6 +469,10 @@ export const joinWaitlist = async (req, res) => {
     const metroKey = Object.prototype.hasOwnProperty.call(req.body, 'metro_key') ? req.body.metro_key
       : Object.prototype.hasOwnProperty.call(req.body, 'metroKey') ? req.body.metroKey
       : (location ? await resolveMetro(location) : null);
+    if (metroKey) {
+      if (location) await resolveLocationMetro(location, metroKey);
+      else if (!await metroByKey(metroKey)) return res.status(400).json({ error: 'Unknown metropolitan area.' });
+    }
     if (!category) return res.status(400).json({ error: 'Category is required.' });
 
     const catName = CATEGORY_NAME_MAP[category] ?? null;
@@ -498,6 +508,7 @@ export const joinWaitlist = async (req, res) => {
     res.json({ joined: true, waitingCount: Number(count) });
   } catch (err) {
     console.error('[hives/joinWaitlist]', err);
+    if (err.status) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: 'Failed to join waitlist.' });
   }
 };
@@ -800,7 +811,7 @@ export const createHive = async (req, res) => {
     // An explicit metroKey from the create-Hive autocomplete (Part D) wins;
     // otherwise resolve it from the typed location text so metro_key stays
     // right even for a client that hasn't picked up the autocomplete yet.
-    const resolvedMetroKey = metroKey || (location ? await resolveMetro(location) : null);
+    const resolvedMetroKey = locationType === 'online' ? null : await resolveLocationMetro(location, metroKey);
 
     // Hive, owner membership, default channel and onboarding settings are one
     // unit of work. Previously these were separate pool queries with a
@@ -927,6 +938,7 @@ export const createHive = async (req, res) => {
     }
   } catch (err) {
     console.error('[hives/createHive]', err);
+    if (err.status) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: 'Failed to create Hive.' });
   }
 };
@@ -963,8 +975,15 @@ export const updateHive = async (req, res) => {
     // An explicit metro_key (from the General-tab autocomplete) wins; a
     // location edit with no explicit metro_key re-resolves from the new
     // text, so a plain-text save still keeps metro_key right.
-    if ('location' in updates && !updates.metro_key) {
-      updates.metro_key = updates.location ? await resolveMetro(updates.location) : null;
+    if ('location' in updates || 'metro_key' in updates || 'location_type' in updates) {
+      const { rows: [saved] } = await query('SELECT location, location_type, metro_key FROM hives WHERE hive_id = $1', [hiveId]);
+      const locationText = 'location' in updates ? updates.location : saved.location;
+      const locationType = updates.location_type ?? saved.location_type;
+      const sameLocation = locationText === saved.location;
+      if (locationType === 'online') updates.metro_key = null;
+      else if (!(sameLocation && (!('metro_key' in updates) || updates.metro_key === saved.metro_key))) {
+        updates.metro_key = await resolveLocationMetro(locationText, updates.metro_key);
+      }
     }
 
     // Invite-only Hives never appear in search — true whether THIS request is
@@ -1017,6 +1036,7 @@ export const updateHive = async (req, res) => {
     res.json({ hive: updated });
   } catch (err) {
     console.error('[hives/updateHive]', err);
+    if (err.status) return res.status(err.status).json({ error: err.message });
     res.status(500).json({ error: 'Failed to update Hive.' });
   }
 };
