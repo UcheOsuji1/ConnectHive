@@ -17,6 +17,7 @@ import { getAttendanceRate } from './checkinsController.js';
 import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
 import { sendYoureInEmail } from '../lib/email.js';
 import { resolveMetro, resolveLocationMetro, metroByKey, LAUNCH_METROS } from '../lib/metros.js';
+import { validateMaxMembers } from '../lib/policy.js';
 import { readRefineFilters, matchesRefine, sizeBucket } from '../lib/discoveryFilters.js';
 
 export const CATEGORY_NAME_MAP = {
@@ -788,6 +789,11 @@ export const createHive = async (req, res) => {
       return res.status(400).json({ error: 'Hive name and category are required.' });
     }
 
+    const maxMembersCheck = validateMaxMembers(maxMembers);
+    if (maxMembersCheck.error) {
+      return res.status(400).json({ error: maxMembersCheck.error });
+    }
+
     // Invite-only promises "won't appear in search" on the create page's own
     // card — enforce that server-side too, so a client that skips the card's
     // disabling logic (or a future caller) can't create a discoverable
@@ -836,7 +842,7 @@ export const createHive = async (req, res) => {
           name.trim(),
           description || null,
           idealMembers || null,
-          maxMembers ?? null,
+          maxMembersCheck.value,
           activationThreshold || 3,
           JSON.stringify(Array.isArray(tags) ? tags : []),
           resolvedJoinPolicy,
@@ -995,6 +1001,18 @@ export const updateHive = async (req, res) => {
       : (await query(`SELECT join_policy FROM hives WHERE hive_id = $1`, [hiveId])).rows[0]?.join_policy;
     if (effectiveJoinPolicy === 'invite') {
       updates.discoverable = false;
+    }
+
+    if ('max_members' in updates) {
+      const { rows: [{ count }] } = await query(
+        `SELECT COUNT(*)::int FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
+        [hiveId],
+      );
+      const maxMembersCheck = validateMaxMembers(updates.max_members, { currentMemberCount: count });
+      if (maxMembersCheck.error) {
+        return res.status(400).json({ error: maxMembersCheck.error });
+      }
+      updates.max_members = maxMembersCheck.value;
     }
 
     // Nullable identity fields: trim, turn blank into NULL (clears the field),

@@ -11,6 +11,28 @@ export const POLICY_VERSION = 'v2-2026-10';
 // until they confirm their date of birth and re-accept under v2.
 export const MIN_AGE = 18;
 
+// A Hive's max_members is either null (no limit — the "Large" option) or a
+// whole number in this range. One constant pair to change later if the
+// launch number turns out wrong.
+export const MAX_MEMBERS_MIN = 2;
+export const MAX_MEMBERS_CAP = 100;
+
+// Shared by createHive and the Manage Hive -> General update path, so the
+// two can never drift on what's accepted. `currentMemberCount`, when given,
+// additionally refuses a cap below the Hive's current active member count —
+// not meaningful at creation (nobody's joined yet) so createHive omits it.
+export function validateMaxMembers(raw, { currentMemberCount = null } = {}) {
+  if (raw === null || raw === undefined || raw === '') return { value: null };
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < MAX_MEMBERS_MIN || n > MAX_MEMBERS_CAP) {
+    return { error: `Max members must be between ${MAX_MEMBERS_MIN} and ${MAX_MEMBERS_CAP}.` };
+  }
+  if (currentMemberCount != null && n < currentMemberCount) {
+    return { error: `This Hive already has ${currentMemberCount} members. Set the limit to ${currentMemberCount} or more.` };
+  }
+  return { value: n };
+}
+
 // Compute age in full years from a date-of-birth string (YYYY-MM-DD).
 export function ageFromDob(dob) {
   const birth = new Date(dob);

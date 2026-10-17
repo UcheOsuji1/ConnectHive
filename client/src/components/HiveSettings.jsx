@@ -142,7 +142,11 @@ function PlanRulesCard({ hiveId }) {
 
 export default function HiveSettings({ hive, hiveId, onSaved }) {
   const navigate        = useNavigate();
-  const { user }        = useAuth();
+  const { user, config } = useAuth();
+  const maxMembersMin = config?.maxMembersMin ?? 2;
+  const maxMembersCap = config?.maxMembersCap ?? 100;
+  const currentMemberCount = Number(hive.member_count) || 0;
+  const maxMembersFloor = Math.max(maxMembersMin, currentMemberCount);
 
   const [fields, setFields] = useState({
     description:   hive.description   ?? '',
@@ -188,6 +192,20 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
     setFields(prev => ({ ...prev, join_policy: val, discoverable: val === 'invite' ? false : prev.discoverable }));
   }
 
+  // Mirrors the server's lib/policy.js validateMaxMembers — same wording,
+  // so the inline error never disagrees with what a save would actually get back.
+  const maxMembersError = (() => {
+    if (!fields.max_members.trim()) return null; // empty is valid — no limit
+    const n = Number(fields.max_members);
+    if (!Number.isInteger(n) || n < maxMembersMin || n > maxMembersCap) {
+      return `Max members must be between ${maxMembersMin} and ${maxMembersCap}.`;
+    }
+    if (n < currentMemberCount) {
+      return `This Hive already has ${currentMemberCount} members. Set the limit to ${currentMemberCount} or more.`;
+    }
+    return null;
+  })();
+
   async function handleSave(e) {
     e.preventDefault();
     const tagline = fields.tagline.trim();
@@ -199,6 +217,9 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
     }
     if (fields.founder_note.trim().length > 2000) {
       return setError('The founders’ note must be 2000 characters or fewer.');
+    }
+    if (maxMembersError) {
+      return setError(maxMembersError);
     }
     setSaving(true);
     setError(null);
@@ -411,12 +432,16 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
               <label className="hw-settings-label">Max members</label>
               <input
                 type="number"
-                min="1"
+                min={maxMembersFloor}
+                max={maxMembersCap}
+                step={1}
                 className="hw-settings-input"
                 value={fields.max_members}
                 onChange={e => set('max_members', e.target.value)}
                 placeholder="No limit"
               />
+              <span className="hw-settings-hint">Leave empty for no limit.</span>
+              {maxMembersError && <p className="cdd-location-error">{maxMembersError}</p>}
             </div>
             <div className="hw-settings-field">
               <label className="hw-settings-label">Cadence</label>
@@ -466,7 +491,7 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
         <div className="hw-settings-footer">
           {error && <div className="hw-settings-error">{error}</div>}
           {success && <div className="hw-settings-success">Changes saved.</div>}
-          <button type="submit" className="hw-settings-save-btn" disabled={saving}>
+          <button type="submit" className="hw-settings-save-btn" disabled={saving || !!maxMembersError}>
             {saving ? 'Saving…' : 'Save changes'}
           </button>
         </div>

@@ -34,6 +34,7 @@ import { startPurgeJob } from './jobs/purgeJob.js';
 import { startEmailOutboxJob } from './jobs/emailOutboxJob.js';
 import { startDigestJob } from './jobs/digestJob.js';
 import { reportProblem } from './lib/reportProblem.js';
+import { MAX_MEMBERS_MIN, MAX_MEMBERS_CAP } from './lib/policy.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -125,7 +126,11 @@ app.get('/api/health', (_req, res) => {
 
 // ── Public config (feature flags the client needs before login) ───────────────
 app.get('/api/config', (_req, res) => {
-  res.json({ googleSignIn: !!process.env.GOOGLE_CLIENT_ID });
+  res.json({
+    googleSignIn: !!process.env.GOOGLE_CLIENT_ID,
+    maxMembersMin: MAX_MEMBERS_MIN,
+    maxMembersCap: MAX_MEMBERS_CAP,
+  });
 });
 
 // ── API routes ────────────────────────────────────────────────────────────────

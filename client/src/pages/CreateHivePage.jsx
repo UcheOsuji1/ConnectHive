@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext.jsx';
 import '../styles/create-hive.css';
 import '../styles/category-deep-dive.css'; // reuses .cdd-location-* autocomplete styles
 import { SKILL_CATS } from '../data/skillTaxonomy.js';
@@ -195,6 +196,9 @@ function SectionCard({ number, title, desc, children, disabled = false }) {
 export default function CreateHivePage() {
   const location    = useLocation();
   const navigate    = useNavigate();
+  const { config }  = useAuth();
+  const maxMembersMin = config?.maxMembersMin ?? 2;
+  const maxMembersCap = config?.maxMembersCap ?? 100;
   const routeState  = location.state ?? {};
   const category    = routeState.category     ?? '';
   const prefillData = routeState.prefillData  ?? {};
@@ -318,11 +322,25 @@ export default function CreateHivePage() {
     },
   });
 
+  // Same wording the server returns for the same rule — see lib/policy.js's
+  // validateMaxMembers, which this mirrors for inline, pre-submit feedback.
+  const customMaxError = (() => {
+    if (sizeKey !== 'custom') return null;
+    if (customMax === '') return null; // required-ness is handled by validate(), not here
+    const n = Number(customMax);
+    if (!Number.isInteger(n) || n < maxMembersMin || n > maxMembersCap) {
+      return `Max members must be between ${maxMembersMin} and ${maxMembersCap}.`;
+    }
+    return null;
+  })();
+
   const validate = () => {
     const errs = {};
     if (!hiveName.trim())    errs.hiveName    = 'Please enter a name for your Hive.';
     if (!selectedCat)        errs.selectedCat = 'Please select a category.';
     if (!description.trim()) errs.description = 'Please add a description.';
+    if (sizeKey === 'custom' && !customMax.trim()) errs.customMax = 'Please enter a max number of members.';
+    if (customMaxError) errs.customMax = customMaxError;
     return Object.keys(errs).length ? errs : null;
   };
 
@@ -658,11 +676,14 @@ export default function CreateHivePage() {
                   placeholder="20"
                   value={customMax}
                   onChange={e => setCustomMax(e.target.value)}
-                  min={2}
+                  min={maxMembersMin}
+                  max={maxMembersCap}
+                  step={1}
                 />
                 <span className="ch-custom-unit">max members</span>
               </div>
             )}
+            {(customMaxError || errors.customMax) && <p className="ch-field-error">{customMaxError || errors.customMax}</p>}
           </div>
 
           <div className="ch-field">
@@ -921,7 +942,7 @@ export default function CreateHivePage() {
               type="button"
               className="ch-btn-launch"
               onClick={handleLaunch}
-              disabled={submitState === 'submitting'}
+              disabled={submitState === 'submitting' || !!customMaxError}
             >
               {submitState === 'submitting' ? 'Launching…' : 'Launch Hive →'}
             </button>
