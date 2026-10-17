@@ -6,6 +6,7 @@
 import { query } from '../db/index.js';
 import { computeBalances } from '../controllers/costsController.js';
 import { createNotification } from '../controllers/notificationsController.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
@@ -49,8 +50,8 @@ let started = false;
 export function startCostNudgeJob() {
   if (started) return;
   started = true;
-  runCostNudgeJob().catch(e => console.error('[costNudgeJob] initial run failed:', e));
+  runCostNudgeJob().catch(e => reportJobError('costNudgeJob', 'initial run', e));
   setInterval(() => {
-    runCostNudgeJob().catch(e => console.error('[costNudgeJob] run failed:', e));
+    runCostNudgeJob().catch(e => reportJobError('costNudgeJob', 'run', e));
   }, INTERVAL_MS);
 }

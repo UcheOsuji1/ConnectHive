@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import jwt from 'jsonwebtoken';
+import * as Sentry from '@sentry/node';
 import { parseCookie } from 'cookie';
 import { query } from '../db/index.js';
 import { requireMembership } from '../lib/hiveMembership.js';
@@ -123,7 +124,12 @@ export function initSocket(httpServer, allowedOrigins) {
 
       socket.data.userId = payload.userId;
       next();
-    } catch {
+    } catch (err) {
+      // A bad/expired/missing token is the overwhelmingly common case here
+      // and not worth an alert; only report when it's something else.
+      if (!(err instanceof jwt.JsonWebTokenError)) {
+        Sentry.captureException(err, { tags: { socketEvent: 'auth' } });
+      }
       next(new Error('Unauthorized'));
     }
   });
@@ -182,6 +188,9 @@ export function initSocket(httpServer, allowedOrigins) {
         }
       } catch (err) {
         if (typeof ack === 'function') ack({ error: err.message });
+        if (err.status !== 400 && err.status !== 403) {
+          Sentry.captureException(err, { tags: { socketEvent: 'join_hive_room' } });
+        }
       }
     });
 
@@ -189,9 +198,13 @@ export function initSocket(httpServer, allowedOrigins) {
     // Harmless when the socket is not in the room: socket.leave is a no-op and
     // _removePresence only touches entries that exist.
     socket.on('leave_hive_room', ({ hiveId } = {}) => {
-      if (!hiveId) return;
-      socket.leave(`hive:${hiveId}`);
-      _removePresence(hiveId, userId, socket.id);
+      try {
+        if (!hiveId) return;
+        socket.leave(`hive:${hiveId}`);
+        _removePresence(hiveId, userId, socket.id);
+      } catch (err) {
+        Sentry.captureException(err, { tags: { socketEvent: 'leave_hive_room' } });
+      }
     });
 
     // ── join_channel / leave_channel ─────────────────────────────────────────
@@ -207,69 +220,95 @@ export function initSocket(httpServer, allowedOrigins) {
         if (typeof ack === 'function') ack({ ok: true });
       } catch (err) {
         if (typeof ack === 'function') ack({ error: err.message });
+        if (err.status !== 400 && err.status !== 403 && err.status !== 404) {
+          Sentry.captureException(err, { tags: { socketEvent: 'join_channel' } });
+        }
       }
     });
 
     socket.on('leave_channel', ({ hiveId, channelId } = {}) => {
-      socket.leave(`hive:${hiveId}:ch:${channelId}`);
+      try {
+        socket.leave(`hive:${hiveId}:ch:${channelId}`);
+      } catch (err) {
+        Sentry.captureException(err, { tags: { socketEvent: 'leave_channel' } });
+      }
     });
 
     // ── set_status ───────────────────────────────────────────────────────────
     socket.on('set_status', async ({ status } = {}, ack) => {
-      if (!VALID_STATUSES.has(status)) {
-        if (typeof ack === 'function') ack({ error: 'Invalid status.' });
-        return;
+      try {
+        if (!VALID_STATUSES.has(status)) {
+          if (typeof ack === 'function') ack({ error: 'Invalid status.' });
+          return;
+        }
+
+        userStatus.set(userId, status);
+
+        // Persist to DB (non-blocking — we already updated in-memory)
+        query(`UPDATE users SET presence_status = $1 WHERE user_id = $2`, [status, userId])
+          .catch(e => {
+            console.error('[socket/set_status] DB write failed:', e);
+            Sentry.captureException(e, { tags: { socketEvent: 'set_status' } });
+          });
+
+        // Rebroadcast updated presence to every hive this socket has joined.
+        // Channel rooms are named hive:<hiveId>:ch:<channelId> and so also start
+        // with "hive:". Treating one as a hive room sliced a bogus id, built an
+        // empty presence from it and broadcast that to everyone in the channel —
+        // which is why one user changing status emptied everybody's Online Now.
+        for (const room of socket.rooms) {
+          if (!room.startsWith('hive:')) continue;
+          const hiveId = room.slice(5);
+          if (hiveId.includes(':')) continue;      // a channel room, not a hive room
+          const payload = _buildPresence(hiveId);
+          io.to(room).emit('presence_update', { hive_id: hiveId, ...payload });
+        }
+
+        if (typeof ack === 'function') ack({ ok: true, status });
+      } catch (err) {
+        Sentry.captureException(err, { tags: { socketEvent: 'set_status' } });
       }
-
-      userStatus.set(userId, status);
-
-      // Persist to DB (non-blocking — we already updated in-memory)
-      query(`UPDATE users SET presence_status = $1 WHERE user_id = $2`, [status, userId])
-        .catch(e => console.error('[socket/set_status] DB write failed:', e));
-
-      // Rebroadcast updated presence to every hive this socket has joined.
-      // Channel rooms are named hive:<hiveId>:ch:<channelId> and so also start
-      // with "hive:". Treating one as a hive room sliced a bogus id, built an
-      // empty presence from it and broadcast that to everyone in the channel —
-      // which is why one user changing status emptied everybody's Online Now.
-      for (const room of socket.rooms) {
-        if (!room.startsWith('hive:')) continue;
-        const hiveId = room.slice(5);
-        if (hiveId.includes(':')) continue;      // a channel room, not a hive room
-        const payload = _buildPresence(hiveId);
-        io.to(room).emit('presence_update', { hive_id: hiveId, ...payload });
-      }
-
-      if (typeof ack === 'function') ack({ ok: true, status });
     });
 
     // ── typing ───────────────────────────────────────────────────────────────
     socket.on('typing_start', ({ hiveId } = {}) => {
-      const room = `hive:${hiveId}`;
-      if (!socket.rooms.has(room)) return;
-      socket.to(room).emit('typing_update', {
-        hive_id:   hiveId,
-        user_id:   userId,
-        full_name: socket.data.fullName,
-        typing:    true,
-      });
+      try {
+        const room = `hive:${hiveId}`;
+        if (!socket.rooms.has(room)) return;
+        socket.to(room).emit('typing_update', {
+          hive_id:   hiveId,
+          user_id:   userId,
+          full_name: socket.data.fullName,
+          typing:    true,
+        });
+      } catch (err) {
+        Sentry.captureException(err, { tags: { socketEvent: 'typing_start' } });
+      }
     });
 
     socket.on('typing_stop', ({ hiveId } = {}) => {
-      const room = `hive:${hiveId}`;
-      if (!socket.rooms.has(room)) return;
-      socket.to(room).emit('typing_update', {
-        hive_id:   hiveId,
-        user_id:   userId,
-        full_name: socket.data.fullName,
-        typing:    false,
-      });
+      try {
+        const room = `hive:${hiveId}`;
+        if (!socket.rooms.has(room)) return;
+        socket.to(room).emit('typing_update', {
+          hive_id:   hiveId,
+          user_id:   userId,
+          full_name: socket.data.fullName,
+          typing:    false,
+        });
+      } catch (err) {
+        Sentry.captureException(err, { tags: { socketEvent: 'typing_stop' } });
+      }
     });
 
     // ── disconnect ───────────────────────────────────────────────────────────
     socket.on('disconnect', () => {
-      for (const [hiveId] of presence.entries()) {
-        _removePresence(hiveId, userId, socket.id);
+      try {
+        for (const [hiveId] of presence.entries()) {
+          _removePresence(hiveId, userId, socket.id);
+        }
+      } catch (err) {
+        Sentry.captureException(err, { tags: { socketEvent: 'disconnect' } });
       }
     });
   });

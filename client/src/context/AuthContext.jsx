@@ -1,12 +1,25 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import * as Sentry from '@sentry/react';
 import { api } from '../lib/api';
 
 const AuthContext = createContext(null);
 
+// id only — never email or name, matching the server's own sendDefaultPii:false stance.
+function syncSentryUser(user) {
+  Sentry.setUser(user ? { id: user.userId } : null);
+}
+
 export function AuthProvider({ children }) {
-  const [user,    setUser]    = useState(null);
-  const [config,  setConfig]  = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user,    setUserState] = useState(null);
+  const [config,  setConfig]    = useState(null);
+  const [loading, setLoading]   = useState(true);
+
+  // Every state update also syncs Sentry's user context, so a crash report
+  // is tagged with whoever was signed in when it happened.
+  const setUser = useCallback((u) => {
+    setUserState(u);
+    syncSentryUser(u);
+  }, []);
 
   // ── Session restore + public config on app mount ──────────────────────────────
   useEffect(() => {
@@ -14,7 +27,7 @@ export function AuthProvider({ children }) {
       api.get('/api/auth/me').then(data => setUser(data.user)).catch(() => setUser(null)),
       api.get('/api/config').then(data => setConfig(data)).catch(() => setConfig({})),
     ]).finally(() => setLoading(false));
-  }, []);
+  }, [setUser]);
 
   // ── register ─────────────────────────────────────────────────────────────────
   // Throws on validation / duplicate — let callers handle the message.
@@ -25,7 +38,7 @@ export function AuthProvider({ children }) {
     const me = await api.get('/api/auth/me');
     setUser(me.user);
     return me.user;
-  }, []);
+  }, [setUser]);
 
   // ── login ─────────────────────────────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
@@ -34,13 +47,13 @@ export function AuthProvider({ children }) {
     const me = await api.get('/api/auth/me');
     setUser(me.user);
     return me.user;
-  }, []);
+  }, [setUser]);
 
   // ── logout ────────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try { await api.post('/api/auth/logout'); } catch { /* ignore */ }
     setUser(null);
-  }, []);
+  }, [setUser]);
 
   // ── refreshUser ───────────────────────────────────────────────────────────────
   const refreshUser = useCallback(async () => {
@@ -52,7 +65,7 @@ export function AuthProvider({ children }) {
       setUser(null);
       return null;
     }
-  }, []);
+  }, [setUser]);
 
   return (
     <AuthContext.Provider value={{ user, config, loading, register, login, logout, refreshUser }}>

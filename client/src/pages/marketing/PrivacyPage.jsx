@@ -51,6 +51,7 @@ export default function PrivacyPage() {
                 <li><strong>Cloudinary</strong> — stores profile photos and other files you upload.</li>
                 <li><strong>Resend</strong> — sends transactional emails (email verification, password reset) and sees your email address.</li>
                 <li><strong>Google</strong> — provides optional OAuth sign-in and confirms your identity if you choose that method.</li>
+                <li><strong>Sentry</strong> — error monitoring; receives technical error details and an anonymous account ID.</li>
               </ul>
             </div>
 

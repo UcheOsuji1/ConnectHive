@@ -1,4 +1,5 @@
 import './env.js'; // loads server/.env with explicit path — must be first
+import * as Sentry from '@sentry/node';
 import http from 'http';
 import express from 'express';
 import cors from 'cors';
@@ -32,6 +33,7 @@ import { startTaskDueJob } from './jobs/taskDueJob.js';
 import { startPurgeJob } from './jobs/purgeJob.js';
 import { startEmailOutboxJob } from './jobs/emailOutboxJob.js';
 import { startDigestJob } from './jobs/digestJob.js';
+import { reportProblem } from './lib/reportProblem.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -151,6 +153,12 @@ app.use((_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
+// Sentry's handler reports only 5xx (defaultShouldHandleError checks
+// err.status/statusCode >= 500) — a 401/403/404/429 never reaches Sentry,
+// since those are expected user outcomes, not crashes. It must sit before
+// the existing handler below and call next(err), which it does on its own.
+Sentry.setupExpressErrorHandler(app);
+
 // ── Global error handler ──────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
@@ -171,7 +179,7 @@ server.listen(PORT, async () => {
     await checkHiveChannels();
   } catch (err) {
     // A guard that throws must not take the process down.
-    console.error('  [startup] startup checks could not run:', err.message);
+    reportProblem('  [startup] startup checks could not run:', err.message);
   }
   startRsvpReminderJob();
   startPlanSuggestionJob();

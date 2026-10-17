@@ -6,6 +6,7 @@
 import { query } from '../db/index.js';
 import { getHivesWithToolOn } from '../lib/hiveTools.js';
 import { createNotification } from '../controllers/notificationsController.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 60 * 60 * 1000; // hourly — fine-grained enough to catch a digest/deadline window without spamming
 
@@ -77,8 +78,8 @@ let started = false;
 export function startOpportunityDigestJob() {
   if (started) return;
   started = true;
-  runOpportunityDigestJob().catch(e => console.error('[opportunityDigestJob] initial run failed:', e));
+  runOpportunityDigestJob().catch(e => reportJobError('opportunityDigestJob', 'initial run', e));
   setInterval(() => {
-    runOpportunityDigestJob().catch(e => console.error('[opportunityDigestJob] run failed:', e));
+    runOpportunityDigestJob().catch(e => reportJobError('opportunityDigestJob', 'run', e));
   }, INTERVAL_MS);
 }

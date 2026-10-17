@@ -4,6 +4,7 @@ import { Resend } from 'resend';
 // sendEmail back from here) resolves fine once the app has finished booting.
 import { unsubscribeUrl, sendIfAllowed, unsubscribeHeaders } from './emailPrefs.js';
 import { renderNewsletterBody } from './newsletterFormat.js';
+import { reportProblem } from './reportProblem.js';
 
 const FROM       = process.env.EMAIL_FROM ?? 'TrueHive <hello@send.truehive.app>';
 const CLIENT_URL = process.env.CLIENT_URL;
@@ -337,7 +338,7 @@ export async function sendReportAlert(toAddresses, { reason, targetType, hiveNam
 
   await Promise.all(toAddresses.map(to =>
     _getResend()?.emails.send({ from: FROM, to, subject: `New report: ${reasonLabel}`, html, text })
-      .catch(e => console.error('[email/sendReportAlert]', e)),
+      .catch(e => reportProblem('[email/sendReportAlert]', e)),
   ));
 }
 

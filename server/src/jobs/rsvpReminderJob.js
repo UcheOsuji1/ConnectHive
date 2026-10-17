@@ -1,5 +1,6 @@
 import { query } from '../db/index.js';
 import { createNotification } from '../controllers/notificationsController.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -51,8 +52,8 @@ let started = false;
 export function startRsvpReminderJob() {
   if (started) return; // guard against being called twice in one process
   started = true;
-  runRsvpReminderJob().catch(e => console.error('[rsvpReminderJob] initial run failed:', e));
+  runRsvpReminderJob().catch(e => reportJobError('rsvpReminderJob', 'initial run', e));
   setInterval(() => {
-    runRsvpReminderJob().catch(e => console.error('[rsvpReminderJob] run failed:', e));
+    runRsvpReminderJob().catch(e => reportJobError('rsvpReminderJob', 'run', e));
   }, INTERVAL_MS);
 }

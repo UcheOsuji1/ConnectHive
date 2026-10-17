@@ -1,4 +1,5 @@
 import jwt   from 'jsonwebtoken';
+import * as Sentry from '@sentry/node';
 import { query } from '../db/index.js';
 import { touchLastActive } from '../lib/activity.js';
 
@@ -31,6 +32,7 @@ export async function requireAuth(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = payload.userId;
+    Sentry.setUser({ id: payload.userId }); // id only — never email or name
 
     // Verify the token's version matches the DB (detects post-logout sessions).
     if (payload.tokenVersion !== undefined) {

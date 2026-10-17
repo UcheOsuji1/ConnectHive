@@ -14,6 +14,7 @@
  * keep working.
  */
 import { query } from './index.js';
+import { reportProblem } from '../lib/reportProblem.js';
 
 // Columns schema.sql adds via ALTER. These are the ones that drift, because a
 // missing CREATE TABLE fails loudly on its own.
@@ -174,7 +175,9 @@ export async function checkHiveChannels() {
   if (rows.length) {
     const line = '!'.repeat(72);
     console.error(`\n${line}`);
-    console.error(`  DATA FAULT — ${rows.length} Hive(s) have no default channel`);
+    reportProblem(`DATA FAULT — ${rows.length} Hive(s) have no default channel`, {
+      hiveIds: rows.map(r => r.hive_id),
+    });
     console.error(line);
     for (const r of rows) console.error(`    ${r.hive_id}  ${r.hive_name}`);
     console.error('\n  createHive creates #general in-transaction, so these predate that');
@@ -218,7 +221,7 @@ export async function checkSchema({ schema = 'public' } = {}) {
   if (missing.length) {
     const line = '='.repeat(72);
     console.error(`\n${line}`);
-    console.error('  SCHEMA OUT OF DATE — THE DATABASE IS BEHIND THE DEPLOYED CODE');
+    reportProblem('SCHEMA OUT OF DATE — THE DATABASE IS BEHIND THE DEPLOYED CODE', { missing });
     console.error(line);
     console.error(`  ${missing.length} column(s) the code writes do not exist:\n`);
     for (const m of missing) {

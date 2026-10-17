@@ -1,5 +1,6 @@
 import { query } from '../db/index.js';
 import { isBlockedEitherWay } from './blocks.js';
+import { reportProblem } from './reportProblem.js';
 
 // ── Pair-chat privacy gate (Prompt 64 Part 1) ────────────────────────────────
 // A pair channel ('coffee_chats'/'mentorship') is a normal hive_channels row
@@ -102,7 +103,9 @@ export async function getDefaultChannelId(hiveId) {
   );
   const line = '!'.repeat(72);
   console.error(`\n${line}`);
-  console.error('  DATA FAULT — Hive had no default channel; one was created on the fly');
+  reportProblem('DATA FAULT — Hive had no default channel; one was created on the fly', {
+    hiveId, hiveName: h?.hive_name ?? '(hive row not found)', when: new Date().toISOString(),
+  });
   console.error(line);
   console.error(`  hive_id    ${hiveId}`);
   console.error(`  hive_name  ${h?.hive_name ?? '(hive row not found)'}`);

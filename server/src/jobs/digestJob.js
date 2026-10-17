@@ -3,6 +3,8 @@
 // ever including message text.
 import { query } from '../db/index.js';
 import { sendActivityDigestEmail } from '../lib/email.js';
+import { reportProblem } from '../lib/reportProblem.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 60 * 60 * 1000; // hourly
 const INACTIVE_SQL = `last_active_at < NOW() - INTERVAL '6 hours'`;
@@ -59,7 +61,15 @@ export async function runDigestJob() {
       : null;
     const lines = [...roomLines, ...postLines, ...(pairLine ? [pairLine] : [])];
 
-    const sentOk = await sendActivityDigestEmail(recipient.user_id, { messageCount, postCount, lines });
+    // Caught per-recipient, not just by the outer job-tick handler — a
+    // single Resend failure used to throw out of this loop and silently
+    // skip every remaining recipient's digest for the hour.
+    let sentOk = false;
+    try {
+      sentOk = await sendActivityDigestEmail(recipient.user_id, { messageCount, postCount, lines });
+    } catch (err) {
+      reportProblem(`[digestJob] send failed for recipient=${recipient.user_id}:`, err);
+    }
     if (sentOk) {
       sent++;
       await query(`UPDATE users SET last_digest_sent_at = NOW() WHERE user_id = $1`, [recipient.user_id]);
@@ -75,8 +85,8 @@ let started = false;
 export function startDigestJob() {
   if (started) return;
   started = true;
-  runDigestJob().catch(e => console.error('[digestJob] initial run failed:', e));
+  runDigestJob().catch(e => reportJobError('digestJob', 'initial run', e));
   setInterval(() => {
-    runDigestJob().catch(e => console.error('[digestJob] run failed:', e));
+    runDigestJob().catch(e => reportJobError('digestJob', 'run', e));
   }, INTERVAL_MS);
 }

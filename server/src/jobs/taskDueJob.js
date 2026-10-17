@@ -3,6 +3,7 @@
 // function the checks call directly, and an interval wrapper.
 import { query } from '../db/index.js';
 import { createNotification } from '../controllers/notificationsController.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 60 * 60 * 1000; // hourly
 
@@ -37,8 +38,8 @@ let started = false;
 export function startTaskDueJob() {
   if (started) return;
   started = true;
-  runTaskDueJob().catch(e => console.error('[taskDueJob] initial run failed:', e));
+  runTaskDueJob().catch(e => reportJobError('taskDueJob', 'initial run', e));
   setInterval(() => {
-    runTaskDueJob().catch(e => console.error('[taskDueJob] run failed:', e));
+    runTaskDueJob().catch(e => reportJobError('taskDueJob', 'run', e));
   }, INTERVAL_MS);
 }

@@ -4,6 +4,8 @@
 import { query } from '../db/index.js';
 import { sendMemberJoinedEmail, sendJoinRequestEmail } from '../lib/email.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
+import { reportProblem } from '../lib/reportProblem.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 const COOLDOWN_SQL = `sent_at > NOW() - INTERVAL '60 minutes'`;
@@ -119,7 +121,7 @@ export async function runEmailOutboxJob() {
       groupsSent++;
     } catch (err) {
       // Loud, per CLAUDE.md — a send failure here must not look like success.
-      console.error(`[emailOutboxJob] send failed for recipient=${recipientId} hive=${hiveId} kind=${kind}:`, err);
+      reportProblem(`[emailOutboxJob] send failed for recipient=${recipientId} hive=${hiveId} kind=${kind}:`, err);
     }
 
     // Marked sent_at regardless of outcome above — a hard send failure
@@ -135,8 +137,8 @@ let started = false;
 export function startEmailOutboxJob() {
   if (started) return;
   started = true;
-  runEmailOutboxJob().catch(e => console.error('[emailOutboxJob] initial run failed:', e));
+  runEmailOutboxJob().catch(e => reportJobError('emailOutboxJob', 'initial run', e));
   setInterval(() => {
-    runEmailOutboxJob().catch(e => console.error('[emailOutboxJob] run failed:', e));
+    runEmailOutboxJob().catch(e => reportJobError('emailOutboxJob', 'run', e));
   }, INTERVAL_MS);
 }

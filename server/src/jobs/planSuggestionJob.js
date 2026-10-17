@@ -1,4 +1,5 @@
 import { resolveAllOverdueSuggestions } from '../controllers/planSuggestionsController.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 5 * 60 * 1000; // 5 minutes — a vote deadline is user-facing, so a lazy read already
                                     // covers anyone looking at the page; this just catches the rest.
@@ -13,8 +14,8 @@ let started = false;
 export function startPlanSuggestionJob() {
   if (started) return; // guard against being called twice in one process
   started = true;
-  runPlanSuggestionJob().catch(e => console.error('[planSuggestionJob] initial run failed:', e));
+  runPlanSuggestionJob().catch(e => reportJobError('planSuggestionJob', 'initial run', e));
   setInterval(() => {
-    runPlanSuggestionJob().catch(e => console.error('[planSuggestionJob] run failed:', e));
+    runPlanSuggestionJob().catch(e => reportJobError('planSuggestionJob', 'run', e));
   }, INTERVAL_MS);
 }

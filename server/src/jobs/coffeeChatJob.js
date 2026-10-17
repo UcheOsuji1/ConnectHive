@@ -9,6 +9,7 @@ import { getSystemUserId } from '../lib/systemUser.js';
 import { createNotification } from '../controllers/notificationsController.js';
 import { flatten } from '../lib/compatibility.js';
 import { dyadKey, recentDyads, prioritizedMatch, bestTrioHost } from '../lib/coffeeChatMatching.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h — same cadence as the other background jobs
 const RECENT_ROUNDS_WINDOW = 3;
@@ -229,8 +230,8 @@ let started = false;
 export function startCoffeeChatJob() {
   if (started) return;
   started = true;
-  runCoffeeChatJob().catch(e => console.error('[coffeeChatJob] initial run failed:', e));
+  runCoffeeChatJob().catch(e => reportJobError('coffeeChatJob', 'initial run', e));
   setInterval(() => {
-    runCoffeeChatJob().catch(e => console.error('[coffeeChatJob] run failed:', e));
+    runCoffeeChatJob().catch(e => reportJobError('coffeeChatJob', 'run', e));
   }, INTERVAL_MS);
 }

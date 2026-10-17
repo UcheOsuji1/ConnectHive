@@ -23,6 +23,8 @@
  */
 import { query, getClient } from '../db/index.js';
 import { destroyByUrl } from '../lib/cloudinaryDestroy.js';
+import { reportProblem } from '../lib/reportProblem.js';
+import { reportJobError } from '../lib/jobTick.js';
 
 const INTERVAL_MS = 60 * 60 * 1000; // hourly
 
@@ -142,7 +144,7 @@ async function _destroyUserPhoto(userId, photoUrl) {
   } else if (result.ok) {
     console.log(`[purgeJob] user ${userId} photo destroyed (public_id=${result.publicId}, result=${result.result})`);
   } else {
-    console.error(`[purgeJob] user ${userId} photo destroy FAILED (public_id=${result.publicId}): ${result.error}`);
+    reportProblem(`[purgeJob] user ${userId} photo destroy FAILED (public_id=${result.publicId}): ${result.error}`);
   }
 }
 
@@ -158,7 +160,7 @@ async function _destroyHiveMedia(hiveId, mediaUrls) {
     else if (result.ok) ok++;
     else {
       failed++;
-      console.error(`[purgeJob] Hive ${hiveId} media destroy FAILED (public_id=${result.publicId}): ${result.error}`);
+      reportProblem(`[purgeJob] Hive ${hiveId} media destroy FAILED (public_id=${result.publicId}): ${result.error}`);
     }
   }
   console.log(
@@ -187,7 +189,7 @@ export async function runPurgeJob() {
     } catch (err) {
       await client.query('ROLLBACK');
       usersFailed++;
-      console.error(`[purgeJob] FAILED to purge user ${user.user_id} — will retry next hour:`, err);
+      reportProblem(`[purgeJob] FAILED to purge user ${user.user_id} — will retry next hour:`, err);
     } finally {
       client.release();
     }
@@ -211,7 +213,7 @@ export async function runPurgeJob() {
     } catch (err) {
       await client.query('ROLLBACK');
       hivesFailed++;
-      console.error(`[purgeJob] FAILED to purge Hive ${hive.hive_id} — will retry next hour:`, err);
+      reportProblem(`[purgeJob] FAILED to purge Hive ${hive.hive_id} — will retry next hour:`, err);
     } finally {
       client.release();
     }
@@ -232,8 +234,8 @@ let started = false;
 export function startPurgeJob() {
   if (started) return;
   started = true;
-  runPurgeJob().catch(e => console.error('[purgeJob] initial run failed:', e));
+  runPurgeJob().catch(e => reportJobError('purgeJob', 'initial run', e));
   setInterval(() => {
-    runPurgeJob().catch(e => console.error('[purgeJob] run failed:', e));
+    runPurgeJob().catch(e => reportJobError('purgeJob', 'run', e));
   }, INTERVAL_MS);
 }
