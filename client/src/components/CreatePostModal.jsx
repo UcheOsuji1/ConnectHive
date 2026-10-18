@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
+import posthog, { isPostHogEnabled, posthogLog } from '../lib/posthog';
 import '../styles/post.css';
 
 export default function CreatePostModal({ hives: allHives, defaultHiveId, onClose, onCreated }) {
@@ -34,6 +35,16 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
         eventAt: postType === 'event' && eventAt ? eventAt : null,
         eventLocation: postType === 'event' && eventLocation.trim() ? eventLocation.trim() : null,
       });
+      if (isPostHogEnabled) {
+        posthog.capture('post_created', {
+          post_type: postType,
+          visibility,
+        });
+        posthogLog.info('post publishing completed', {
+          post_type: postType,
+          visibility,
+        });
+      }
       onCreated?.(data.post);
       onClose();
     } catch (err) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import posthog, { isPostHogEnabled, posthogLog } from '../lib/posthog';
 import '../styles/signin.css';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
@@ -38,6 +39,16 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const user = await login(email, password);
+      if (isPostHogEnabled) {
+        posthog.capture('user_logged_in', {
+          has_profile: Boolean(user.hasProfile),
+          has_active_hive: Boolean(user.hasActiveHive),
+        });
+        posthogLog.info('email login completed', {
+          has_profile: Boolean(user.hasProfile),
+          has_active_hive: Boolean(user.hasActiveHive),
+        });
+      }
       const next = searchParams.get('next');
       if (next) {
         navigate(next, { replace: true });

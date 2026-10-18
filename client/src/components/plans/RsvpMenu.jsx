@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { RSVP_LABELS } from '../../lib/plans.js';
+import posthog, { isPostHogEnabled } from '../../lib/posthog';
 
 const ORDER = ['going', 'maybe', 'not_going'];
 
@@ -61,7 +62,12 @@ export default function RsvpMenu({ value, onChange, disabled, openUp = false, la
     wantFocus.current = true;
     setBusy(true);
     try {
-      await onChange(status === 'clear' ? null : status);
+      const result = await onChange(status === 'clear' ? null : status);
+      if (result && isPostHogEnabled) {
+        posthog.capture('plan_rsvp_updated', {
+          rsvp_status: status === 'clear' ? 'cleared' : status,
+        });
+      }
     } finally {
       setBusy(false);
     }

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import * as Sentry from '@sentry/react';
 import { api } from '../lib/api';
+import posthog, { isPostHogEnabled } from '../lib/posthog';
 
 const AuthContext = createContext(null);
 
@@ -9,16 +10,39 @@ function syncSentryUser(user) {
   Sentry.setUser(user ? { id: user.userId } : null);
 }
 
+function syncPostHogUser(user) {
+  if (!isPostHogEnabled) return;
+
+  const identifiedUserId = posthog.get_property('$user_id');
+  if (!user?.userId) {
+    if (identifiedUserId) posthog.reset();
+    return;
+  }
+
+  const distinctId = String(user.userId);
+
+  // Do not merge a prior account's activity if a different user signs in on
+  // this device. Anonymous activity remains intact for normal login/signup.
+  if (identifiedUserId && identifiedUserId !== distinctId) posthog.reset();
+
+  // Identity persists in the SDK, so avoid re-identifying on ordinary user
+  // state refreshes while still restoring identity after a page reload.
+  if (posthog.get_property('$user_id') !== distinctId) {
+    posthog.identify(distinctId, user.email ? { email: user.email } : undefined);
+  }
+}
+
 export function AuthProvider({ children }) {
   const [user,    setUserState] = useState(null);
   const [config,  setConfig]    = useState(null);
   const [loading, setLoading]   = useState(true);
 
-  // Every state update also syncs Sentry's user context, so a crash report
-  // is tagged with whoever was signed in when it happened.
+  // Every state update also syncs error reporting and product analytics to
+  // the authenticated user's stable server-issued id.
   const setUser = useCallback((u) => {
     setUserState(u);
     syncSentryUser(u);
+    syncPostHogUser(u);
   }, []);
 
   // ── Session restore + public config on app mount ──────────────────────────────
@@ -52,6 +76,7 @@ export function AuthProvider({ children }) {
   // ── logout ────────────────────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try { await api.post('/api/auth/logout'); } catch { /* ignore */ }
+    if (isPostHogEnabled) posthog.reset();
     setUser(null);
   }, [setUser]);
 

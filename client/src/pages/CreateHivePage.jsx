@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext.jsx';
+import posthog, { isPostHogEnabled, posthogLog } from '../lib/posthog';
 import '../styles/create-hive.css';
 import '../styles/category-deep-dive.css'; // reuses .cdd-location-* autocomplete styles
 import { SKILL_CATS } from '../data/skillTaxonomy.js';
@@ -361,6 +362,24 @@ export default function CreateHivePage() {
     try {
       const result = await createHive(buildPayload());
       const hiveId = result?.id;
+      if (isPostHogEnabled) {
+        posthog.capture('hive_created', {
+          category: selectedCat,
+          join_policy: joinMode,
+          meeting_type: meetType || 'not_set',
+          discoverable: showInSearch,
+          size_option: sizeKey,
+          activation_threshold: Number(activateAt),
+        });
+        posthogLog.info('hive creation completed', {
+          category: selectedCat,
+          join_policy: joinMode,
+          meeting_type: meetType || 'not_set',
+          discoverable: showInSearch,
+          size_option: sizeKey,
+          activation_threshold: Number(activateAt),
+        });
+      }
       navigate(hiveId ? `/hive/${hiveId}` : '/my-hive');
     } catch (err) {
       console.error('[CreateHive] launch failed:', err);

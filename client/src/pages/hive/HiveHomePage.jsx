@@ -122,9 +122,11 @@ export default function HiveHomePage() {
         ...d,
         nextPlan: { ...d.nextPlan, viewer_rsvp: r.status, going_count: r.goingCount },
       });
+      return r;
     } catch (e) {
       setData(prev);
       flash(e?.data?.error ?? 'Could not update your RSVP.');
+      return null;
     }
   }
 

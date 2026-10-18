@@ -210,11 +210,13 @@ export default function HivePlansPage() {
       setPast(merge);
       // Counts moved, so the rail has to move with them.
       load();
+      return r;
     } catch (e) {
       setUpcoming(prev);
       setPast(prevPast);
       setError(e?.data?.error ?? 'Could not update your RSVP.');
       setTimeout(() => setError(null), 5000);
+      return null;
     }
   }
 

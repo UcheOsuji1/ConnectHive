@@ -45,10 +45,12 @@ export default function PlanDetailPage() {
       const r = await api.post(`/api/events/${postId}/rsvp`, { status: status ?? 'clear' });
       setPlan(p => p && { ...p, viewer_rsvp: r.status, going_count: r.goingCount, maybe_count: r.maybeCount, not_going_count: r.notGoingCount });
       load();
+      return r;
     } catch (e) {
       setPlan(prev);
       setActionError(e?.data?.error ?? 'Could not update your RSVP.');
       setTimeout(() => setActionError(null), 5000);
+      return null;
     }
   }
 

@@ -1599,9 +1599,11 @@ export default function HiveChatPage() {
       setMessages(prev => prev.map(m => m.plan?.post_id === plan.post_id
         ? { ...m, plan: { ...m.plan, viewer_rsvp: r.status, going_count: r.goingCount } }
         : m));
+      return r;
     } catch (e) {
       // eslint-disable-next-line no-alert
       alert(e?.data?.error ?? 'Could not update your RSVP.');
+      return null;
     }
   }
 

@@ -6,6 +6,7 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import ScrollToTop from './components/ScrollToTop';
 import TrueHiveMark from './components/TrueHiveMark.jsx';
+import './lib/posthog';
 import './styles/globals.css';
 
 // Network blips, not real bugs — don't page anyone over these. Query strings

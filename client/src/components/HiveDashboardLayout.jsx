@@ -14,6 +14,7 @@ import { hiddenPlaceholderText } from './HiddenPlaceholder.jsx';
 import '../styles/safety.css';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
+import posthog, { isPostHogEnabled } from '../lib/posthog';
 import { joinHive, leaveHive } from '../lib/socket.js';
 import '../styles/hive-dashboard-layout.css';
 import '../styles/hive-workspace.css';
@@ -351,6 +352,11 @@ function JoinBtn({ hiveId, initialPending }) {
     setState('loading'); setErr(null);
     try {
       const r = await api.post(`/api/hives/${hiveId}/request`, {});
+      if (isPostHogEnabled) {
+        posthog.capture('hive_join_requested', {
+          join_status: r.joined ? 'joined' : 'pending_approval',
+        });
+      }
       setState(r.joined ? 'joined' : 'pending');
     } catch (e) {
       setErr(e.data?.error ?? 'Something went wrong.');

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import posthog, { isPostHogEnabled } from '../lib/posthog';
 import '../styles/signup.css';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
@@ -69,6 +70,7 @@ export default function SignUpPage() {
     setSubmitting(true);
     try {
       await register(email, password, agreed, dob, newsOptIn);
+      if (isPostHogEnabled) posthog.capture('account_registered');
       navigate(nextPath);
     } catch (err) {
       setError(err.message || 'Something went wrong, please try again.');
