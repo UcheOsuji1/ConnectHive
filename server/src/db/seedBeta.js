@@ -119,6 +119,12 @@ const HIVES = [
     description: 'QA fixture — open in-person Hive in Silver Lake for the pre-beta walkthrough.',
     join_policy: 'open', location_type: 'in-person', location: 'Silver Lake, Los Angeles, CA',
     max_members: 40, ownerKey: 'owner1', adminKeys: [], memberKeys: ['member1', 'member2'],
+    // join_experience: 'simple' + join_policy: 'open' together are what
+    // actually trigger the "You're in!" notification + E1/E2 queueing on
+    // join (hivesController.js's requestToJoin) — confirmed by reading it.
+    // Any other join_experience on an open Hive still joins instantly, just
+    // silently (no notification, no email).
+    joinExperience: 'simple',
   },
   {
     key: 'downtown', hive_name: 'qa-Downtown LA Builders', category: 'Professional Networking',
@@ -196,6 +202,12 @@ async function seedHives(idByKey) {
         `INSERT INTO hive_onboarding_settings (hive_id, join_experience, welcome_message, show_welcome_banner)
          VALUES ($1,'guided','Welcome to Downtown LA Builders — glad you''re here!',TRUE)`,
         [row.hive_id],
+      );
+    }
+    if (h.joinExperience) {
+      await q(
+        `INSERT INTO hive_onboarding_settings (hive_id, join_experience) VALUES ($1,$2)`,
+        [row.hive_id, h.joinExperience],
       );
     }
     if (h.allTools) {
