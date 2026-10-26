@@ -1,4 +1,18 @@
 import { expect } from '@playwright/test';
+import { execFileSync } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const SERVER_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../server');
+
+// Shells out to a server/src/db/qa*.js helper (same process that owns the
+// Postgres driver — the client has none). Every helper refuses anything
+// outside the qa.truehive.test domain, so this can't touch real accounts.
+export function runQaHelper(script, args) {
+  const out = execFileSync('node', [`src/db/${script}`, ...args], { cwd: SERVER_DIR, encoding: 'utf8' });
+  const line = out.trim().split('\n').pop();
+  return JSON.parse(line);
+}
 
 export const QA_PASSWORD = 'QaBeta2026!';
 export const QA_USERS = {
@@ -116,14 +130,30 @@ export async function assertTabFocusRing(page, selectors) {
   }
 }
 
-// Drives the real login form — this is itself one of the flows under test,
-// so every other flow reuses it rather than bypassing login with a cookie.
+// Drives the real login form — this is itself one of the flows under test
+// (02-signup-signin.spec.js), so it's the only spec file that should call
+// this directly. Every other flow should use loginViaSession() below: the
+// login endpoint is rate-limited to 10 attempts/15min per IP in production
+// code that must stay as-is, and a full 15-flow x 3-project run driving the
+// real form every time it just needs "logged in as X" trips that limit fast.
 export async function loginAs(page, email, password = QA_PASSWORD) {
   await page.goto('/login');
   await page.locator('#signin-email').fill(email);
   await page.locator('#signin-pw').fill(password);
   await page.getByRole('button', { name: /Sign In to TrueHive|Signing in/ }).click();
   await page.waitForURL(url => !url.pathname.startsWith('/login'), { timeout: 15_000 });
+}
+
+// Mints a real session JWT the same way a real login does (server/src/db/
+// qaIssueSessionToken.js mirrors authController.js's signToken exactly) and
+// sets it directly as the auth cookie — no form, no rate limit. Use this for
+// every flow except the one actually testing login/signup/logout mechanics.
+export async function loginViaSession(page, email) {
+  const { token } = runQaHelper('qaIssueSessionToken.js', [email]);
+  await page.context().addCookies([{
+    name: 'token', value: token, domain: 'localhost', path: '/',
+    httpOnly: true, sameSite: 'Lax', secure: false,
+  }]);
 }
 
 export async function logout(page) {

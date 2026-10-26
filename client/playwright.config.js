@@ -5,6 +5,12 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/prebeta',
   fullyParallel: false, // flows share qa- fixture state; keep deterministic
+  // All three projects mutate the SAME qa- fixture rows (login state, email
+  // verification, password resets). fullyParallel:false only serializes
+  // tests within one file — different projects/files still run as separate
+  // concurrent workers by default, which races on that shared state. One
+  // worker total keeps every project's run of every flow deterministic.
+  workers: 1,
   retries: 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
   timeout: 60_000,
