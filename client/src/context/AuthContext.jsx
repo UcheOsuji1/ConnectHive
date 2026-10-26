@@ -27,8 +27,10 @@ function syncPostHogUser(user) {
 
   // Identity persists in the SDK, so avoid re-identifying on ordinary user
   // state refreshes while still restoring identity after a page reload.
+  // The id alone is enough to link events to an account — same as Sentry,
+  // no email ever goes to PostHog.
   if (posthog.get_property('$user_id') !== distinctId) {
-    posthog.identify(distinctId, user.email ? { email: user.email } : undefined);
+    posthog.identify(distinctId);
   }
 }
 
