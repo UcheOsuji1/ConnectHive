@@ -245,7 +245,7 @@ export default function LandingPage() {
               src={img.src}
               alt=""
               style={{ objectPosition: img.focal ?? '50% 50%' }}
-              fetchPriority={i === 0 ? 'high' : 'low'}
+              fetchpriority={i === 0 ? 'high' : 'low'}
               loading={i === 0 ? undefined : 'lazy'}
             />
           ))}
