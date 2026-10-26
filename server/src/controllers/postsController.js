@@ -252,15 +252,32 @@ export const getFeed = async (req, res) => {
 // ── getHivePosts ──────────────────────────────────────────────────────────────
 export const getHivePosts = async (req, res) => {
   try {
-    if (!await _assertMemberForHive(req.params.id, req.userId, res)) return;
+    const hiveId = req.params.id;
+    // Same read gate as a single post (_assertCanRead): member sees
+    // everything, a follower who isn't a member sees public posts only.
+    // This was previously _assertMemberForHive (member-only, no follower
+    // exception), which meant a follower got zero posts here even though
+    // getPost already honored public visibility for them on the single-post
+    // route — this list route is what the Hive's Posts tab actually uses.
+    const { rows: [access] } = await query(
+      `SELECT
+         EXISTS(SELECT 1 FROM hive_members   WHERE hive_id=$1 AND user_id=$2 AND membership_status='active') AS is_member,
+         EXISTS(SELECT 1 FROM hive_followers WHERE hive_id=$1 AND user_id=$2) AS is_following`,
+      [hiveId, req.userId],
+    );
+    if (!access.is_member && !access.is_following) {
+      return res.status(403).json({ error: 'You must be a member of this Hive.' });
+    }
+    const visibilityClause = access.is_member ? '' : `AND p.visibility = 'public'`;
+
     const limit  = Math.min(Number(req.query.limit)  || 20, 50);
     const offset = Number(req.query.offset) || 0;
     const { rows: posts } = await query(
       `${FEED_SELECT}
-       WHERE p.hive_id = $2
+       WHERE p.hive_id = $2 ${visibilityClause}
        ORDER BY p.created_at DESC
        LIMIT $3 OFFSET $4`,
-      [req.userId, req.params.id, limit, offset],
+      [req.userId, hiveId, limit, offset],
     );
     res.json({ posts: await attachTopComments(posts) });
   } catch (err) {
