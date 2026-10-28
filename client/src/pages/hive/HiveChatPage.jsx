@@ -655,7 +655,7 @@ function MessageRow({
             {!isDeleted && (
               <div className="hc-msg-actions">
                 <button className="hc-action-btn" onClick={() => onReply(msg)}>Reply</button>
-                {isOwner && (
+                {isOwner && !isTemp && (
                   <button className="hc-action-btn" onClick={() => onPin(msg)}>
                     {msg.pinned_at ? 'Unpin' : 'Pin'}
                   </button>
