@@ -1510,11 +1510,34 @@ export default function HiveChatPage() {
     // retries on its own — this just surfaces that state and, once back,
     // auto-retries anything that was mid-flight when the connection dropped
     // (a message caught 'sending' never got a response either way).
+    //
+    // That alone only covers the viewer's OWN stuck sends. A message
+    // someone ELSE sent while this socket was disconnected was broadcast
+    // once, to whoever was connected at that instant — socket.io does not
+    // buffer or replay it, so a purely passive viewer (nothing of their own
+    // stuck) reconnected with no way to ever learn it happened, silently,
+    // until they manually refreshed. Re-fetch the active channel's latest
+    // page and merge in whatever this socket didn't get to see live.
     const onDisconnect = () => setReconnecting(true);
     const onConnect = () => {
       setReconnecting(false);
       const stuck = messagesRef.current.filter(m => m._status === 'sending' || m._status === 'failed');
       for (const m of stuck) handleRetry(m.message_id);
+
+      const channelId = activeChannelIdRef.current;
+      if (!channelId) return;
+      api.get(`/api/hives/${hiveId}/messages?channel_id=${channelId}&limit=50`)
+        .then(data => {
+          const fresh = data.messages ?? [];
+          if (!fresh.length) return;
+          setMessages(prev => {
+            const known = new Set(prev.map(m => m.message_id));
+            const missed = fresh.filter(m => !known.has(m.message_id));
+            if (!missed.length) return prev;
+            return [...prev, ...missed].sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at));
+          });
+        })
+        .catch(() => {});
     };
     socket.on('disconnect', onDisconnect);
     socket.on('connect',    onConnect);
