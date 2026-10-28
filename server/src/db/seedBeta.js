@@ -354,6 +354,19 @@ async function cleanup() {
   await q(`DELETE FROM hive_tools WHERE hive_id IN (SELECT hive_id FROM hives WHERE hive_name LIKE 'qa-%')`);
   await q(`DELETE FROM hive_members WHERE hive_id IN (SELECT hive_id FROM hives WHERE hive_name LIKE 'qa-%')`);
   await q(`DELETE FROM hives WHERE hive_name LIKE 'qa-%'`);
+  // reports.hive_id is nullable (a person/profile report has no Hive
+  // context) and CASCADEs on the Hive, but reports.resolved_by is a
+  // plain NO ACTION fk straight to users — a hiveless report a qa- admin
+  // resolved (Flow 11) survives the hives delete above and then blocks
+  // deleting that admin below. Delete every report touching a qa- user in
+  // any of its three user columns before deleting users, not just the
+  // ones a Hive's own cascade happens to reach.
+  await q(
+    `DELETE FROM reports WHERE reporter_id IN (SELECT user_id FROM users WHERE email LIKE $1)
+        OR target_user_id IN (SELECT user_id FROM users WHERE email LIKE $1)
+        OR resolved_by    IN (SELECT user_id FROM users WHERE email LIKE $1)`,
+    [`%${QA_DOMAIN}`],
+  );
   await q(`DELETE FROM profiles WHERE user_id IN (SELECT user_id FROM users WHERE email LIKE $1)`, [`%${QA_DOMAIN}`]);
   await q(`DELETE FROM users WHERE email LIKE $1`, [`%${QA_DOMAIN}`]);
   console.log('  ✓ cleanup complete');
