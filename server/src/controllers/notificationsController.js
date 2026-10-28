@@ -1,4 +1,4 @@
-import { query } from '../db/index.js';
+import { query, getClient } from '../db/index.js';
 import { isBlockedEitherWay } from '../lib/blocks.js';
 
 // ── Noise control (spec §14) ───────────────────────────────────────────────────
@@ -69,33 +69,55 @@ export async function createNotification({
   // NULL is the arbiter; once that row is marked read, the next event for
   // the same key starts a fresh group at count 1, which is the point.
   if (groupKey) {
-    const { rows: [row] } = await query(
-      `INSERT INTO notifications
-         (user_id, type, title, body, hive_id, actor_user_id, link, group_key, group_count, updated_at, read)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,1,NOW(),false)
-       ON CONFLICT (user_id, group_key) WHERE read = false AND group_key IS NOT NULL
-       DO UPDATE SET
-         type = EXCLUDED.type,
-         title = EXCLUDED.title,
-         body = EXCLUDED.body,
-         actor_user_id = EXCLUDED.actor_user_id,
-         link = EXCLUDED.link,
-         group_count = notifications.group_count + 1,
-         updated_at = NOW()
-       RETURNING notification_id, group_count`,
-      [userId, type, title, body, hiveId, actorUserId, link, groupKey],
-    );
-    // The real "N new messages" count is only known after the increment
-    // above — buildGrouped formats title/body from that count instead of
-    // the caller having to guess it ahead of the write.
-    if (buildGrouped) {
-      const content = buildGrouped(row.group_count);
-      await query(
-        `UPDATE notifications SET title = $1, body = $2 WHERE notification_id = $3`,
-        [content.title, content.body ?? null, row.notification_id],
+    // The increment (above) and the buildGrouped title rewrite (below) must
+    // land as one atomic unit per call. Two concurrent calls for the same
+    // (user_id, group_key) each doing "INSERT...RETURNING group_count" then
+    // a SEPARATE "UPDATE title" let their second statements interleave: call
+    // A reads group_count=3, call B's INSERT bumps it to 4 and writes its
+    // own "4 new messages" title, then call A's now-stale UPDATE overwrites
+    // that with "3 new messages" — the title and the group_count column
+    // drift apart (one seeded a real incident: a 4-message burst showed a
+    // "1 new message" title next to a "3" count chip). Holding the row's
+    // lock across both statements in one transaction serializes the whole
+    // sequence per call, so whichever one commits last is also the one that
+    // read the freshest count.
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows: [row] } = await client.query(
+        `INSERT INTO notifications
+           (user_id, type, title, body, hive_id, actor_user_id, link, group_key, group_count, updated_at, read)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,1,NOW(),false)
+         ON CONFLICT (user_id, group_key) WHERE read = false AND group_key IS NOT NULL
+         DO UPDATE SET
+           type = EXCLUDED.type,
+           title = EXCLUDED.title,
+           body = EXCLUDED.body,
+           actor_user_id = EXCLUDED.actor_user_id,
+           link = EXCLUDED.link,
+           group_count = notifications.group_count + 1,
+           updated_at = NOW()
+         RETURNING notification_id, group_count`,
+        [userId, type, title, body, hiveId, actorUserId, link, groupKey],
       );
+      // The real "N new messages" count is only known after the increment
+      // above — buildGrouped formats title/body from that count instead of
+      // the caller having to guess it ahead of the write.
+      if (buildGrouped) {
+        const content = buildGrouped(row.group_count);
+        await client.query(
+          `UPDATE notifications SET title = $1, body = $2 WHERE notification_id = $3`,
+          [content.title, content.body ?? null, row.notification_id],
+        );
+      }
+      await client.query('COMMIT');
+      return row.notification_id;
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
     }
-    return row.notification_id;
   }
 
   const { rows: [row] } = await query(
