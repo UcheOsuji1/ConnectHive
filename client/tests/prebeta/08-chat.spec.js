@@ -255,7 +255,13 @@ test.describe('Flow 8 — Chat', () => {
   });
 
   test('reconnect: offline 60s, back online, nothing missed', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'Desktop Chrome', 'exercises the same socket reconnect logic regardless of device');
+    // Cross-device by nature (one device's offline gap must not lose a
+    // message another device sent) — unlike the single-context feature
+    // checks above, this is NOT device-independent, so it runs on every
+    // project. Under the iPhone 13 project itself, both page and mobile
+    // below end up on real WebKit (not Chromium's iPhone-viewport spoof),
+    // which is the one that actually matters per Prompt 74's own call-out
+    // ("WebKit matters most").
     test.setTimeout(120_000);
     const hive = runQaHelper('qaGetHiveByName.js', ['qa-Silver Lake Social']);
 
