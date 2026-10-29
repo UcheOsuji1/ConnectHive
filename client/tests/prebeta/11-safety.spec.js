@@ -138,9 +138,14 @@ test.describe('Flow 11 — Safety', () => {
     // inside it is a product decision, not a one-line bug. Exercised here
     // via the one path the feature genuinely supports: a non-member
     // previewing the Hive before joining.
+    // "unfinished", not miami: Flow 6's instant-join test permanently
+    // makes miami a full MEMBER of this same Hive in a combined-suite
+    // run, which would land them on the member Hive Home page instead
+    // of this non-member preview — confirmed directly. "unfinished" is
+    // never added to Silver Lake Social by any other flow.
     const nonMemberPage = await page.context().browser().newContext().then(c => c.newPage());
     const trackedHive = trackPage(nonMemberPage, { allowedFailedPaths: ['/api/auth/me', '/tools', '/posts'] });
-    await loginViaSession(nonMemberPage, QA_USERS.miami); // not a member of Silver Lake Social
+    await loginViaSession(nonMemberPage, QA_USERS.unfinished);
     await nonMemberPage.goto(`/hive/${hive.hive_id}`);
     await nonMemberPage.waitForLoadState('networkidle');
     await assertCleanPage(nonMemberPage, trackedHive);
