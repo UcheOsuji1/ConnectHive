@@ -33,10 +33,13 @@ test.describe('Flow 15 — Security spot checks', () => {
   test('cross-Hive access: a real member of one Hive is refused on another', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'Desktop Chrome', 'mechanism is device-independent');
     const downtown = runQaHelper('qaGetHiveByName.js', ['qa-Downtown LA Builders']);
-    // member1 is a real, active member of Silver Lake Social — but not of
+    // member2 is a real, active member of Silver Lake Social — but not of
     // Downtown LA Builders. Per-Hive membership must not read as "any
-    // membership anywhere."
-    await loginViaSession(page, QA_USERS.member1);
+    // membership anywhere." (member1, not member2: Flow 6's "Accept,
+    // twice" test permanently accepts member1 into Downtown LA Builders
+    // in a combined-suite run — confirmed directly. member2 is never
+    // touched for that Hive by any other flow.)
+    await loginViaSession(page, QA_USERS.member2);
     const res = await page.request.get(`/api/hives/${downtown.hive_id}/messages`);
     expect([403, 404]).toContain(res.status());
   });

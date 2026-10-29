@@ -81,7 +81,11 @@ test.describe('Flow 9 — Plans', () => {
     }
 
     await card.locator('.plans-people').click();
-    await expect(page.getByText("Can't go")).toBeVisible({ timeout: 10000 });
+    // getByText alone also matches the still-visible RSVP button, which
+    // carries the same "Can't go" text after the loop above — the drawer's
+    // own tab is the one thing actually worth asserting on here, and its
+    // role is unambiguous (tab, not button).
+    await expect(page.getByRole('tab', { name: "Can't go" })).toBeVisible({ timeout: 10000 });
   });
 
   test('edit a plan', async ({ page }, testInfo) => {
@@ -220,11 +224,19 @@ test.describe('Flow 9 — Plans', () => {
     await page.getByRole('button', { name: 'Propose Plan', exact: true }).click();
     await expect(page.getByText(title)).toBeVisible({ timeout: 10000 });
 
-    // Early approval needs a real majority of active members (3 here:
-    // owner1 + member1 + member2), not just vote_min_yes on its own —
-    // voteOutcome's early branch uses max(voteMinYes, floor(members/2)+1).
-    // One Yes is short of the majority of 2; cast a second to reach it.
-    for (const voter of [QA_USERS.member1, QA_USERS.member2]) {
+    // Early approval needs a real majority of CURRENT active members, not
+    // just vote_min_yes on its own — voteOutcome's early branch uses
+    // max(voteMinYes, floor(members/2)+1). Silver Lake Social starts with
+    // 3 (owner1 + member1 + member2), but an earlier flow in the same
+    // combined-suite run (Flow 6's instant-join test) can have added a
+    // 4th by the time this runs — compute the real count rather than
+    // assuming the seeded one, and vote with however many that takes.
+    const membersRes = await page.request.get(`/api/hives/${hive.hive_id}/members`);
+    const { members } = await membersRes.json();
+    const majority = Math.floor(members.length / 2) + 1;
+    const voterPool = [QA_USERS.member1, QA_USERS.member2, QA_USERS.miami].slice(0, majority);
+    expect(voterPool.length, `need ${majority} voters but only have a pool of 3 non-owner fixtures`).toBeGreaterThanOrEqual(majority);
+    for (const voter of voterPool) {
       const voterPage = await page.context().browser().newContext().then(c => c.newPage());
       await loginViaSession(voterPage, voter);
       await voterPage.goto(`/hive/${hive.hive_id}/events`);

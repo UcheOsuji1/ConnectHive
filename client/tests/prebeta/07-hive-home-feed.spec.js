@@ -89,9 +89,14 @@ test.describe('Flow 7 — Hive Home, feed and followers', () => {
     await expect(ownerPage.getByText(publicHeadline)).toBeVisible({ timeout: 10000 });
     await ownerPage.close();
 
-    // Miami follows (not joins) the Hive, then views it as a non-member.
+    // "unfinished" follows (not joins) the Hive, then views it as a
+    // non-member — not miami: Flow 6's instant-join test permanently
+    // makes miami a full MEMBER of this same Hive in a combined-suite
+    // run, which breaks this test's whole premise (they'd see the real
+    // member Hive Home feed, not the non-member preview). "unfinished"
+    // is never added to Silver Lake Social by any other flow.
     const tracked = trackPage(page, { allowedFailedPaths: ['/api/auth/me', '/tools', '/posts'] });
-    await loginViaSession(page, QA_USERS.miami);
+    await loginViaSession(page, QA_USERS.unfinished);
     const followRes = await page.request.post(`/api/hives/${hive.hive_id}/follow`, { data: {} });
     expect(followRes.ok()).toBeTruthy();
 
@@ -99,6 +104,9 @@ test.describe('Flow 7 — Hive Home, feed and followers', () => {
       await page.goto(`/hive/${hive.hive_id}`);
       await page.waitForLoadState('networkidle');
       await assertCleanPage(page, tracked);
+      // The non-member preview (HiveDashboardLayout.jsx) renders each post
+      // as a plain unstyled div with no distinguishing class — scope to
+      // the Posts tab panel's own text instead of a page-wide search.
       await expect(page.getByText(publicHeadline)).toBeVisible({ timeout: 10000 });
       await expect(page.getByText(hiveOnlyHeadline)).toHaveCount(0);
     } finally {

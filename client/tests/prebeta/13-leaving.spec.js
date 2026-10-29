@@ -64,10 +64,15 @@ test.describe('Flow 13 — Leaving', () => {
   test('the purge job on a past-dated qa- user shows "Deleted member"', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'Desktop Chrome', 'mechanism is device-independent');
     const hive = runQaHelper('qaGetHiveByName.js', ['qa-Silver Lake Social']);
-    // member2 (Jamal Price) already authored a seeded chat message here —
-    // real content to watch flip to "Deleted member" after purge, not a
-    // fixture built just for this assertion.
-    runQaHelper('qaScheduleDeletionPast.js', [QA_USERS.member2]);
+    // A disposable throwaway member, not a shared fixture like member2 —
+    // purging rewrites the user's own email (to deleted-<uuid>@...), and
+    // confirmed directly: purging member2 here broke Flow 3's "blocked
+    // member" test (which looks member2 up by their qa- email) on the
+    // iPhone 13/Pixel 7 passes that ran after this one in the same
+    // combined-suite invocation. A throwaway identity can't break anyone
+    // else's test, by construction.
+    const throwaway = runQaHelper('qaCreateThrowawayMember.js', [hive.hive_id]);
+    runQaHelper('qaScheduleDeletionPast.js', [throwaway.email]);
 
     const result = runQaHelper('qaRunPurgeJob.js', []);
     expect(result.usersPurged).toBeGreaterThanOrEqual(1);
@@ -82,8 +87,8 @@ test.describe('Flow 13 — Leaving', () => {
     await page.goto(`/hive/${hive.hive_id}/chat`);
     await page.waitForLoadState('networkidle');
     await assertCleanPage(page, tracked);
-    await expect(page.getByText('Same! Looking forward to the Saturday meetup.')).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('.hc-msg-row', { hasText: 'Same! Looking forward to the Saturday meetup.' }))
+    await expect(page.getByText(throwaway.message_text)).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.hc-msg-row', { hasText: throwaway.message_text }))
       .toContainText('Deleted member', { timeout: 10000 });
   });
 });

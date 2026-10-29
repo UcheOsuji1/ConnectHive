@@ -40,12 +40,16 @@ test.describe('Flow 12 — Notifications and email', () => {
     });
     expect(postRes.ok(), await postRes.text()).toBeTruthy();
 
-    // 4) Member/join event (actor avatar) — miami instant-joins (open + simple).
-    const miamiPage = await page.context().browser().newContext().then(c => c.newPage());
-    await loginViaSession(miamiPage, QA_USERS.miami);
-    const joinRes = await miamiPage.request.post(`/api/hives/${hive.hive_id}/request`, { data: {} });
+    // 4) Member/join event (actor avatar) — instant-joins (open + simple).
+    // googleonly, not miami: Flow 6's instant-join test permanently adds
+    // miami to this Hive in a combined-suite run, which would make this
+    // step a no-op ("already a member") on any run after Flow 6's. Flow 6
+    // only ever adds googleonly to a DIFFERENT Hive (Downtown LA Builders).
+    const joinerPage = await page.context().browser().newContext().then(c => c.newPage());
+    await loginViaSession(joinerPage, QA_USERS.googleonly);
+    const joinRes = await joinerPage.request.post(`/api/hives/${hive.hive_id}/request`, { data: {} });
     expect(joinRes.ok(), await joinRes.text()).toBeTruthy();
-    await miamiPage.close();
+    await joinerPage.close();
 
     // 5) Pair activity (actor avatar) — owner1's seeded pair chat with member1.
     const chatsRes = await ownerPage.request.get(`/api/hives/${hive.hive_id}/chats`);
