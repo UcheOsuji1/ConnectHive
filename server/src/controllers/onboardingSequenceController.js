@@ -57,7 +57,7 @@ export const getSequence = async (req, res) => {
       query(
         `SELECT hm.user_id, hm.role, hm.joined_at, p.full_name, p.profile_photo_url, p.bio, p.interests
            FROM hive_members hm
-           JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active'
+           JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active' AND NOT u.is_system
            LEFT JOIN profiles p ON p.user_id = hm.user_id
           WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2`,
         [hiveId, req.userId],
@@ -78,8 +78,12 @@ export const getSequence = async (req, res) => {
     const settings = settingsRes.rows[0] ?? {};
     const me = meRes.rows[0] ?? {};
 
+    // is_system passed through (not filtered out) — the owner of a starter
+    // Hive IS the TrueHive Team house account, and the client needs to know
+    // that to show "Hosted by TrueHive" instead of a name/avatar, never by
+    // matching on full_name.
     const { rows: [ownerRow] } = await query(
-      `SELECT u.user_id, p.full_name, p.profile_photo_url
+      `SELECT u.user_id, u.is_system, p.full_name, p.profile_photo_url
          FROM hive_members hm
          JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active'
          LEFT JOIN profiles p ON p.user_id = hm.user_id

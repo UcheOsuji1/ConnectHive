@@ -19,6 +19,7 @@ import { sendYoureInEmail } from '../lib/email.js';
 import { resolveMetro, resolveLocationMetro, metroByKey, LAUNCH_METROS } from '../lib/metros.js';
 import { validateMaxMembers } from '../lib/policy.js';
 import { readRefineFilters, matchesRefine, sizeBucket } from '../lib/discoveryFilters.js';
+import { excludeSystemClause } from '../lib/systemUser.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -110,7 +111,7 @@ export const matchHives = async (req, res) => {
     const { rows: candidates } = await query(
       `SELECT h.*,
               c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count,
               EXISTS(
                 SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1
               ) AS is_following,
@@ -131,7 +132,7 @@ export const matchHives = async (req, res) => {
          ${categoryFilter}
        GROUP BY h.hive_id, c.category_id, c.category_name
        HAVING (h.max_members IS NULL OR
-               COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') < h.max_members)`,
+               COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')}) < h.max_members)`,
       candidateParams,
     );
 
@@ -143,15 +144,17 @@ export const matchHives = async (req, res) => {
       const { factors: purposeFactors, total: purposeTotal } =
         scorePurpose(enrichedProfile, hive, category || null);
 
-      // Load active members' profiles (excluding caller and anyone blocked
-      // either way — a blocked pair must never see each other's cards here).
+      // Load active members' profiles (excluding caller, anyone blocked
+      // either way — a blocked pair must never see each other's cards here —
+      // and the is_system house account, which owns starter Hives but is not
+      // a person to compute people-fit against or show as a chemistry match).
       const { rows: memberProfiles } = await query(
         `SELECT p.*
          FROM hive_members hm
          JOIN profiles p ON p.user_id = hm.user_id
          JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active'
          WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2
-           AND hm.user_id != ALL($3)`,
+           AND hm.user_id != ALL($3) AND NOT u.is_system`,
         [hive.hive_id, req.userId, blockedIds],
       );
 
@@ -283,9 +286,9 @@ export const quickFindHives = async (req, res) => {
 
     const { rows } = await query(
       `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type,
-              h.logo_url, h.banner_url, h.description, h.join_policy,
+              h.logo_url, h.banner_url, h.description, h.join_policy, h.is_seed,
               c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count
        FROM hives h
        LEFT JOIN categories c    ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
@@ -382,7 +385,7 @@ export const getSuggestions = async (req, res) => {
 
     const { rows: candidates } = await query(
       `SELECT h.*, c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count
        FROM hives h
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
@@ -393,7 +396,7 @@ export const getSuggestions = async (req, res) => {
          )
        GROUP BY h.hive_id, c.category_id, c.category_name
        HAVING (h.max_members IS NULL OR
-               COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active') < h.max_members)`,
+               COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')}) < h.max_members)`,
       [req.userId],
     );
 
@@ -426,7 +429,7 @@ export const getSuggestions = async (req, res) => {
          JOIN profiles p ON p.user_id = hm.user_id
          JOIN users u ON u.user_id = hm.user_id AND u.account_status = 'active'
          WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2
-           AND hm.user_id != ALL($3)`,
+           AND hm.user_id != ALL($3) AND NOT u.is_system`,
         [hive.hive_id, req.userId, blockedIds],
       );
       // Was scorePair() fresh on every request, which is exactly how this
@@ -453,6 +456,7 @@ export const getSuggestions = async (req, res) => {
         location_type: hive.location_type,
         match_score:   matchScore,
         reasons,
+        is_seed:       hive.is_seed,
       });
     }
 
@@ -520,7 +524,7 @@ export const getHive = async (req, res) => {
       `SELECT
          h.*,
          c.category_name,
-         COUNT(DISTINCT hm_all.user_id) FILTER (WHERE hm_all.membership_status = 'active')::int AS member_count,
+         COUNT(DISTINCT hm_all.user_id) FILTER (WHERE hm_all.membership_status = 'active' AND ${excludeSystemClause('hm_all')})::int AS member_count,
          COUNT(DISTINCT hf.user_id)::int                                                     AS follower_count,
          my_mem.role                                                                          AS my_role,
          my_mem.welcome_seen_at,
@@ -532,7 +536,19 @@ export const getHive = async (req, res) => {
            WHERE hp.hive_id = h.hive_id
              AND hp.author_user_id != $1
              AND hp.created_at > COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz)
-         ), 0) AS new_posts
+         ), 0) AS new_posts,
+         -- The owner is a real person for every Hive except the 30 starter
+         -- Hives (owned by the TrueHive Team house account) — the client
+         -- swaps any owner name/avatar/profile-link for plain "Hosted by
+         -- TrueHive" text whenever this is true, never matching on the
+         -- display name.
+         COALESCE((
+           SELECT u.is_system FROM hive_members hm_owner
+           JOIN users u ON u.user_id = hm_owner.user_id
+           WHERE hm_owner.hive_id = h.hive_id AND hm_owner.role = 'owner'
+             AND hm_owner.membership_status = 'active'
+           LIMIT 1
+         ), false) AS owner_is_system
        FROM hives h
        LEFT JOIN categories               c       ON c.category_id  = h.category_id
        LEFT JOIN hive_members             hm_all  ON hm_all.hive_id = h.hive_id
@@ -556,6 +572,8 @@ export const getHive = async (req, res) => {
           hive_name:     row.hive_name,
           category_name: row.category_name,
           member_count:  row.member_count,
+          is_seed:       row.is_seed,
+          owner_is_system: row.owner_is_system,
           discoverable:  false,
           my_role:       null,
           is_following:  row.is_following,
@@ -607,7 +625,7 @@ export const getHiveMembers = async (req, res) => {
        LEFT JOIN member_onboarding_progress mop
               ON mop.user_id = hm.user_id AND mop.hive_id = hm.hive_id
        WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND u.account_status = 'active'
-         AND u.user_id != ALL($2)
+         AND u.user_id != ALL($2) AND NOT u.is_system
        GROUP BY hm.hive_id, hm.role, hm.joined_at, hm.onboarding_status,
                 u.user_id, u.presence_status,
                 p.full_name, p.profile_photo_url, p.bio, p.location, p.interests, p.skills,
@@ -629,7 +647,7 @@ export const getMyHive = async (req, res) => {
     const { rows } = await query(
       `WITH my_hives_base AS (
          SELECT h.*, c.category_name, hm.role,
-                COUNT(DISTINCT hm2.user_id) FILTER (WHERE hm2.membership_status = 'active')::int AS member_count,
+                COUNT(DISTINCT hm2.user_id) FILTER (WHERE hm2.membership_status = 'active' AND ${excludeSystemClause('hm2')})::int AS member_count,
                 COALESCE(hls.last_seen_at, '1970-01-01'::timestamptz) AS last_seen_at
          FROM   hive_members hm
          JOIN   hives h   ON h.hive_id    = hm.hive_id
@@ -649,11 +667,13 @@ export const getMyHive = async (req, res) => {
            (SELECT COUNT(*)::int FROM hive_members hm3
             WHERE hm3.hive_id = b.hive_id AND hm3.user_id != $1
               AND hm3.membership_status = 'active' AND hm3.joined_at > b.last_seen_at
+              AND ${excludeSystemClause('hm3')}
            ) AS new_members,
            (SELECT p.full_name FROM hive_members hm_new
             LEFT JOIN profiles p ON p.user_id = hm_new.user_id
             WHERE hm_new.hive_id = b.hive_id AND hm_new.user_id != $1
               AND hm_new.membership_status = 'active' AND hm_new.joined_at > b.last_seen_at
+              AND ${excludeSystemClause('hm_new')}
             ORDER BY hm_new.joined_at DESC LIMIT 1
            ) AS newest_member_name,
            (SELECT COUNT(*)::int FROM hive_posts hp3
@@ -758,7 +778,7 @@ export const getFollowedHives = async (req, res) => {
   try {
     const { rows } = await query(
       `SELECT h.*, c.category_name,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count
        FROM   hive_followers hf
        JOIN   hives h ON h.hive_id = hf.hive_id
        LEFT JOIN categories c  ON c.category_id = h.category_id
@@ -1005,7 +1025,7 @@ export const updateHive = async (req, res) => {
 
     if ('max_members' in updates) {
       const { rows: [{ count }] } = await query(
-        `SELECT COUNT(*)::int FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
+        `SELECT COUNT(*)::int FROM hive_members WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}`,
         [hiveId],
       );
       const maxMembersCheck = validateMaxMembers(updates.max_members, { currentMemberCount: count });
@@ -1068,7 +1088,7 @@ export const requestToJoin = async (req, res) => {
     // Load hive + member count in one query
     const { rows: [hive] } = await query(
       `SELECT h.*,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count
        FROM hives h
        LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
        WHERE h.hive_id = $1
@@ -1103,6 +1123,80 @@ export const requestToJoin = async (req, res) => {
     );
     if (owner && await isBlockedEitherWay(owner.user_id, req.userId)) {
       return res.status(403).json({ error: "You can't join this Hive." });
+    }
+
+    // Starter ("seed") Hives are owned by the house account, not a real
+    // owner who could review a request — every join is instant, regardless
+    // of join_policy/onboarding settings. The response carries the same
+    // shape reviewRequest's accept branch returns (plus `joined: true`, so
+    // the existing join-button UI — which only checks that flag — keeps
+    // working unchanged) so any future consumer of either path agrees.
+    if (hive.is_seed) {
+      await query(
+        `INSERT INTO hive_members
+           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
+         VALUES ($1, $2, 'member', 'active', 'completed', NULL)
+         ON CONFLICT (hive_id, user_id) DO UPDATE SET
+           role = 'member', membership_status = 'active', onboarding_status = 'completed',
+           welcome_seen_at = NULL, onboarding_started_at = NULL, onboarding_completed_at = NULL`,
+        [hiveId, req.userId],
+      );
+
+      const { rows: [{ count }] } = await query(
+        `SELECT COUNT(*)::int AS count FROM hive_members hm
+         WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND ${excludeSystemClause('hm')}`,
+        [hiveId],
+      );
+
+      let newMember = null;
+      try {
+        const [{ rows: [profile] }, { rows: existingMembers }, { rows: [memberRow] }] = await Promise.all([
+          query(
+            `SELECT p.full_name, p.profile_photo_url, u.member_id
+             FROM profiles p JOIN users u ON u.user_id = p.user_id WHERE p.user_id = $1`,
+            [req.userId],
+          ),
+          query(
+            `SELECT hm.user_id, hm.role FROM hive_members hm
+             WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2
+               AND ${excludeSystemClause('hm')}`,
+            [hiveId, req.userId],
+          ),
+          query(`SELECT joined_at FROM hive_members WHERE hive_id = $1 AND user_id = $2`, [hiveId, req.userId]),
+        ]);
+        const memberName = profile?.full_name ?? 'A new member';
+        newMember = {
+          user_id:           req.userId,
+          full_name:         memberName,
+          profile_photo_url: profile?.profile_photo_url ?? null,
+          member_id:         profile?.member_id ?? null,
+          joined_at:         memberRow?.joined_at ?? null,
+        };
+
+        await createNotification({
+          userId: req.userId, type: 'request_accepted', category: 'system',
+          title: `You're in! Welcome to ${hive.hive_name}`,
+          body: 'Open your Hive to see your welcome.',
+          hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
+        });
+        for (const m of existingMembers) {
+          const isOwnerAdmin = m.role === 'owner' || m.role === 'admin';
+          await createNotification({
+            userId: m.user_id, type: 'member_joined',
+            category: isOwnerAdmin ? 'system' : 'new_members',
+            title: `${memberName} joined ${hive.hive_name}`,
+            body: 'Give them a warm welcome 👋',
+            hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
+          });
+        }
+      } catch (e) {
+        console.error('[hives/requestToJoin] seed-hive ceremony failed (non-fatal):', e);
+      }
+
+      return res.json({
+        joined: true, reviewed: true, action: 'accept',
+        member_count: Number(count), new_member: newMember, join_experience: 'standard',
+      });
     }
 
     // Check onboarding settings before anything else
@@ -1310,7 +1404,7 @@ export const getHiveRequests = async (req, res) => {
 
     const { rows: [cap] } = await query(
       `SELECT h.max_members,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count
        FROM hives h
        LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
        WHERE h.hive_id = $1
@@ -1374,7 +1468,7 @@ export const reviewRequest = async (req, res) => {
         );
         const { rows: [countRow] } = await client.query(
           `SELECT COUNT(*)::int AS member_count FROM hive_members
-            WHERE hive_id = $1 AND membership_status = 'active'`,
+            WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}`,
           [hiveId],
         );
         if (hiveRow.max_members &&
@@ -1432,7 +1526,7 @@ export const reviewRequest = async (req, res) => {
     }
 
     const { rows: [{ count }] } = await query(
-      `SELECT COUNT(*)::int FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
+      `SELECT COUNT(*)::int FROM hive_members WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}`,
       [hiveId],
     );
 
@@ -1603,7 +1697,7 @@ export const getHiveOverview = async (req, res) => {
     // Core metrics
     const { rows: [metrics] } = await query(
       `SELECT h.max_members, h.hive_status,
-              COUNT(DISTINCT hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count,
+              COUNT(DISTINCT hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count,
               COUNT(DISTINCT jr.request_id) FILTER (WHERE jr.status = 'pending')::int        AS pending_count
        FROM hives h
        LEFT JOIN hive_members  hm ON hm.hive_id = h.hive_id
@@ -1913,7 +2007,7 @@ export async function removeMemberCore(hiveId, callerId, targetId) {
 
   const { rows: [{ member_count }] } = await query(
     `SELECT COUNT(*)::int AS member_count FROM hive_members
-     WHERE hive_id = $1 AND membership_status = 'active'`,
+     WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}`,
     [hiveId],
   );
   return { removed: true, user_id: targetId, member_count: Number(member_count) };

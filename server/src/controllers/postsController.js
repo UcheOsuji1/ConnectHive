@@ -1,6 +1,7 @@
 import { query } from '../db/index.js';
 import { createNotification } from './notificationsController.js';
 import { getMembership } from '../lib/hiveMembership.js';
+import { excludeSystemClause } from '../lib/systemUser.js';
 
 // Post-creation fan-out for Prompt 70 Part B #2: every active member except
 // the author, category 'posts' (default on). No groupKey — Hive posts are
@@ -44,7 +45,7 @@ export const FEED_SELECT = `
     p.event_at, p.event_location, p.created_at,
     h.hive_name, h.creator_user_id, h.banner_url, h.logo_url,
     c.category_name,
-    (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active')::int AS member_count,
+    (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active' AND ${excludeSystemClause()})::int AS member_count,
     (SELECT COUNT(*) FROM post_reactions WHERE post_id = p.post_id)::int                                  AS reaction_count,
     (SELECT COUNT(*) FROM post_comments  WHERE post_id = p.post_id)::int                                  AS comment_count,
     EXISTS(SELECT 1 FROM post_reactions WHERE post_id = p.post_id AND user_id = $1)                  AS reacted,

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
 import AreaLocationInput from '../components/AreaLocationInput.jsx';
+import StarterHiveBadge from '../components/StarterHiveBadge.jsx';
 import '../styles/hive-discovery.css';
 import '../styles/find-your-hive.css';
 
@@ -338,11 +339,16 @@ function SuggestCard({ hive, navigate }) {
         <div className="hmd-card-title-row">
           <span className="hmd-hive-name">{hive.hive_name}</span>
           {hive.category_name && <span className="hmd-cat-badge">{hive.category_name}</span>}
+          <StarterHiveBadge hive={hive} />
         </div>
         <span className="hmd-score-pill">{hive.match_score}% Match</span>
       </div>
       <div className="hmd-stats">
-        <span className="hmd-stat">{hive.member_count} member{hive.member_count === 1 ? '' : 's'}</span>
+        <span className="hmd-stat">
+          {hive.is_seed && Number(hive.member_count) === 0
+            ? 'Be one of the first to join'
+            : `${hive.member_count} member${hive.member_count === 1 ? '' : 's'}`}
+        </span>
         {hive.location && <span className="hmd-stat">{hive.location}</span>}
       </div>
       {hive.reasons?.[0] && <div className="why">{hive.reasons[0]}</div>}

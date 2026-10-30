@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import HoneycombBg from './HoneycombBg.jsx';
+import StarterHiveBadge from './StarterHiveBadge.jsx';
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -180,6 +181,7 @@ export default function HiveCard({ hive, index = 0 }) {
 
           {/* Row 2 */}
           {meta && <p className="hc-meta">{meta}</p>}
+          <StarterHiveBadge hive={hive} />
 
           {/* Row 3 — members and last-active side by side, no rule between */}
           <div className="hc-status">

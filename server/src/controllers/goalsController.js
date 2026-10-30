@@ -6,6 +6,7 @@
 import { query } from '../db/index.js';
 import { requireMembership } from '../lib/hiveMembership.js';
 import { PLAN_END } from './eventsController.js';
+import { excludeSystemClause } from '../lib/systemUser.js';
 
 export const METRIC_DEFS = {
   plans_held:      { label: 'Plans held', explain: 'Counts plans in this Hive that have already happened during the goal period.' },
@@ -37,7 +38,8 @@ async function computeMetricValue(hiveId, goal) {
 
     case 'members': {
       const { rows: [r] } = await query(
-        `SELECT COUNT(*)::int AS n FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
+        `SELECT COUNT(*)::int AS n FROM hive_members
+          WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}`,
         [hiveId],
       );
       return r.n;
@@ -46,7 +48,7 @@ async function computeMetricValue(hiveId, goal) {
     case 'new_members': {
       const { rows: [r] } = await query(
         `SELECT COUNT(*)::int AS n FROM hive_members
-          WHERE hive_id = $1 AND membership_status = 'active'
+          WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}
             AND joined_at >= $2::date AND joined_at < ${periodEndExclusive('$3')}`,
         [hiveId, start, end],
       );

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api.js';
+import StarterHiveBadge from '../components/StarterHiveBadge.jsx';
 import '../styles/search.css';
 
 function initials(name) {
@@ -117,9 +118,12 @@ export default function SearchResultsPage() {
                         <span className="sr-body">
                           <span className="sr-name">{h.hive_name}</span>
                           {meta && <span className="sr-meta">{meta}</span>}
+                          <StarterHiveBadge hive={h} />
                           {h.description && <span className="sr-desc">{h.description}</span>}
                           <span className="sr-facts">
-                            {members} member{members === 1 ? '' : 's'}
+                            {h.is_seed && members === 0
+                              ? 'Be one of the first to join'
+                              : `${members} member${members === 1 ? '' : 's'}`}
                             {h.join_policy ? ` · ${h.join_policy} to join` : ''}
                           </span>
                         </span>

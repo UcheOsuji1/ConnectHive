@@ -10,6 +10,7 @@ import MemberOnboardingSequence from './MemberOnboardingSequence.jsx';
 import HiveNotificationPrefsBell from './HiveNotificationPrefsBell.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
 import ReportModal from './ReportModal.jsx';
+import StarterHiveBadge from './StarterHiveBadge.jsx';
 import { hiddenPlaceholderText } from './HiddenPlaceholder.jsx';
 import '../styles/safety.css';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -270,7 +271,16 @@ function HiveSidebar({
           <RoleBadge role={hive.my_role} />
           <HiveCodeChip code={hive.hive_code} />
           <HiveNotificationPrefsBell hiveId={hiveId} />
+          <StarterHiveBadge hive={hive} />
         </div>
+
+        {/* Plain text, never a name/avatar/profile link — the owner of a
+            starter Hive is the TrueHive Team house account, not a person. */}
+        {hive.owner_is_system && (
+          <div className="hdl-ident-meta-row" style={{ marginTop: 4 }}>
+            <span>Hosted by TrueHive</span>
+          </div>
+        )}
       </div>
 
       <div className="hdl-nav-group">
@@ -391,9 +401,30 @@ function PublicHiveView({ hive, hiveId }) {
   }, [hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tags = safeTags(hive.tags);
-  const meta = [hive.category_name, hive.member_count != null
-    ? `${hive.member_count}${hive.max_members ? ` / ${hive.max_members} members` : ` member${hive.member_count === 1 ? '' : 's'}`}`
-    : null, hive.location_type, hive.location].filter(Boolean).join(' · ');
+  const isZeroSeed = hive.is_seed && Number(hive.member_count) === 0;
+  const memberText = hive.member_count != null
+    ? isZeroSeed
+      ? 'Be one of the first to join'
+      : hive.max_members
+        ? `${hive.member_count} / ${hive.max_members} member${hive.member_count === 1 ? '' : 's'}`
+        : `${hive.member_count} member${hive.member_count === 1 ? '' : 's'}`
+    : null;
+  // .dhp-meta is text-transform: capitalize — fine for single words like
+  // "in-person", but it mangles the multi-word "Be one of the first to
+  // join" into title case. Only that phrase needs the override.
+  const metaParts = [hive.category_name, memberText, hive.location_type, hive.location].filter(Boolean);
+  const meta = (
+    <>
+      {metaParts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && ' · '}
+          {part === memberText && isZeroSeed
+            ? <span className="dhp-meta-nocap">{part}</span>
+            : part}
+        </span>
+      ))}
+    </>
+  );
 
   if (hive.private) {
     return (
@@ -441,6 +472,10 @@ function PublicHiveView({ hive, hiveId }) {
                 <span className="dhp-hive-name">{hive.hive_name}</span>
               </div>
               <div className="dhp-meta">{meta}</div>
+              <StarterHiveBadge hive={hive} />
+              {hive.owner_is_system && (
+                <div className="dhp-meta dhp-meta-nocap" style={{ marginTop: 4 }}>Hosted by TrueHive</div>
+              )}
               {hive.description && <div className="dhp-description">{hive.description}</div>}
               {tags.length > 0 && (
                 <div className="dhp-tags">

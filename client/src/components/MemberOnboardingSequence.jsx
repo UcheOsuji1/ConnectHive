@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Avatar from './Avatar.jsx';
+import TrueHiveMark from './TrueHiveMark.jsx';
 import { Icon } from './home/HomeBits.jsx';
 import RsvpMenu from './plans/RsvpMenu.jsx';
 import { api } from '../lib/api.js';
@@ -15,6 +16,13 @@ function parseLines(text) {
 
 function firstName(fullName) {
   return (fullName ?? '').trim().split(/\s+/)[0] || 'there';
+}
+
+// A starter Hive's "founder" is the TrueHive Team house account — never a
+// real person, so it never gets a name/avatar/initials, only the mark.
+function FounderAvatar({ founder, size }) {
+  if (founder?.is_system) return <TrueHiveMark size={size} />;
+  return <Avatar name={founder?.full_name} src={founder?.profile_photo_url} size={size} />;
 }
 
 // ── Progress ───────────────────────────────────────────────────────────────────
@@ -50,7 +58,7 @@ function Screen1({ data, onContinue, headingRef }) {
   return (
     <div className="mos-centered">
       <div className="mos-crest-photo">
-        <Avatar name={data.founder?.full_name} src={data.founder?.profile_photo_url} size={110} />
+        <FounderAvatar founder={data.founder} size={110} />
         <span className="mos-crest-badge" aria-hidden="true">👥</span>
       </div>
       <h1 className="mos-h1" ref={headingRef} tabIndex={-1}>You&rsquo;re in.</h1>
@@ -80,11 +88,17 @@ function Screen2({ data, agreed, setAgreed, onBack, onContinue, canSkip, onSkip,
       <h1 className="mos-h2" ref={headingRef} tabIndex={-1}>Get to know the vibe</h1>
 
       <div className="mos-note-row">
-        <Avatar name={data.founder?.full_name} src={data.founder?.profile_photo_url} size={64} />
+        <FounderAvatar founder={data.founder} size={64} />
         <div className="mos-note-body">
-          <div className="mos-note-title">A note from {data.founder?.full_name ? firstName(data.founder.full_name) : 'the founder'}</div>
+          <div className="mos-note-title">
+            {data.founder?.is_system
+              ? 'Hosted by TrueHive'
+              : `A note from ${data.founder?.full_name ? firstName(data.founder.full_name) : 'the founder'}`}
+          </div>
           <p className="mos-note-text">{note}</p>
-          {data.founder?.full_name && <div className="mos-note-sign">— {data.founder.full_name}{data.founder.role === 'owner' ? ', Founder' : ''}</div>}
+          {data.founder?.full_name && !data.founder?.is_system && (
+            <div className="mos-note-sign">— {data.founder.full_name}{data.founder.role === 'owner' ? ', Founder' : ''}</div>
+          )}
         </div>
       </div>
 
@@ -140,7 +154,7 @@ function Screen3({ data, draft, setDraft, onBack, onContinue, canSkip, onSkip, h
   return (
     <div className="mos-centered mos-wide">
       <div className="mos-crest-photo mos-crest-photo--sm">
-        <Avatar name={data.founder?.full_name} src={data.founder?.profile_photo_url} size={64} />
+        <FounderAvatar founder={data.founder} size={64} />
         <span className="mos-crest-badge" aria-hidden="true">👥</span>
       </div>
       <div className="mos-card-eyebrow">{data.hive.hive_name?.toUpperCase()}</div>
@@ -290,9 +304,13 @@ function Screen4({ data, hiveId, draft, previewMode, onBack, onContinue, canSkip
 function Screen5({ data, hiveId, onEnter, entering, headingRef }) {
   // peopleToMeet excludes the viewer but not the founder, who is already
   // shown separately above — drop them here so the name line and avatar
-  // stack never repeat the same person.
+  // stack never repeat the same person. The founder's name only joins the
+  // sentence when they're a real person — a system founder (the TrueHive
+  // Team house account on starter Hives) is never named, only ever excluded
+  // by the is_system flag, never by matching on the display name.
   const others = data.peopleToMeet.filter(p => p.user_id !== data.founder?.user_id).slice(0, 5);
-  const names = [data.founder?.full_name, ...others.map(o => o.full_name)].filter(Boolean);
+  const founderName = data.founder?.is_system ? null : data.founder?.full_name;
+  const names = [founderName, ...others.map(o => o.full_name)].filter(Boolean);
   const nameLine = names.length > 1
     ? `${names.slice(0, 2).join(', ')}${names.length > 2 ? `, and ${names.length - 2} others` : ''} are waiting to meet you.`
     : 'Your Hive is ready for you.';
@@ -307,7 +325,7 @@ function Screen5({ data, hiveId, onEnter, entering, headingRef }) {
   return (
     <div className="mos-centered">
       <div className="mos-crest-photo">
-        <Avatar name={data.founder?.full_name} src={data.founder?.profile_photo_url} size={110} />
+        <FounderAvatar founder={data.founder} size={110} />
         <span className="mos-crest-badge" aria-hidden="true">👥</span>
       </div>
       <h1 className="mos-h1" ref={headingRef} tabIndex={-1}>Welcome <span className="mos-gold">home</span>.</h1>
@@ -317,7 +335,9 @@ function Screen5({ data, hiveId, onEnter, entering, headingRef }) {
       {others.length > 0 && (
         <div className="mos-avatar-stack">
           {[data.founder, ...others].filter(Boolean).slice(0, 5).map((p, i) => (
-            <Avatar key={p.user_id ?? i} name={p.full_name} src={p.profile_photo_url} size={40} className="mos-stack-avatar" />
+            p.is_system
+              ? <TrueHiveMark key={p.user_id ?? i} size={40} className="mos-stack-avatar" />
+              : <Avatar key={p.user_id ?? i} name={p.full_name} src={p.profile_photo_url} size={40} className="mos-stack-avatar" />
           ))}
         </div>
       )}

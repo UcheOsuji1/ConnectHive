@@ -27,3 +27,14 @@ export async function getSystemUserId() {
   _cachedId = created.user_id;
   return _cachedId;
 }
+
+// Every query that counts, lists or scores "active members" as people must
+// exclude is_system rows (the house account that owns starter Hives, this
+// lazy chat-system user) — otherwise a starter Hive's member count, vote
+// majority or pairwise fit is thrown off by an account nobody can log into.
+// Takes the hive_members/users alias in scope (e.g. 'hm', 'hm2') or '' when
+// the column is unaliased.
+export function excludeSystemClause(alias = '') {
+  const col = alias ? `${alias}.user_id` : 'user_id';
+  return `${col} NOT IN (SELECT user_id FROM users WHERE is_system)`;
+}

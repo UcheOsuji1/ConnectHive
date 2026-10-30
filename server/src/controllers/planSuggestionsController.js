@@ -9,6 +9,7 @@ import {
   validateRepeat, insertPlanSeries,
 } from './eventsController.js';
 import { getEnrichedMessage, depersonalise } from './messagesController.js';
+import { excludeSystemClause } from '../lib/systemUser.js';
 
 const RULE_FIELDS = ['plan_proposers', 'plan_approval', 'vote_min_yes', 'vote_window_hours', 'suggestions_per_day'];
 
@@ -94,8 +95,10 @@ async function voteCounts(suggestionId) {
 }
 
 async function activeMemberCount(hiveId) {
+  // Excludes is_system (the house account that owns starter Hives) — it
+  // can't vote, so it must not inflate the majority a real "yes" needs.
   const { rows: [c] } = await query(
-    `SELECT COUNT(*)::int AS n FROM hive_members WHERE hive_id = $1 AND membership_status = 'active'`,
+    `SELECT COUNT(*)::int AS n FROM hive_members WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}`,
     [hiveId],
   );
   return c.n;

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
+import StarterHiveBadge from '../components/StarterHiveBadge.jsx';
 import '../styles/hive-discovery.css';
 
 const CATEGORY_LABELS = {
@@ -154,6 +155,7 @@ function HiveMatchCard({ hive, autoFetch = false }) {
         <div className="hmd-card-title-row">
           <span className="hmd-hive-name">{hive.hive_name}</span>
           {hive.category_name && <span className="hmd-cat-badge">{hive.category_name}</span>}
+          <StarterHiveBadge hive={hive} />
         </div>
         <div className="hmd-score-pill">{Math.round(hive.match_score)}% Hive fit</div>
       </div>
@@ -175,7 +177,9 @@ function HiveMatchCard({ hive, autoFetch = false }) {
             <circle cx="6" cy="4" r="2.5" stroke="#8a6510" strokeWidth="1.2"/>
             <path d="M1.5 10.5c0-2.485 2.015-4.5 4.5-4.5s4.5 2.015 4.5 4.5" stroke="#8a6510" strokeWidth="1.2" strokeLinecap="round"/>
           </svg>
-          {Number(hive.member_count)}/{hive.max_members ?? '∞'} members
+          {hive.is_seed && Number(hive.member_count) === 0
+            ? 'Be one of the first to join'
+            : `${Number(hive.member_count)}/${hive.max_members ?? '∞'} member${Number(hive.member_count) === 1 ? '' : 's'}`}
         </span>
         {hive.location_type === 'online' ? (
           <span className="hmd-location-pill hmd-location-pill--online">💻 Online</span>

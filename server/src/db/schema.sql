@@ -1592,6 +1592,17 @@ CREATE TABLE IF NOT EXISTS newsletter_sends (
   sent_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ─── Starter Hives (Prompt 75) ──────────────────────────────────────────────
+-- is_seed marks the 30 at-launch Hives owned by the house account below —
+-- instant-join (hivesController.js requestToJoin) and the purge script's
+-- KEEP list both key off it. is_system marks a `users` row that is not a
+-- real person (the house account, the lazy chat-system user in
+-- lib/systemUser.js) so it can be excluded from every member count, vote
+-- majority and pairwise-fit calculation — see excludeSystemClause() there.
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS is_seed   BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_hives_is_seed ON hives(is_seed) WHERE is_seed;
+
 -- ─── Metro areas (Prompt 71) ─────────────────────────────────────────────────
 -- A metro is a named search area (a Census CBSA, loosely) with a centre point
 -- for "use my current location". A place is one city or neighborhood inside

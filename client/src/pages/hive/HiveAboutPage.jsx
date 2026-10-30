@@ -152,13 +152,18 @@ export default function HiveAboutPage() {
       {hive.founder_note ? (
         <section className="hab-card hab-note-card">
           <div className="hab-card-label">
-            <span aria-hidden="true">💬</span> A note from {owner?.full_name?.split(' ')[0] ?? 'the founders'}
+            <span aria-hidden="true">💬</span>{' '}
+            {hive.owner_is_system ? 'Hosted by TrueHive' : `A note from ${owner?.full_name?.split(' ')[0] ?? 'the founders'}`}
           </div>
           <div className="hab-note-body">
-            <Avatar name={owner?.full_name} src={owner?.profile_photo_url} size={56} />
+            {/* The owner is never shown as a person (name/avatar/link) when
+                it's the TrueHive Team house account. */}
+            {!hive.owner_is_system && <Avatar name={owner?.full_name} src={owner?.profile_photo_url} size={56} />}
             <div className="hab-note-text">
               {hive.founder_note.split('\n').map((p, i) => p.trim() && <p key={i}>{p}</p>)}
-              <p className="hab-note-sign">— {owner?.full_name ?? 'The founders'}, Founder</p>
+              {!hive.owner_is_system && (
+                <p className="hab-note-sign">— {owner?.full_name ?? 'The founders'}, Founder</p>
+              )}
             </div>
           </div>
         </section>

@@ -11,6 +11,7 @@ import { getSoonestOpenMilestone } from './tasksController.js';
 import { getPinnedItineraryModule } from './tripsController.js';
 import { getTopIdea } from './ideasController.js';
 import { isToolOn } from '../lib/hiveTools.js';
+import { excludeSystemClause } from '../lib/systemUser.js';
 
 const ACTIVITY_LIMIT = 8;
 const MESSAGE_LIMIT  = 4;
@@ -53,7 +54,7 @@ export const getHiveHome = async (req, res) => {
       query(
         `SELECT
            (SELECT COUNT(*)::int FROM hive_members
-             WHERE hive_id = $1 AND membership_status = 'active')            AS member_count,
+             WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}) AS member_count,
            (SELECT max_members FROM hives WHERE hive_id = $1)                AS max_members,
            (SELECT COUNT(*)::int FROM hive_posts p
              WHERE p.hive_id = $1 AND p.post_type = 'event'
@@ -71,7 +72,7 @@ export const getHiveHome = async (req, res) => {
                   'joined the Hive'::text AS text, NULL::text AS target,
                   NULL::uuid AS post_id, NULL::uuid AS channel_id, 0 AS n
              FROM hive_members hm
-            WHERE hm.hive_id = $1 AND hm.membership_status = 'active'
+            WHERE hm.hive_id = $1 AND hm.membership_status = 'active' AND ${excludeSystemClause('hm')}
 
            UNION ALL
            SELECT CASE WHEN p.post_type = 'event' THEN 'plan' ELSE 'post' END,
