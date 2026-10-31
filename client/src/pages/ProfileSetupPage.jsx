@@ -706,6 +706,16 @@ export default function ProfileSetupPage() {
     setStep(n);
   };
 
+  // Arriving at /profile/edit#ps-sN (e.g. Profile's "Edit Interests" link)
+  // scrolls straight to that section once the saved profile has hydrated —
+  // scrolling before hydration finishes would land on a position that then
+  // shifts as fields populate.
+  useEffect(() => {
+    if (!isEdit || hydrating) return;
+    const match = location.hash.match(/^#ps-s(\d)$/);
+    if (match) scrollToSection(Number(match[1]));
+  }, [isEdit, hydrating]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const goNext = () => setStep(s => Math.min(s + 1, 6));
   const goBack = () => setStep(s => Math.max(1, s - 1));
 

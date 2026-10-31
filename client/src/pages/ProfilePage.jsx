@@ -245,13 +245,108 @@ function activityIcon(type) {
 export default function ProfilePage() {
   // This is the signed-in member's own profile only. /profile/:id now routes
   // to MemberProfilePage, so there is no id to guard against here.
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   const [profile,     setProfile]     = useState(undefined);
   const [hives,       setHives]       = useState([]);
   const [activity,    setActivity]    = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [error,       setError]       = useState(null);
+
+  // ── In-place edit mode ───────────────────────────────────────────────────
+  const [editing,     setEditing]     = useState(false);
+  const [draft,       setDraft]       = useState(null);
+  const [saving,      setSaving]      = useState(false);
+  const [saveError,   setSaveError]   = useState(null);
+  const [nameInvalid, setNameInvalid] = useState(false);
+  const bioRef = useRef(null);
+
+  function startEdit() {
+    setDraft({
+      full_name:           profile.full_name || '',
+      location:            profile.location || '',
+      school_company:      profile.school_company || '',
+      bio:                 profile.bio || '',
+      connection_purposes: arr(profile.connection_purposes),
+    });
+    setSaveError(null);
+    setNameInvalid(false);
+    setEditing(true);
+  }
+
+  function cancelEdit() {
+    setDraft(null);
+    setSaveError(null);
+    setNameInvalid(false);
+    setEditing(false);
+  }
+
+  function togglePurpose(key) {
+    setDraft(d => {
+      const has = d.connection_purposes.includes(key);
+      if (has && d.connection_purposes.length === 1) return d; // keep at least one selected
+      const next = has
+        ? d.connection_purposes.filter(k => k !== key)
+        : [...d.connection_purposes, key];
+      return { ...d, connection_purposes: next };
+    });
+  }
+
+  async function handleSave() {
+    const trimmedName = draft.full_name.trim();
+    if (!trimmedName) { setNameInvalid(true); return; }
+    setNameInvalid(false);
+    setSaving(true);
+    setSaveError(null);
+
+    // The save endpoint overwrites the whole profile row, so every field it
+    // accepts has to be present — not just the ones this page lets you edit.
+    // Everything below the first five lines is passed through unchanged from
+    // the profile already loaded on this page, exactly as received.
+    const payload = {
+      full_name:             trimmedName,
+      location:              draft.location.trim() || null,
+      school_company:        draft.school_company.trim() || null,
+      bio:                   draft.bio.trim() || null,
+      connection_purposes:   draft.connection_purposes,
+      age:                    profile.age,
+      profile_photo_url:      profile.profile_photo_url,
+      interests:               profile.interests,
+      skills:                  profile.skills,
+      goals:                   profile.goals,
+      availability:            profile.availability,
+      group_size_preference:   profile.group_size_preference,
+      connection_preference:   profile.connection_preference,
+      social_preferences:      profile.social_preferences,
+    };
+
+    try {
+      await api.post('/api/users/profile/setup', payload);
+      setProfile(prev => ({ ...prev, ...payload }));
+      await refreshUser();
+      setDraft(null);
+      setEditing(false);
+    } catch (err) {
+      setSaveError(err.data?.error ?? 'Could not save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Escape cancels edit mode, same as the Cancel pill.
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = e => { if (e.key === 'Escape') cancelEdit(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Bio textarea auto-grows with content, no resize handle.
+  useEffect(() => {
+    if (!editing || !bioRef.current) return;
+    bioRef.current.style.height = 'auto';
+    bioRef.current.style.height = `${bioRef.current.scrollHeight}px`;
+  }, [editing, draft?.bio]);
 
   const pageRef = useRef(null);
 
@@ -374,9 +469,23 @@ export default function ProfilePage() {
               {/* Cover */}
               <div className="prof-cover">
                 <HoneycombBg />
-                <Link to="/profile-setup" className="prof-edit-btn" aria-label="Edit Profile">
-                  <EditIcon /> Edit Profile
-                </Link>
+                {!editing ? (
+                  <button type="button" className="prof-edit-btn" aria-label="Edit Profile" onClick={startEdit}>
+                    <EditIcon /> Edit Profile
+                  </button>
+                ) : (
+                  <div className="prof-edit-actions-wrap">
+                    <div className="prof-edit-actions">
+                      <button type="button" className="prof-edit-pill prof-edit-pill--cancel" onClick={cancelEdit} disabled={saving}>
+                        Cancel
+                      </button>
+                      <button type="button" className="prof-edit-pill prof-edit-pill--save" onClick={handleSave} disabled={saving}>
+                        {saving ? 'Saving…' : 'Save changes'}
+                      </button>
+                    </div>
+                    {saveError && <div className="prof-edit-save-error">{saveError}</div>}
+                  </div>
+                )}
                 <CurveDivider />
               </div>
 
@@ -398,9 +507,42 @@ export default function ProfilePage() {
                   {/* Main column */}
                   <div className="prof-hero-main">
 
-                    <h1 className="prof-hero-name">{fullName}</h1>
+                    {editing ? (
+                      <input
+                        className={`prof-hero-name prof-edit-underline prof-edit-underline--block${nameInvalid ? ' prof-edit-underline--error' : ''}`}
+                        value={draft.full_name}
+                        onChange={e => { setDraft(d => ({ ...d, full_name: e.target.value })); if (nameInvalid) setNameInvalid(false); }}
+                        placeholder="Your name"
+                        aria-label="Full name"
+                        aria-invalid={nameInvalid}
+                      />
+                    ) : (
+                      <h1 className="prof-hero-name">{fullName}</h1>
+                    )}
 
-                    {locationLine && (
+                    {editing ? (
+                      <div className="prof-hero-loc">
+                        <div className="prof-loc-dot" aria-hidden="true" />
+                        <input
+                          className="prof-edit-underline prof-edit-underline--inherit"
+                          style={{ width: `${Math.max(6, draft.location.length + 2)}ch` }}
+                          value={draft.location}
+                          onChange={e => setDraft(d => ({ ...d, location: e.target.value }))}
+                          placeholder="Location"
+                          aria-label="Location"
+                        />
+                        <span>·</span>
+                        <input
+                          className="prof-edit-underline prof-edit-underline--inherit"
+                          style={{ width: `${Math.max(10, draft.school_company.length + 2)}ch` }}
+                          value={draft.school_company}
+                          onChange={e => setDraft(d => ({ ...d, school_company: e.target.value }))}
+                          placeholder="School / Company"
+                          aria-label="School or company"
+                        />
+                        <span>· TrueHive</span>
+                      </div>
+                    ) : locationLine && (
                       <div className="prof-hero-loc">
                         <div className="prof-loc-dot" aria-hidden="true" />
                         <span>{locationLine} · TrueHive</span>
@@ -438,10 +580,51 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Bio */}
-                    {profile.bio && <p className="prof-bio">{profile.bio}</p>}
+                    {editing ? (
+                      <textarea
+                        ref={bioRef}
+                        className="prof-bio prof-edit-underline prof-edit-underline--block"
+                        value={draft.bio}
+                        onChange={e => setDraft(d => ({ ...d, bio: e.target.value }))}
+                        placeholder="Write a short bio…"
+                        aria-label="Bio"
+                        rows={1}
+                      />
+                    ) : (
+                      profile.bio && <p className="prof-bio">{profile.bio}</p>
+                    )}
 
                     {/* I'M HERE FOR */}
-                    {purposeKeys.length > 0 && (
+                    {editing ? (
+                      <>
+                        <p className="prof-here-label" aria-label="I'm here for">I'M HERE FOR</p>
+                        <div className="prof-purposes" role="list">
+                          {Object.keys(PURPOSE_DATA).map(key => {
+                            const pd = PURPOSE_DATA[key];
+                            const IconComp = pd.icon;
+                            const selected = draft.connection_purposes.includes(key);
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                role="listitem"
+                                aria-pressed={selected}
+                                className={`prof-purpose-card prof-purpose-card--toggle${selected ? '' : ' prof-purpose-card--off'}`}
+                                onClick={() => togglePurpose(key)}
+                              >
+                                <div className="prof-purpose-icon" aria-hidden="true">
+                                  <IconComp />
+                                </div>
+                                <div>
+                                  <div className="prof-purpose-name">{pd.name}</div>
+                                  <div className="prof-purpose-desc">{pd.desc}</div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    ) : purposeKeys.length > 0 && (
                       <>
                         <p className="prof-here-label" aria-label="I'm here for">I'M HERE FOR</p>
                         <div className="prof-purposes" role="list">
@@ -491,7 +674,7 @@ export default function ProfilePage() {
                     <p className="pf-section-sub">A glimpse into what you love. Explore all your interests below.</p>
                   </div>
                   {interestArr.length > 0 && (
-                    <Link to="/profile-setup" className="pf-view-all">
+                    <Link to="/profile/edit#ps-s3" className="pf-view-all">
                       Edit Interests ({interestArr.length > 60 ? '60+' : interestArr.length}) →
                     </Link>
                   )}
@@ -544,7 +727,7 @@ export default function ProfilePage() {
                           <span key={chip + i} className="pf-chip" role="listitem">{stripEmoji(chip)}</span>
                         ))}
                       </div>
-                      <Link to="/profile-setup" className="pf-view-skills">Edit Skills →</Link>
+                      <Link to="/profile/edit" className="pf-view-skills">Edit Skills →</Link>
                     </div>
                   </div>
                 )}
@@ -596,7 +779,7 @@ export default function ProfilePage() {
                       <p className="pf-section-sub">How I like to connect and collaborate.</p>
                     </div>
                   </div>
-                  <Link to="/profile-setup" className="pf-view-all" aria-label="Edit availability and preferences">Edit</Link>
+                  <Link to="/profile/edit" className="pf-view-all" aria-label="Edit availability and preferences">Edit</Link>
                 </div>
 
                 <div className="prof-avail-body">

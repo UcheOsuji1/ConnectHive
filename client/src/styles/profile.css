@@ -93,6 +93,10 @@
   text-decoration: none;
   white-space: nowrap;
   transition: background .18s;
+  /* Now a <button> (was a <Link>, which has no UA default border/cursor) —
+     reset so the view-mode look is pixel-identical to before. */
+  border: none;
+  cursor: pointer;
 }
 .prof-edit-btn:hover { background: #a8821e; }
 
@@ -287,6 +291,90 @@
   color: #8a7a5e;
   line-height: 1.4;
 }
+
+/* Edit mode — I'M HERE FOR cards become toggle buttons. Selected ones keep
+   the exact look above; unselected ones dim and lose the gold icon tint. */
+.prof-purpose-card--toggle {
+  cursor: pointer;
+  width: 100%;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: opacity .15s;
+}
+.prof-purpose-card--off { opacity: .45; }
+.prof-purpose-card--off .prof-purpose-icon {
+  color: #8a7a5e;
+  background: rgba(138, 122, 94, .12);
+}
+
+/* ── Edit mode — hero pills + inline inputs ──────────────────────────────── */
+.prof-edit-actions-wrap {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  max-width: 260px;
+}
+.prof-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.prof-edit-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 50px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+  transition: background .18s, opacity .18s;
+}
+.prof-edit-pill--save { background: #c49a28; color: #fff; }
+.prof-edit-pill--save:hover:not(:disabled) { background: #a8821e; }
+.prof-edit-pill--cancel { background: #fff; color: #6b5a32; border: 1px solid #e0d3b4; }
+.prof-edit-pill--cancel:hover:not(:disabled) { background: #faf7f2; }
+.prof-edit-pill:disabled { opacity: .65; cursor: default; }
+
+.prof-edit-save-error {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #c0392b;
+  background: #fff;
+  padding: 4px 10px;
+  border-radius: 8px;
+  text-align: right;
+}
+
+/* Shared underline-input treatment for name/location/school/bio. Each usage
+   also carries the view-mode class (.prof-hero-name, .prof-bio) so the font,
+   size, weight and color stay pixel-identical to the read-only text — this
+   rule only ever touches background/border/padding/outline/resize. */
+.prof-edit-underline {
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed #c49a28;
+  padding: 0;
+  outline: none;
+  resize: none;
+}
+.prof-edit-underline:focus { border-bottom-style: solid; border-bottom-color: #c49a28; }
+.prof-edit-underline--error { border-bottom-color: #c0392b !important; }
+.prof-edit-underline--block { display: block; width: 100%; }
+/* Used only by the location/school inputs, which sit inside .prof-hero-loc
+   rather than carrying their own typography class — inputs don't inherit
+   font/color from an ancestor by default the way text nodes do. */
+.prof-edit-underline--inherit { font: inherit; color: inherit; }
 
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* 2. TOP INTERESTS                                                           */
