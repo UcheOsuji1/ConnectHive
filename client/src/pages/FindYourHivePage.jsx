@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
 import AreaLocationInput from '../components/AreaLocationInput.jsx';
 import StarterHiveBadge from '../components/StarterHiveBadge.jsx';
+import DistanceSlider, { distanceLabel } from '../components/DistanceSlider.jsx';
 import '../styles/hive-discovery.css';
 import '../styles/find-your-hive.css';
 
@@ -12,6 +13,7 @@ function filterParams(filters) {
   if (filters.location) params.set('location', filters.location);
   if (filters.metroKey) params.set('metro_key', filters.metroKey);
   for (const key of ['connection', 'groupSize', 'cadence']) if (filters[key].length) params.set(key, filters[key].join(','));
+  if (filters.maxDistance !== undefined) params.set('max_distance', filters.maxDistance === null ? 'any' : String(filters.maxDistance));
   return params;
 }
 
@@ -257,6 +259,23 @@ function RefineRail({ filters, setFilters, facets }) {
         {filters.location && <button type="button" className="fyh-area-clear" onClick={() => setFilters(prev => ({ ...prev, location: '', metroKey: null }))}>Anywhere · Clear location</button>}
       </div>
 
+      <div className={`fg${facets.hasOrigin === false ? ' fg--disabled' : ''}`}>
+        <div className="fyh-distance-head">
+          <h4>Distance</h4>
+          <span className="fyh-distance-value">{distanceLabel(filters.maxDistance ?? null)}</span>
+        </div>
+        <DistanceSlider
+          value={filters.maxDistance ?? null}
+          onChange={maxDistance => setFilters(prev => ({ ...prev, maxDistance }))}
+          disabled={facets.hasOrigin === false}
+        />
+        <p className="fyh-distance-help">
+          {facets.hasOrigin === false
+            ? 'Set your location to filter by distance'
+            : `${facets.inPersonInRangeCount ?? 0} in-person Hive${(facets.inPersonInRangeCount ?? 0) === 1 ? '' : 's'} in range · online Hives always shown`}
+        </p>
+      </div>
+
       <div className="fg">
         <h4>Connection type</h4>
         {facets.connectionOptions.map(opt => (
@@ -349,7 +368,11 @@ function SuggestCard({ hive, navigate }) {
             ? 'Be one of the first to join'
             : `${hive.member_count} member${hive.member_count === 1 ? '' : 's'}`}
         </span>
-        {hive.location && <span className="hmd-stat">{hive.location}</span>}
+        {hive.location && (
+          <span className="hmd-stat">
+            {hive.location}{hive.distance_miles != null ? ` · ${hive.distance_miles} mi away` : ''}
+          </span>
+        )}
       </div>
       {hive.reasons?.[0] && <div className="why">{hive.reasons[0]}</div>}
       {Array.isArray(hive.tags) && hive.tags.length > 0 && (
@@ -408,10 +431,18 @@ function MightSuitYou({ navigate, filters }) {
 export default function FindYourHivePage() {
   const [selected, setSelected] = useState(null);
   const [categoryCounts, setCategoryCounts] = useState({});
-  const [filters, setFilters] = useState({ location: '', metroKey: null, connection: [], groupSize: [], cadence: [] });
+  const [filters, setFilters] = useState({ location: '', metroKey: null, connection: [], groupSize: [], cadence: [], maxDistance: 50 });
   const [facets, setFacets] = useState({ locations: [], connectionOptions: [], sizeOptions: [], cadenceOptions: [] });
   const [refineOpen, setRefineOpen] = useState(false); // mobile accordion
   const navigate = useNavigate();
+
+  // Seed the slider from the user's saved default once — moving it afterwards
+  // never writes back to the saved profile value.
+  useEffect(() => {
+    api.get('/api/users/profile')
+      .then(({ profile }) => setFilters(prev => ({ ...prev, maxDistance: profile?.max_distance_miles ?? 50 })))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -421,7 +452,7 @@ export default function FindYourHivePage() {
         setFacets(data);
         if (data.categoryCounts) setCategoryCounts(Object.fromEntries(CATEGORIES.map(c => [c.dbName, data.categoryCounts[c.dbName] ?? 0])));
       } })
-      .catch(() => {}), 200);
+      .catch(() => {}), 250);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [filters]);
 

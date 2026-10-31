@@ -1,10 +1,31 @@
 import AreaLocationInput from '../components/AreaLocationInput.jsx';
+import DistanceSlider from '../components/DistanceSlider.jsx';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 import { getCachedMetros, nearestMetro, metroSubline } from '../lib/geo.js';
+import { api } from '../lib/api';
 import '../styles/category-deep-dive.css';
+
+// Deep Dive phrases the slider's value differently from Quick Find's
+// "Within 25 mi" — "Up to 25 miles" is this surface's own wording.
+function distanceQuestionLabel(miles) {
+  return miles == null ? 'Any distance' : `Up to ${miles} miles`;
+}
+
+// Rendered once per category right after its LocationQuestion, hidden by the
+// caller (not here) when that category's location chip is "Online community
+// only" — distance is meaningless once the search is online-only.
+function DistanceQuestion({ value, onChange }) {
+  return (
+    <div className="cdd-section">
+      <div className="cdd-section-label">How far will you go to meet your Hive?</div>
+      <div className="cdd-distance-value">{distanceQuestionLabel(value)}</div>
+      <DistanceSlider value={value} onChange={onChange} />
+    </div>
+  );
+}
 
 // An old saved cards[id] may still be a plain string (single-select, from
 // before ages went multi-select) — read it as a one-item array either way.
@@ -798,6 +819,7 @@ function LocationQuestion({
   const [geoStatus, setGeoStatus] = useState('idle'); // idle | locating | confirmed | failed
   const [confirmedMetro, setConfirmedMetro] = useState(null);
   const [subline, setSubline] = useState('');
+  const [locationDenied, setLocationDenied] = useState(false);
   const inputRef = useRef(null);
   const geoRequest = useRef(0);
   useEffect(() => () => { geoRequest.current++; }, []);
@@ -817,6 +839,7 @@ function LocationQuestion({
     const requestId = ++geoRequest.current;
     onSelectChip('📍 Use my current location');
     setGeoStatus('locating');
+    setLocationDenied(false);
     try {
       const pos = await new Promise((resolve, reject) => {
         if (!navigator.geolocation) { reject(new Error('unsupported')); return; }
@@ -831,16 +854,21 @@ function LocationQuestion({
         setConfirmedMetro(nearest);
         setSubline(metroSubline(nearest));
         setGeoStatus('confirmed');
+        // Best-effort — saves the precise (rounded) coordinates for the
+        // distance filter. Never blocks the metro-based flow above; a
+        // failure here is silent since the metro resolution already worked.
+        api.post('/api/users/location', { latitude: pos.coords.latitude, longitude: pos.coords.longitude }).catch(() => {});
       } else {
         fallbackToTyping();
       }
-    } catch {
-      if (requestId === geoRequest.current) fallbackToTyping();
+    } catch (err) {
+      if (requestId === geoRequest.current) fallbackToTyping(err?.code === 1);
     }
   }
 
-  function fallbackToTyping() {
+  function fallbackToTyping(permissionDenied = false) {
     setGeoStatus('failed');
+    setLocationDenied(permissionDenied);
     onSelectChip("✍️ I'll type it in");
     onMetroKeyChange(null);
     setTimeout(() => inputRef.current?.focus(), 0);
@@ -853,6 +881,7 @@ function LocationQuestion({
     onPlaceLabelChange('');
     setConfirmedMetro(null);
     setGeoStatus('idle');
+    setLocationDenied(false);
   }
 
   function handleChipClick(chip) {
@@ -863,12 +892,14 @@ function LocationQuestion({
       onMetroKeyChange(null);
       onPlaceLabelChange('');
       setGeoStatus('idle');
+      setLocationDenied(false);
       return;
     }
     // "I'll type it in"
     onMetroKeyChange(null);
     onPlaceLabelChange('');
     setGeoStatus('idle');
+    setLocationDenied(false);
     onSelectChip(chip);
     setTimeout(() => inputRef.current?.focus(), 0);
   }
@@ -909,7 +940,9 @@ function LocationQuestion({
             onChange={val => { onCityTextChange(val); onMetroKeyChange(null); onPlaceLabelChange(''); }}
             onSelect={({ metroKey, place }) => { onMetroKeyChange(metroKey); onPlaceLabelChange(place.display_name); }} />
           {geoStatus === 'failed' && (
-            <p className="cdd-location-error">We couldn't find your area. Type your city instead.</p>
+            <p className="cdd-location-error">
+              {locationDenied ? 'Location access was blocked. Type your city instead.' : "We couldn't find your area. Type your city instead."}
+            </p>
           )}
 
         </div>
@@ -1409,6 +1442,19 @@ export default function CategoryDeepDivePage() {
   const [metroKeys,     setMetroKeys]     = useState(location.state?.metroKeys ?? {});
   const [placeLabels,   setPlaceLabels]   = useState(location.state?.placeLabels ?? {});
 
+  // A search handed off from Quick Find's own slider continues at that
+  // value; arriving fresh (no refineFilters yet) seeds from the user's saved
+  // default instead, same as Quick Find does on its own first load.
+  const incomingMaxDistance = location.state?.refineFilters?.maxDistance;
+  const [maxDistance, setMaxDistance] = useState(incomingMaxDistance !== undefined ? incomingMaxDistance : 50);
+  useEffect(() => {
+    if (incomingMaxDistance !== undefined) return;
+    api.get('/api/users/profile')
+      .then(({ profile }) => setMaxDistance(profile?.max_distance_miles ?? 50))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Handlers ──
   const toggleChip = (id, label, single = false) =>
     setChips(prev => {
@@ -1478,9 +1524,13 @@ export default function CategoryDeepDivePage() {
 
   // ── Navigate next ──
   const handleNext = () => {
-    const answers = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters: location.state?.refineFilters };
+    const refineFilters = { ...(location.state?.refineFilters ?? {}), maxDistance };
+    const answers = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters };
     // Preserve this history entry so browser Back restores the search answers.
     window.history.replaceState({ ...window.history.state, usr: answers }, '');
+    // Best-effort — the Deep Dive's own save of the radius choice. Never
+    // blocks navigation; failing here still lets this search use `maxDistance`.
+    api.put('/api/users/max-distance', { maxDistanceMiles: maxDistance }).catch(() => {});
     navigate('/hive-discovery', { state: answers });
   };
   const createPrefills = () => {
@@ -1604,6 +1654,10 @@ export default function CategoryDeepDivePage() {
             />
           </div>
 
+          {chips['social-location']?.[0] !== '💻 Online community only' && (
+            <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
+          )}
+
           <div className="cdd-section">
             <div className="cdd-section-label">Are you new to the area or an established local?</div>
             <ChipGroup
@@ -1708,6 +1762,10 @@ export default function CategoryDeepDivePage() {
               onPlaceLabelChange={label => setPlaceLabel('professional-location', label)}
             />
           </div>
+
+          {chips['professional-location']?.[0] !== '💻 Online community only' && (
+            <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
+          )}
 
           <div className="cdd-section">
             <div className="cdd-section-label">What&apos;s your primary professional goal right now?</div>
@@ -1839,6 +1897,10 @@ export default function CategoryDeepDivePage() {
               onPlaceLabelChange={label => setPlaceLabel('travel-location', label)}
             />
           </div>
+
+          {chips['travel-location']?.[0] !== '💻 Online community only' && (
+            <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
+          )}
 
           <div className="cdd-section">
             <div className="cdd-section-label">What are you looking for from a travel buddy?</div>
@@ -1999,6 +2061,10 @@ export default function CategoryDeepDivePage() {
               onPlaceLabelChange={label => setPlaceLabel('project-location', label)}
             />
           </div>
+
+          {chips['project-location']?.[0] !== '💻 Online community only' && (
+            <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
+          )}
 
           <div className="cdd-section">
             <div className="cdd-section-label">What&apos;s your primary collaboration goal?</div>
@@ -2275,6 +2341,10 @@ export default function CategoryDeepDivePage() {
             />
           </div>
 
+          {chips['event-location']?.[0] !== '💻 Online community only' && (
+            <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
+          )}
+
           <div className="cdd-section">
             <div className="cdd-section-label">What age range are you looking for?</div>
             <EventAgeChipRow
@@ -2378,6 +2448,10 @@ export default function CategoryDeepDivePage() {
               onPlaceLabelChange={label => setPlaceLabel('spec-location', label)}
             />
           </div>
+
+          {chips['spec-location']?.[0] !== '💻 Online community only' && (
+            <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
+          )}
 
           <div className="cdd-section">
             <div className="cdd-section-label">Why are you looking for this group right now?</div>

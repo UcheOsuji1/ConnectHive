@@ -3,6 +3,7 @@ import { MIN_AGE } from '../lib/policy.js';
 import { flatten, norm } from '../lib/compatibility.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
 import { isBlockedEitherWay } from '../lib/blocks.js';
+import { geocode, reverseGeocode } from '../services/geocode.js';
 
 export const getProfile = async (req, res) => {
   try {
@@ -84,17 +85,42 @@ export const setupProfile = async (req, res) => {
       }
     }
 
+    const newLocation = location || null;
+
+    // Only re-geocode when the location text actually changed — the common
+    // case here is "saved every other field, location untouched," and
+    // Nominatim shouldn't be hit on every save just because the form resubmits.
+    const { rows: [existing] } = await query(
+      `SELECT location, latitude, longitude FROM profiles WHERE user_id = $1`,
+      [userId],
+    );
+
+    let latitude = existing?.latitude ?? null;
+    let longitude = existing?.longitude ?? null;
+    if (newLocation !== (existing?.location ?? null)) {
+      if (newLocation) {
+        const geo = await geocode(newLocation);
+        latitude = geo?.latitude ?? null;
+        longitude = geo?.longitude ?? null;
+      } else {
+        latitude = null;
+        longitude = null;
+      }
+    }
+
     const { rows } = await query(
       `INSERT INTO profiles (
          user_id, full_name, age, location, school_company, bio, profile_photo_url,
          interests, skills, goals, availability,
          group_size_preference, connection_preference,
-         connection_purposes, social_preferences
+         connection_purposes, social_preferences,
+         latitude, longitude
        ) VALUES (
          $1,  $2,  $3,  $4,  $5,  $6,  $7,
          $8,  $9,  $10, $11,
          $12, $13,
-         $14, $15
+         $14, $15,
+         $16, $17
        )
        ON CONFLICT (user_id) DO UPDATE SET
          full_name             = EXCLUDED.full_name,
@@ -111,13 +137,15 @@ export const setupProfile = async (req, res) => {
          connection_preference = EXCLUDED.connection_preference,
          connection_purposes   = EXCLUDED.connection_purposes,
          social_preferences    = EXCLUDED.social_preferences,
+         latitude               = EXCLUDED.latitude,
+         longitude              = EXCLUDED.longitude,
          updated_at            = NOW()
        RETURNING profile_id, user_id`,
       [
         userId,
         full_name        || null,
         age != null && age !== '' ? parseInt(age, 10) : null,
-        location         || null,
+        newLocation,
         school_company   || null,
         bio              || null,
         profile_photo_url || null,
@@ -129,6 +157,8 @@ export const setupProfile = async (req, res) => {
         connection_preference || null,
         JSON.stringify(connection_purposes ?? []),
         JSON.stringify(social_preferences  ?? {}),
+        latitude,
+        longitude,
       ],
     );
 
@@ -136,6 +166,65 @@ export const setupProfile = async (req, res) => {
   } catch (err) {
     console.error('[users/setupProfile]', err);
     return res.status(500).json({ error: 'Failed to save profile.' });
+  }
+};
+
+// "Use my current location" (Deep Dive) — browser geolocation coords, rounded
+// to 2 decimals (~1km) before they ever touch the database, so no finer-grained
+// location than that is ever stored or could later leak.
+export const setLocationFromCoords = async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body ?? {};
+    const lat = Number(latitude);
+    const lng = Number(longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      return res.status(400).json({ error: 'Valid latitude and longitude are required.' });
+    }
+
+    const roundedLat = Math.round(lat * 100) / 100;
+    const roundedLng = Math.round(lng * 100) / 100;
+    const place = await reverseGeocode(roundedLat, roundedLng);
+    const label = place?.label ?? null;
+
+    const { rows: [updated] } = await query(
+      `UPDATE profiles SET
+         latitude = $1, longitude = $2, location = COALESCE($3, location), updated_at = NOW()
+       WHERE user_id = $4
+       RETURNING location`,
+      [roundedLat, roundedLng, label, req.userId],
+    );
+    if (!updated) return res.status(404).json({ error: 'Profile not found.' });
+
+    return res.json({ location: updated.location });
+  } catch (err) {
+    console.error('[users/setLocationFromCoords]', err);
+    return res.status(500).json({ error: 'Failed to save your location.' });
+  }
+};
+
+// Deep Dive's distance-radius question — a single-column save, deliberately
+// separate from setupProfile so finishing the questionnaire can never null
+// any other profile field.
+export const setMaxDistance = async (req, res) => {
+  try {
+    const { maxDistanceMiles } = req.body ?? {};
+    const value = maxDistanceMiles === null ? null : parseInt(maxDistanceMiles, 10);
+    if (value !== null && (isNaN(value) || value <= 0)) {
+      return res.status(400).json({ error: 'maxDistanceMiles must be a positive integer or null.' });
+    }
+
+    const { rows: [updated] } = await query(
+      `UPDATE profiles SET max_distance_miles = $1, updated_at = NOW()
+       WHERE user_id = $2
+       RETURNING max_distance_miles`,
+      [value, req.userId],
+    );
+    if (!updated) return res.status(404).json({ error: 'Profile not found.' });
+
+    return res.json({ max_distance_miles: updated.max_distance_miles });
+  } catch (err) {
+    console.error('[users/setMaxDistance]', err);
+    return res.status(500).json({ error: 'Failed to save your distance preference.' });
   }
 };
 

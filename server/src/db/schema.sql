@@ -1652,3 +1652,29 @@ BEGIN
   RETURN trim(s);
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
+
+-- ─── Distance radius filter (Prompt 79) ───────────────────────────────────────
+-- Real lat/lng, separate from the coarse metro_key system above — metro_key
+-- answers "same metro or not"; these answer "how many miles." NULL coords
+-- (ungeocoded location text, or none saved yet) mean "distance unknown," not
+-- "zero" — every distance query below treats the two differently on purpose.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS latitude           DOUBLE PRECISION;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS longitude          DOUBLE PRECISION;
+-- NULL = "any distance" (the user explicitly widened all the way out);
+-- DEFAULT 50 only applies to a row that doesn't exist yet (a brand-new profile).
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS max_distance_miles INTEGER DEFAULT 50;
+
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS latitude  DOUBLE PRECISION;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS longitude DOUBLE PRECISION;
+CREATE INDEX IF NOT EXISTS idx_hives_lat_lng ON hives(latitude, longitude);
+
+-- One row per normalized (trimmed, lowercased) location string ever geocoded,
+-- including misses (latitude/longitude left NULL) — a location that fails to
+-- geocode once must not hit Nominatim again on every subsequent save.
+CREATE TABLE IF NOT EXISTS geocode_cache (
+  query        TEXT        PRIMARY KEY,
+  latitude     DOUBLE PRECISION,
+  longitude    DOUBLE PRECISION,
+  display_name TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

@@ -70,6 +70,13 @@
 .fo .n { margin-left: auto; font: 500 12px 'DM Sans', sans-serif; color: #8a8279; }
 .fo.off { color: #b9b2a8; cursor: default; }
 .fo.off .n { color: #c6bfb5; }
+
+/* Distance row */
+.fyh-distance-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 9px; }
+.fyh-distance-head h4 { margin-bottom: 0; }
+.fyh-distance-value { font: 700 12.5px 'DM Sans', sans-serif; color: var(--gold); }
+.fyh-distance-help { color: #8a7a5a; font: 400 12px/1.45 'DM Sans', sans-serif; margin-top: 8px; }
+.fg--disabled .fyh-distance-value { color: #c6bfb5; }
 .sel {
   width: 100%; padding: 10px 10px; border: 1px solid rgba(30,27,24,.16);
   border-radius: 9px; font: 400 13.5px 'DM Sans', sans-serif; background: #fff; min-height: 44px;

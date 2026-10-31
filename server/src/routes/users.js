@@ -3,6 +3,8 @@ import {
   getProfile,
   updateProfile,
   setupProfile,
+  setLocationFromCoords,
+  setMaxDistance,
   getCompatibility,
   getActivity,
   getSuggestions,
@@ -16,6 +18,8 @@ const router = Router();
 router.get('/profile',               requireAuth, getProfile);
 router.put('/profile',               requireAuth, updateProfile);
 router.post('/profile/setup',        requireAuth, setupProfile);
+router.post('/location',             requireAuth, setLocationFromCoords);
+router.put('/max-distance',          requireAuth, setMaxDistance);
 router.get('/compatibility/:hiveId', requireAuth, getCompatibility);
 router.get('/activity',              requireAuth, getActivity);
 router.get('/suggestions',           requireAuth, getSuggestions);

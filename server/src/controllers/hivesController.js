@@ -18,8 +18,10 @@ import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
 import { sendYoureInEmail } from '../lib/email.js';
 import { resolveMetro, resolveLocationMetro, metroByKey, LAUNCH_METROS } from '../lib/metros.js';
 import { validateMaxMembers } from '../lib/policy.js';
-import { readRefineFilters, matchesRefine, sizeBucket } from '../lib/discoveryFilters.js';
+import { readRefineFilters, matchesRefine, sizeBucket, withinDistance } from '../lib/discoveryFilters.js';
 import { excludeSystemClause } from '../lib/systemUser.js';
+import { geocode } from '../services/geocode.js';
+import { resolveOrigin, buildDistanceSql, haversineMiles, formatDistance } from '../lib/distance.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -108,6 +110,19 @@ export const matchHives = async (req, res) => {
         refineClauses.push(`AND ${expression} = ANY($${candidateParams.length}::text[])`);
       }
     }
+
+    // Distance radius — an explicit refineFilters.maxDistance (including
+    // explicit null for "Any") wins; a request that never mentions distance
+    // at all (no refineFilters.maxDistance key) falls back to the caller's
+    // own saved default, same radius "Might suit you" uses.
+    const requestedMaxDistance = refineFilters && Object.prototype.hasOwnProperty.call(refineFilters, 'maxDistance')
+      ? refineFilters.maxDistance
+      : (profile.max_distance_miles ?? null);
+    const origin = await resolveOrigin({ userId: req.userId, locationText: locationFromSearch || null });
+    const preDistanceParamCount = candidateParams.length;
+    const { selectExpr: distanceSelectExpr, whereClause: distanceWhereClause } =
+      buildDistanceSql('h', candidateParams, origin, requestedMaxDistance);
+
     const { rows: candidates } = await query(
       `SELECT h.*,
               c.category_name,
@@ -117,13 +132,15 @@ export const matchHives = async (req, res) => {
               ) AS is_following,
               EXISTS(
                 SELECT 1 FROM join_requests WHERE hive_id = h.hive_id AND user_id = $1 AND status = 'pending'
-              ) AS request_pending
+              ) AS request_pending,
+              ${distanceSelectExpr} AS distance_raw
        FROM hives h
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.discoverable = TRUE
          ${areaFilter}
          ${refineClauses.join('\n')}
+         ${distanceWhereClause}
          AND h.hive_status  = 'active'
          AND NOT EXISTS(
            SELECT 1 FROM hive_members
@@ -135,6 +152,29 @@ export const matchHives = async (req, res) => {
                COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')}) < h.max_members)`,
       candidateParams,
     );
+
+    // Did the radius itself zero out the results? Checked by re-running the
+    // same non-distance filters with no cap — distinguishes "no Hives exist
+    // here at all" (keep the founder/waitlist empty state) from "Hives exist,
+    // just outside this radius" (the widen-radius empty state).
+    let limitedByDistance = false;
+    if (candidates.length === 0 && origin && requestedMaxDistance != null) {
+      const { rows: [{ count: anyCount }] } = await query(
+        `SELECT COUNT(*)::int AS count
+         FROM hives h
+         WHERE h.discoverable = TRUE
+           ${areaFilter}
+           ${refineClauses.join('\n')}
+           AND h.hive_status = 'active'
+           AND NOT EXISTS(
+             SELECT 1 FROM hive_members
+             WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active'
+           )
+           ${categoryFilter}`,
+        candidateParams.slice(0, preDistanceParamCount),
+      );
+      limitedByDistance = anyCount > 0;
+    }
 
     // 4. Score each candidate
     const blockedIds = await blockedIdsFor(req.userId);
@@ -223,8 +263,10 @@ export const matchHives = async (req, res) => {
       const member_matches = pairResults.sort((a, b) => b.pair_score - a.pair_score);
       const reasons        = buildReasons(purposeFactors, peopleFit, member_matches);
 
+      const { distance_raw, ...hiveFields } = hive;
       scored.push({
-        ...hive,
+        ...hiveFields,
+        distance_miles:     formatDistance(distance_raw),
         match_score:       finalScore,
         purpose_score:     purposeTotal,
         people_score:      peopleFit,
@@ -258,7 +300,7 @@ export const matchHives = async (req, res) => {
     const area = resolvedMetro ? { metro_key: resolvedMetro.metro_key, name: resolvedMetro.name } : null;
     const isLaunchArea = LAUNCH_METROS.includes(resolvedMetroKey);
 
-    res.json({ hives: results, waitingCount, needsProfile: false, area, isLaunchArea, needsArea });
+    res.json({ hives: results, waitingCount, needsProfile: false, area, isLaunchArea, needsArea, limitedByDistance });
   } catch (err) {
     console.error('[hives/matchHives]', err);
     res.status(500).json({ error: 'Failed to run matching.' });
@@ -336,7 +378,8 @@ export const getCategoryCounts = async (req, res) => {
 export const getFilterFacets = async (req, res) => {
   try {
     const { rows: hives } = await query(
-      `SELECT h.hive_id, h.location, h.metro_key, h.location_type, h.max_members, h.cadence, c.category_name
+      `SELECT h.hive_id, h.location, h.metro_key, h.location_type, h.max_members, h.cadence,
+              h.latitude, h.longitude, c.category_name
        FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
        WHERE h.discoverable = TRUE AND h.hive_status = 'active'`,
     );
@@ -345,27 +388,46 @@ export const getFilterFacets = async (req, res) => {
     const selMetro = filters.metroKey;
     const matches = (h, skip = {}) => matchesRefine(h, filters, skip);
 
+    // Origin: the Location field's typed text wins for this search (it may
+    // not match the caller's saved profile city); otherwise fall back to
+    // the caller's saved coordinates. No key at all for max_distance means
+    // "not mentioned yet" — default to the caller's own saved radius.
+    const origin = await resolveOrigin({ userId: req.userId, locationText: filters.location || null });
+    let maxMiles = filters.maxDistance;
+    if (maxMiles === undefined) {
+      const { rows: [profile] } = await query('SELECT max_distance_miles FROM profiles WHERE user_id = $1', [req.userId]);
+      maxMiles = profile?.max_distance_miles ?? null;
+    }
+    const inRange = h => withinDistance(h, origin, maxMiles);
+
     const locations = [...new Set(hives.map(h => h.location).filter(Boolean))].sort();
 
     const connectionOptions = ['online', 'in-person', 'hybrid'].map(value => ({
       value,
-      count: hives.filter(h => h.location_type === value && matches(h, { conn: true })).length,
+      count: hives.filter(h => h.location_type === value && matches(h, { conn: true }) && inRange(h)).length,
     }));
 
     const sizeOptions = ['small', 'medium', 'large'].map(value => ({
       value,
-      count: hives.filter(h => sizeBucket(h.max_members) === value && matches(h, { size: true })).length,
+      count: hives.filter(h => sizeBucket(h.max_members) === value && matches(h, { size: true }) && inRange(h)).length,
     }));
 
     const cadenceValues = [...new Set(hives.map(h => norm(h.cadence)).filter(Boolean))];
     const cadenceOptions = cadenceValues.map(value => ({
       value,
-      count: hives.filter(h => norm(h.cadence) === value && matches(h, { cadence: true })).length,
+      count: hives.filter(h => norm(h.cadence) === value && matches(h, { cadence: true }) && inRange(h)).length,
     }));
 
     const categoryCounts = {};
-    for (const h of hives.filter(h => matches(h))) categoryCounts[h.category_name] = (categoryCounts[h.category_name] || 0) + 1;
-    res.json({ locations, connectionOptions, sizeOptions, cadenceOptions, categoryCounts, metroKey: selMetro });
+    const activeMatches = hives.filter(h => matches(h) && inRange(h));
+    for (const h of activeMatches) categoryCounts[h.category_name] = (categoryCounts[h.category_name] || 0) + 1;
+
+    const inPersonInRangeCount = activeMatches.filter(h => h.location_type !== 'online').length;
+
+    res.json({
+      locations, connectionOptions, sizeOptions, cadenceOptions, categoryCounts, metroKey: selMetro,
+      hasOrigin: !!origin, inPersonInRangeCount,
+    });
   } catch (err) {
     console.error('[hives/getFilterFacets]', err);
     if (err.status) return res.status(err.status).json({ error: err.message });
@@ -400,8 +462,24 @@ export const getSuggestions = async (req, res) => {
       [req.userId],
     );
 
+    // "Might suit you" always uses the caller's own SAVED radius and
+    // coordinates — never the live Quick Find slider — so dragging the
+    // slider on Find Your Hive can't make this section contradict it.
+    const origin = profile.latitude != null && profile.longitude != null
+      ? { lat: profile.latitude, lng: profile.longitude }
+      : null;
+    const maxMiles = profile.max_distance_miles ?? null;
+    const withDistance = candidates.map(hive => {
+      const inRange = hive.location_type !== 'online' && hive.latitude != null && hive.longitude != null && origin;
+      const rawMiles = inRange ? haversineMiles(origin.lat, origin.lng, hive.latitude, hive.longitude) : null;
+      return { ...hive, _raw_miles: rawMiles, distance_miles: formatDistance(rawMiles) };
+    });
+    const distanceFiltered = (!origin || maxMiles == null)
+      ? withDistance
+      : withDistance.filter(hive => hive.location_type === 'online' || (hive._raw_miles != null && hive._raw_miles <= maxMiles));
+
     const filters = await readRefineFilters(req.query);
-    const scored = candidates.filter(hive => matchesRefine(hive, filters))
+    const scored = distanceFiltered.filter(hive => matchesRefine(hive, filters))
       .map(hive => {
         const { factors, total } = scorePurpose(profile, hive, null);
         return { hive, factors, total };
@@ -454,6 +532,7 @@ export const getSuggestions = async (req, res) => {
         member_count:  Number(hive.member_count),
         location:      hive.location,
         location_type: hive.location_type,
+        distance_miles: hive.distance_miles,
         match_score:   matchScore,
         reasons,
         is_seed:       hive.is_seed,
@@ -839,6 +918,17 @@ export const createHive = async (req, res) => {
     // right even for a client that hasn't picked up the autocomplete yet.
     const resolvedMetroKey = locationType === 'online' ? null : await resolveLocationMetro(location, metroKey);
 
+    // Online-only Hives have no meeting place to measure distance from.
+    // Geocoding runs before the transaction opens — it's a network call and
+    // must not hold a DB transaction open while it waits.
+    let hiveLatitude = null;
+    let hiveLongitude = null;
+    if (locationType !== 'online' && location) {
+      const geo = await geocode(location);
+      hiveLatitude = geo?.latitude ?? null;
+      hiveLongitude = geo?.longitude ?? null;
+    }
+
     // Hive, owner membership, default channel and onboarding settings are one
     // unit of work. Previously these were separate pool queries with a
     // hand-rolled compensating DELETE for the membership step, and no channel
@@ -853,8 +943,8 @@ export const createHive = async (req, res) => {
           creator_user_id, category_id, hive_name, description, ideal_members,
           max_members, activation_threshold, tags, join_policy, discoverable,
           location_type, location, cadence, pinned_goal, ground_rules, icebreaker,
-          hive_values, metro_key
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+          hive_values, metro_key, latitude, longitude
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
         RETURNING *`,
         [
           userId,
@@ -875,6 +965,8 @@ export const createHive = async (req, res) => {
           icebreaker || null,
           JSON.stringify(Array.isArray(hiveValues) ? hiveValues : []),
           resolvedMetroKey,
+          hiveLatitude,
+          hiveLongitude,
         ],
       );
 
@@ -1009,6 +1101,17 @@ export const updateHive = async (req, res) => {
       if (locationType === 'online') updates.metro_key = null;
       else if (!(sameLocation && (!('metro_key' in updates) || updates.metro_key === saved.metro_key))) {
         updates.metro_key = await resolveLocationMetro(locationText, updates.metro_key);
+      }
+
+      // Same idea for precise coordinates: online clears them, an unchanged
+      // location/type keeps them, anything else re-geocodes the new text.
+      if (locationType === 'online') {
+        updates.latitude = null;
+        updates.longitude = null;
+      } else if (!sameLocation) {
+        const geo = locationText ? await geocode(locationText) : null;
+        updates.latitude = geo?.latitude ?? null;
+        updates.longitude = geo?.longitude ?? null;
       }
     }
 

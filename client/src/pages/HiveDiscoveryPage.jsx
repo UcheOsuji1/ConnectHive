@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import StarterHiveBadge from '../components/StarterHiveBadge.jsx';
+import { DISTANCE_STOPS } from '../components/DistanceSlider.jsx';
 import '../styles/hive-discovery.css';
 
 const CATEGORY_LABELS = {
@@ -186,6 +187,7 @@ function HiveMatchCard({ hive, autoFetch = false }) {
         ) : hive.location ? (
           <span className="hmd-location-pill hmd-location-pill--inperson">
             📍 {hive.location} · {hive.location_type === 'hybrid' ? 'Hybrid' : 'In person'}
+            {hive.distance_miles != null ? ` · ${hive.distance_miles} mi away` : ''}
           </span>
         ) : null}
       </div>
@@ -614,6 +616,11 @@ export default function HiveDiscoveryPage() {
   // ── Matching flow state ───────────────────────────────────────
   const [status,      setStatus]      = useState('loading');
   const [matchResult, setMatchResult] = useState({ hives: [], waitingCount: 0 });
+  // The active radius for this results view — starts at whatever Quick Find
+  // or the Deep Dive's own distance question handed off; "Widen to..." below
+  // bumps it one stop and triggers the refetch effect, same mechanism as the
+  // first search.
+  const [maxDistance, setMaxDistance] = useState(state.refineFilters?.maxDistance);
   const area = matchResult.area ?? null;
   const resolvedPrefills = { ...prefillData, searchMetroKey: area?.metro_key ?? searchMetroKey, searchPlaceLabel: city || area?.name || null };
   const outsideLaunch = searchMode !== 'online' && area && matchResult.isLaunchArea === false && !matchResult.hives.some(h => h.location_type === 'in-person' || h.location_type === 'hybrid');
@@ -622,6 +629,7 @@ export default function HiveDiscoveryPage() {
   useEffect(() => {
     let cancelled = false;
     const timers  = [];
+    const searchPayload = { ...prefillData, refineFilters: { ...prefillData.refineFilters, maxDistance } };
 
     // Gate 1 — minimum floor: loading animation always plays fully
     const floor = new Promise(resolve => {
@@ -636,7 +644,7 @@ export default function HiveDiscoveryPage() {
     });
 
     Promise.all([
-      Promise.race([runMatching(category, prefillData), ceiling]),
+      Promise.race([runMatching(category, searchPayload), ceiling]),
       floor,
     ]).then(([result]) => {
       if (cancelled) return;
@@ -649,7 +657,10 @@ export default function HiveDiscoveryPage() {
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, []); // runs once on mount — category & prefillData are stable route state
+    // category & prefillData are stable route state — only maxDistance
+    // (moved by "Widen to...") re-triggers this.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [maxDistance]);
 
   // ── Tip cycling ──────────────────────────────────────────────
   const [tipIndex,   setTipIndex]   = useState(0);
@@ -745,7 +756,20 @@ export default function HiveDiscoveryPage() {
             <button className="es-alt-btn" onClick={() => navigate('/category-deep-dive', { state: questionState })}>Add your city →</button>
           </p>
         )}
-        {status === 'empty' && !outsideLaunch && (
+        {status === 'empty' && !outsideLaunch && matchResult.limitedByDistance && (
+          <p className="hmd-area-prompt">
+            No Hives within {maxDistance} mi yet.{' '}
+            <button
+              className="es-alt-btn"
+              onClick={() => setMaxDistance(DISTANCE_STOPS[DISTANCE_STOPS.indexOf(maxDistance) + 1])}
+            >
+              {DISTANCE_STOPS[DISTANCE_STOPS.indexOf(maxDistance) + 1] == null
+                ? 'Show any distance'
+                : `Widen to ${DISTANCE_STOPS[DISTANCE_STOPS.indexOf(maxDistance) + 1]} mi`} →
+            </button>
+          </p>
+        )}
+        {status === 'empty' && !outsideLaunch && !matchResult.limitedByDistance && (
           <FounderEmptyState
             categoryLabel={categoryLabel}
             city={city}

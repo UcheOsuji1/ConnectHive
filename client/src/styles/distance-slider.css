@@ -1,0 +1,90 @@
+.dist-slider {
+  width: 100%;
+}
+
+.dist-slider-input {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dist-slider-input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #c49a28 0%, #c49a28 var(--dist-fill, 0%), #e6dcc6 var(--dist-fill, 0%), #e6dcc6 100%);
+}
+
+.dist-slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #c49a28;
+  box-shadow: 0 0 0 3px #fff, 0 1px 3px rgba(0, 0, 0, 0.25);
+  margin-top: -7px;
+  cursor: pointer;
+}
+
+.dist-slider-input::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #e6dcc6;
+}
+
+.dist-slider-input::-moz-range-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: #c49a28;
+}
+
+.dist-slider-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: #c49a28;
+  box-shadow: 0 0 0 3px #fff, 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.dist-slider-input:focus-visible {
+  outline: none;
+}
+.dist-slider-input:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #c49a28;
+}
+.dist-slider-input:focus-visible::-moz-range-thumb {
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #c49a28;
+}
+
+.dist-slider--disabled .dist-slider-input {
+  cursor: not-allowed;
+}
+.dist-slider--disabled .dist-slider-input::-webkit-slider-runnable-track {
+  background: #e6dcc6;
+}
+.dist-slider--disabled .dist-slider-input::-webkit-slider-thumb {
+  background: #c9c0a8;
+  cursor: not-allowed;
+}
+.dist-slider--disabled .dist-slider-input::-moz-range-progress {
+  background: #c9c0a8;
+}
+.dist-slider--disabled .dist-slider-input::-moz-range-thumb {
+  background: #c9c0a8;
+  cursor: not-allowed;
+}
+
+.dist-slider-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+  font-size: 11px;
+  color: #a89a78;
+  font-family: 'DM Sans', sans-serif;
+}
