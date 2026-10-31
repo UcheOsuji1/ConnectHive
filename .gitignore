@@ -8,3 +8,9 @@ client/dist/
 # Python
 __pycache__/
 *.pyc
+
+# Local screenshot/scratch output (verify33 also has loose PNGs alongside
+# the verify37+ shot folders, so no trailing slash on the verify* pattern)
+client/verify*
+client/hero29/
+client/nav40/
