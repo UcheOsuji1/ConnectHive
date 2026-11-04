@@ -1,0 +1,223 @@
+{
+  "reviewedAt": "2026-11-02T07:11:24.953Z",
+  "productionReady": false,
+  "newMoneyOperations": 0,
+  "environment": "Stripe sandbox / verified Neon dev",
+  "regressions": [
+    {
+      "name": "billing",
+      "checks": 78,
+      "evidence": "final-prompt73.mjs.log",
+      "sha256": "eee870c45c968793c0aadd927e85838d08cf3d22ed310822aa2d1cfc1cd9c866"
+    },
+    {
+      "name": "fees",
+      "checks": 10,
+      "evidence": "final-prompt73a-fees.mjs.log",
+      "sha256": "21cb50120d3db37dbaecc1bb4306925fd7d79fa6693011fd32bb9dae150beb2e"
+    },
+    {
+      "name": "security",
+      "checks": 31,
+      "evidence": "final-prompt73a-security.mjs.log",
+      "sha256": "53d81920287a991f2e4b18ea5b6a9d6672c2a3a8b7ed04a6fd385a3fe8a978cb"
+    },
+    {
+      "name": "concurrency",
+      "checks": 24,
+      "evidence": "final-prompt73a-concurrency.mjs.log",
+      "sha256": "a01ae70fa183f80b3dfe3371a5501c2376e728057ec4e002ddf23b048598b136"
+    },
+    {
+      "name": "system",
+      "checks": 14,
+      "evidence": "final-prompt73a-system.mjs.log",
+      "sha256": "c1a178d62d4c4ec4540838bff326c1b4145c3a285e2a90709c49eaabced839fd"
+    },
+    {
+      "name": "inbox",
+      "checks": 8,
+      "evidence": "final-prompt73a-inbox.mjs.log",
+      "sha256": "0f45d01094bd2425442008e24fa3d0fd742336de74e700702bfd1fc51e2d99f9"
+    },
+    {
+      "name": "lifecycle",
+      "checks": 36,
+      "evidence": "final-prompt73a-lifecycle.mjs.log",
+      "sha256": "38fbb8137020f543bb6f184ea7a772ad02c71316b602e4b34e460de17cc9fa51"
+    },
+    {
+      "name": "worker",
+      "checks": 3,
+      "evidence": "final-prompt73a-worker.mjs.log",
+      "sha256": "7f5fe1e3c5cfad2b3c5b6d182d2c7db5d803db922933b88d3068498659abdfad"
+    },
+    {
+      "name": "callbacks",
+      "checks": 15,
+      "evidence": "final-prompt73a-connect-callbacks.mjs.log",
+      "sha256": "85d8a8948549a13a66f6210c96514b87abe74dd791d7c4236df1898eb9166a3f"
+    },
+    {
+      "name": "cancellationExpiry",
+      "checks": 9,
+      "evidence": "final-prompt73a-real-cancellation-expiry.mjs.log",
+      "sha256": "e9677794e2d13f6d5718b679448d2185c7fc5c7e984760343b6ab8071446bfb0"
+    },
+    {
+      "name": "graceRecovery",
+      "checks": 8,
+      "evidence": "final-grace.log",
+      "sha256": "a2579aaf7cc728a006cae3f96ba68dd129dfd3758cb78c3c8d93120ae959093f"
+    }
+  ],
+  "clockAdapterOfflineChecks": 8,
+  "totalServerChecks": 244,
+  "browsers": {
+    "chromium": {
+      "checks": 64,
+      "status": "PASS"
+    },
+    "firefox": {
+      "checks": 64,
+      "status": "PASS on rerun; initial browser-context teardown protocol error"
+    },
+    "webkit": {
+      "checks": 64,
+      "status": "PASS on rerun; initial dialog timeout"
+    }
+  },
+  "realContractChecks": 4,
+  "preservation": {
+    "status": "PASS",
+    "at": "2026-11-02T07:08:30.104Z",
+    "verifiedDev": true,
+    "testMode": true,
+    "originalThreePreserved": true,
+    "completedCancellationPreserved": true,
+    "recoveryPreserved": true,
+    "fullRefundPreserved": true,
+    "plusAfterFullRefund": false,
+    "fullRefundObjects": 1,
+    "applicationFee": {
+      "amountCents": 120,
+      "refundedCents": 0
+    },
+    "ownerBalance": {
+      "available": [
+        {
+          "amount": 0,
+          "currency": "usd"
+        }
+      ],
+      "pending": [
+        {
+          "amount": 1015,
+          "currency": "usd"
+        }
+      ]
+    },
+    "refundAccounting": {
+      "grossCents": 799,
+      "refundedCents": 799,
+      "originalProcessingFeeCents": 53,
+      "chargeBalanceNet": 746,
+      "refundBalanceNet": -799
+    },
+    "operations": {
+      "pending_tasks": 0,
+      "failed_events": 0,
+      "queued_events": 0,
+      "quarantined_events": 0
+    },
+    "apiHealth": 200,
+    "frontend": 5193,
+    "newMoneyOperations": 0
+  },
+  "audit": {
+    "server": {
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 4,
+        "high": 1,
+        "critical": 0,
+        "total": 5
+      },
+      "packages": [
+        {
+          "name": "@sentry/bundler-plugins",
+          "severity": "moderate",
+          "fixAvailable": {
+            "name": "@sentry/node",
+            "version": "10.78.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "@sentry/node",
+          "severity": "moderate",
+          "fixAvailable": {
+            "name": "@sentry/node",
+            "version": "10.78.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "body-parser",
+          "severity": "high",
+          "fixAvailable": true
+        },
+        {
+          "name": "glob",
+          "severity": "moderate",
+          "fixAvailable": {
+            "name": "@sentry/node",
+            "version": "10.78.0",
+            "isSemVerMajor": true
+          }
+        },
+        {
+          "name": "minimatch",
+          "severity": "moderate",
+          "fixAvailable": {
+            "name": "@sentry/node",
+            "version": "10.78.0",
+            "isSemVerMajor": true
+          }
+        }
+      ]
+    },
+    "client": {
+      "counts": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 0,
+        "critical": 1,
+        "total": 1
+      },
+      "packages": [
+        {
+          "name": "dompurify",
+          "severity": "critical",
+          "fixAvailable": {
+            "name": "dompurify",
+            "version": "3.4.17",
+            "isSemVerMajor": false
+          }
+        }
+      ]
+    }
+  },
+  "skipped": [
+    {
+      "test": "prompt73a-restart.mjs",
+      "reason": "Restarts local PostgreSQL cluster; outside non-destructive verified Neon dev scope"
+    },
+    {
+      "test": "prompt73a-boot.mjs",
+      "reason": "Legacy local-Postgres launcher binds occupied port 5183; current guarded API health verified separately"
+    }
+  ]
+}

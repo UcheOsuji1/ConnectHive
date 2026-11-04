@@ -19,12 +19,14 @@ export function Notice({ children, error = false }) {
 }
 export function ConfirmDialog({ open, title, children, onClose, onConfirm, busy, confirmLabel = 'Confirm', cancelLabel = 'Keep membership' }) {
   const ref = useRef(null), reduce = useReducedMotion();
+  const desiredOpen=useRef(open);
+  desiredOpen.current=open;
   const heldChildren=useRef(children);
   if(open)heldChildren.current=children;
   const titleId=useId();
   useEffect(() => { if (open && !ref.current.open) ref.current.showModal(); }, [open]);
   return <dialog ref={ref} className="bill-dialog" aria-labelledby={titleId} onCancel={e => { e.preventDefault(); if (!busy) onClose(); }}>
-    <motion.div initial={false} animate={{ opacity: open ? 1 : 0, y: reduce ? 0 : open ? 0 : 8 }} transition={{ duration: reduce ? 0 : .2 }} onAnimationComplete={()=>{if(!open&&ref.current?.open)ref.current.close();}}>
+    <motion.div initial={false} animate={{ opacity: open ? 1 : 0, y: reduce ? 0 : open ? 0 : 8 }} transition={{ duration: reduce ? 0 : .2 }} onAnimationComplete={()=>{if(!desiredOpen.current&&ref.current?.open)ref.current.close();}}>
       <h3 id={titleId}>{title}</h3>{open?children:heldChildren.current}
       <div className="bill-actions"><Button className="bill-secondary" onClick={onClose} disabled={busy||!open}>{cancelLabel}</Button><Button onClick={onConfirm} disabled={busy||!open}>{busy ? 'Saving…' : confirmLabel}</Button></div>
     </motion.div>

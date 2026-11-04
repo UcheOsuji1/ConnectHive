@@ -1,4 +1,4 @@
-// Actual PostgreSQL connections; Stripe responses simulated. Local-only preload.
+// Actual PostgreSQL connections; Stripe simulated. Local or verified isolated dev preload.
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {pool,query} from '../db/index.js';
@@ -7,21 +7,22 @@ import {processEvent} from '../lib/billingEvents.js';
 import {transaction,assertNoFinancialBlockers,lockSubscription} from '../lib/billingStore.js';
 import {processCancellationTasks} from '../jobs/billingJob.js';
 import {createHive} from '../controllers/hivesController.js';
-if(process.env.P73A_LOCAL_POSTGRES!=='1')throw new Error('Actual local PostgreSQL preload required.');
+if(process.env.P73A_LOCAL_POSTGRES!=='1' && pool.verifiedDevFixture!==true)throw new Error('Isolated PostgreSQL preload required.');
 let checks=0;const pass=(value,name)=>{assert.ok(value,name);checks++;console.log(`PASS ${name}`);};
 const log=console.log;console.log=(...args)=>{if(!String(args[0]).startsWith('[db]'))log(...args);};
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const user=async()=> (await query(`INSERT INTO users(email,password_hash,email_verified) VALUES($1,'fixture',TRUE) RETURNING user_id`,[`${randomUUID()}@73a.invalid`])).rows[0].user_id;
+const catalogHives=new Map();
 async function ownerHive(capacity=10){const owner=await user();await query(`INSERT INTO billing_subscriptions(user_id,kind,status,price_cents,access_until) VALUES($1,'plus','active',799,NOW()+INTERVAL '1 year')`,[owner]);const id=(await query(`INSERT INTO hives(creator_user_id,hive_name,max_members) VALUES($1,'Concurrency Fixture',$2) RETURNING hive_id`,[owner,capacity])).rows[0].hive_id;
  await query(`INSERT INTO hive_members(hive_id,user_id,role) VALUES($1,$2,'owner')`,[id,owner]);const account=`acct_${randomUUID()}`;
- await query(`INSERT INTO billing_accounts(user_id,stripe_account_id,status) VALUES($1,$2,'connected')`,[owner,account]);await query(`INSERT INTO hive_monetization(hive_id,owner_id,state,monthly_price_cents,benefits,description,cancellation_policy,approved_revision) VALUES($1,$2,'active',1200,'Weekly workshop and community sessions','Structured ongoing coaching and resources','Cancel at end of paid period with access retained',1)`,[id,owner]);return {owner,id,account};}
+ await query(`INSERT INTO billing_accounts(user_id,stripe_account_id,status) VALUES($1,$2,'connected')`,[owner,account]);await query(`INSERT INTO hive_monetization(hive_id,owner_id,state,monthly_price_cents,benefits,description,cancellation_policy,approved_revision) VALUES($1,$2,'active',1200,'Weekly workshop and community sessions','Structured ongoing coaching and resources','Cancel at end of paid period with access retained',1)`,[id,owner]);catalogHives.set(account,id);return {owner,id,account};}
 const sessions=new Map(),subs=new Map(),charges=new Map();let creations=0;let failUpdates=false;
-const sdk={accounts:{retrieve:async id=>({id,charges_enabled:true,payouts_enabled:true,details_submitted:true,capabilities:{card_payments:'active',transfers:'active'},requirements:{}})},applicationFees:{retrieve:async()=>({amount:120,amount_refunded:0})},
+const sdk={prices:{list:async(_p,o)=>({has_more:false,data:[{id:'price_'+catalogHives.get(o.stripeAccount),active:true,livemode:false,type:'recurring',currency:'usd',unit_amount:1200,recurring:{interval:'month',interval_count:1},metadata:{truehive_hive_id:catalogHives.get(o.stripeAccount)},product:{active:true,livemode:false}}]})},accounts:{retrieve:async id=>({id,charges_enabled:true,payouts_enabled:true,details_submitted:true,capabilities:{card_payments:'active',transfers:'active'},requirements:{}})},applicationFees:{retrieve:async()=>({amount:120,amount_refunded:0})},
  checkout:{sessions:{create:async(p,o)=>{if(!sessions.has(o.idempotencyKey)){creations++;sessions.set(o.idempotencyKey,{id:`cs_${p.client_reference_id}`,url:'https://checkout.stripe.com/fixture',status:'open',...p});}return sessions.get(o.idempotencyKey);},retrieve:async id=>[...sessions.values()].find(s=>s.id===id),expire:async id=>{[...sessions.values()].find(s=>s.id===id).status='expired';}}},
  subscriptions:{retrieve:async id=>{await sleep(10);return structuredClone(subs.get(id));},update:async(id,p)=>{if(failUpdates)throw Object.assign(new Error('Fixture outage'),{code:'fixture_outage'});Object.assign(subs.get(id),p);return structuredClone(subs.get(id));}},charges:{retrieve:async id=>structuredClone(charges.get(id))}};
 const event=(type,obj,account)=>({id:`evt_${randomUUID()}`,created:Math.floor(Date.now()/1000),type,account,livemode:false,data:{object:obj}});
 async function pay(buyer,hive){await checkout(buyer,{hiveId:hive.id},sdk);const local=(await query(`SELECT * FROM billing_subscriptions WHERE user_id=$1 AND hive_id=$2`,[buyer,hive.id])).rows[0];const sid=`sub_${local.id}`,charge={id:`ch_${local.id}`,amount:1200,amount_refunded:0,refunded:false,application_fee:'fee_fixture',balance_transaction:{fee_details:[{type:'stripe_fee',amount:45}]}},invoice={id:`in_${local.id}`,status:'paid',currency:'usd',amount_paid:1200,lines:{data:[{period:{end:Math.floor(Date.now()/1000)+86400}}]},charge};charge.invoice=invoice.id;charges.set(charge.id,charge);
- const live={id:sid,livemode:false,metadata:{truehive_subscription_id:local.id},customer:`cus_${local.id}`,status:'active',cancel_at_period_end:false,application_fee_percent:10,items:{data:[{quantity:1,price:{unit_amount:1200,currency:'usd',recurring:{interval:'month',interval_count:1}}}]},latest_invoice:invoice};subs.set(sid,live);const session=[...sessions.values()].find(s=>s.client_reference_id===local.id);session.subscription=sid;session.status='complete';await processEvent(event('invoice.paid',{subscription:sid},hive.account),sdk);return {local,live,charge};}
+ const live={id:sid,livemode:false,metadata:{truehive_subscription_id:local.id},customer:`cus_${local.id}`,status:'active',cancel_at_period_end:false,application_fee_percent:10,items:{data:[{quantity:1,price:{id:'price_'+local.hive_id,unit_amount:1200,currency:'usd',recurring:{interval:'month',interval_count:1}}}]},latest_invoice:invoice};subs.set(sid,live);const session=[...sessions.values()].find(s=>s.client_reference_id===local.id);session.subscription=sid;session.status='complete';await processEvent(event('invoice.paid',{subscription:sid},hive.account),sdk);return {local,live,charge};}
 try {
  pass(Number((await query('SHOW server_version_num')).rows[0].server_version_num)>=170000,'actual PostgreSQL server, not PGlite');
  const seat=await ownerHive(2),a=await user(),b=await user();const results=await Promise.allSettled([checkout(a,{hiveId:seat.id},sdk),checkout(b,{hiveId:seat.id},sdk)]);
@@ -48,7 +49,9 @@ try {
   await right.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE',[buyer]);
   const one=left.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE',[buyer]).then(()=>({ok:true,client:left}),error=>({error,client:left}));
   const two=right.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE',[creator]).then(()=>({ok:true,client:right}),error=>({error,client:right}));
-  const victim=await Promise.race([one,two]);assert.equal(victim.error?.code,'40P01');await victim.client.query('ROLLBACK');
+  // PostgreSQL releases the victim's locks when aborting the transaction.
+  // The survivor response can reach the client first; completion order does
+  // not identify the victim. Require exactly one real deadlock below.
   const pair=await Promise.all([one,two]);await left.query('ROLLBACK');await right.query('ROLLBACK');
   pass(pair.filter(r=>r.error?.code==='40P01').length===1,'real deadlock aborts exactly one transaction safely');
   pass((await transaction(db=>db.query('SELECT 1 ok'))).rows[0].ok===1,'retry succeeds after deadlock rollback');

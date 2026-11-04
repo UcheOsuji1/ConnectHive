@@ -22,6 +22,7 @@ import { readRefineFilters, matchesRefine, sizeBucket } from '../lib/discoveryFi
 import { hasPlus, fail } from '../lib/billingStore.js';
 import { validatePaidConfig } from '../lib/billingPolicy.js';
 import { withPaidOffers } from '../lib/paidOffers.js';
+import { billingGuardError } from '../lib/billingGuardErrors.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -958,6 +959,8 @@ export const createHive = async (req, res) => {
       client.release();
     }
   } catch (err) {
+    const guard = billingGuardError(err);
+    if (guard) return res.status(guard.status).json({ error: guard.message });
     console.error('[hives/createHive]', err);
     if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to create Hive.' });
@@ -1089,12 +1092,14 @@ export const requestToJoin = async (req, res) => {
     // Load hive + member count in one query
     const { rows: [hive] } = await query(
       `SELECT h.*,
-              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active')::int AS member_count
+              EXISTS(SELECT 1 FROM users WHERE user_id=h.creator_user_id AND is_system) AS system_owned,
+              EXISTS(SELECT 1 FROM users WHERE user_id=$2 AND is_system) AS system_member,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND NOT EXISTS(SELECT 1 FROM users WHERE user_id=hm.user_id AND is_system))::int AS member_count
        FROM hives h
        LEFT JOIN hive_members hm ON hm.hive_id = h.hive_id
        WHERE h.hive_id = $1
        GROUP BY h.hive_id`,
-      [hiveId],
+      [hiveId, req.userId],
     );
     if (!hive) return res.status(404).json({ error: 'Hive not found.' });
     if (hive.hive_status !== 'active')
@@ -1109,7 +1114,7 @@ export const requestToJoin = async (req, res) => {
     if (existingMember) return res.status(400).json({ error: 'You are already a member of this Hive.' });
 
     // Full?
-    if (hive.max_members && Number(hive.member_count) >= Number(hive.max_members)) {
+    if (!hive.system_owned && !hive.system_member && hive.max_members && Number(hive.member_count) >= Number(hive.max_members)) {
       return res.status(400).json({ error: 'This Hive is full.' });
     }
 
@@ -1291,6 +1296,8 @@ export const requestToJoin = async (req, res) => {
 
     res.json({ requested: true });
   } catch (err) {
+    const guard = billingGuardError(err);
+    if (guard) return res.status(guard.status).json({ error: guard.message });
     console.error('[hives/requestToJoin]', err);
     if (/^P730/.test(err.code || '')) return res.status(409).json({ error: err.message });
     res.status(500).json({ error: 'Failed to submit request.' });
@@ -1391,15 +1398,18 @@ export const reviewRequest = async (req, res) => {
 
       if (action === 'accept') {
         const { rows: [hiveRow] } = await client.query(
-          `SELECT max_members FROM hives WHERE hive_id = $1 FOR UPDATE`,
-          [hiveId],
+          `SELECT max_members,
+                  EXISTS(SELECT 1 FROM users WHERE user_id=hives.creator_user_id AND is_system) AS system_owned,
+                  EXISTS(SELECT 1 FROM users WHERE user_id=$2 AND is_system) AS system_member
+             FROM hives WHERE hive_id = $1 FOR UPDATE`,
+          [hiveId, request.user_id],
         );
         const { rows: [countRow] } = await client.query(
-          `SELECT COUNT(*)::int AS member_count FROM hive_members
-            WHERE hive_id = $1 AND membership_status = 'active'`,
+          `SELECT COUNT(*)::int AS member_count FROM hive_members hm JOIN users u USING(user_id)
+            WHERE hive_id = $1 AND membership_status = 'active' AND NOT u.is_system`,
           [hiveId],
         );
-        if (hiveRow.max_members &&
+        if (!hiveRow.system_owned && !hiveRow.system_member && hiveRow.max_members &&
             Number(countRow.member_count) >= Number(hiveRow.max_members)) {
           await client.query('ROLLBACK');
           return res.status(400).json({ error: 'Hive is full.' });
@@ -1582,6 +1592,8 @@ export const reviewRequest = async (req, res) => {
       join_experience: action === 'accept' ? joinExp : undefined,
     });
   } catch (err) {
+    const guard = billingGuardError(err);
+    if (guard) return res.status(guard.status).json({ error: guard.message });
     console.error('[hives/reviewRequest]', err);
     res.status(500).json({ error: 'Failed to review request.' });
   }

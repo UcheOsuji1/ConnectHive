@@ -3,6 +3,8 @@ import { stripe, stripeOptions, clientURL } from './stripe.js';
 import { accountStatus, PLUS_PRICES, PLATFORM_FEE_PERCENT, validatePaidConfig } from './billingPolicy.js';
 import { transaction, fail, hasPlus, requireOwner, audit, lockSubscription } from './billingStore.js';
 import { isBlockedEitherWay } from './blocks.js';
+import { createConnectLink } from './connectOnboarding.js';
+import { ensureHiveCatalogPrice } from './hiveCatalog.js';
 
 export async function refreshAccount(userId, sdk = stripe()) {
   const { rows: [stored] } = await query('SELECT * FROM billing_accounts WHERE user_id=$1', [userId]);
@@ -19,15 +21,27 @@ export async function refreshAccount(userId, sdk = stripe()) {
 export async function onboard(userId, sdk = stripe()) {
   if (!await hasPlus(userId)) fail('TrueHive Plus is required to connect payouts.', 403);
   const account = await transaction(async db => {
-    await db.query('SELECT user_id FROM users WHERE user_id=$1 AND account_status=\'active\' FOR UPDATE', [userId]);
+    const { rows: [owner] } = await db.query('SELECT user_id,email FROM users WHERE user_id=$1 AND account_status=\'active\' FOR UPDATE', [userId]);
+    if (!owner) fail('An active account is required to connect payouts.', 403);
     let stored = (await db.query('SELECT * FROM billing_accounts WHERE user_id=$1', [userId])).rows[0];
     if (!stored) {
-      const created = await sdk.accounts.create({ type: 'standard', capabilities: { card_payments: { requested: true }, transfers: { requested: true } }, metadata: { truehive_user_id: userId } }, { idempotencyKey: `connect-${userId}` });
+      // New sandbox integrations require Accounts v2 creation. Full Dashboard
+      // with Stripe collecting fees/losses preserves the Standard-account model.
+      // Account reads and payment APIs continue using the pinned v1 contract.
+      const created = await sdk.v2.core.accounts.create({
+        contact_email: owner.email, dashboard: 'full', identity: { country: 'US' },
+        defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } },
+        configuration: {
+          merchant: { capabilities: { card_payments: { requested: true } } },
+          recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
+        },
+        metadata: { truehive_user_id: userId },
+      }, { apiVersion: '2026-09-30.endive', idempotencyKey: `connect-accounts-v2-${userId}` });
       stored = (await db.query('INSERT INTO billing_accounts(user_id,stripe_account_id) VALUES($1,$2) RETURNING *', [userId, created.id])).rows[0];
     }
     return stored;
   });
-  return sdk.accountLinks.create({ account: account.stripe_account_id, type: 'account_onboarding', refresh_url: `${clientURL()}/settings?billing=connect`, return_url: `${clientURL()}/settings?billing=connect` });
+  return createConnectLink(userId, account.stripe_account_id, sdk);
 }
 export async function configure(hiveId, userId, body) {
   const config = validatePaidConfig(body);
@@ -80,6 +94,7 @@ export async function publish(hiveId, userId, sdk = stripe()) {
     if (!await hasPlus(userId, db) || hive.hive_status !== 'active' || hive.join_policy !== 'open') fail('Plus and an active, open-admission Hive are required.');
     const { rows: [m] } = await db.query('SELECT * FROM hive_monetization WHERE hive_id=$1 FOR UPDATE', [hiveId]);
     if (!m || !['approved','paused'].includes(m.state) || m.approved_revision !== m.revision) fail('TrueHive review approval is required before publication.');
+    await ensureHiveCatalogPrice({hiveId,account:account.accountId,amount:m.monthly_price_cents,revision:m.revision,name:hive.hive_name},sdk,db);
     await db.query(`UPDATE hive_monetization SET state='active',updated_at=NOW() WHERE hive_id=$1`, [hiveId]);
     await audit(db, userId, hiveId, 'published');
     return { state: 'active' };
@@ -91,6 +106,16 @@ export async function checkout(userId, body, sdk = stripe()) {
   const kind = body.hiveId ? 'hive' : 'plus';
   const interval = kind === 'hive' ? 'month' : body.interval;
   if (!PLUS_PRICES[interval]) fail('Choose monthly or annual billing.');
+  // Reuse the catalog price. Inline Plus price_data creates duplicate products.
+  let plusPrice;
+  if (kind === 'plus') {
+    const catalog = await sdk.prices.list({ active: true, type: 'recurring', limit: 100, expand: ['data.product'] });
+    const matches = catalog.data.filter(p => !p.livemode && p.active && p.currency === 'usd'
+      && p.unit_amount === PLUS_PRICES[interval] && p.recurring?.interval === interval
+      && p.recurring.interval_count === 1 && p.product?.active && p.product.name === 'TrueHive Plus');
+    if (catalog.has_more || matches.length !== 1) fail('A unique TrueHive Plus catalog price must be configured before Checkout.', 503);
+    plusPrice = matches[0].id;
+  }
   let account = 'platform';
   if (kind === 'hive') {
     const { rows: [m] } = await query('SELECT owner_id FROM hive_monetization WHERE hive_id=$1', [body.hiveId]);
@@ -132,11 +157,21 @@ export async function checkout(userId, body, sdk = stripe()) {
     return { sub, attempt, name };
   });
   const { sub, attempt, name } = reservation;
+  const priceId=plusPrice||await transaction(async db=>{
+    // Existing inline prices are archived and cannot be reused by Stripe.
+    // Provision one canonical catalog binding for a previously approved Hive;
+    // serialize with publication/closure and never change existing subscriptions.
+    const {rows:[m]}=await db.query(`SELECT m.*,h.hive_name,h.hive_status FROM hive_monetization m
+      JOIN hives h USING(hive_id) WHERE m.hive_id=$1 FOR UPDATE OF m,h`,[sub.hive_id]);
+    if(!m||m.state!=='active'||m.hive_status!=='active'||m.approved_revision!==m.revision||m.monthly_price_cents!==sub.price_cents)
+      fail('This Hive is not accepting subscriptions.',409);
+    return ensureHiveCatalogPrice({hiveId:sub.hive_id,account:sub.stripe_account_id,amount:sub.price_cents,revision:m.revision,name:m.hive_name},sdk,db);
+  });
   const options = stripeOptions(sub.stripe_account_id, `checkout-${attempt.id}`);
   const metadata = { truehive_subscription_id: sub.id };
   const session = await sdk.checkout.sessions.create({
     mode: 'subscription', client_reference_id: sub.id, metadata,
-    line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: sub.price_cents, recurring: { interval: sub.interval }, product_data: { name } } }],
+      line_items: [{ quantity: 1, price: priceId }],
     subscription_data: { metadata, ...(sub.kind === 'hive' ? { application_fee_percent: PLATFORM_FEE_PERCENT } : {}) },
     expires_at: Math.floor(new Date(attempt.expires_at).getTime() / 1000),
     success_url: `${clientURL()}/settings?billing=activating`, cancel_url: `${clientURL()}/settings?billing=canceled`,

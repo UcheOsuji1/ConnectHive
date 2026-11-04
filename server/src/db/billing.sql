@@ -1,5 +1,6 @@
 -- Prompt 73 structural baseline; included by schema.sql/migrate.js, never auto-run by API.
 -- NO CASCADE: billing/audit references deliberately prevent financial history deletion.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_system BOOLEAN NOT NULL DEFAULT false;
 CREATE TABLE IF NOT EXISTS billing_accounts (
  user_id UUID PRIMARY KEY REFERENCES users(user_id),
  stripe_account_id TEXT NOT NULL UNIQUE,
@@ -148,6 +149,7 @@ BEGIN
    IF OLD.hive_status='active' OR NEW.hive_status<>'active' THEN RETURN NEW; END IF;
  END IF;
  PERFORM 1 FROM users WHERE user_id=NEW.creator_user_id FOR UPDATE;
+ IF EXISTS(SELECT 1 FROM users WHERE user_id=NEW.creator_user_id AND is_system) THEN RETURN NEW; END IF;
  plus := billing_has_plus(NEW.creator_user_id);
  SELECT COUNT(*) INTO n FROM hives WHERE creator_user_id=NEW.creator_user_id AND hive_status='active' AND hive_id<>NEW.hive_id;
  IF n >= (CASE WHEN plus THEN 3 ELSE 1 END) THEN
@@ -165,11 +167,14 @@ BEGIN
    IF OLD.membership_status='active' AND OLD.hive_id=NEW.hive_id AND OLD.user_id=NEW.user_id THEN RETURN NEW; END IF;
  END IF;
  PERFORM 1 FROM users WHERE user_id=NEW.user_id FOR UPDATE;
+ -- Only the joining account is exempt. Seed Hive joins still count for real users.
+ IF EXISTS(SELECT 1 FROM users WHERE user_id=NEW.user_id AND is_system) THEN RETURN NEW; END IF;
  IF EXISTS(SELECT 1 FROM hive_monetization WHERE hive_id=NEW.hive_id) THEN
    IF NEW.role='owner' THEN RETURN NEW; END IF;
    PERFORM 1 FROM hives WHERE hive_id=NEW.hive_id FOR UPDATE;
    IF EXISTS(SELECT 1 FROM hives h WHERE h.hive_id=NEW.hive_id AND h.max_members IS NOT NULL
-     AND h.max_members <= (SELECT COUNT(*) FROM hive_members hm WHERE hm.hive_id=NEW.hive_id AND hm.membership_status='active' AND hm.user_id<>NEW.user_id)) THEN
+     AND NOT EXISTS(SELECT 1 FROM users WHERE user_id=h.creator_user_id AND is_system)
+     AND h.max_members <= (SELECT COUNT(*) FROM hive_members hm JOIN users u USING(user_id) WHERE hm.hive_id=NEW.hive_id AND hm.membership_status='active' AND hm.user_id<>NEW.user_id AND NOT u.is_system)) THEN
      RAISE EXCEPTION 'Paid Hive capacity reached.' USING ERRCODE='P7304';
    END IF;
    IF NOT EXISTS(SELECT 1 FROM billing_subscriptions WHERE hive_id=NEW.hive_id AND user_id=NEW.user_id
@@ -189,13 +194,47 @@ CREATE TRIGGER billing_membership_limit BEFORE INSERT OR UPDATE ON hive_members 
 CREATE OR REPLACE FUNCTION billing_capacity_guard() RETURNS TRIGGER AS $$
 DECLARE used INT;
 BEGIN
+ IF EXISTS(SELECT 1 FROM users WHERE user_id=NEW.creator_user_id AND is_system) THEN RETURN NEW; END IF;
  IF NEW.max_members IS NULL OR NOT EXISTS(SELECT 1 FROM hive_monetization WHERE hive_id=NEW.hive_id) THEN RETURN NEW; END IF;
- SELECT COUNT(*) INTO used FROM hive_members WHERE hive_id=NEW.hive_id AND membership_status='active';
+ SELECT COUNT(*) INTO used FROM hive_members hm JOIN users u USING(user_id) WHERE hm.hive_id=NEW.hive_id AND hm.membership_status='active' AND NOT u.is_system;
  SELECT used + COUNT(DISTINCT s.id) INTO used FROM billing_subscriptions s JOIN billing_checkouts c ON c.subscription_id=s.id
  WHERE s.hive_id=NEW.hive_id AND ((c.status IN ('creating','open') AND c.expires_at>NOW()) OR (c.status='complete' AND s.status IN ('processing','incomplete')))
+ AND NOT EXISTS(SELECT 1 FROM users WHERE user_id=s.user_id AND is_system)
  AND NOT EXISTS(SELECT 1 FROM hive_members hm WHERE hm.hive_id=s.hive_id AND hm.user_id=s.user_id AND hm.membership_status='active');
  IF NEW.max_members < used THEN RAISE EXCEPTION 'Capacity cannot be below active members and reserved paid memberships.' USING ERRCODE='P7304'; END IF;
  RETURN NEW;
 END; $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS billing_reserved_capacity ON hives;
 CREATE TRIGGER billing_reserved_capacity BEFORE UPDATE OF max_members ON hives FOR EACH ROW EXECUTE FUNCTION billing_capacity_guard();
+
+-- Only signature-verified, sandbox, destination-validated webhook envelopes enter here.
+CREATE TABLE IF NOT EXISTS billing_event_inbox (
+  event_id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  claim_token UUID,
+  lease_until TIMESTAMPTZ,
+  processed_at TIMESTAMPTZ,
+  failed_at TIMESTAMPTZ,
+  last_error_code TEXT,
+  CHECK (payload->>'id'=event_id AND payload->>'livemode'='false'),
+  CHECK (COALESCE(payload->>'account','platform')=account_id)
+);
+CREATE INDEX IF NOT EXISTS billing_event_inbox_due ON billing_event_inbox(next_attempt_at)
+  WHERE processed_at IS NULL AND failed_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS billing_connect_refresh_nonces (
+  nonce TEXT PRIMARY KEY,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS billing_connect_refresh_nonces_expiry ON billing_connect_refresh_nonces(expires_at);
+
+-- Unknown historical balances remain NULL until retrieved from Stripe.
+ALTER TABLE billing_disputes ADD COLUMN IF NOT EXISTS balance_amount_cents BIGINT;
+ALTER TABLE billing_disputes ADD COLUMN IF NOT EXISTS balance_fee_cents BIGINT;
+ALTER TABLE billing_disputes ADD COLUMN IF NOT EXISTS balance_net_cents BIGINT;
+ALTER TABLE billing_disputes ADD COLUMN IF NOT EXISTS balance_transactions JSONB;
+ALTER TABLE billing_disputes ADD COLUMN IF NOT EXISTS balance_checked_at TIMESTAMPTZ;

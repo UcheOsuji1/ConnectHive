@@ -19,7 +19,7 @@ import { reportProblem } from '../lib/reportProblem.js';
 // Columns schema.sql adds via ALTER. These are the ones that drift, because a
 // missing CREATE TABLE fails loudly on its own.
 const REQUIRED = {
-  users: ['member_id', 'date_of_birth', 'terms_accepted_at', 'terms_policy_version',
+  users: ['is_system', 'member_id', 'date_of_birth', 'terms_accepted_at', 'terms_policy_version',
           'email_verified', 'token_version', 'presence_status',
           'deletion_requested_at', 'deletion_scheduled_for', 'deleted_at',
           'suspended_at', 'suspension_note',
@@ -63,11 +63,13 @@ const REQUIRED = {
   billing_checkouts: [],
   billing_events: [],
   billing_invoices: [],
-  billing_disputes: [],
+  billing_disputes: ['balance_amount_cents','balance_fee_cents','balance_net_cents','balance_transactions','balance_checked_at'],
   billing_refunds: [],
   billing_refund_requests: [],
   billing_tasks: ['claim_token','lease_until','next_attempt_at'],
   billing_webhook_attempts: [],
+  billing_event_inbox: ['payload','claim_token','lease_until','next_attempt_at','failed_at','processed_at'],
+  billing_connect_refresh_nonces: ['nonce','expires_at'],
   billing_worker_heartbeats: [],
   billing_audit: [],
   metro_places: [],

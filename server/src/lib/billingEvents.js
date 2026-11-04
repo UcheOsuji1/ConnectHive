@@ -1,9 +1,11 @@
 import { reportProblem } from './reportProblem.js';
 import { query } from '../db/index.js';
+import { enqueueVerifiedEvent } from './billingInbox.js';
 import { stripe, stripeOptions } from './stripe.js';
 import { GRACE_SECONDS, PLATFORM_FEE_PERCENT } from './billingPolicy.js';
 import { transaction, fail, audit, lockSubscription } from './billingStore.js';
 import { disconnectUserSockets } from '../realtime/socket.js';
+import {recordDispute} from './disputeAccounting.js';
 
 const idOf = value => typeof value === 'string' ? value : value?.id;
 const date = seconds => seconds ? new Date(seconds * 1000) : null;
@@ -172,8 +174,7 @@ export async function processEvent(event, sdk = stripe()) {
       if (local.hive_id) await db.query('UPDATE billing_accounts SET payouts_resolved=FALSE WHERE user_id=(SELECT owner_id FROM hive_monetization WHERE hive_id=$1)', [local.hive_id]);
       if (event.type.startsWith('charge.dispute.')) {
         const dispute = await sdk.disputes.retrieve(obj.id, {}, stripeOptions(account));
-        await db.query(`INSERT INTO billing_disputes(stripe_dispute_id,subscription_id,status,amount_cents) VALUES($1,$2,$3,$4)
-          ON CONFLICT(stripe_dispute_id) DO UPDATE SET status=EXCLUDED.status,updated_at=NOW()`, [dispute.id, local.id, dispute.status, dispute.amount]);
+        await recordDispute(db,local,dispute);
         await audit(db, null, local.hive_id, 'dispute_review_required', { disputeId: dispute.id, status: dispute.status });
         await notify(db, local.user_id, local.hive_id, 'Payment dispute under review', 'Contact the Hive owner about your payment. Access is reviewed separately.');
         if (local.hive_id) {
@@ -230,8 +231,10 @@ export async function webhook(req, res) {
     return res.status(400).json({ error: 'Invalid Stripe signature or configuration.' });
   }
   try {
+    await enqueueVerifiedEvent(event);
     await query(`INSERT INTO billing_webhook_attempts(event_id,attempts) VALUES($1,1) ON CONFLICT(event_id) DO UPDATE SET attempts=billing_webhook_attempts.attempts+1,last_attempt_at=NOW()`,[event.id]);
     const result=await processEvent(event);
+    await query(`UPDATE billing_event_inbox SET processed_at=NOW(),failed_at=NULL,last_error_code=NULL WHERE event_id=$1`,[event.id]);
     await query(`UPDATE billing_webhook_attempts SET processed_at=NOW(),last_error_code=NULL WHERE event_id=$1`,[event.id]);
     res.json(result);
   }

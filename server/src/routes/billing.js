@@ -76,7 +76,7 @@ router.get('/hives/:id/owner', handle(async req => {
   const { rows: [subscribers] } = await query(`SELECT COUNT(*) FILTER(WHERE access_until>NOW() AND NOT access_revoked)::int AS active,MAX(paid_through) AS latest_paid_through,
     COUNT(*) FILTER(WHERE status NOT IN ('canceled','expired','incomplete_expired','refunded') AND NOT cancel_at_period_end)::int AS renewals_pending
     FROM billing_subscriptions WHERE hive_id=$1`, [req.params.id]);
-  const { rows: disputes } = await query(`SELECT d.stripe_dispute_id,d.status,d.amount_cents FROM billing_disputes d JOIN billing_subscriptions s ON s.id=d.subscription_id WHERE s.hive_id=$1`, [req.params.id]);
+  const { rows: disputes } = await query(`SELECT d.stripe_dispute_id,d.status,d.amount_cents,d.balance_fee_cents,d.balance_net_cents,d.balance_checked_at FROM billing_disputes d JOIN billing_subscriptions s ON s.id=d.subscription_id WHERE s.hive_id=$1`, [req.params.id]);
   const {rows:refundRequests}=await query(`SELECT r.id,r.reason,r.state,r.owner_response,r.created_at FROM billing_refund_requests r JOIN billing_subscriptions s ON s.id=r.subscription_id WHERE s.hive_id=$1 ORDER BY r.created_at DESC LIMIT 100`,[req.params.id]);
   const {rows:refunds}=await query(`SELECT r.stripe_refund_id,r.amount_cents,r.status FROM billing_refunds r JOIN billing_subscriptions s ON s.id=r.subscription_id WHERE s.hive_id=$1 ORDER BY r.updated_at DESC LIMIT 100`,[req.params.id]);
   return { offering: offering || null, connection: connection || null, totals, subscribers, disputes, refunds, refundRequests, plus: await hasPlus(req.userId) };
@@ -118,6 +118,9 @@ router.get('/admin/operations',requireSiteAdmin,handle(async()=>({operations:(aw
  (SELECT COUNT(*)::int FROM billing_tasks WHERE done_at IS NULL AND attempts>=3) AS repeatedly_failed_tasks,
  (SELECT COUNT(*)::int FROM billing_checkouts WHERE status IN ('creating','open') AND expires_at<NOW()) AS stale_checkouts,
  (SELECT COUNT(*)::int FROM billing_webhook_attempts WHERE processed_at IS NULL) AS failed_events,
+ (SELECT COUNT(*)::int FROM billing_event_inbox WHERE processed_at IS NULL AND failed_at IS NULL) AS queued_events,
+ (SELECT COUNT(*)::int FROM billing_event_inbox WHERE failed_at IS NOT NULL) AS quarantined_events,
+ (SELECT COUNT(*)::int FROM billing_disputes WHERE balance_checked_at IS NULL) AS unknown_dispute_balances,
  (SELECT MAX(last_succeeded_at) FROM billing_worker_heartbeats) AS last_worker_success`)).rows[0]})));
 router.post('/admin/hives/:id/review', requireSiteAdmin, handle(req => service.review(req.params.id, req.userId, req.body)));
 router.post('/admin/accounts/:userId/resolve', requireSiteAdmin, handle(async req => {

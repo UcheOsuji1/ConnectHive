@@ -33,7 +33,8 @@ const config={monthlyPriceCents:1200,benefits:'Weekly coaching sessions and a cu
 const accounts=new Map(), liveSubs=new Map(), charges=new Map(), sessions=new Map(), calls=[];
 const now=Math.floor(Date.now()/1000), end=now+30*86400;
 const connected={id:'acct_owner',charges_enabled:true,payouts_enabled:true,details_submitted:true,capabilities:{card_payments:'active',transfers:'active'},requirements:{currently_due:[],pending_verification:[]}};
-const sdk={accounts:{retrieve:async id=>accounts.get(id)},applicationFees:{retrieve:async()=>({amount:120,amount_refunded:0})},
+let catalogHiveId;
+const sdk={prices:{list:async(_params,options)=>options?.stripeAccount?({has_more:false,data:[{id:'price_hive_fixture',active:true,livemode:false,type:'recurring',currency:'usd',unit_amount:1200,recurring:{interval:'month',interval_count:1},metadata:{truehive_hive_id:catalogHiveId},product:{active:true,livemode:false}}]}):({has_more:false,data:Object.entries(PLUS_PRICES).map(([interval,amount])=>({id:`price_plus_${interval}`,active:true,livemode:false,currency:'usd',unit_amount:amount,recurring:{interval,interval_count:1},product:{active:true,name:'TrueHive Plus'}}))})},accounts:{retrieve:async id=>accounts.get(id)},applicationFees:{retrieve:async()=>({amount:120,amount_refunded:0})},
  checkout:{sessions:{create:async(params,options)=>{calls.push({params,options});const id=`cs_${params.client_reference_id}`;const session={id,url:'https://checkout.stripe.com/fixture',status:'open',...params};sessions.set(id,session);return session;},retrieve:async id=>sessions.get(id),expire:async id=>{sessions.get(id).status='expired';return sessions.get(id);}}},
  subscriptions:{retrieve:async id=>{const s=liveSubs.get(id);if(!s)throw new Error('Unknown mock subscription');return structuredClone(s);},update:async(id,params)=>{Object.assign(liveSubs.get(id),params);return structuredClone(liveSubs.get(id));}},
  charges:{retrieve:async id=>structuredClone(charges.get(id))},disputes:{retrieve:async id=>({id,status:'needs_response',amount:1200})}};
@@ -48,21 +49,28 @@ try{
  const free=await user('free'),owner=await user('owner'),member=await user('member'),other=await user('other');
  await rejects(()=>onboard(free,sdk),/Plus/,'Connect onboarding requires Plus');
  const newOwner=await user('new-connect-owner');await plus(newOwner);
- sdk.accounts.create=async()=>{accounts.set('acct_new',connected);return {id:'acct_new'};};
+ sdk.v2={core:{accounts:{create:async(params,options)=>{
+   assert.equal(params.contact_email,(await query('SELECT email FROM users WHERE user_id=$1',[newOwner])).rows[0].email);
+   assert.equal(params.dashboard,'full');
+   assert.deepEqual(params.defaults.responsibilities,{fees_collector:'stripe',losses_collector:'stripe'});
+   assert.equal(options.apiVersion,'2026-09-30.endive');
+   assert.equal(params.metadata.truehive_user_id,newOwner);
+   accounts.set('acct_new',connected);return {id:'acct_new'};
+ }}}};
  sdk.accountLinks={create:async params=>({url:'https://connect.stripe.com/fixture',account:params.account})};
  check((await onboard(newOwner,sdk)).account==='acct_new','Stripe-hosted onboarding uses the connected account');
  check((await query('SELECT status FROM billing_accounts WHERE user_id=$1',[newOwner])).rows[0].status==='verification_pending','onboarding redirect alone does not verify owner');
  check((await refreshAccount(newOwner,sdk)).status==='connected','return flow retrieves actual Stripe capability state');
  for (const interval of ['month','year']) {
    const buyer=await user(`plus-${interval}`);await checkout(buyer,{interval},sdk);const request=calls.at(-1);
-   check(request.params.line_items[0].price_data.unit_amount===PLUS_PRICES[interval]&&!request.options.stripeAccount&&!request.params.subscription_data.application_fee_percent,`Plus ${interval} is billed on platform separately from Hive fees`);
+   check(request.params.line_items[0].price===`price_plus_${interval}`&&!request.params.line_items[0].price_data&&!request.options.stripeAccount&&!request.params.subscription_data.application_fee_percent,`Plus ${interval} reuses its catalog price on platform separately from Hive fees`);
    const pending=(await query(`SELECT id FROM billing_subscriptions WHERE user_id=$1`,[buyer])).rows[0];
    await processEvent(event('checkout.session.expired',{id:`cs_${pending.id}`,client_reference_id:pending.id},'platform'),sdk);
    check(!await hasPlus(buyer),'abandoned Plus Checkout grants no entitlement');
  }
  const noPlus=await hive(free,'Forbidden paid Hive',{mode:'paid',...config});check(noPlus.code===403,'free owner cannot create paid Hive');
  check((await hive(free)).code===201,'free owner can create one free Hive');check((await hive(free,'Second Hive')).code===409,'free creation limit enforced in database');
- await plus(owner);const made=await hive(owner,'Workshop Circle',{mode:'paid',...config});check(made.code===201,'Plus owner can create a paid draft atomically');const hiveId=made.data.id;
+ await plus(owner);const made=await hive(owner,'Workshop Circle',{mode:'paid',...config});check(made.code===201,'Plus owner can create a paid draft atomically');const hiveId=made.data.id;catalogHiveId=hiveId;
  check((await hive(owner,'Second')).code===201&&(await hive(owner,'Third')).code===201,'Plus owner can create three active Hives');check((await hive(owner,'Fourth')).code===409,'fourth active Hive rejected');
  await rejects(()=>configure(hiveId,other,config),/ownership/,'cross-owner configuration denied');
  await query(`INSERT INTO billing_accounts(user_id,stripe_account_id,status) VALUES($1,'acct_owner','verification_pending')`,[owner]);accounts.set('acct_owner',{...connected,charges_enabled:false});
@@ -77,13 +85,13 @@ try{
  check(!await hasPlus(member),'paid member has no Plus requirement');
  await rejects(()=>query(`INSERT INTO hive_members(hive_id,user_id) VALUES($1,$2)`,[hiveId,member]),/verified paid/,'direct membership insertion cannot bypass verified billing');
  check((await controller(requestToJoin,{userId:member,params:{id:hiveId},body:{}})).code===402,'legacy join route cannot bypass payment');
- await checkout(member,{hiveId,price:1,platformFee:0},sdk);const call=calls.at(-1);check(call.params.line_items[0].price_data.unit_amount===1200&&call.params.subscription_data.application_fee_percent===10,'Checkout ignores client price and applies 10% fee');
+ await checkout(member,{hiveId,price:1,platformFee:0},sdk);const call=calls.at(-1);check(call.params.line_items[0].price==='price_hive_fixture'&&!call.params.line_items[0].price_data&&call.params.subscription_data.application_fee_percent===10,'Checkout ignores client price and applies 10% fee');
  check(call.options.stripeAccount==='acct_owner'&&call.params.subscription_data.metadata.truehive_subscription_id,'direct charge and server-side reservation metadata');
  const local=(await query(`SELECT * FROM billing_subscriptions WHERE user_id=$1 AND kind='hive'`,[member])).rows[0];
  check(!subscriptionAccess(local),'Checkout creation or success redirect grants no access');
  await checkout(member,{hiveId},sdk);check(calls.at(-1).options.idempotencyKey===call.options.idempotencyKey,'checkout retry reuses durable idempotency key');
  const charge={id:'ch_fixture',amount:1200,amount_refunded:0,refunded:false,invoice:'in_fixture',application_fee:'fee_fixture',balance_transaction:{fee_details:[{type:'stripe_fee',amount:45},{type:'application_fee',amount:120}]}};charges.set(charge.id,charge);
- const live={id:'sub_fixture',livemode:false,metadata:{truehive_subscription_id:local.id},customer:'cus_fixture',status:'active',cancel_at_period_end:false,application_fee_percent:10,items:{data:[{quantity:1,price:{unit_amount:1200,currency:'usd',recurring:{interval:'month',interval_count:1}}}]},latest_invoice:{id:'in_fixture',status:'paid',amount_paid:1200,paid_out_of_band:false,lines:{data:[{period:{end}}]},charge}};liveSubs.set(live.id,live);
+ const live={id:'sub_fixture',livemode:false,metadata:{truehive_subscription_id:local.id},customer:'cus_fixture',status:'active',cancel_at_period_end:false,application_fee_percent:10,items:{data:[{quantity:1,price:{id:'price_hive_fixture',unit_amount:1200,currency:'usd',recurring:{interval:'month',interval_count:1}}}]},latest_invoice:{id:'in_fixture',status:'paid',amount_paid:1200,paid_out_of_band:false,lines:{data:[{period:{end}}]},charge}};liveSubs.set(live.id,live);
  await processEvent(event('checkout.session.completed',{id:`cs_${local.id}`,client_reference_id:local.id,subscription:live.id,customer:'cus_fixture'}),sdk);
  check(!(await query(`SELECT 1 FROM hive_members WHERE hive_id=$1 AND user_id=$2`,[hiveId,member])).rows.length,'verified Checkout completion alone still does not admit');
  const paidEvent=event('invoice.paid',{id:'in_fixture',subscription:live.id});await processEvent(paidEvent,sdk);

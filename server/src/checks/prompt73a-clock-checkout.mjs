@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {installSandboxClockCheckout} from './sandboxClockCheckout.mjs';
+const env={PORT:'5183',BILLING_ENABLED:'test',STRIPE_SECRET_KEY:'sk_test_fixture',DATABASE_URL:'postgres://fixture@ep-fancy-cherry-at7zftnq.neon.tech/db'};
+const local={user_id:'fixture',kind:'plus',stripe_account_id:'platform',email:'prompt73a-lifecycle-cancel@truehive-test.invalid'};
+const customer={id:'cus_fixture',livemode:false,email:local.email,metadata:{truehive_user_id:'fixture'},test_clock:'clock_fixture'};
+let binding={fixture:{email:local.email,customerId:customer.id,clockId:customer.test_clock}},sent;
+const sdk={checkout:{sessions:{create:async p=>(sent=p,{id:'cs_fixture'})}},customers:{retrieve:async()=>customer},testHelpers:{testClocks:{retrieve:async()=>({livemode:false,status:'ready'})}}};
+const query=async sql=>({rows:[sql.includes('neon.branch_id')?{b:'br-holy-poetry-atkl4gsc'}:local]});
+await assert.rejects(()=>installSandboxClockCheckout({sdk,query,bindings:()=>binding,env:{...env,NODE_ENV:'production'}}));
+await installSandboxClockCheckout({sdk,query,bindings:()=>binding,env});
+await sdk.checkout.sessions.create({client_reference_id:'reservation'},{});assert.equal(sent.customer,'cus_fixture');
+await assert.rejects(()=>sdk.checkout.sessions.create({client_reference_id:'reservation'},{stripeAccount:'acct_other'}));
+customer.metadata.truehive_user_id='another';await assert.rejects(()=>sdk.checkout.sessions.create({client_reference_id:'reservation'},{}));
+customer.metadata.truehive_user_id='fixture';customer.test_clock='clock_another';await assert.rejects(()=>sdk.checkout.sessions.create({client_reference_id:'reservation'},{}));
+customer.test_clock='clock_fixture';customer.livemode=true;await assert.rejects(()=>sdk.checkout.sessions.create({client_reference_id:'reservation'},{}));customer.livemode=false;
+await assert.rejects(()=>installSandboxClockCheckout({sdk,query:async()=>({rows:[{b:'another_branch'}]}),bindings:()=>binding,env}));
+binding={};await sdk.checkout.sessions.create({client_reference_id:'reservation'},{});assert.equal(sent.customer,undefined);
+console.log('PASS 8 sandbox clock adapter checks; no Stripe or database requests.');

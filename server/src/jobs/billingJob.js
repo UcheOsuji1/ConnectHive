@@ -3,8 +3,18 @@ import { reportProblem } from '../lib/reportProblem.js';
 import { query } from '../db/index.js';
 import { stripe, stripeOptions } from '../lib/stripe.js';
 import { transaction, expireEntitlements, lockSubscription } from '../lib/billingStore.js';
-import { reconcileSubscription } from '../lib/billingEvents.js';
+import { reconcileSubscription, processEvent } from '../lib/billingEvents.js';
+import { drainBillingInbox } from '../lib/billingInbox.js';
 import { disconnectUserSockets } from '../realtime/socket.js';
+import {recordDispute} from '../lib/disputeAccounting.js';
+
+export async function reconcileUnknownDisputeBalances(sdk=stripe()) {
+ const {rows}=await query(`SELECT s.id,d.stripe_dispute_id FROM billing_disputes d JOIN billing_subscriptions s ON s.id=d.subscription_id
+  WHERE d.balance_checked_at IS NULL ORDER BY d.updated_at LIMIT 20`);
+ for(const row of rows)try{await transaction(async db=>{const local=await lockSubscription(db,row.id);const dispute=await sdk.disputes.retrieve(row.stripe_dispute_id,{},stripeOptions(local.stripe_account_id));await recordDispute(db,local,dispute);});}
+ catch(error){reportProblem('[billing/job] dispute balance needs reconciliation',{disputeId:row.stripe_dispute_id,code:error.code||'stripe_error'});}
+ return rows.length;
+}
 
 export async function processCancellationTasks(sdk = stripe(), limit=100) {
   const token=randomUUID();
@@ -38,6 +48,7 @@ export async function processCancellationTasks(sdk = stripe(), limit=100) {
   return tasks.length;
 }
 export async function runBillingMaintenance(sdk = stripe()) {
+  await drainBillingInbox(event=>processEvent(event,sdk));
   // Expiry never depends solely on a delayed webhook.
   const expired = await expireEntitlements();
   for (const userId of new Set(expired.map(r => r.user_id))) disconnectUserSockets(userId);
@@ -62,6 +73,7 @@ export async function runBillingMaintenance(sdk = stripe()) {
     } catch(error) {reportProblem('[billing/job] Checkout expiry needs retry',{checkoutId:c.id,code:error.code||'stripe_error'});}
   }
   await processCancellationTasks(sdk);
+  await reconcileUnknownDisputeBalances(sdk);
   // Periodic retrieval repairs missed webhook delivery, using the same locked path.
   const { rows: unbound } = await query(`SELECT c.id,c.subscription_id,c.stripe_session_id,s.stripe_account_id FROM billing_checkouts c
     JOIN billing_subscriptions s ON s.id=c.subscription_id WHERE s.stripe_subscription_id IS NULL AND s.status='processing'

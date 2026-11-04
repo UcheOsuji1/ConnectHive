@@ -1,0 +1,211 @@
+{
+  "at": "2026-11-02T13:43:47.648Z",
+  "decision": "NON_FINANCIAL_CHECKS_PASS; FINANCIAL_APPROVAL_PENDING; PRODUCTION_NOT_READY",
+  "serverOfflineChecks": 268,
+  "checks": [
+    {
+      "name": "core",
+      "count": 78,
+      "status": "PASS",
+      "privateLog": "engineering-final-core.log"
+    },
+    {
+      "name": "fees",
+      "count": 10,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-fees.mjs.log"
+    },
+    {
+      "name": "security",
+      "count": 31,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-security.mjs.log"
+    },
+    {
+      "name": "concurrency",
+      "count": 24,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-concurrency.mjs.log"
+    },
+    {
+      "name": "system",
+      "count": 14,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-system.mjs.log"
+    },
+    {
+      "name": "inbox",
+      "count": 8,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-inbox.mjs.log"
+    },
+    {
+      "name": "lifecycle",
+      "count": 36,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-lifecycle.mjs.log"
+    },
+    {
+      "name": "worker",
+      "count": 3,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-worker.mjs.log"
+    },
+    {
+      "name": "callbacks",
+      "count": 15,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-connect-callbacks.mjs.log"
+    },
+    {
+      "name": "cancellation expiry",
+      "count": 9,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-real-cancellation-expiry.mjs.log"
+    },
+    {
+      "name": "grace recovery",
+      "count": 8,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-real-renewal-grace.mjs.log"
+    },
+    {
+      "name": "clock adapter",
+      "count": 8,
+      "status": "PASS"
+    },
+    {
+      "name": "catalog",
+      "count": 10,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-catalog.mjs.log"
+    },
+    {
+      "name": "durable nonce",
+      "count": 3,
+      "status": "PASS",
+      "privateLog": "engineering-final-prompt73a-durable-nonces.mjs.log"
+    },
+    {
+      "name": "budget",
+      "count": 8,
+      "status": "PASS"
+    },
+    {
+      "name": "glob compatibility",
+      "count": 3,
+      "status": "PASS"
+    }
+  ],
+  "browser": {
+    "chromium": 64,
+    "firefox": 64,
+    "webkit": 64,
+    "sanitization": 27,
+    "total": 219
+  },
+  "audits": {
+    "server": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "client": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "clientBuild": "PASS; existing bundle-size warning",
+  "protectedReconciliation": "sandbox.local/final-readonly-review.json",
+  "newMoneyOperations": 0,
+  "financialSuite": {
+    "status": "PLAN_ONLY; not executed",
+    "planHash": "2f2e37046dd067040fda43320dd594a3eb2ec7be9047e9504300aac406a93391",
+    "plan": {
+      "version": 1,
+      "currency": "usd",
+      "account": "acct_1UUV9MRuxbB0fH11",
+      "endpoint": "ep-fancy-cherry-at7zftnq",
+      "branch": "br-holy-poetry-atkl4gsc",
+      "limits": {
+        "charge": {
+          "count": 7,
+          "cents": 12996
+        },
+        "refund": {
+          "count": 3,
+          "cents": 1700
+        },
+        "feeRefund": {
+          "count": 2,
+          "cents": 150
+        },
+        "failedAttempt": {
+          "count": 14,
+          "cents": 11186
+        },
+        "dispute": {
+          "count": 1,
+          "cents": 799
+        },
+        "disputeFees": {
+          "count": 1,
+          "cents": 5000
+        },
+        "cleanup": {
+          "count": 7,
+          "cents": 0
+        }
+      },
+      "scenarios": [
+        "annual-cancellation",
+        "plus-partial-refund",
+        "hive-full-refund",
+        "hive-partial-refund",
+        "hive-closure",
+        "dispute",
+        "retry-exhaustion"
+      ],
+      "resources": {
+        "customers": 7,
+        "clocks": 7,
+        "subscriptions": 7,
+        "hives": 1,
+        "products": 1,
+        "prices": 1
+      },
+      "cleanup": "Cancel ONLY run-owned subscriptions without proration/invoice; retain financial/user/audit rows and manifest. Never delete shared owner/account or protected fixtures."
+    }
+  },
+  "migration": {
+    "file": "011_connect_refresh_nonces.sql",
+    "target": "verified Neon dev only",
+    "financialBackfill": false
+  },
+  "limitations": [
+    "Initial parallel native Windows exit; subsequent core runs passed; exact interrupted schema removed",
+    "Financial runner end-to-end acceptance requires explicit budget authorization",
+    "Business policy and hosted operational readiness unresolved",
+    "Existing unrelated HANDOFF whitespace is preserved"
+  ],
+  "hashes": {
+    "../client/package.json": "e8e315661a7d2aa35191bda5f0c5b72b5eb94a0f7710812ea19561ebb0bf79d4",
+    "../client/package-lock.json": "dcbb9aeb5e40fa9052724bce74c40e7a2772b33726bcb068b1794479f99702aa",
+    "package.json": "1ef8f8d11c2d4d9dbac4b5d1af1efc9b2f346dcc6f4ef0015e72fe1b119bc6e2",
+    "package-lock.json": "53f9e0c5cf67785a70a97ae9a82d048b79f62bf42f493085109b51eaff9600c0",
+    "src/lib/hiveCatalog.js": "82cf5066b11347b2095e3c5804b2f690baf88753005edb6a9b7d05eafbe2d891",
+    "src/lib/connectOnboarding.js": "0dc429d58458257e4e8ca65193cf88b515570b98ed2557d713e0dcc224f6cf46",
+    "src/lib/billingService.js": "bd0d189f64baddd3b17bed859d3fb46a221be558bd5e1ff6cb1df3eb88fc9fb3",
+    "src/db/migrations/011_connect_refresh_nonces.sql": "f96861be3e276a44fca3822555d7bf9fe3e7b39855ce99a4fdccfcdc00d56198",
+    "src/checks/acceptance/run.mjs": "e3d17153a68cdb22263d7fa44241a48bb6d6d1409fcef29077023c37a84b2d83",
+    "src/checks/acceptance/budget.mjs": "332652ad4871434e9802634895e2c2d09ee007811ea3e4b1913d6dde61a89b4c",
+    "src/checks/acceptance/regressions.mjs": "736fae2f52e20e6868001fed1e09815579faf0584b68855b6a536c9a3be83048"
+  }
+}

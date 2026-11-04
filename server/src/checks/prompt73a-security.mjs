@@ -32,8 +32,11 @@ try {
  const signed=stripe().webhooks.generateTestHeaderString({payload,secret:process.env.STRIPE_WEBHOOK_SECRET});
  const deliver=()=>fetch(`${base}/webhook/platform`,{method:'POST',headers:{'Content-Type':'application/json','stripe-signature':signed},body:payload});
  const originalConnect=pool.connect.bind(pool);let failCommit=true;
- pool.connect=async()=>{const client=await originalConnect();return {query:async(sql,args)=>{if(sql==='COMMIT'&&failCommit){failCommit=false;throw Object.assign(new Error('Injected commit failure'),{code:'fixture_commit_failure'});}return client.query(sql,args);},release:()=>client.release()};};
- // PGlite pool.query is independently provided by its preload; no callback API.
+ const wrap=client=>{const run=client.query.bind(client);client.query=(sql,...args)=>{if(sql==='COMMIT'&&failCommit){failCommit=false;return Promise.reject(Object.assign(new Error('Injected commit failure'),{code:'fixture_commit_failure'}));}return run(sql,...args);};return client;};
+ // Real pg Pool.query uses connect(callback); preserve both callback and Promise APIs.
+ pool.connect=callback=>callback
+   ? originalConnect((error,client,release)=>callback(error,error?client:wrap(client),release))
+   : originalConnect().then(wrap);
  pass((await deliver()).status===503,'failed event commit returns retryable status');pool.connect=originalConnect;
  const eventId=JSON.parse(payload).id;pass(!(await query('SELECT 1 FROM billing_events WHERE event_id=$1',[eventId])).rows.length,'failed commit does not acknowledge financial event');
  pass((await query('SELECT last_error_code FROM billing_webhook_attempts WHERE event_id=$1',[eventId])).rows[0].last_error_code==='fixture_commit_failure','sanitized failed delivery is observable outside rolled-back transaction');
