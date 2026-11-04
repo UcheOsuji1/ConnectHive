@@ -198,6 +198,7 @@ function HiveSidebar({
     { label: 'Member Onboarding',    sub: 'onboarding' },
     { label: 'Analytics',            sub: 'analytics' },
     { label: 'General Settings',     sub: 'settings' },
+    { label: 'Monetization', sub: 'billing' },
   ];
 
   const inManage = MANAGE_SECTIONS.some(s => active(s.sub));
@@ -353,7 +354,7 @@ function safeTags(val) {
   try { return JSON.parse(val) || []; } catch { return []; }
 }
 
-function JoinBtn({ hiveId, initialPending }) {
+function JoinBtn({ hiveId, initialPending, paid }) {
   const [state, setState] = useState(initialPending ? 'pending' : 'idle');
   const [err, setErr] = useState(null);
 
@@ -374,6 +375,7 @@ function JoinBtn({ hiveId, initialPending }) {
     }
   }
 
+  if (paid) return <Link className="dhp-join-btn" to={`/paid-hive/${hiveId}`}>View paid membership ? ${(paid.monthly_price_cents/100).toFixed(2)} / month</Link>;
   if (state === 'joined')  return <div className="dhp-join-joined">Joined ✓</div>;
   if (state === 'pending') return <div className="dhp-join-disabled">Request pending</div>;
   return (
@@ -486,7 +488,7 @@ function PublicHiveView({ hive, hiveId }) {
             </div>
             <div className="dhp-header-actions">
               <FollowButton hiveId={hive.hive_id} initialFollowing={hive.is_following} />
-              <JoinBtn hiveId={hive.hive_id} initialPending={Boolean(hive.request_pending)} />
+              <JoinBtn paid={hive.paid_membership} hiveId={hive.hive_id} initialPending={Boolean(hive.request_pending)} />
               <button type="button" onClick={() => setShowReport(true)}
                 style={{ background: 'none', border: 'none', color: '#8a8070', fontSize: '0.78rem',
                          textDecoration: 'underline', cursor: 'pointer' }}>

@@ -277,7 +277,7 @@ function HiveMatchCard({ hive, autoFetch = false }) {
 
       {/* ── CTA ── */}
       <div className="hmd-cta">
-        {joinState === 'joined' ? (
+        {hive.paid_membership ? <a href={`/paid-hive/${hive.hive_id}`} className="hmd-btn">Paid ? ${(hive.paid_membership.monthly_price_cents/100).toFixed(2)} / month ? View membership</a> : joinState === 'joined' ? (
           <a href={`/hive/${hive.hive_id}`} className="hmd-btn hmd-btn-joined">
             Joined — Open Hive →
           </a>

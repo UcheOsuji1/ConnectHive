@@ -316,6 +316,7 @@ export default function AdminReportsPage() {
         <div style={{ display: 'flex', gap: 14 }}>
           <Link to="/admin/funnel" className="hw-action-link">Funnel →</Link>
           <Link to="/admin/newsletter" className="hw-action-link">Newsletter →</Link>
+          <Link to="/admin/monetization" className="hw-action-link">Paid Hive review ?</Link>
         </div>
       </div>
 

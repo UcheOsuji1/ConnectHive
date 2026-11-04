@@ -29,7 +29,8 @@ const MIGRATIONS_DIR = join(__dirname, 'migrations');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: process.env.P73A_LOCAL_POSTGRES === '1' && ['127.0.0.1','localhost'].includes(new URL(process.env.DATABASE_URL).hostname)
+    && new URL(process.env.DATABASE_URL).pathname === '/truehive_73a_staging' ? false : { rejectUnauthorized: false },
 });
 
 function banner(msg) {
@@ -53,6 +54,7 @@ async function migrate() {
     // ── 2. Structural baseline ────────────────────────────────────
     console.log('\n  Applying schema.sql (structural, re-runnable) …');
     await client.query(readFileSync(join(__dirname, 'schema.sql'), 'utf8'));
+    await client.query(readFileSync(join(__dirname, 'billing.sql'), 'utf8'));
     console.log('  ✓ structure up to date');
 
     // ── 3. One-time migrations ────────────────────────────────────

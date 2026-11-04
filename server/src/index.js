@@ -20,6 +20,10 @@ import reportRoutes       from './routes/reports.js';
 import adminRoutes        from './routes/admin.js';
 import emailRoutes        from './routes/email.js';
 import metroRoutes        from './routes/metros.js';
+import billingRoutes from './routes/billing.js';
+import connectCallbacks from './routes/connectCallbacks.js';
+import { webhook } from './lib/billingEvents.js';
+import { startBillingJob } from './jobs/billingJob.js';
 import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
@@ -95,6 +99,8 @@ app.use(cors({
   },
   credentials: true,
 }));
+// Stripe needs the original bytes. Register before JSON parsing AND consent/auth.
+app.post('/api/billing/webhooks/:source(platform|connect)', express.raw({ type: 'application/json', limit: '1mb' }), webhook);
 app.use(express.json());
 app.use(cookieParser());
 
@@ -138,6 +144,8 @@ app.use('/api/auth',          authRoutes);
 // No login needed — same reasoning as /api/auth, so it sits ahead of
 // requireConsent too, not behind it.
 app.use('/api/email',         emailRoutes);
+// Stripe callbacks use scoped expiring state, independently of browser login/consent.
+app.use('/api/billing/connect/callback', connectCallbacks);
 app.use('/api',               requireConsent);
 app.use('/api/hives',         hiveRoutes);
 app.use('/api/users',         userRoutes);
@@ -152,6 +160,7 @@ app.use('/api/blocks',        blockRoutes);
 app.use('/api/reports',       reportRoutes);
 app.use('/api/admin',         adminRoutes);
 app.use('/api/metros',        metroRoutes);
+app.use('/api/billing',       billingRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {
@@ -195,4 +204,5 @@ server.listen(PORT, async () => {
   startPurgeJob();
   startEmailOutboxJob();
   startDigestJob();
+  startBillingJob();
 });

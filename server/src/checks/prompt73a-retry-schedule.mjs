@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';import {waitForRetryDecision,canHoldFailedFixture} from './acceptance/retrySchedule.mjs';
+const state=(attempt,next,time=101,status='past_due')=>({subscription:{status,latest_invoice:{attempt_count:attempt,next_payment_attempt:next}},clock:{status:'ready',frozen_time:time}});
+let reads=0,sleeps=0;const sequence=[state(2,100),state(2,100),state(2,200)];const settled=await waitForRetryDecision(async()=>{reads++;return sequence.shift();},{afterAttempt:1,sleep:async()=>{sleeps++;}});assert.equal(settled.at,200);assert.equal(reads,3);assert.equal(sleeps,2);
+const terminal=await waitForRetryDecision(async()=>state(4,null,300,'unpaid'));assert.equal(terminal.terminal,true);
+await assert.rejects(()=>waitForRetryDecision(async()=>state(2,null),{tries:2,sleep:async()=>{}}),e=>e.code==='retry_schedule_pending');
+const f={account:null,subId:'sub_test',customerId:'cus_test',clockId:'clock_test',failedInvoiceId:'in_failed',failingMethodId:'pm_declines'};
+const s={id:f.subId,customer:f.customerId,status:'past_due',livemode:false,metadata:{truehive_acceptance_run:'run'},default_payment_method:f.failingMethodId,latest_invoice:f.failedInvoiceId},c={id:f.clockId,livemode:false,status:'ready'};
+assert(canHoldFailedFixture(f,s,c,'run'));
+for(const changed of [{status:'canceled'},{default_payment_method:'pm_success'},{customer:'cus_other'},{livemode:true},{metadata:{truehive_acceptance_run:'other'}}])assert(!canHoldFailedFixture(f,{...s,...changed},c,'run'));
+assert(!canHoldFailedFixture(f,s,{...c,status:'advancing'},'run'));
+console.log('RETRY SCHEDULE: 12 checks passed; stale scheduling cannot advance or spend a retry; no external calls.');

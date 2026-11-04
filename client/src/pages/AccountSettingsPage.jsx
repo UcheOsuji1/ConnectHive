@@ -1,3 +1,4 @@
+import BillingPanel from '../components/billing/BillingPanel.jsx';
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
@@ -165,7 +166,8 @@ function DeleteAccountRow() {
             </>
           )}
 
-          {check && blockers.length === 0 && (
+          {check?.billingMessage && <p className="acct-delete-error">{check.billingMessage} <a href="#billing">Manage monetization</a></p>}
+          {check && check.canDelete && blockers.length === 0 && (
             <>
               {soloOwnedHives.length > 0 && (
                 <p className="acct-delete-hint acct-delete-hint--warn">
@@ -534,6 +536,7 @@ export default function AccountSettingsPage() {
           </div>
 
           {/* ── 6. Danger zone ── */}
+          <BillingPanel />
           <div className="acct-card acct-card-danger">
             <div className="acct-section-label acct-section-label-danger">Danger zone</div>
             <DeleteAccountRow />

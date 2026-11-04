@@ -1,0 +1,505 @@
+{
+  "at": "2026-11-03T19:16:26.614Z",
+  "run": "e10e371c-16fc-4314-8cc0-956a8b06246f",
+  "planHash": "2f2e37046dd067040fda43320dd594a3eb2ec7be9047e9504300aac406a93391",
+  "decision": "PARTIAL_PASS_STOPPED_RESOURCE_SCOPE; PRODUCTION_BLOCKED",
+  "actual": {
+    "successfulCharges": 3,
+    "grossCents": 8998,
+    "refundCount": 2,
+    "refundedCents": 1400,
+    "feeReversalCents": 120,
+    "declinedAttempts": 0,
+    "disputes": 0
+  },
+  "cases": [
+    {
+      "scenario": "annual-cancellation",
+      "status": "PASS",
+      "subscription": "sub_1UXmyuRuxbB0fH11LAUGsHzM",
+      "invoice": "in_1UXmyuRuxbB0fH11c2C1y3WW",
+      "charge": "ch_3UXmyuRuxbB0fH111Rhhwq8O",
+      "clock": "clock_1UXmysRuxbB0fH11xbAsqnya",
+      "subscriptionStatus": "canceled",
+      "localStatus": "canceled",
+      "plus": true,
+      "paidThrough": "2027-11-03T19:02:46.000Z",
+      "accessUntil": "2027-11-03T19:02:46.000Z",
+      "gross": 6999,
+      "refunded": 0,
+      "processing": 233,
+      "originalPlatformFee": 0,
+      "reversedPlatformFee": 0,
+      "retainedPlatformFee": 0,
+      "originalBalanceNet": 6766,
+      "netAfterRefunds": 6766,
+      "refunds": [],
+      "localDuplicateTests": "PASS; existing actual envelopes replayed locally; not new Stripe deliveries",
+      "events": [
+        {
+          "event_id": "evt_1UXmywRuxbB0fH11zNZ3Pzp0",
+          "type": "invoice.paid",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:02:57.290Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmywRuxbB0fH11XdkIOl1h",
+          "type": "customer.subscription.created",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:02:58.154Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmz1RuxbB0fH11336vn7BE",
+          "type": "customer.subscription.updated",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:01.725Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmz8RuxbB0fH11gJ6FThjR",
+          "type": "customer.subscription.deleted",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:08.939Z",
+          "worker_attempts": 1,
+          "ingress_attempts": 1
+        }
+      ]
+    },
+    {
+      "scenario": "plus-partial-refund",
+      "status": "PASS",
+      "subscription": "sub_1UXmzHRuxbB0fH11C4ewlkG0",
+      "invoice": "in_1UXmzHRuxbB0fH11NcSyr1G2",
+      "charge": "ch_3UXmzHRuxbB0fH111QcRUatn",
+      "clock": "clock_1UXmzFRuxbB0fH11wHfs9a8j",
+      "subscriptionStatus": "canceled",
+      "localStatus": "canceled",
+      "plus": true,
+      "paidThrough": "2026-12-03T19:02:46.000Z",
+      "accessUntil": "2026-12-03T19:02:46.000Z",
+      "gross": 799,
+      "refunded": 200,
+      "processing": 53,
+      "originalPlatformFee": 0,
+      "reversedPlatformFee": 0,
+      "retainedPlatformFee": 0,
+      "originalBalanceNet": 746,
+      "netAfterRefunds": 546,
+      "refunds": [
+        {
+          "id": "re_3UXmzHRuxbB0fH111k3rBrJE",
+          "amount": 200,
+          "status": "succeeded",
+          "balanceNet": -200
+        }
+      ],
+      "localDuplicateTests": "PASS; existing actual envelopes replayed locally; not new Stripe deliveries",
+      "events": [
+        {
+          "event_id": "evt_1UXmzJRuxbB0fH11UsxNa5WZ",
+          "type": "invoice.paid",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:20.876Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmzJRuxbB0fH11s7khyQE5",
+          "type": "customer.subscription.created",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:19.587Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_3UXmzHRuxbB0fH111aYis7YS",
+          "type": "refund.created",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:24.784Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_3UXmzHRuxbB0fH111ihcR73s",
+          "type": "charge.refunded",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:25.227Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_3UXmzHRuxbB0fH111CHTmR47",
+          "type": "refund.updated",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:25.926Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmzrRuxbB0fH11JyKbmmsE",
+          "type": "customer.subscription.deleted",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:53.469Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        }
+      ]
+    },
+    {
+      "scenario": "hive-full-refund",
+      "status": "PASS",
+      "subscription": "sub_1UXmzcRuxbP8zrXGIT9UO3oN",
+      "invoice": "in_1UXmzcRuxbP8zrXGK5nTWDRz",
+      "charge": "ch_3UXmzcRuxbP8zrXG1ArwBOPl",
+      "clock": "clock_1UXmzaRuxbP8zrXGEN0amm4J",
+      "subscriptionStatus": "canceled",
+      "localStatus": "refunded",
+      "plus": false,
+      "paidThrough": "2026-12-03T19:02:46.000Z",
+      "accessUntil": null,
+      "gross": 1200,
+      "refunded": 1200,
+      "processing": 65,
+      "originalPlatformFee": 120,
+      "reversedPlatformFee": 120,
+      "retainedPlatformFee": 0,
+      "originalBalanceNet": 1015,
+      "netAfterRefunds": -65,
+      "refunds": [
+        {
+          "id": "re_3UXmzcRuxbP8zrXG1pX7GqTC",
+          "amount": 1200,
+          "status": "succeeded",
+          "balanceNet": -1200
+        }
+      ],
+      "fee": {
+        "id": "fee_1UXmzeRuxbP8zrXGBikKYaqq",
+        "amount": 120,
+        "refunded": 120,
+        "refund": "fr_1UXmzlRuxbP8zrXGeLiQ8f5f",
+        "platformLifecycleNet": 0
+      },
+      "connectedTransactions": [
+        {
+          "id": "txn_1UXmzlRuxbP8zrXGbJadVZ58",
+          "type": "adjustment",
+          "net": 120,
+          "source": "ch_3UXmzcRuxbP8zrXG1ArwBOPl"
+        },
+        {
+          "id": "txn_3UXmzcRuxbP8zrXG1jFe3sSH",
+          "type": "refund",
+          "net": -1200,
+          "source": "re_3UXmzcRuxbP8zrXG1pX7GqTC"
+        },
+        {
+          "id": "txn_3UXmzcRuxbP8zrXG154XpOh7",
+          "type": "charge",
+          "net": 1015,
+          "source": "ch_3UXmzcRuxbP8zrXG1ArwBOPl"
+        }
+      ],
+      "localDuplicateTests": "PASS; existing actual envelopes replayed locally; not new Stripe deliveries",
+      "events": [
+        {
+          "event_id": "evt_1UXmzfRuxbP8zrXGfjtw9fpp",
+          "type": "invoice.paid",
+          "account_id": "acct_1UWppORuxbP8zrXG",
+          "processed_at": "2026-11-03T19:03:42.397Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmzfRuxbP8zrXGdI3teClO",
+          "type": "customer.subscription.created",
+          "account_id": "acct_1UWppORuxbP8zrXG",
+          "processed_at": "2026-11-03T19:03:43.910Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmzgRuxbB0fH117NxLZRRu",
+          "type": "application_fee.created",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:04:09.217Z",
+          "worker_attempts": 1,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmzlRuxbB0fH11BGZLSDxZ",
+          "type": "application_fee.refunded",
+          "account_id": "platform",
+          "processed_at": "2026-11-03T19:03:48.681Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_3UXmzcRuxbP8zrXG1Zkq7zAy",
+          "type": "refund.created",
+          "account_id": "acct_1UWppORuxbP8zrXG",
+          "processed_at": "2026-11-03T19:03:48.291Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_3UXmzcRuxbP8zrXG1tFPRfL5",
+          "type": "charge.refunded",
+          "account_id": "acct_1UWppORuxbP8zrXG",
+          "processed_at": "2026-11-03T19:03:49.785Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_3UXmzcRuxbP8zrXG1XTCC4ax",
+          "type": "refund.updated",
+          "account_id": "acct_1UWppORuxbP8zrXG",
+          "processed_at": "2026-11-03T19:03:51.142Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        },
+        {
+          "event_id": "evt_1UXmzsRuxbP8zrXGmLiYb4tc",
+          "type": "customer.subscription.deleted",
+          "account_id": "acct_1UWppORuxbP8zrXG",
+          "processed_at": "2026-11-03T19:03:54.618Z",
+          "worker_attempts": 0,
+          "ingress_attempts": 1
+        }
+      ]
+    }
+  ],
+  "notRun": [
+    "hive-partial-refund",
+    "hive-closure",
+    "dispute",
+    "retry-exhaustion"
+  ],
+  "resourceBlocker": "Single authorized Hive closed by original failure cleanup; second Hive/product/price not authorized. No scope expansion.",
+  "financialCaps": {
+    "charge": {
+      "count": 7,
+      "cents": 12996
+    },
+    "refund": {
+      "count": 3,
+      "cents": 1700
+    },
+    "feeRefund": {
+      "count": 2,
+      "cents": 150
+    },
+    "failedAttempt": {
+      "count": 14,
+      "cents": 11186
+    },
+    "dispute": {
+      "count": 1,
+      "cents": 799
+    },
+    "disputeFees": {
+      "count": 1,
+      "cents": 5000
+    },
+    "cleanup": {
+      "count": 7,
+      "cents": 0
+    }
+  },
+  "resources": {
+    "users": 3,
+    "customers": 3,
+    "clocks": 3,
+    "subscriptions": 3,
+    "hives": 1,
+    "products": 1,
+    "prices": 1
+  },
+  "originalRunnerError": {
+    "code": "ERR_ASSERTION",
+    "message": "Expected values to be strictly equal:\n\n0 !== 120\n"
+  },
+  "repairs": [
+    "Acceptance distinguishes original/reversed/retained platform fee",
+    "Deadlock test waits for both responses and still requires one 40P01 victim",
+    "Future runner pauses offering on error instead of irreversible close; not financially re-executed"
+  ],
+  "regressions": [
+    {
+      "name": "prompt73",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-fees",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-security",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-concurrency",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-system",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-inbox",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-lifecycle",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-worker",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-connect-callbacks",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-real-cancellation-expiry",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-real-renewal-grace",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-durable-nonces",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-catalog",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-clock-checkout",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-acceptance-budget",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-glob-compatibility",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "prompt73a-refund-accounting",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "browser-chromium",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "browser-firefox",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "browser-webkit",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    },
+    {
+      "name": "sanitization",
+      "status": "PASS",
+      "exit": 0,
+      "signal": null
+    }
+  ],
+  "counts": {
+    "reusableServerOffline": 277,
+    "realRefundOrdering": 7,
+    "browser": 219,
+    "total": 503
+  },
+  "localRefundOrdering": {
+    "status": "PASS",
+    "checks": 7,
+    "scope": "local reordered real payloads in isolated schema; not new Stripe deliveries",
+    "events": [
+      "evt_3UXmzcRuxbP8zrXG1XTCC4ax",
+      "evt_3UXmzcRuxbP8zrXG1Zkq7zAy",
+      "evt_3UXmzcRuxbP8zrXG1tFPRfL5"
+    ],
+    "newFinancialCalls": 0
+  },
+  "audits": {
+    "server": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "client": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    }
+  },
+  "clientBuild": "PASS; existing bundle size warning",
+  "protectedPreservation": "PASS; private authorized-suite-preservation-final.log",
+  "privateEvidence": "sandbox.local/acceptance/e10e371c-16fc-4314-8cc0-956a8b06246f/",
+  "sourceHashes": {
+    "src/checks/acceptance/run.mjs": "f495dc13be5c19d0682d59fd2ff9837157b010b5f7a1cb7b4211aba8e620e192",
+    "src/checks/acceptance/accounting.mjs": "e2104abdeb3607e0edcfe9d4b7a74da33ef99afcd487d6ba9cd873ccf40b9516",
+    "src/checks/acceptance/verify-run.mjs": "18a3fd22695db69e6632556089d3964451b2a5849e8984b65cd43f81677320d7",
+    "src/checks/prompt73a-concurrency.mjs": "7000dcf1c07ac289638be1eb1bcc4d248c601a9abce1dafce2cdcceb12654f64",
+    "src/checks/prompt73a-real-refund-order.mjs": "b04214d8a9287ab5ee8f45e798f8ae73bf8dac1c6c93e9dc36040fdb84a2b11b"
+  }
+}

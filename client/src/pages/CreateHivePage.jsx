@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+import { MonetizationForm, emptyConfig, configPayload } from '../components/billing/BillingUI.jsx';
+import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
@@ -195,6 +196,9 @@ function SectionCard({ number, title, desc, children, disabled = false }) {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function CreateHivePage() {
+  const [monetization, setMonetization] = useState({...emptyConfig});
+  const [billingPlus, setBillingPlus] = useState(false);
+  useEffect(() => { api.get('/api/billing/summary').then(d => setBillingPlus(d.plus)).catch(() => {}); }, []);
   const location    = useLocation();
   const navigate    = useNavigate();
   const { config }  = useAuth();
@@ -293,6 +297,7 @@ export default function CreateHivePage() {
     setHiveValues(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
 
   const buildPayload = () => ({
+    monetization: configPayload(monetization),
     name:                hiveName.trim(),
     category:            selectedCat,
     description:         description.trim(),
@@ -380,7 +385,7 @@ export default function CreateHivePage() {
           activation_threshold: Number(activateAt),
         });
       }
-      navigate(hiveId ? `/hive/${hiveId}` : '/my-hive');
+      navigate(hiveId ? (monetization.mode === 'paid' ? `/hive/${hiveId}/billing` : `/hive/${hiveId}`) : '/my-hive');
     } catch (err) {
       console.error('[CreateHive] launch failed:', err);
       setSubmitError(err.data?.error ?? 'Something went wrong — please try again.');
@@ -924,25 +929,8 @@ export default function CreateHivePage() {
         {/* ══════════════════════════════════════════════════════════
             Section 7 — Membership cost (Coming Soon)
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="7" title="Membership cost" desc="How members will pay to join" disabled>
-
-          <div className="ch-field">
-            <div className="ch-field-label">Pricing model</div>
-            <div className="ch-cost-cards">
-              {[
-                { key: 'free', icon: '✓',  label: 'Free',         sub: 'Anyone can join at no cost' },
-                { key: 'once', icon: '💳', label: 'One-time fee', sub: 'A single payment to join the Hive' },
-                { key: 'sub',  icon: '🔄', label: 'Subscription', sub: 'Recurring monthly or annual fee' },
-              ].map(opt => (
-                <div key={opt.key} className="ch-cost-card">
-                  <div className="ch-cost-card-icon">{opt.icon}</div>
-                  <div className="ch-cost-card-label">{opt.label}</div>
-                  <div className="ch-cost-card-sub">{opt.sub}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
+        <SectionCard number="7" title="Monetization" desc="Free community or an owner-led monthly membership">
+          <MonetizationForm value={monetization} onChange={setMonetization} plus={billingPlus}/>
         </SectionCard>
 
       </div>

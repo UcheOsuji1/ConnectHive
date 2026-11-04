@@ -1,12 +1,18 @@
 import pg from 'pg';
 import 'dotenv/config';
+import { reportProblem } from '../lib/reportProblem.js';
 
 const { Pool } = pg;
+// Only an explicitly opted-in, loopback staging cluster may disable TLS.
+const localStaging = process.env.P73A_LOCAL_POSTGRES === '1'
+  && ['127.0.0.1', 'localhost'].includes(new URL(process.env.DATABASE_URL).hostname)
+  && new URL(process.env.DATABASE_URL).pathname === '/truehive_73a_staging';
 
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: localStaging ? false : { rejectUnauthorized: false },
 });
+pool.on('error',error=>reportProblem('[db] idle connection lost',{code:error.code||'connection_error'}));
 
 /**
  * Run a parameterised query through the pool.

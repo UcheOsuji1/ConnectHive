@@ -15,6 +15,7 @@ const { PGlite } = await import(pathToFileURL(require.resolve('@electric-sql/pgl
 const { pgcrypto } = await import(pathToFileURL(require.resolve('@electric-sql/pglite/contrib/pgcrypto')).href);
 const db = new PGlite({ extensions: { pgcrypto } });
 await db.exec(await readFile(new URL('../db/schema.sql', import.meta.url), 'utf8'));
+await db.exec(await readFile(new URL('../db/billing.sql', import.meta.url), 'utf8'));
 for (const file of (await readdir(new URL('../db/migrations/', import.meta.url))).filter(f => f.endsWith('.sql')).sort()) {
   await db.exec(await readFile(new URL(`../db/migrations/${file}`, import.meta.url), 'utf8'));
 }
@@ -29,4 +30,5 @@ const query = async (sql, params) => {
 pool.query = query;
 pool.connect = async () => ({ query, release() {} });
 pool.end = () => db.close();
+pool.isolatedExec = sql => db.exec(sql); // test-only multi-statement migration verification
 console.log('ISOLATED PostgreSQL/WASM fixture database: full schema and numbered migrations; production inaccessible.');

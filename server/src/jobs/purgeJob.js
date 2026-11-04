@@ -25,6 +25,7 @@ import { query, getClient } from '../db/index.js';
 import { destroyByUrl } from '../lib/cloudinaryDestroy.js';
 import { reportProblem } from '../lib/reportProblem.js';
 import { reportJobError } from '../lib/jobTick.js';
+import { assertNoFinancialBlockers } from '../lib/billingStore.js';
 
 const INTERVAL_MS = 60 * 60 * 1000; // hourly
 
@@ -51,6 +52,8 @@ async function _userCascadeColumns() {
 }
 
 async function _purgeUser(client, user, cascadeCols) {
+  await client.query('SELECT user_id FROM users WHERE user_id=$1 FOR UPDATE',[user.user_id]);
+  await assertNoFinancialBlockers(user.user_id,client);
   let rowsDeleted = 0;
   for (const { table_name, column_name, delete_rule } of cascadeCols) {
     if (delete_rule === 'CASCADE') {

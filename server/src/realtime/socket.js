@@ -169,6 +169,22 @@ export function initSocket(httpServer, allowedOrigins) {
       try {
         if (!hiveId) throw Object.assign(new Error('hiveId is required.'), { status: 400 });
         await requireMembership(hiveId, userId);
+        // A socket must stop receiving paid content at its entitlement boundary,
+        // even if it stays connected and never makes another HTTP request.
+        const armPaidExpiry = async () => {
+          const { rows: [paid] } = await query(`SELECT s.access_until FROM billing_subscriptions s
+            JOIN hive_members hm ON hm.hive_id=s.hive_id AND hm.user_id=s.user_id
+            WHERE s.hive_id=$1 AND s.user_id=$2 AND hm.role<>'owner' AND NOT s.access_revoked
+            ORDER BY s.access_until DESC NULLS LAST LIMIT 1`, [hiveId,userId]);
+          if (!paid) return;
+          const timer = setTimeout(async () => {
+            try { await requireMembership(hiveId,userId); await armPaidExpiry(); }
+            catch { socket.disconnect(true); }
+          }, Math.max(1, Math.min(86400000, new Date(paid.access_until).getTime()-Date.now()+10)));
+          timer.unref();
+          socket.once('disconnect', () => clearTimeout(timer));
+        };
+        await armPaidExpiry();
 
         const room = `hive:${hiveId}`;
         socket.join(room);

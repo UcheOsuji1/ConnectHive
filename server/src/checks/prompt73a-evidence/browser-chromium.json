@@ -1,0 +1,16 @@
+{
+  "checks": 64,
+  "shots": [
+    "member-billing-1440.png",
+    "paid-offer-1440.png",
+    "owner-monetization-1440.png",
+    "create-paid-1440.png",
+    "member-billing-390.png",
+    "paid-offer-390.png",
+    "owner-monetization-390.png",
+    "create-paid-390.png"
+  ],
+  "api": "mocked",
+  "stripe": "not contacted",
+  "browser": "chromium"
+}
