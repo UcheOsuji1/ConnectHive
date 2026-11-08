@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#050505" />
+<title>TrueHive | Animated Hive Hero</title>
+<style>
+:root{color-scheme:dark;--gold:#e6b75d;--ink:#050505}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#050505}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#fff}
+.hero-page{position:relative;isolation:isolate;overflow:hidden;background:#050505;color:#fff;min-height:100svh}
+#hive-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.overlay{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(90deg,rgba(0,0,0,.70) 0%,rgba(0,0,0,.32) 46%,rgba(0,0,0,.04) 100%)}
+.shell{position:relative;z-index:2;min-height:100svh;display:flex;flex-direction:column}
+nav{display:flex;justify-content:space-between;align-items:center;padding:24px clamp(20px,4vw,72px);gap:12px}
+.logo{display:flex;align-items:center;gap:10px;font:700 clamp(22px,2vw,29px) Georgia,serif;white-space:nowrap;letter-spacing:-.025em}.logo svg{width:34px;height:34px;flex-shrink:0}.logo em{color:var(--gold);font-style:normal}
+.links{display:flex;gap:clamp(12px,2vw,30px);align-items:center;font-size:13px;font-weight:600}
+a{text-decoration:none;color:inherit}.links>a:not(.navcta):hover{color:#f5cd85}.navcta{background:var(--gold);color:#160f06!important;border-radius:10px;padding:12px 20px;white-space:nowrap}
+main{flex:1;display:flex;flex-direction:column;justify-content:center;padding:40px clamp(24px,6%,110px) 55px}
+.eyebrow{color:#eccc87;display:flex;align-items:center;gap:12px;font-size:clamp(10px,1vw,14px);letter-spacing:.13em;font-weight:750}.square{width:10px;height:10px;background:#e7b45a;box-shadow:0 0 15px #e4ad43;flex-shrink:0}
+h1{font-size:clamp(43px,6.35vw,106px);font-weight:750;letter-spacing:-.065em;line-height:1.09;max-width:1350px;min-height:2.4em;margin:27px 0 23px;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.65);overflow-wrap:break-word;text-wrap:pretty}
+#hive-name{color:#edbf66}.cursor{display:inline-block;height:.87em;width:3px;background:#e9b75d;vertical-align:-.07em;margin-left:3px;animation:blink .85s step-end infinite;box-shadow:0 0 11px rgba(237,191,102,.8)}@keyframes blink{50%{opacity:0}}
+.desc{max-width:610px;min-height:49px;color:#e6ded0;font-size:clamp(13px,1.45vw,16px);line-height:1.7;margin:0 0 26px;text-shadow:0 1px 9px #000}
+.actions{display:flex;gap:13px;flex-wrap:wrap}.actions a{padding:16px 23px;border-radius:11px;font-size:clamp(13px,1vw,16px);font-weight:750;display:inline-flex;align-items:center;gap:15px;transition:transform .15s ease,filter .15s ease}.actions a:hover{transform:translateY(-2px);filter:brightness(1.06)}.primary{background:linear-gradient(120deg,#f0cb7b,#d9a94c);color:#140e06!important}.secondary{background:rgba(0,0,0,.75);border:1px solid #c7b58d;color:#fff}
+footer{padding:16px clamp(20px,4vw,72px) 26px;display:flex;align-items:center;justify-content:space-between;gap:15px}.signal{font-size:12px;color:#d3c2a5}.signal strong{color:#f3c56f}.controls{display:flex;align-items:center;gap:8px}.controls button{background:#17130f;border:1px solid #7c6137;color:#e8d6b4;padding:10px 13px;border-radius:7px;font:600 12px inherit;cursor:pointer}.controls button.active{background:#e7b65c;color:#171006;border-color:#e7b65c;font-weight:750}.controls button:hover{border-color:#f2cd81}.controls button:focus-visible,.actions a:focus-visible,.links a:focus-visible{outline:2px solid #f4d894;outline-offset:4px}
+@media(max-width:700px){.hero-page,.shell{min-height:700px}nav{padding:21px 20px}.logo{font-size:22px}.links>a:not(.navcta){display:none}.links .navcta{padding:10px 13px}main{padding:70px 23px 30px}h1{font-size:clamp(40px,8.6vw,61px);min-height:3.6em}.desc{font-size:13px}footer{flex-wrap:wrap;padding:16px 20px 22px}.controls{width:100%;justify-content:space-between}.controls button{padding:9px 8px;font-size:11px}}
+@media(prefers-reduced-motion:reduce){.cursor{animation:none}.actions a{transition:none}}
+
+/* Requested header-only changes: spread navigation to page edges and use Tinder's labels. */
+.tinder-inspired-header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;column-gap:clamp(25px,3vw,68px);padding:24px clamp(20px,3vw,56px);width:100%}
+.tinder-inspired-header .tinder-header-links{display:flex;gap:clamp(12px,1.65vw,30px);justify-content:space-between;align-items:center;min-width:0;width:100%;white-space:nowrap;font-size:clamp(11px,.9vw,14px)}
+.tinder-inspired-header .tinder-header-links span{cursor:default;color:#fafafa}
+.tinder-header-actions{display:flex;align-items:center;gap:clamp(14px,1.4vw,26px);white-space:nowrap;font-size:12px;font-weight:650}
+.tinder-header-actions .language-link{color:#f6efe2;cursor:default}
+.tinder-header-actions .header-login{background:var(--gold);border-radius:999px;color:#160f06;padding:11px 21px;font-weight:750}
+.tinder-header-actions .header-login:hover{filter:brightness(1.08)}
+@media(max-width:1120px){
+ .tinder-inspired-header{grid-template-columns:auto minmax(0,1fr) auto;column-gap:18px}
+ .tinder-inspired-header .tinder-header-links{overflow-x:auto;scrollbar-width:thin;scrollbar-color:#6d5228 transparent;gap:18px;padding:8px 0}
+ .tinder-header-actions{gap:10px}
+}
+@media(max-width:700px){
+ .tinder-inspired-header{padding:17px 20px;grid-template-columns:auto auto;row-gap:12px}
+ .tinder-inspired-header .tinder-header-links{grid-column:1/-1;grid-row:2;max-width:100%;order:3;gap:23px;font-size:12px}
+ .tinder-header-actions{justify-self:end}
+ .tinder-header-actions .language-link{font-size:11px}
+ .tinder-header-actions .header-login{padding:9px 14px}
+}
+</style>
+</head>
+<body>
+<section class="hero-page" id="truehive">
+<canvas id="hive-canvas" aria-hidden="true"></canvas>
+<div class="overlay"></div>
+<div class="shell">
+<nav class="tinder-inspired-header"><div class="logo"><svg viewBox="0 0 40 40" fill="none" stroke="#e8b756" stroke-width="2"><path d="M11.5 2 21 7.5v11L11.5 24 2 18.5v-11z M28.5 2 38 7.5v11L28.5 24 19 18.5v-11z M20 18l9.5 5.5v11L20 40l-9.5-5.5v-11z"/></svg><span>True<em>Hive</em></span></div><div class="links tinder-header-links" aria-label="Site navigation"><span title="Coming soon">Product</span><span title="Coming soon">Subscriptions</span><a href="/safety">Safety</a><a href="/contact">Support</a><span title="Coming soon">Download</span><span title="Coming soon">Gift Cards</span><span title="Coming soon">Events</span></div><div class="tinder-header-actions"><span class="language-link" title="Coming soon">⚑ Language</span><a class="header-login" href="/login">Log in</a></div></nav>
+<main><div class="eyebrow"><span class="square"></span>PURPOSE-BASED GROUP MATCHING PLATFORM</div><h1 aria-live="off"><span id="hive-text">Your next unforgettable friendship might begin in </span><span id="hive-name">LA Social Circle.</span><span class="cursor" aria-hidden="true"></span></h1><p class="desc" id="hive-desc">Meet people who share your interests, your energy, and your idea of a great weekend.</p><div class="actions"><a class="primary" href="/find-your-hive" data-th-action="find-your-hive">Find Your Hive ↗</a><a class="secondary" href="#how-it-works" data-th-action="scroll-to:03">See How It Works ↗</a></div></main>
+<footer><div class="signal">▂▅▇ &nbsp;Match signal: <strong id="hive-score">92%</strong> <span style="opacity:.55">· Demo</span></div><div class="controls"><button data-sc="0" class="active" aria-pressed="true">Friendship</button><button data-sc="1" aria-pressed="false">Projects</button><button data-sc="2" aria-pressed="false">Travel</button><button id="pause" aria-pressed="false">Ⅱ Pause</button></div></footer>
+</div>
+</section>
+
+<style>
+/* Added section only. All styles are scoped; original hero is untouched. */
+.hive-showcase{position:relative;overflow:hidden;background:#f7f3ec;color:#211c17;padding:96px clamp(24px,5.7vw,108px) 108px;font-family:Inter,ui-sans-serif,system-ui,sans-serif}
+.hive-showcase *{box-sizing:border-box}
+.hive-showcase .showcase-bg{position:absolute;inset:0;pointer-events:none;opacity:.55;background:radial-gradient(ellipse at 50% 40%,#fffdf8 0%,transparent 63%),radial-gradient(ellipse at 2% 96%,#e9dbc0 0%,transparent 47%)}
+.hive-showcase .showcase-top,.hive-showcase .showcase-stage,.hive-showcase .showcase-foot{position:relative;max-width:1430px;margin:0 auto}
+.hive-showcase .showcase-top{display:flex;justify-content:space-between;gap:40px;align-items:end;margin-bottom:36px}
+.hive-showcase .kicker{display:flex;align-items:center;gap:9px;font-size:11px;font-weight:800;letter-spacing:.18em;color:#a37a2c;text-transform:uppercase;margin-bottom:16px}
+.hive-showcase .kicker:before{content:'';width:9px;height:9px;background:#d6a54c;transform:rotate(45deg)}
+.hive-showcase h2{font:normal clamp(38px,5vw,70px)/1.07 Georgia,'Times New Roman',serif;letter-spacing:-.045em;margin:0;max-width:780px;color:#201c18}
+.hive-showcase h2 em{font-style:italic;color:#b58635}
+.hive-showcase .intro{font-size:15px;line-height:1.75;color:#756e65;max-width:350px;margin:0 0 5px}
+.hive-showcase .showcase-stage{border:1px solid #e4d8c4;border-radius:27px;background:linear-gradient(140deg,#f0e9db,#faf8f2 54%,#eee3ce);min-height:515px;padding:48px;isolation:isolate;box-shadow:0 30px 70px rgba(57,39,10,.08)}
+.hive-showcase .showcase-stage:before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.35;background-image:radial-gradient(#c2a46e 0.8px,transparent .8px);background-size:24px 24px;border-radius:inherit}
+.hive-showcase .hive-orbit{position:absolute;pointer-events:none;transform:translate(-50%,-50%);left:53%;top:50%}
+.hive-showcase .hive-orbit svg{display:block;width:100%;height:100%}
+.hive-showcase .hive-orbit polygon{fill:none;stroke:rgba(184,143,68,.19);stroke-width:.12;stroke-linejoin:round}
+.hive-showcase .hive-orbit.one{width:760px;height:680px;opacity:.95}
+.hive-showcase .hive-orbit.two{width:535px;height:480px;opacity:.9}
+.hive-showcase .hive-orbit.three{width:315px;height:282px;opacity:.88}
+.hive-showcase .hive-orbit.two polygon,.hive-showcase .hive-orbit.three polygon{stroke:rgba(184,143,68,.21)}
+.hive-showcase .stage-inner{position:relative;display:grid;grid-template-columns:minmax(230px,.82fr) minmax(330px,1.18fr) minmax(230px,.82fr);align-items:center;gap:clamp(10px,2vw,30px);min-height:418px}
+.hive-showcase .card-shell{border:1px solid #e4d7c4;border-radius:22px;background:#fffdf9;box-shadow:0 24px 46px rgba(65,46,16,.12);min-width:0;transition:transform .55s ease,opacity .4s ease,box-shadow .4s ease}
+.hive-showcase .side-col{display:flex;flex-direction:column;gap:24px;align-items:stretch;z-index:2}
+.hive-showcase .left-col{transform:translateY(-16px)}.hive-showcase .right-col{transform:translateY(20px)}
+.hive-showcase .float-a{animation:hiveFloatA 5.8s ease-in-out infinite}.hive-showcase .float-b{animation:hiveFloatB 6.6s ease-in-out infinite}.hive-showcase .float-c{animation:hiveFloatC 7.2s ease-in-out infinite}
+@keyframes hiveFloatA{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes hiveFloatB{0%,100%{transform:translateY(0)}50%{transform:translateY(13px)}}
+@keyframes hiveFloatC{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.hive-showcase .small-card{padding:18px 20px}.hive-showcase .small-eyebrow{font-size:10px;color:#a18b68;letter-spacing:.1em;font-weight:800;text-transform:uppercase}
+.hive-showcase .row-line{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hive-showcase .small-card strong{font:normal 22px/1.15 Georgia,serif;display:block;margin:10px 0 8px;color:#252018}
+.hive-showcase .small-card p{color:#8c8377;font-size:12px;margin:0 0 12px;line-height:1.5}
+.hive-showcase .tiny-tags{display:flex;flex-wrap:wrap;gap:5px}.hive-showcase .tiny-tags span{font-size:10px;color:#9e7b3f;background:#f5eedf;padding:6px 9px;border-radius:30px}
+.hive-showcase .green-pill{font-size:11px;background:#e1f5e8;color:#16844d;border-radius:22px;padding:7px 9px;white-space:nowrap;font-weight:800}
+.hive-showcase .feature-card{position:relative;z-index:4;overflow:hidden;border-radius:23px;transform:translateY(0);max-width:485px;margin:0 auto;width:100%;box-shadow:0 38px 77px rgba(65,46,16,.2)}
+.hive-showcase .feature-photo{position:relative;height:150px;background:linear-gradient(112deg,#283a46,#6d8292 55%,#cba06c);overflow:hidden}
+.hive-showcase .feature-photo:before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 75% 20%,rgba(255,216,153,.65),transparent 32%),linear-gradient(0deg,rgba(23,22,20,.38),transparent 65%)}
+.hive-showcase .feature-photo .photo-shapes{position:absolute;inset:0;opacity:.6;background:repeating-linear-gradient(135deg,transparent 0px,transparent 44px,rgba(255,255,255,.05) 45px,transparent 46px)}
+.hive-showcase .photo-label{position:absolute;bottom:17px;left:22px;color:#fff;text-transform:uppercase;letter-spacing:.14em;font-size:10px;font-weight:750}
+.hive-showcase .feature-body{padding:25px 26px 26px}
+.hive-showcase .feature-heading{display:flex;justify-content:space-between;align-items:start;gap:10px}
+.hive-showcase .feature-heading h3{font:normal clamp(25px,2.5vw,34px)/1.14 Georgia,serif;letter-spacing:-.025em;margin:0;color:#242019}
+.hive-showcase .match{background:#e1f5e9;color:#16864a;border:1px solid #9bdcba;border-radius:30px;white-space:nowrap;padding:8px 11px;font-size:12px;font-weight:800}
+.hive-showcase .category{color:#967638;letter-spacing:.12em;font-weight:750;font-size:10px;text-transform:uppercase;margin:12px 0 14px}
+.hive-showcase .paid-hive-badge{display:none;align-items:center;gap:6px;width:max-content;margin:0 0 13px;padding:7px 12px;border:1px solid #d6af58;background:linear-gradient(110deg,#fff6df,#f5e3bb);color:#785212;border-radius:25px;font-size:11px;font-weight:800;letter-spacing:.035em}
+.hive-showcase .paid-hive-badge.visible{display:inline-flex}
+.hive-showcase .paid-hive-price{display:none;margin:0 0 15px;color:#6c5331;font-size:13px;font-weight:700}
+.hive-showcase .paid-hive-price.visible{display:block}
+.hive-showcase .paid-hive-price strong{font-size:19px;color:#9c7020}
+.hive-showcase .feature-card.is-paid{border-color:#cfaa5c;box-shadow:0 38px 77px rgba(104,70,14,.21),0 0 0 2px rgba(207,170,92,.18)}
+.hive-showcase .showcase-tabs button.paid-tab{border-color:#ca9e4f;color:#90641e}
+.hive-showcase .feature-description{font-size:13px;color:#786f64;line-height:1.6;margin:0 0 18px;min-height:41px}
+.hive-showcase .card-meta{display:flex;gap:18px;flex-wrap:wrap;color:#8a8176;font-size:12px;margin-bottom:19px}
+.hive-showcase .member-stack{display:flex;align-items:center}.hive-showcase .avatar{display:grid;place-items:center;height:30px;width:30px;border:2px solid white;margin-left:-7px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;background:#8c6e4b}.hive-showcase .avatar:first-child{margin-left:0}.hive-showcase .avatar:nth-child(2){background:#577b78}.hive-showcase .avatar:nth-child(3){background:#b07960}.hive-showcase .avatar:nth-child(4){background:#5a637f}
+.hive-showcase .card-bottom{display:flex;align-items:center;justify-content:space-between;gap:10px;border-top:1px solid #eee6dc;padding-top:17px}
+.hive-showcase .card-bottom .people{display:flex;gap:9px;align-items:center;font-size:11px;color:#867868}
+.hive-showcase .join-preview{border:0;background:#cca34d;color:#1c1509;font-weight:800;font-size:12px;padding:12px 18px;border-radius:30px;cursor:pointer}
+.hive-showcase .join-preview:hover{background:#e3ba63}.hive-showcase .join-preview:focus-visible,.hive-showcase .showcase-foot button:focus-visible,.hive-showcase .showcase-tabs button:focus-visible{outline:3px solid #c3963e;outline-offset:3px}
+.hive-showcase .activity{padding:17px 18px}.hive-showcase .activity-line{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:800;color:#3c352c}.hive-showcase .activity-dot{width:8px;height:8px;background:#22bd71;border-radius:50%;box-shadow:0 0 0 4px #e0f8e9}.hive-showcase .activity p{font-size:11px;color:#81776b;margin:7px 0 0;line-height:1.5}
+.hive-showcase .message{padding:18px}.hive-showcase .message-head{display:flex;align-items:center;gap:10px;margin-bottom:13px}.hive-showcase .message-head .mini-portrait{width:34px;height:34px;background:#c1a27f;color:#fff;display:grid;place-items:center;border-radius:50%;font-weight:750;font-size:11px}.hive-showcase .message-head strong{font-size:12px}.hive-showcase .message-head small{display:block;color:#a69c90;font-size:10px;margin-top:2px}.hive-showcase .message blockquote{background:#f4eee4;color:#786951;border-radius:12px 12px 12px 3px;margin:0;padding:13px;font-size:12px;line-height:1.55}
+.hive-showcase .showcase-foot{margin-top:27px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.hive-showcase .showcase-tabs{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.hive-showcase .showcase-tabs button{border:1px solid #d9cab4;background:transparent;color:#786b58;border-radius:22px;padding:10px 14px;font-size:12px;font-weight:700;cursor:pointer}.hive-showcase .showcase-tabs button.selected{color:#2d2110;background:#ead5ad;border-color:#caa153}
+.hive-showcase .foot-right{display:flex;align-items:center;gap:12px}.hive-showcase .step-count{color:#947a53;font-size:12px;font-variant-numeric:tabular-nums}.hive-showcase .arrow{display:grid;place-items:center;width:43px;height:43px;background:#fff9f0;border:1px solid #d9c5a3;color:#684a20;border-radius:50%;font-size:20px;cursor:pointer}.hive-showcase .arrow:hover{background:#ead3a6}
+.hive-showcase .reveal{animation:showcaseRise .54s cubic-bezier(.2,.75,.2,1) both}
+@keyframes showcaseRise{from{opacity:.4;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:1050px){.hive-showcase .stage-inner{grid-template-columns:1fr 1.4fr}.hive-showcase .right-col{display:none}.hive-showcase .showcase-top{align-items:start}.hive-showcase .intro{max-width:270px}.hive-showcase .showcase-stage{padding:30px}}
+@media(max-width:660px){.hive-showcase{padding:65px 18px 70px}.hive-showcase .showcase-top{display:block}.hive-showcase .intro{margin-top:15px;max-width:480px}.hive-showcase .showcase-stage{padding:20px 15px;min-height:auto}.hive-showcase .stage-inner{grid-template-columns:1fr;min-height:auto}.hive-showcase .side-col{display:none}.hive-showcase .feature-photo{height:130px}.hive-showcase .feature-body{padding:21px 19px}.hive-showcase .showcase-foot{flex-direction:column;align-items:stretch}.hive-showcase .showcase-tabs{gap:6px}.hive-showcase .showcase-tabs button{font-size:11px;padding:9px 11px}.hive-showcase .foot-right{justify-content:end}}
+@media(prefers-reduced-motion:reduce){.hive-showcase .float-a,.hive-showcase .float-b,.hive-showcase .float-c,.hive-showcase .reveal{animation:none!important}}
+</style>
+
+
+<!-- New section: animated example Hive cards. Hero above is unchanged. -->
+<section class="hive-showcase" aria-label="Discover example Hives" id="example-hives">
+ <div class="showcase-bg" aria-hidden="true"></div>
+ <div class="showcase-top">
+  <div><div class="kicker">Inside the Hive</div><h2>Find a circle that <em>fits you.</em></h2></div>
+  <p class="intro">A closer look at what you can discover on TrueHive. Real interests, shared goals, and a place to belong.</p>
+ </div>
+ <div class="showcase-stage">
+  <div class="hive-orbit one" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,2 93,25 93,75 50,98 7,75 7,25"></polygon></svg></div><div class="hive-orbit two" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,2 93,25 93,75 50,98 7,75 7,25"></polygon></svg></div><div class="hive-orbit three" aria-hidden="true"><svg viewBox="0 0 100 100" preserveAspectRatio="none"><polygon points="50,2 93,25 93,75 50,98 7,75 7,25"></polygon></svg></div>
+  <div class="stage-inner">
+   <div class="side-col left-col">
+    <div class="card-shell small-card float-a" id="preview-secondary">
+     <div class="row-line"><span class="small-eyebrow">Recommended for you</span><span class="green-pill" id="secondary-score">91% Match</span></div>
+     <strong id="secondary-name">Weekend Explorers</strong><p id="secondary-caption">Travel Buddies · Los Angeles</p>
+     <div class="tiny-tags" id="secondary-tags"><span>Travel</span><span>Outdoors</span></div>
+    </div>
+    <div class="card-shell activity float-b">
+     <div class="activity-line"><span class="activity-dot"></span> New Hive activity</div>
+     <p id="activity-copy">A new weekend meetup is being planned.</p>
+    </div>
+   </div>
+   <article class="card-shell feature-card" id="featured-hive" aria-label="Featured example Hive">
+    <div class="feature-photo" id="feature-photo"><div class="photo-shapes"></div><span class="photo-label" id="photo-label">SOCIAL · LOS ANGELES</span></div>
+    <div class="feature-body">
+     <div class="feature-heading"><h3 id="feature-name">LA Social Circle</h3><span class="match" id="feature-match">92% Match</span></div>
+     <div class="category" id="feature-category">SOCIAL GROUPS · IN PERSON</div>
+     <div class="paid-hive-badge" id="paid-hive-badge">✦ PAID HIVE · MEMBERSHIP</div>
+     <div class="paid-hive-price" id="paid-hive-price"><strong>$12/month</strong> <span>· Example subscription price</span></div>
+     <p class="feature-description" id="feature-description">A welcoming group for new friendships, local adventures and spontaneous plans.</p>
+     <div class="card-meta"><span id="feature-members">◉ 8 members</span><span id="feature-location">⌖ Los Angeles</span><span>◷ Active this week</span></div>
+     <div class="card-bottom"><div class="people"><div class="member-stack"><span class="avatar">M</span><span class="avatar">J</span><span class="avatar">A</span><span class="avatar">K</span></div> Meet your people</div><button class="join-preview" id="join-example" type="button" title="Illustrative preview; no request is sent">Preview Hive ↗</button></div>
+    </div>
+   </article>
+   <div class="side-col right-col">
+    <div class="card-shell message float-c"><div class="message-head"><span class="mini-portrait" id="message-avatar">M</span><div><strong id="message-name">Maya</strong><small>Hive conversation preview</small></div></div><blockquote id="message-copy">Anyone down to explore a new coffee spot this weekend?</blockquote></div>
+    <div class="card-shell small-card float-a"><div class="row-line"><span class="small-eyebrow">People connecting</span><span style="color:#c79c49;font-size:17px">✦</span></div><strong id="connection-number">8 members</strong><p style="margin-bottom:0" id="connection-copy">Making plans, sharing interests and building new friendships.</p></div>
+   </div>
+  </div>
+ </div>
+ <div class="showcase-foot">
+   <div class="showcase-tabs" aria-label="Explore Hive examples">
+    <button class="selected" data-hive="0" aria-pressed="true">Social</button><button data-hive="1" aria-pressed="false">Professional</button><button data-hive="2" aria-pressed="false">Travel</button><button data-hive="3" aria-pressed="false">Projects</button><button data-hive="4" aria-pressed="false">Events</button><button data-hive="5" aria-pressed="false">Specialized</button><button class="paid-tab" data-hive="6" aria-pressed="false">✦ Paid Hive</button>
+   </div>
+   <div class="foot-right"><span class="step-count" id="hive-showcase-counter">01 / 07</span><button type="button" class="arrow" id="hive-prev" aria-label="Previous Hive">‹</button><button type="button" class="arrow" id="hive-next" aria-label="Next Hive">›</button></div>
+ </div>
+ <p style="max-width:1430px;margin:17px auto 0;font-size:11px;color:#978a75">Illustrative Hive examples for preview purposes.</p>
+</section>
+
+<script>
+(()=>{
+'use strict';
+const root=document.getElementById('truehive'),canvas=document.getElementById('hive-canvas'),ctx=canvas.getContext('2d',{alpha:false});if(!ctx)return;
+const typed=document.getElementById('hive-text'),name=document.getElementById('hive-name'),desc=document.getElementById('hive-desc'),score=document.getElementById('hive-score'),pauseBtn=document.getElementById('pause');
+const scenes=[
+{prefix:"Your next unforgettable friendship might begin in ",name:"LA Social Circle.",desc:"Meet people who share your interests, your energy, and your idea of a great weekend.",score:"92%",group:0},
+{prefix:"That idea you've been sitting on deserves a team like ",name:"Startup Builders.",desc:"Find collaborators, developers, and creators who are ready to turn ideas into reality.",score:"96%",group:1},
+{prefix:"Your next adventure is waiting with ",name:"Weekend Explorers.",desc:"Discover people who want to explore new cities, travel together, and make unforgettable memories.",score:"88%",group:2},
+{prefix:"New city. New beginnings. Your people are waiting in ",name:"The Newcomers Club.",desc:"Meet a new circle and make your new city feel like home.",score:"92%",group:0},
+{prefix:"The right connection could change your career. Meet ",name:"Career Collective.",desc:"Connect with ambitious people who share your professional goals.",score:"96%",group:1},
+{prefix:"Never miss another experience because you had nobody to go with. Meet ",name:"Event Circle.",desc:"Find people to enjoy concerts, events, and memorable experiences with.",score:"88%",group:2},
+{prefix:"Your next creative breakthrough could happen in ",name:"The Creators Studio.",desc:"Connect with creative minds who turn inspiration into something real.",score:"96%",group:1},
+{prefix:"Your next workout partner might be waiting in ",name:"Fitness Accountability Crew.",desc:"Find motivation and stay consistent with people working toward similar goals.",score:"92%",group:0},
+{prefix:"Big goals are easier when someone holds you accountable. Meet ",name:"Growth Collective.",desc:"Find a community that supports your ambitions and celebrates your progress.",score:"96%",group:1},
+{prefix:"Your next study partner might become your next best friend. Discover ",name:"Study Collective.",desc:"Study together, share ideas, and build connections beyond the classroom.",score:"92%",group:0},
+{prefix:"Your weekends deserve more than staying home. Discover ",name:"Weekend Social Club.",desc:"Find people to make plans, try new things, and enjoy your weekends with.",score:"88%",group:2},
+{prefix:"Stop waiting for the perfect team. Start building with ",name:"The Builders Collective.",desc:"Meet people ready to collaborate on the ideas that matter to you.",score:"96%",group:1}
+,{prefix:"Your business idea deserves a room full of people who understand it. Step into ",name:"The Founders Inner Circle.",desc:"Explore an example paid Hive with founder discussions, exclusive resources and small-group sessions. Illustrative membership: $12/month.",score:"95%",group:1}
+,{prefix:"Looking for mentorship beyond another networking event? Find it in ",name:"The Mentor's Table.",desc:"An example subscription Hive built around guided conversations, professional mentorship and peer support.",score:"94%",group:1}
+,{prefix:"Your creative work deserves an audience that helps you grow. Meet ",name:"The Creator's Studio Plus.",desc:"Explore an example paid creative Hive with member workshops, project feedback and collaborative sessions.",score:"93%",group:2}
+,{prefix:"Turn your fitness goals into a commitment you actually keep with ",name:"The Wellness Collective.",desc:"An example paid Hive for structured challenges, accountability sessions and a supportive fitness community.",score:"91%",group:0}
+];
+let w=0,h=0,scene=0,particles=[],run=0,paused=false,raf=0,previous=0;
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function rand(i,s){const x=Math.sin(i*127.1+s*311.7)*43758.5453;return x-Math.floor(x)}
+function edge(cx,cy,r,t){const f=(((t%1)+1)%1)*6,k=Math.min(5,Math.floor(f)),u=f-k,a=(k*60-30)*Math.PI/180,b=((k+1)*60-30)*Math.PI/180;return[cx+r*(Math.cos(a)*(1-u)+Math.cos(b)*u),cy+r*(Math.sin(a)*(1-u)+Math.sin(b)*u)]}
+// Seven distinct, full-viewport HIVE particle formations. All contours are
+// assembled from individually animated particles; no solid vector lines.
+const TAU=Math.PI*2;
+let pattern=0,patternTimer=null;
+function honeycombCenters(radius,shiftX=0,shiftY=0){
+  const dx=Math.sqrt(3)*radius,dy=1.5*radius;
+  const out=[];
+  for(let row=-9;row<=15;row++)for(let col=-12;col<=22;col++){
+    const x=(col+(row&1)*.5)*dx+shiftX,y=row*dy+shiftY;
+    if(x>-radius*2&&x<w+radius*2&&y>-radius*2&&y<h+radius*2)out.push([x,y]);
+  }
+  return out;
+}
+function shapeTarget(i,s){
+  const a=rand(i,2),b=rand(i,3),c=rand(i,4),d=rand(i,6),e=rand(i,14);
+  const R=Math.max(43,Math.min(w,h)*.118);
+  const cx=w*.52,cy=h*.52;
+  // 0: A full-screen, continuous honeycomb with subtly irregular living edges
+  if(s===0){
+    const cells=honeycombCenters(R,R*.4,R*.5);
+    const q=cells[Math.floor(a*cells.length)];
+    const pos=edge(q[0],q[1],R,b);
+    return [pos[0]+(c-.5)*13,pos[1]+(d-.5)*13];
+  }
+  // 1: A tunnel of concentric HEXAGONS, not circles, expanding beyond viewport
+  if(s===1){
+    const level=Math.floor(a*12);
+    const r=R*(.56+level*.88),p=edge(cx,cy,r,b);
+    return [p[0]+(c-.5)*18,p[1]+(d-.5)*18];
+  }
+  // 2: Honeycomb ribbons sweeping diagonally, with visible hex cells
+  if(s===2){
+    const lane=Math.floor(a*7)-3;
+    const x=b*(w+3*R)-1.5*R;
+    const wave=Math.sin(x/w*TAU*1.35+lane*.5)*R*.62;
+    const y=cy+lane*R*.98+wave;
+    const p=edge(Math.round(x/(R*1.05))*R*1.05,y,R*.56,c);
+    return [p[0]+(d-.5)*10,p[1]+(e-.5)*10];
+  }
+  // 3: Separated constellations of unmistakable hexagonal cells
+  if(s===3){
+    const islands=[[.1,.12],[.43,.08],[.8,.16],[.17,.61],[.54,.55],[.88,.72],[.36,.91],[.73,.94]];
+    const id=Math.floor(a*islands.length),o=islands[id];
+    const ring=Math.floor(b*4),radius=R*(.68+ring*.86),p=edge(o[0]*w,o[1]*h,radius,c);
+    return [p[0]+(d-.5)*13,p[1]+(e-.5)*13];
+  }
+  // 4: Sweeping wave of connected honeycomb cells, across the whole viewport
+  if(s===4){
+    const rr=R*.76,cells=honeycombCenters(rr,rr*.7,rr*.4),q=cells[Math.floor(a*cells.length)];
+    const bend=Math.sin(q[0]/Math.max(1,w)*TAU*1.7+q[1]/Math.max(1,h)*2)*R*.45;
+    const p=edge(q[0],q[1]+bend,rr,b);
+    return [p[0]+(c-.5)*14,p[1]+(d-.5)*14];
+  }
+  // 5: Honeycomb walls converging into a luminous, central hexagonal portal
+  if(s===5){
+    const level=Math.floor(a*9),r=R*(.55+level*.9);
+    const p=edge(w*.63,h*.48,r,b);
+    const twist=Math.sin(level*.72+b*TAU)*R*.1;
+    return [p[0]+twist+(c-.5)*12,p[1]+(d-.5)*12];
+  }
+  // 6: Honeycomb cells arranged in tall, overlapping vertical cascades
+  const rr=R*.9,cells=honeycombCenters(rr,rr*.8,rr*.45),q=cells[Math.floor(a*cells.length)];
+  const cascade=Math.sin(q[1]/Math.max(1,h)*TAU*1.3+q[0]/Math.max(1,w)*3)*R*.48;
+  const p=edge(q[0]+cascade,q[1],rr,b);
+  return [p[0]+(c-.5)*13,p[1]+(d-.5)*13];
+}
+function resize(){
+  const rect=canvas.getBoundingClientRect();
+  if(Math.abs(w-rect.width)<2&&Math.abs(h-rect.height)<2&&particles.length)return;
+  w=Math.max(1,rect.width);h=Math.max(1,rect.height);
+  const dpi=Math.min(devicePixelRatio||1,2);
+  canvas.width=Math.round(w*dpi);canvas.height=Math.round(h*dpi);
+  ctx.setTransform(dpi,0,0,dpi,0,0);
+  const n=w<600?4600:7800;
+  particles=Array.from({length:n},(_,i)=>{
+    const p=shapeTarget(i,pattern);
+    return {x:p[0],y:p[1],tx:p[0],ty:p[1],r:.42+rand(i,11)*1.15,alpha:.46+rand(i,12)*.54,phase:rand(i,13)*TAU,jitter:1.5+rand(i,24)*3.9};
+  });
+}
+function morphPattern(s){
+  pattern=(s+7)%7;
+  particles.forEach((p,i)=>{const q=shapeTarget(i,pattern);p.tx=q[0];p.ty=q[1]});
+}
+function draw(now){
+  if(now-previous<16){raf=requestAnimationFrame(draw);return}
+  previous=now;
+  ctx.fillStyle='#050505';ctx.fillRect(0,0,w,h);
+  for(let i=0;i<particles.length;i++){
+    const p=particles[i];
+    if(!reduced){p.x+=(p.tx-p.x)*.025;p.y+=(p.ty-p.y)*.025}
+    else {p.x=p.tx;p.y=p.ty}
+    // Every particle independently trembles, pulses and flickers.
+    const x=p.x+Math.sin(now*.0033+p.phase*7.1)*p.jitter;
+    const y=p.y+Math.cos(now*.0041+p.phase*5.6)*p.jitter;
+    if(x<-15||y<-15||x>w+15||y>h+15)continue;
+    const alpha=Math.min(1,p.alpha*(.77+.23*Math.sin(now*.004+p.phase*3)));
+    ctx.fillStyle='rgba(255,192,65,'+alpha+')';
+    ctx.beginPath();ctx.arc(x,y,p.r,0,TAU);ctx.fill();
+    if(i%87===0){
+      const size=13,g=ctx.createRadialGradient(x,y,0,x,y,size);
+      g.addColorStop(0,'rgba(255,217,118,.39)');
+      g.addColorStop(.42,'rgba(255,188,70,.16)');
+      g.addColorStop(1,'rgba(255,188,70,0)');
+      ctx.fillStyle=g;ctx.fillRect(x-size,y-size,size*2,size*2);
+    }
+  }
+  if(!reduced)raf=requestAnimationFrame(draw);
+}
+function startPatternCycle(){
+  clearInterval(patternTimer);
+  if(reduced)return;
+  patternTimer=setInterval(()=>{if(!document.hidden&&!paused)morphPattern(pattern+1)},9000);
+}
+const wait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function type(s,id){typed.textContent='';name.textContent='';desc.textContent=s.desc;score.textContent=s.score;if(reduced){typed.textContent=s.prefix;name.textContent=s.name;return}for(let j=1;j<=s.prefix.length;j++){if(id!==run)return;typed.textContent=s.prefix.slice(0,j);await wait(19)}for(let j=1;j<=s.name.length;j++){if(id!==run)return;name.textContent=s.name.slice(0,j);await wait(42)}}
+async function erase(id){const prefix=typed.textContent,ending=name.textContent;for(let j=ending.length;j>=0;j--){if(id!==run)return;name.textContent=ending.slice(0,j);await wait(13)}for(let j=prefix.length;j>=0;j--){if(id!==run)return;typed.textContent=prefix.slice(0,j);await wait(8)}}
+async function cycle(i){const id=++run;scene=i;root.querySelectorAll('[data-sc]').forEach(b=>{const active=Number(b.dataset.sc)===scenes[i].group;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});await type(scenes[i],id);if(id!==run||paused||reduced)return;await wait(3400);if(id!==run||paused)return;await erase(id);if(id!==run||paused)return;cycle((i+1)%scenes.length)}
+root.querySelectorAll('[data-sc]').forEach(b=>b.addEventListener('click',()=>{paused=false;pauseBtn.textContent='Ⅱ Pause';pauseBtn.setAttribute('aria-pressed','false');cycle(Number(b.dataset.sc))}));
+pauseBtn.addEventListener('click',()=>{paused=!paused;pauseBtn.textContent=paused?'▶ Resume':'Ⅱ Pause';pauseBtn.setAttribute('aria-pressed',String(paused));if(paused)++run;else cycle(scene)});
+resize();draw(0);cycle(0);startPatternCycle();if(typeof ResizeObserver!=='undefined')new ResizeObserver(resize).observe(root);
+})();
+</script>
+
+<script>
+/* Standalone showcase controller; does not access or modify the original hero. */
+(()=>{
+ const root=document.getElementById('example-hives');if(!root)return;
+ const $=id=>root.querySelector('#'+id);
+ const data=[
+  {name:'LA Social Circle',category:'SOCIAL GROUPS · IN PERSON',label:'SOCIAL · LOS ANGELES',score:92,desc:'A welcoming group for new friendships, local adventures and spontaneous plans.',members:'8 members',location:'Los Angeles',colors:['#385361','#819fa3','#d0a66c'],secondary:'Weekend Explorers',secondaryScore:'91% Match',secondaryCaption:'Travel Buddies · Los Angeles',tags:['Travel','Outdoors'],activity:'Maya shared a plan for Saturday brunch.',person:'Maya',initial:'M',message:'Anyone down to explore a new coffee spot this weekend?',people:'Making plans, sharing interests and building new friendships.'},
+  {name:'Career Collective',category:'PROFESSIONAL NETWORKING · HYBRID',label:'CAREERS · COMMUNITY',score:94,desc:'Meet ambitious professionals, exchange advice and build connections that open doors.',members:'12 members',location:'Online + LA',colors:['#243b49','#626f7d','#bda58a'],secondary:'Young Professionals',secondaryScore:'89% Match',secondaryCaption:'Professional Networking',tags:['Careers','Mentorship'],activity:'New networking roundtable scheduled this week.',person:'Jordan',initial:'J',message:'I can share what helped me prepare for my first engineering interview.',people:'Sharing advice, introductions and career opportunities.'},
+  {name:'Weekend Explorers',category:'TRAVEL BUDDIES · IN PERSON',label:'TRAVEL · ADVENTURE',score:88,desc:'Explore new places with people who love road trips, hidden gems and getting outside.',members:'10 members',location:'Southern California',colors:['#345563','#719b94','#e0b16e'],secondary:'Passport Collective',secondaryScore:'90% Match',secondaryCaption:'Travel Buddies · Worldwide',tags:['Travel','Road trips'],activity:'The next coastal road trip is being planned.',person:'Alex',initial:'A',message:'Who wants to join our sunset hike this Sunday?',people:'Finding travel buddies and making lasting memories.'},
+  {name:'Startup Builders',category:'PROJECT COLLABORATION · ONLINE',label:'BUILD · COLLABORATE',score:96,desc:'Developers, designers and founders working together to turn exciting ideas into reality.',members:'6 members',location:'Online',colors:['#3a3748','#74768b','#c1a27e'],secondary:'The Creators Studio',secondaryScore:'93% Match',secondaryCaption:'Project Collaboration',tags:['Coding','Design'],activity:'A new product design review was posted.',person:'Chris',initial:'C',message:'The prototype is ready—who wants to test it tonight?',people:'Building products, collaborating and sharing skills.'},
+  {name:'Event Circle',category:'EVENT BUDDIES · IN PERSON',label:'EVENTS · EXPERIENCES',score:90,desc:'Discover concert crews, festival friends and people who want to enjoy events together.',members:'14 members',location:'Los Angeles',colors:['#3a2b48','#775a72','#d79c6e'],secondary:'Live Music Lovers',secondaryScore:'91% Match',secondaryCaption:'Event Buddies · LA',tags:['Concerts','Culture'],activity:'Three members are going to the next live show.',person:'Sam',initial:'S',message:'We got tickets! Want to meet up before the show?',people:'Showing up together for experiences that matter.'},
+  {name:'Growth Collective',category:'SPECIALIZED GROUPS · HYBRID',label:'GOALS · GROWTH',score:93,desc:'A supportive Hive for accountability, self-improvement and celebrating small wins.',members:'9 members',location:'Online + Local',colors:['#415041','#86977a','#dbb477'],secondary:'Fitness Accountability Crew',secondaryScore:'92% Match',secondaryCaption:'Specialized Groups',tags:['Wellness','Habits'],activity:'The group started a 30-day progress challenge.',person:'Taylor',initial:'T',message:'One week in! What’s a small win you’re proud of?',people:'Encouraging progress and supporting shared goals.'},
+  {name:'The Founders Inner Circle',category:'PROFESSIONAL NETWORKING · MEMBERS ONLY',label:'EXCLUSIVE · PAID HIVE',score:95,paid:true,price:'$12/month',desc:'A paid community for founders and aspiring entrepreneurs, featuring small-group strategy sessions, resources and member discussions.',members:'24 members',location:'Online + LA',colors:['#29231e','#9b762f','#e2c27d'],secondary:'Founders Inner Circle',secondaryScore:'95% Match',secondaryCaption:'Paid Hive · Membership',tags:['Founders','Strategy'],activity:'Members shared notes from the latest founder roundtable.',person:'Morgan',initial:'M',message:'Our private strategy session starts Thursday—bring one challenge you’re working on.',people:'Member discussions, workshops and shared resources.'}
+ ];
+ let current=0,timer=0;const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ function render(i){current=(i+data.length)%data.length;const d=data[current];
+  $('feature-name').textContent=d.name;$('feature-category').textContent=d.category;$('photo-label').textContent=d.label;$('feature-match').textContent=d.score+'% Match';$('feature-description').textContent=d.desc;$('feature-members').textContent='◉ '+d.members;$('feature-location').textContent='⌖ '+d.location;
+  $('feature-photo').style.background='linear-gradient(112deg,'+d.colors.join(',')+')';
+  $('paid-hive-badge').classList.toggle('visible',!!d.paid);
+  $('paid-hive-price').classList.toggle('visible',!!d.paid);
+  if(d.paid)$('paid-hive-price').querySelector('strong').textContent=d.price;
+  $('featured-hive').classList.toggle('is-paid',!!d.paid);
+  $('join-example').textContent=d.paid?'Preview Membership ↗':'Preview Hive ↗';
+  $('secondary-name').textContent=d.secondary;$('secondary-score').textContent=d.secondaryScore;$('secondary-caption').textContent=d.secondaryCaption;
+  $('secondary-tags').replaceChildren(...d.tags.map(t=>{const el=document.createElement('span');el.textContent=t;return el}));
+  $('activity-copy').textContent=d.activity;$('message-name').textContent=d.person;$('message-avatar').textContent=d.initial;$('message-copy').textContent=d.message;$('connection-number').textContent=d.members;$('connection-copy').textContent=d.people;
+  $('hive-showcase-counter').textContent=String(current+1).padStart(2,'0')+' / '+String(data.length).padStart(2,'0');
+  root.querySelectorAll('[data-hive]').forEach(b=>{const selected=Number(b.dataset.hive)===current;b.classList.toggle('selected',selected);b.setAttribute('aria-pressed',String(selected))});
+  const featured=$('featured-hive');featured.classList.remove('reveal');void featured.offsetWidth;if(!reduce)featured.classList.add('reveal');
+ }
+ function start(){clearInterval(timer);if(!reduce)timer=setInterval(()=>{if(!document.hidden)render(current+1)},6500)}
+ root.querySelectorAll('[data-hive]').forEach(b=>b.addEventListener('click',()=>{render(Number(b.dataset.hive));start()}));
+ $('hive-prev').addEventListener('click',()=>{render(current-1);start()});$('hive-next').addEventListener('click',()=>{render(current+1);start()});
+ $('join-example').addEventListener('click',()=>{root.querySelector('.showcase-tabs button.selected')?.focus()});
+ render(0);start();
+})();
+</script>
+
+
+
+</body>
+</html>

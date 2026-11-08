@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#130c09">
+  <meta name="description" content="TrueHive Section 09 concept: Explore illustrative stories of friendship, travel, creative collaboration, wellness, and membership communities.">
+  <title>TrueHive — Real Connections | Section 09 Concept</title>
+  <link rel="preload" as="image" href="assets/03-miami-travel.webp">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="script.js"></script>
+</head>
+<body>
+  <main class="section09" id="truehive-stories">
+    <canvas class="gold-canvas" id="gold-canvas" aria-hidden="true"></canvas>
+    <div class="ambient-glow ambient-glow--one" aria-hidden="true"></div>
+    <div class="ambient-glow ambient-glow--two" aria-hidden="true"></div>
+    <svg class="hex-decor hex-decor--left" viewBox="0 0 285 310" fill="none" aria-hidden="true"><path d="M83 11 147 48 147 122 83 159 19 122 19 48Z M165 115 233 154 233 233 165 272 97 233 97 154Z M71 172 118 199 118 253 71 280 24 253 24 199Z" stroke="currentColor" stroke-width="1.35"/></svg>
+    <svg class="hex-decor hex-decor--right" viewBox="0 0 285 310" fill="none" aria-hidden="true"><path d="M83 11 147 48 147 122 83 159 19 122 19 48Z M165 115 233 154 233 233 165 272 97 233 97 154Z M71 172 118 199 118 253 71 280 24 253 24 199Z" stroke="currentColor" stroke-width="1.35"/></svg>
+
+    <div class="container">
+      <header class="section-heading">
+        <div class="eyebrow"><span class="eyebrow-line"></span><span>09 — REAL CONNECTIONS</span><span class="eyebrow-line"></span></div>
+        <h1>Real People. Real Stories.<br>Real <em>Impact.</em></h1>
+        <p class="section-subtitle">Every connection starts with a reason. Explore the possibilities of finding your people, following your passions, and building a community of your own.</p>
+        <div class="filterbar" role="group" aria-label="Filter illustrative stories by Hive type">
+          <button class="filter is-active" type="button" data-filter="all" aria-pressed="true">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2H3ZM16 5a3 3 0 0 1 0 6M16 14a5 5 0 0 1 5 5v1h-3"/></svg>
+            <span>All Stories</span>
+          </button>
+          <button class="filter" type="button" data-filter="free" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2H3ZM16 5a3 3 0 0 1 0 6M16 14a5 5 0 0 1 5 5v1h-3"/></svg>
+            <span>Free Hives</span>
+          </button>
+          <button class="filter" type="button" data-filter="paid" aria-pressed="false">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 8 4 4 5-7 5 7 4-4-2 11H5L3 8Z"/><path d="M5 22h14"/></svg>
+            <span>Paid Hives</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="stories-area" aria-label="Illustrative community experiences">
+        <div class="stage-head">
+          <div class="stage-head__left"><span class="live-pin" aria-hidden="true"></span><span>STORIES THAT COULD START HERE</span></div>
+          <div class="stage-head__right"><span>Explore an example by selecting a card</span><button class="autoplay-toggle" id="autoplay-toggle" type="button" aria-label="Pause automatic story rotation" aria-pressed="false"><svg class="pause-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span id="autoplay-label">Pause</span></button></div>
+        </div>
+        <div class="stories-stage" id="stories-stage" tabindex="0" aria-label="Story carousel. Use left and right arrow keys to move between stories.">
+          <div class="orbit-trail orbit-trail--one" aria-hidden="true"></div>
+          <div class="orbit-trail orbit-trail--two" aria-hidden="true"></div>
+          <div class="card-canvas" id="card-canvas"></div>
+          <button id="previous-story" class="carousel-arrow carousel-arrow--prev" type="button" aria-label="Previous story"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
+          <button id="next-story" class="carousel-arrow carousel-arrow--next" type="button" aria-label="Next story"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+        </div>
+        <div class="carousel-footer">
+          <div class="carousel-dots" id="carousel-dots" role="group" aria-label="Choose story"></div>
+          <div class="story-counter"><span id="story-counter-current">01</span><span class="story-counter__bar"></span><span id="story-counter-total">08</span></div>
+        </div>
+
+        <div class="story-journey" aria-live="polite" aria-atomic="true">
+          <div class="story-journey__title"><span class="little-diamond">◆</span> THE STORY BEHIND THE HIVE <span class="story-journey__note">ILLUSTRATIVE SCENARIO</span></div>
+          <div class="story-journey__steps">
+            <div class="journey-step"><span class="step-no">01 / THE SITUATION</span><p id="step-situation">A trip idea, but no one to go with.</p></div>
+            <span class="step-connector" aria-hidden="true"><svg viewBox="0 0 46 18"><path d="M0 9h43m-8-7 8 7-8 7"/></svg></span>
+            <div class="journey-step"><span class="step-no">02 / THE HIVE</span><p id="step-hive">Miami Travel Crew</p></div>
+            <span class="step-connector" aria-hidden="true"><svg viewBox="0 0 46 18"><path d="M0 9h43m-8-7 8 7-8 7"/></svg></span>
+            <div class="journey-step"><span class="step-no">03 / THE POSSIBILITY</span><p id="step-outcome">A group that finally takes the trip together.</p></div>
+            <button class="journey-open" id="read-story" type="button">Explore this story <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button>
+          </div>
+        </div>
+      </section>
+
+      <div class="value-strip" aria-label="How TrueHive helps communities connect">
+        <div class="value-item">
+          <div class="value-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><circle cx="12" cy="11" r="4"/><path d="M3 27v-3a9 9 0 0 1 18 0v3H3ZM23 8a4 4 0 0 1 0 8m0 4a7 7 0 0 1 6 7h-4"/></svg></div>
+          <div><strong>Find Your People</strong><span>Connect through shared interests and goals.</span></div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m17 2-12 16h10l-2 12 14-18H17l0-10Z"/></svg></div>
+          <div><strong>Make More Happen</strong><span>Turn introductions into plans and experiences.</span></div>
+        </div>
+        <div class="value-item">
+          <div class="value-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m3 10 6 6 7-12 7 12 6-6-3 16H6L3 10Zm3 19h20"/></svg></div>
+          <div><strong>Build Something Bigger</strong><span>Host a membership community with a Paid Hive.</span></div>
+        </div>
+      </div>
+      <p class="disclaimer">Concept preview only. All eight stories are <strong>illustrative scenarios</strong>, not verified user testimonials or claims about actual outcomes. Paid Hive creation is presented as a TrueHive Plus feature.</p>
+    </div>
+  </main>
+
+  <div class="story-modal" id="story-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true">
+    <div class="story-modal__backdrop" data-close-modal></div>
+    <div class="story-modal__dialog" role="document">
+      <button id="modal-close" class="modal-close" type="button" aria-label="Close story"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg></button>
+      <div class="story-modal__image"><img id="modal-image" src="assets/03-miami-travel.webp" alt=""><span class="photo-credit">ILLUSTRATIVE SCENARIO · NOT A MEMBER TESTIMONIAL</span></div>
+      <div class="story-modal__content">
+        <div class="modal-kicker" id="modal-kind">FREE HIVE STORY</div>
+        <h2 id="modal-title">The trip that finally happened.</h2>
+        <p class="modal-lead" id="modal-lead"></p>
+        <div class="modal-steps">
+          <div><small>THE SITUATION</small><p id="modal-situation"></p></div>
+          <div><small>THE HIVE</small><p id="modal-hive"></p></div>
+          <div><small>THE POSSIBILITY</small><p id="modal-outcome"></p></div>
+        </div>
+        <div class="modal-bottom"><span>Imagine what your Hive could make possible.</span><button id="modal-next" type="button">Next story <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></button></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#100b09" />
+<title>TrueHive — Create & Monetize Your Hive | Section 07</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap');
+:root {--void:#100b09;--ink:#1f1812;--gold:#e9ba62;--gold-pale:#f5d699;--gold-dark:#a97827;--ivory:#fbf7ef;--muted:#c7b6a3;--border:rgba(234,183,98,.29);--green:#4ce2a0}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--void);color:#f9f2e8;font-family:'DM Sans',system-ui,sans-serif}
+button{font:inherit;cursor:pointer}button:focus-visible,a:focus-visible{outline:3px solid #fff0b8;outline-offset:5px}
+button:disabled{cursor:not-allowed}
+.section{min-height:100vh;position:relative;isolation:isolate;overflow:hidden;padding:90px clamp(20px,5.5vw,100px) 55px;background:radial-gradient(ellipse at 58% 62%,#352115 0%,#211610 32%,#100b09 75%)}
+#particles{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:.83}
+.section::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(90deg,rgba(9,6,5,.53),transparent 45%,rgba(9,6,5,.36))}
+.shell{max-width:1490px;margin:auto}
+.eyebrow{display:flex;align-items:center;gap:12px;color:#eec27a;font-size:12px;font-weight:800;letter-spacing:.23em;text-transform:uppercase}.eyebrow::before{content:"";height:10px;width:10px;background:var(--gold);transform:rotate(45deg);box-shadow:0 0 22px #d9963a}
+.intro{display:grid;grid-template-columns:1.4fr .6fr;align-items:end;gap:35px;margin:26px 0 40px}
+h1{font:400 clamp(51px,5.15vw,85px)/1.03 'Playfair Display',Georgia,serif;letter-spacing:-.045em;margin:0;max-width:900px}h1 em{color:var(--gold);font-weight:400}
+.subtitle{font-size:clamp(15px,1.3vw,18px);line-height:1.75;color:#d8c4ab;margin:0 0 4px;max-width:430px}
+.stage{display:grid;grid-template-columns:minmax(260px,.82fr) minmax(0,1.55fr) minmax(245px,.78fr);gap:20px;align-items:stretch}
+.side,.center{border:1px solid var(--border);border-radius:25px;backdrop-filter:blur(15px);background:rgba(36,25,19,.78)}
+.side{padding:26px;display:flex;flex-direction:column;gap:18px;min-height:545px}
+.panel-label{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#d6a65f}
+.side-head{font:400 26px 'Playfair Display',Georgia,serif;line-height:1.16;margin:0}
+.side-desc{color:var(--muted);line-height:1.6;font-size:13px;margin:0}
+.option{border:1px solid rgba(237,199,146,.21);background:rgba(255,255,255,.035);border-radius:16px;padding:16px 15px;display:flex;gap:13px;align-items:center;text-align:left;color:#ecded0;width:100%;transition:background .25s,border-color .25s,transform .25s,box-shadow .25s}
+.option:hover{transform:translateX(3px);border-color:rgba(237,199,146,.58)}.option.selected{border-color:var(--gold);background:rgba(211,147,58,.15);box-shadow:0 0 0 1px rgba(233,186,98,.16),0 0 22px rgba(215,147,49,.1)}
+.option .choice-icon{width:44px;height:44px;flex:0 0 44px;display:grid;place-items:center;background:rgba(233,186,98,.11);border:1px solid rgba(233,186,98,.22);border-radius:13px;color:var(--gold)}.choice-icon svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.65;stroke-linejoin:round;stroke-linecap:round}
+.option strong{display:block;font-size:14px}.option small{display:block;color:#bba78e;font-size:11px;margin-top:5px}.choice-check{margin-left:auto;display:grid;place-items:center;border:1px solid #745a35;border-radius:50%;width:21px;height:21px;flex:0 0 21px;color:#21160c;font-size:12px}.selected .choice-check{background:var(--gold);border-color:var(--gold)}
+.side-divider{height:1px;background:rgba(235,188,108,.15);margin:3px 0}.micro{font-size:12px;color:#a99884;line-height:1.6}.micro b{color:#e6c28c}
+.benefit-list{display:flex;flex-direction:column;gap:13px;padding:0;margin:0;list-style:none;font-size:13px;line-height:1.45}.benefit-list li{display:flex;align-items:flex-start;gap:11px;color:#e5d7c8}.check-icon{color:#e9bd73;font-weight:900}
+.plain-note{margin-top:auto;padding:16px;background:rgba(232,175,83,.075);border:1px solid rgba(232,175,83,.18);border-radius:14px;color:#cdbba5;font-size:11px;line-height:1.6}
+.center{position:relative;overflow:hidden;padding:22px;min-height:545px;border-color:rgba(237,190,105,.37);background:linear-gradient(145deg,rgba(60,37,23,.92),rgba(29,21,17,.92) 54%,rgba(55,35,22,.87));box-shadow:0 30px 95px rgba(0,0,0,.25)}
+.center::before{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,rgba(235,171,74,.11),transparent 70%);pointer-events:none}
+.center .frame-top{display:flex;justify-content:space-between;align-items:center;gap:15px;position:relative;z-index:2;margin:0 0 17px}.live-tag{display:flex;gap:7px;align-items:center;color:#d0b99c;font-size:11px}.live-tag .dot{height:7px;width:7px;background:#4adb9c;border-radius:50%;box-shadow:0 0 12px #3ecb8d}
+.status{font-size:11px;letter-spacing:.12em;font-weight:800;color:#dfb86e}
+.hive-frame{position:relative;min-height:451px;border-radius:22px;background:#fcf8f2;color:var(--ink);overflow:hidden;box-shadow:0 20px 55px #0007;isolation:isolate;transition:box-shadow .9s,border-color .7s; border:2px solid transparent}
+.hive-frame.paid{box-shadow:0 0 0 1px #b78530,0 0 32px rgba(238,180,76,.30),0 30px 75px #0007;border-color:#edbf68}
+.hive-frame .glow-border{pointer-events:none;position:absolute;inset:-2px;border-radius:22px;z-index:10;opacity:0;background:linear-gradient(110deg,transparent 10%,#f7d996 48%,transparent 62%);background-size:250% 100%;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude;padding:2px;animation:shimmer 4s linear infinite}.hive-frame.paid .glow-border{opacity:1}@keyframes shimmer{to{background-position:-250% 0}}
+.cover{height:162px;position:relative;overflow:hidden;background:linear-gradient(111deg,#253848 0%,#63657b 36%,#c09367 65%,#a9743e 100%)}
+.cover::before{content:"";position:absolute;inset:0;opacity:.78;background:radial-gradient(ellipse at 80% 42%,#edbc81,transparent 53%),linear-gradient(to top,rgba(22,18,17,.54),transparent 70%)}
+.cover-stars{position:absolute;inset:0;overflow:hidden;opacity:.7}.cover-stars svg{height:100%;width:100%;position:absolute;inset:0;stroke:#f3d393;stroke-width:.7;fill:none;opacity:.33}
+.cover-overlay{position:absolute;left:22px;bottom:19px;right:22px;display:flex;justify-content:space-between;align-items:end;gap:8px;color:white}.cover-overlay span{font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.crest{display:grid;place-items:center;width:45px;height:48px;filter:drop-shadow(0 0 10px rgba(250,213,129,.65));color:#ffe4a6}.crest svg{stroke:currentColor;fill:none;stroke-width:1.4;width:43px;height:43px}
+.hive-details{padding:23px 25px 23px}
+.hive-heading{display:flex;justify-content:space-between;gap:10px;align-items:start}
+.hive-heading h2{font:500 clamp(27px,2.3vw,35px)/1.12 'Playfair Display',Georgia,serif;letter-spacing:-.025em;margin:0}.premium-pill{display:inline-flex;align-items:center;gap:5px;background:#f8edcf;color:#936216;border-radius:30px;padding:7px 10px;font-size:10px;font-weight:800;border:1px solid #e8c681;white-space:nowrap;transform:scale(.6);opacity:0;transition:transform .5s cubic-bezier(.2,1.5,.3,1),opacity .35s}.paid .premium-pill{transform:scale(1);opacity:1}
+.category{font-size:10px;letter-spacing:.15em;font-weight:800;color:#99794f;margin:9px 0 14px}.hive-description{font-size:12px;color:#756a60;line-height:1.6;margin:0 0 16px;max-width:530px}
+.meta{display:flex;gap:16px;flex-wrap:wrap;font-size:11px;color:#857769}.meta span{display:flex;align-items:center;gap:6px}
+.feature-row{margin:19px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:10px}.feature{min-width:0;border:1px solid #eadcc8;background:#faf4e9;border-radius:13px;padding:12px}.feature strong{font-size:11px;display:block}.feature p{font-size:10px;color:#8b7b68;margin:6px 0 0;line-height:1.4}
+.member-panel{border-top:1px solid #ece0cf;margin-top:18px;padding-top:15px;display:flex;justify-content:space-between;align-items:center;gap:12px}.face-stack{display:flex;align-items:center}.face{width:31px;height:31px;margin-left:-7px;border-radius:50%;border:2px solid #fcf8f2;display:grid;place-items:center;font-size:10px;color:#fff;font-weight:700;background:#917358}.face:first-child{margin-left:0}.face:nth-child(2){background:#617e79}.face:nth-child(3){background:#a97b6e}.face:nth-child(4){background:#707b94}.member-panel small{font-size:10px;color:#8a7764}.member-panel button{border:0;padding:12px 17px;border-radius:25px;font-weight:800;font-size:11px;background:linear-gradient(120deg,#f0cb7d,#d3a44d);color:#241707;transition:filter .2s}.member-panel button:hover{filter:brightness(1.06)}
+.plan{display:flex;justify-content:space-between;align-items:center;background:#fff4da;border:1px solid #e6c78b;color:#4f3820;margin:15px 0 -2px;padding:11px 12px;border-radius:12px;gap:9px;min-height:58px;animation:slide .5s ease both}.plan strong{font-size:11px}.plan small{display:block;font-size:10px;color:#8e714e;margin-top:4px}.plan-price{font-size:18px;font-weight:800;white-space:nowrap;color:#8c5f20}.plan-price small{font-weight:500;display:inline}.hidden{display:none!important}
+@keyframes slide{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.steps{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:0 0 6px}.step{border:0;color:#ad9880;background:rgba(255,255,255,.04);border:1px solid rgba(239,196,129,.21);width:33px;height:33px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800}.step.active{color:#201609;background:#f3c878;border-color:#f3c878;box-shadow:0 0 16px rgba(240,181,73,.25)}.step-line{flex:1;height:1px;background:rgba(244,192,105,.32)}
+.setting{border:1px solid rgba(235,185,108,.22);border-radius:15px;padding:15px;background:rgba(255,255,255,.035)}.setting-head{font-size:12px;font-weight:800;margin:0 0 7px}.setting-help{font-size:11px;color:#b2a08c;line-height:1.55;margin:0 0 13px}.setting input[type=range]{width:100%;accent-color:#e9b65f;cursor:pointer}.price-row{display:flex;justify-content:space-between;align-items:center;gap:8px}.price-value{font-size:25px;font-weight:800;color:#f1c577;font-variant-numeric:tabular-nums}.price-value span{font-size:12px;color:#bca587;font-weight:400}.mini-label{font-size:10px;color:#a89378}
+.metric{padding:15px;background:linear-gradient(135deg,rgba(213,145,60,.13),rgba(213,145,60,.03));border:1px solid rgba(224,176,94,.25);border-radius:14px}.metric-line{display:flex;justify-content:space-between;align-items:center;gap:8px}.metric strong{font-size:24px;color:#efc477;font-variant-numeric:tabular-nums}.metric small{color:#c7b29b;font-size:10px;line-height:1.55}.mini-chart{width:100%;height:64px;display:block;margin-top:13px;overflow:visible}.mini-chart path{stroke:#e7b965;stroke-width:2.5;fill:none;stroke-linecap:round;stroke-linejoin:round}.mini-chart .fill{stroke:none;fill:url(#chartFill)}
+.right-button{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;padding:14px;border:0;border-radius:11px;background:linear-gradient(105deg,#f0c477,#d8a44e);color:#20160b;font-size:12px;font-weight:800;box-shadow:0 7px 26px rgba(225,167,68,.15);transition:transform .2s,filter .2s}.right-button:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.reset{border:1px solid rgba(240,194,113,.25);background:transparent;color:#d4bd9d;border-radius:11px;padding:12px;font-size:12px;font-weight:700}.reset:hover{background:#392719}
+.actions{margin-top:auto;display:flex;flex-direction:column;gap:9px}
+.bottom{display:grid;grid-template-columns:1fr auto;align-items:center;gap:30px;margin-top:33px;border-top:1px solid rgba(221,171,93,.15);padding-top:22px}.bottom-text{font-size:12px;color:#bda88e;line-height:1.7}.bottom-text strong{color:#f0cf9b}.bottom-steps{display:flex;gap:16px;align-items:center}.bottom-steps span{display:flex;align-items:center;gap:8px;color:#e6c79b;font-size:12px;white-space:nowrap}.hex-symbol{font-size:20px;color:#e6b663}.bottom-steps i{font-style:normal;color:#8a6b45}
+.toast{position:fixed;z-index:100;bottom:22px;left:50%;transform:translate(-50%,30px);border:1px solid #b28b48;background:#22180f;color:#f6dfb9;padding:13px 20px;border-radius:30px;font-size:12px;box-shadow:0 16px 50px #0009;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s}.toast.show{opacity:1;transform:translate(-50%,0)}
+/* Burst transition from Free -> Paid */
+.sparkfield{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden}.spark{position:absolute;left:50%;top:45%;width:6px;height:6px;transform:translate(-50%,-50%);background:#ffc46c;border-radius:1px;box-shadow:0 0 14px #e9a33d;opacity:0}.upgrading .spark{animation:explode 1.4s ease-out both;animation-delay:var(--delay)}@keyframes explode{0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(0)}18%{opacity:1}70%{opacity:.9}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.1) rotate(380deg)}}
+.honey-ring{position:absolute;inset:0;z-index:6;pointer-events:none;display:grid;place-items:center;opacity:0}.honey-ring svg{width:80%;height:90%;stroke:#ffd792;stroke-width:1.35;fill:none;filter:drop-shadow(0 0 15px #e7ac4c)}.upgrading .honey-ring{animation:ringShow 1.6s ease both}@keyframes ringShow{0%{opacity:0;transform:scale(.4) rotate(-18deg)}40%{opacity:.95}100%{opacity:0;transform:scale(1.8) rotate(18deg)}}
+@media(max-width:1200px){.stage{grid-template-columns:minmax(220px,.8fr) minmax(0,1.5fr)}.stage .right{grid-column:1/-1;min-height:0;display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center}.right .panel-label,.right .side-head,.right .side-desc,.right .steps{grid-column:1/-1}.right .actions{margin-top:0}.center{min-height:0}.side.left{min-height:0}}
+@media(max-width:780px){.section{padding:66px 18px 44px}.intro{grid-template-columns:1fr;gap:18px;margin-bottom:27px}.stage{grid-template-columns:1fr}.side{min-height:0;padding:20px}.side.left{order:2}.center{order:1;padding:13px}.stage .right{order:3;display:flex}.hive-details{padding:18px}.cover{height:142px}.bottom{grid-template-columns:1fr}.bottom-steps{flex-wrap:wrap;gap:9px}.bottom-steps i{display:none}}
+@media(max-width:430px){h1{font-size:46px}.feature-row{grid-template-columns:1fr}.hive-heading h2{font-size:26px}.premium-pill{font-size:9px}.meta{gap:10px}.member-panel{flex-wrap:wrap}.hive-frame{min-height:0}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}.hive-frame.paid .glow-border{opacity:.65}}
+</style>
+</head>
+<body>
+<section class="section" id="create-and-monetize" aria-label="Create and monetize your Hive interactive preview">
+<canvas id="particles" aria-hidden="true"></canvas>
+<div class="shell">
+<div class="eyebrow">07 — Own your community</div>
+<div class="intro"><h1>Build your community.<br><em>Make it your own.</em></h1><p class="subtitle">A conversation becomes a community. A community becomes something bigger. Create a Hive around what matters to you—and choose how it grows.</p></div>
+<div class="stage">
+<aside class="side left" aria-label="Hive type options">
+<div class="panel-label">01 / Choose your experience</div><h2 class="side-head">Every great Hive starts with a purpose.</h2><p class="side-desc">Start with a community. When you’re ready to offer exclusive value, make it a membership.</p>
+<button class="option selected" id="select-free" type="button" aria-pressed="true"><span class="choice-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="3"/><circle cx="18" cy="8" r="2.3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M15.6 14.2A4.7 4.7 0 0 1 21 19"/></svg></span><span><strong>Free Hive</strong><small>Bring people together</small></span><span class="choice-check" aria-hidden="true">✓</span></button>
+<button class="option" id="select-paid" type="button" aria-pressed="false"><span class="choice-icon"><svg viewBox="0 0 24 24"><path d="m2.5 7 5 4 4.5-7 4.5 7 5-4-2 12h-15zM5 22h14"/></svg></span><span><strong>Paid Hive</strong><small>Build a membership community</small></span><span class="choice-check" aria-hidden="true"></span></button>
+<div class="side-divider"></div><div class="panel-label" id="benefits-title">WHAT'S INCLUDED</div>
+<ul class="benefit-list" id="benefit-list"><li><span class="check-icon">✦</span> Group conversations</li><li><span class="check-icon">✦</span> Member connections</li><li><span class="check-icon">✦</span> Events and shared plans</li><li><span class="check-icon">✦</span> Build around shared interests</li></ul>
+<div class="plain-note"><b>TrueHive Plus</b> unlocks the ability to create Paid Hives. Membership pricing and billing terms here are illustrative, not a live payment offering.</div>
+</aside>
+<div class="center">
+<div class="frame-top"><span class="panel-label">A living Hive preview</span><span class="live-tag"><span class="dot"></span> Interactive demonstration</span></div>
+<div class="hive-frame" id="hive-frame">
+<div class="glow-border"></div><div class="sparkfield" id="sparkfield"></div><div class="honey-ring" aria-hidden="true"><svg viewBox="0 0 400 400"><polygon points="200 22 355 111 355 289 200 378 45 289 45 111"/><polygon points="200 65 316 132 316 268 200 335 84 268 84 132"/><polygon points="200 110 276 154 276 246 200 290 124 246 124 154"/></svg></div>
+<div class="cover"><div class="cover-stars" aria-hidden="true"><svg viewBox="0 0 800 240" preserveAspectRatio="xMidYMid slice"><path d="M-40 95 110 8 260 95 260 270 110 357 -40 270ZM260 95 410 8 560 95 560 270 410 357 260 270ZM560 95 710 8 860 95 860 270 710 357 560 270Z"/></svg></div><div class="cover-overlay"><span id="cover-label">THE CREATIVE COMMUNITY</span><div class="crest"><svg viewBox="0 0 40 40"><path d="M11.5 2 21 7.5v11L11.5 24 2 18.5v-11z M28.5 2 38 7.5v11L28.5 24 19 18.5v-11z M20 18l9.5 5.5v11L20 40l-9.5-5.5v-11z"/></svg></div></div></div>
+<div class="hive-details"><div class="hive-heading"><h2 id="hive-name">The Creators Collective</h2><span class="premium-pill" aria-hidden="true">♛ MEMBERSHIP</span></div><div class="category" id="hive-category">SPECIALIZED GROUPS · ONLINE</div><p class="hive-description" id="hive-description">A space for artists, makers and ambitious creatives to exchange ideas, collaborate and grow together.</p><div class="meta"><span>⬡ 24 members</span><span>◎ Online + LA</span><span>◷ Active today</span></div>
+<div class="plan hidden" id="plan"><div><strong>Creators Collective Membership</strong><small>Private workshops · Member resources · Exclusive events</small></div><div class="plan-price"><span id="plan-price">$12</span><small>/mo</small></div></div>
+<div class="feature-row"><div class="feature"><strong id="feature-a-title"># General Chat</strong><p id="feature-a-description">Share ideas and start conversations</p></div><div class="feature"><strong id="feature-b-title">✧ Upcoming Meetup</strong><p id="feature-b-description">Community creative night · Friday</p></div></div>
+<div class="member-panel"><div style="display:flex;gap:11px;align-items:center"><div class="face-stack" aria-hidden="true"><span class="face">M</span><span class="face">J</span><span class="face">A</span><span class="face">+21</span></div><small>People creating together</small></div><button id="preview-button" type="button">Explore this Hive ↗</button></div></div></div>
+</div>
+<aside class="side right" aria-label="Create a paid Hive demo">
+<div class="panel-label">02 / See what's possible</div><h2 class="side-head">Turn passion into <span style="color:#edc27f">possibility.</span></h2><p class="side-desc">Preview what an exclusive Hive could offer—then shape it around your own community.</p>
+<div class="steps" aria-label="Membership setup steps"><button class="step active" data-step="0" aria-label="Step 1: Choose Hive" aria-pressed="true">01</button><span class="step-line"></span><button class="step" data-step="1" aria-label="Step 2: Membership" aria-pressed="false">02</button><span class="step-line"></span><button class="step" data-step="2" aria-label="Step 3: Launch" aria-pressed="false">03</button></div>
+<div class="setting" id="setting"><p class="setting-head" id="setting-title">Your community, your vision.</p><p class="setting-help" id="setting-help">Create something meaningful first. You decide what your members experience.</p><div class="price-row" id="price-row" style="display:none"><span class="mini-label">Illustrative monthly membership</span><span class="price-value" id="price-display">$12<span>/mo</span></span></div><input type="range" id="price-slider" min="5" max="50" value="12" step="1" style="display:none" aria-label="Example membership monthly price"></div>
+<div class="metric"><div class="metric-line"><div><div class="panel-label" id="metric-label">Community momentum</div><strong id="metric-value">24 people</strong></div><small id="metric-side">Building something<br>meaningful together</small></div><svg class="mini-chart" viewBox="0 0 280 64" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8b765" stop-opacity=".28"/><stop offset="1" stop-color="#e8b765" stop-opacity="0"/></linearGradient></defs><path class="fill" d="M0 58 L0 51 25 46 50 50 76 33 99 37 123 30 150 36 177 18 207 22 235 11 260 14 280 2 280 64 0 64Z"/><path d="M0 51 25 46 50 50 76 33 99 37 123 30 150 36 177 18 207 22 235 11 260 14 280 2"/></svg></div>
+<div class="actions"><button class="right-button" id="continue" type="button">See paid Hive possibilities <span aria-hidden="true">↗</span></button><button class="reset" id="reset" type="button">↻ Reset experience</button></div>
+</aside>
+</div>
+<div class="bottom"><div class="bottom-text"><strong>From an idea to a place people belong.</strong> Every Hive starts with a reason to connect. Paid Hives let eligible TrueHive Plus creators offer members something more. <span style="opacity:.8">This is an illustrative product demonstration—not real subscriber or revenue data.</span></div><div class="bottom-steps"><span><b class="hex-symbol">⬡</b> Create</span><i>→</i><span><b class="hex-symbol">⬡</b> Connect</span><i>→</i><span><b class="hex-symbol">⬡</b> Grow</span><i>→</i><span><b class="hex-symbol">⬡</b> Monetize</span></div></div>
+</div></section><div class="toast" role="status" id="toast" aria-live="polite"></div>
+<script>
+(()=>{
+'use strict';
+const root=document.getElementById('create-and-monetize');
+const $=id=>document.getElementById(id);
+let paid=false,step=0,price=12,timer=0;
+const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const benefits={free:['Group conversations','Member connections','Events and shared plans','Build around shared interests'],paid:['Everything in a Free Hive','Exclusive member-only experiences','Private workshops and resources','Custom subscription membership']};
+function makeSparks(){const el=$('sparkfield');for(let i=0;i<44;i++){let p=document.createElement('span');p.className='spark';let a=Math.PI*2*i/44;let r=110+Math.random()*270;p.style.setProperty('--dx',Math.cos(a)*r+'px');p.style.setProperty('--dy',Math.sin(a)*r+'px');p.style.setProperty('--delay',(Math.random()*.28)+'s');el.appendChild(p)}}makeSparks();
+function render(){
+ const frame=$('hive-frame');frame.classList.toggle('paid',paid);
+ $('select-free').classList.toggle('selected',!paid);$('select-paid').classList.toggle('selected',paid);
+ $('select-free').setAttribute('aria-pressed',String(!paid));$('select-paid').setAttribute('aria-pressed',String(paid));
+ $('select-free').querySelector('.choice-check').textContent=paid?'':'✓';$('select-paid').querySelector('.choice-check').textContent=paid?'✓':'';
+ $('benefits-title').textContent=paid?'PLUS CREATOR BENEFITS':'WHAT\'S INCLUDED';
+ $('benefit-list').replaceChildren(...benefits[paid?'paid':'free'].map(s=>{let li=document.createElement('li');let span=document.createElement('span');span.className='check-icon';span.textContent='✦';li.append(span,document.createTextNode(' '+s));return li}));
+ $('cover-label').textContent=paid?'EXCLUSIVE · CREATOR MEMBERSHIP':'THE CREATIVE COMMUNITY';
+ $('hive-name').textContent=paid?'The Creators Collective +':'The Creators Collective';
+ $('hive-category').textContent=paid?'SPECIALIZED GROUPS · PAID HIVE':'SPECIALIZED GROUPS · ONLINE';
+ $('hive-description').textContent=paid?'A private home for creators who want deeper connections, monthly workshops, early access and thoughtful feedback from their community.':'A space for artists, makers and ambitious creatives to exchange ideas, collaborate and grow together.';
+ $('plan').classList.toggle('hidden',!paid);$('plan-price').textContent='$'+price;
+ $('feature-a-title').textContent=paid?'♛ Members-only Studio':'# General Chat';
+ $('feature-a-description').textContent=paid?'Private feedback sessions & live workshops':'Share ideas and start conversations';
+ $('feature-b-title').textContent=paid?'✧ Exclusive Resources':'✧ Upcoming Meetup';
+ $('feature-b-description').textContent=paid?'Templates, guides and member sessions':'Community creative night · Friday';
+ $('preview-button').textContent=paid?'Preview membership ↗':'Explore this Hive ↗';
+ $('price-display').innerHTML='$'+price+'<span>/mo</span>';
+ $('metric-label').textContent=paid?'Example membership potential':'Community momentum';
+ $('metric-value').textContent=paid?'$'+(price*24).toLocaleString('en-US')+'/mo':'24 people';
+ $('metric-side').innerHTML=paid?'24 example members<br>gross before fees':'Building something<br>meaningful together';
+ $('setting-title').textContent=step===0?'Your community, your vision.':step===1?'Design your membership.':'Your Hive, elevated.';
+ $('setting-help').textContent=step===0?'Create something meaningful first. You decide what your members experience.':step===1?'Choose an example monthly subscription to see how a paid Hive might look.':'Offer extra value through member-only experiences, resources and events.';
+ $('price-row').style.display=step===1?'flex':'none';$('price-slider').style.display=step===1?'block':'none';
+ root.querySelectorAll('[data-step]').forEach(b=>{const on=Number(b.dataset.step)===step;b.classList.toggle('active',on);b.setAttribute('aria-pressed',String(on))});
+ $('continue').innerHTML=step===0?'See paid Hive possibilities <span aria-hidden="true">↗</span>':step===1?'Preview premium transformation <span aria-hidden="true">✦</span>':'Restart creator experience <span aria-hidden="true">↻</span>';
+}
+function choosePaid(next){if(next===paid)return;paid=next;const frame=$('hive-frame');if(paid&&!reduce){frame.classList.remove('upgrading');void frame.offsetWidth;frame.classList.add('upgrading');window.clearTimeout(timer);timer=window.setTimeout(()=>frame.classList.remove('upgrading'),1850)}else frame.classList.remove('upgrading');render()}
+function goStep(index){step=Math.max(0,Math.min(2,index));if(step===2)choosePaid(true);render()}
+$('select-free').addEventListener('click',()=>choosePaid(false));$('select-paid').addEventListener('click',()=>{choosePaid(true);if(step===0)goStep(1)});
+$('price-slider').addEventListener('input',e=>{price=Number(e.target.value);render()});
+$('continue').addEventListener('click',()=>{if(step===2){price=12;step=0;choosePaid(false);render()}else goStep(step+1)});
+$('reset').addEventListener('click',()=>{step=0;price=12;choosePaid(false);render()});
+root.querySelectorAll('[data-step]').forEach(b=>b.addEventListener('click',()=>goStep(Number(b.dataset.step))));
+let toastTimer=0;$('preview-button').addEventListener('click',()=>{const t=$('toast');t.textContent=paid?'Preview only — no membership or payment is created.':'Preview only — no Hive is created.';t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2800)});
+// Subtle kinetic hexagonal dust, intentionally restrained behind text.
+const canvas=$('particles'),ctx=canvas.getContext('2d');if(ctx){let w=0,h=0,dpr=1,pts=[],raf=0;function rand(i,k){let v=Math.sin(i*127.1+k*311.7)*43758.5453;return v-Math.floor(v)}function resize(){const rect=canvas.getBoundingClientRect();w=rect.width;h=rect.height;dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);pts=Array.from({length:w<600?230:580},(_,i)=>({x:rand(i,1)*w,y:rand(i,2)*h,r:.4+rand(i,3)*1.4,a:.12+rand(i,4)*.45,p:rand(i,5)*6.28,dx:rand(i,6)*.6-.3,dy:rand(i,7)*.4-.2}))}function draw(t){ctx.clearRect(0,0,w,h);for(let i=0;i<pts.length;i++){const p=pts[i],dx=reduce?0:Math.sin(t*.0005+p.p)*1.5,dy=reduce?0:Math.cos(t*.0008+p.p)*1.5;ctx.beginPath();ctx.fillStyle=`rgba(239,176,74,${p.a*(.7+.3*Math.sin(t*.001+p.p))})`;ctx.arc(p.x+dx,p.y+dy,p.r,0,Math.PI*2);ctx.fill()}if(!reduce)raf=requestAnimationFrame(draw)}resize();draw(0);if('ResizeObserver'in window)new ResizeObserver(resize).observe(root);window.addEventListener('pagehide',()=>cancelAnimationFrame(raf))}
+render();
+})();
+</script>
+</body>
+</html>

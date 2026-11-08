@@ -2,6 +2,22 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { track } from '../lib/analytics.js';
 
+// Where "Find Your Hive" sends someone, shared by this button and the
+// buttons inside the landing page sections (pages/LandingPage.jsx).
+export function goToFindYourHive({ user, navigate, label = 'Find Your Hive', category, source }) {
+  let destination;
+  if (!user) {
+    const next = '/find-your-hive' + (category ? `?cat=${category}` : '');
+    destination = `/signup?next=${encodeURIComponent(next)}`;
+  } else if (!user.hasProfile) {
+    destination = '/profile-setup';
+  } else {
+    destination = '/find-your-hive' + (category ? `?cat=${category}` : '');
+  }
+  track('cta_click', { label, category, destination, ...(source ? { source } : {}) });
+  navigate(destination);
+}
+
 export default function FindYourHiveCTA({
   label     = 'Find Your Hive',
   className = 'btn btn-primary btn-lg',
@@ -10,19 +26,7 @@ export default function FindYourHiveCTA({
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const handleClick = () => {
-    let destination;
-    if (!user) {
-      const next = '/find-your-hive' + (category ? `?cat=${category}` : '');
-      destination = `/signup?next=${encodeURIComponent(next)}`;
-    } else if (!user.hasProfile) {
-      destination = '/profile-setup';
-    } else {
-      destination = '/find-your-hive' + (category ? `?cat=${category}` : '');
-    }
-    track('cta_click', { label, category, destination });
-    navigate(destination);
-  };
+  const handleClick = () => goToFindYourHive({ user, navigate, label, category });
 
   return (
     <button type="button" className={className} onClick={handleClick}>

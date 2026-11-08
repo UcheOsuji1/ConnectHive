@@ -16,10 +16,12 @@ test.describe('Flow 1 — Public site', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await assertCleanPage(page, tracked);
-    // Desktop shows the signup link directly in the header; mobile tucks it
-    // behind the hamburger menu (.nav-join-desktop is deliberately hidden
-    // there by CSS) — so assert it's reachable, not that it's visible yet.
-    await expect(page.locator('a[href="/signup"]').first()).toBeAttached();
+    // The landing page shows its sections in iframes (components/landing/).
+    // Check the hero section loaded with its Log in link, and that the site
+    // footer is on the page.
+    const hero = page.frameLocator('[data-section="01"] iframe');
+    await expect(hero.locator('a[href="/login"]')).toBeAttached();
+    await expect(page.locator('footer[role="contentinfo"]')).toBeAttached();
   });
 
   for (const path of HEADER_LINKS_LOGGED_OUT) {

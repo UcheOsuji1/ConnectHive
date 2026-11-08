@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#100b0a">
+  <meta name="description" content="Some connections change everything. Find your people, discover new experiences, and begin your next chapter with TrueHive.">
+  <title>TrueHive — 10 · The Final Experience</title>
+  <link rel="stylesheet" href="./styles.css">
+  <script src="./script.js" defer></script>
+</head>
+<body>
+  <main>
+    <section class="experience" id="final-experience" aria-labelledby="main-title">
+      <div class="skyline" aria-hidden="true"></div>
+      <div class="skyline-wash" aria-hidden="true"></div>
+      <div class="cinema-grain" aria-hidden="true"></div>
+      <div class="starfield" aria-hidden="true"></div>
+      <canvas class="particles" id="particles" aria-hidden="true"></canvas>
+
+      <header class="masthead">
+        <div class="section-mark"><span class="mark-line"></span>10 — THE FINAL EXPERIENCE<span class="mark-line"></span></div>
+        <div class="brand" aria-label="TrueHive">
+          <svg class="brand-mark" viewBox="0 0 74 78" role="img" aria-label="TrueHive honeycomb logo">
+            <path d="M26 3 46 14.5v23L26 49 6 37.5v-23Z"/><path d="M48 27 68 38.5v23L48 73 28 61.5v-23Z"/><path d="M26 49 46 60.5v10L26 82 6 70.5v-23Z" transform="translate(0 -11)"/>
+          </svg>
+          <span class="brand-name">True<span>Hive</span></span>
+        </div>
+        <div class="motion-actions">
+          <button id="replay" class="action" type="button" title="Replay the cinematic entrance" aria-label="Replay entrance animation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a8 8 0 1 1 2.4 5.7M4 4v7h7"/></svg> <span>Replay</span>
+          </button>
+          <button id="toggle-motion" class="action" type="button" aria-pressed="false" title="Pause animation">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span>Pause motion</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="headlines">
+        <p class="micro-kicker">NOT JUST AN APP. A WORLD OF POSSIBILITIES.</p>
+        <h1 id="main-title">Some connections<br><em>change everything.</em></h1>
+        <p class="headlines-sub">The friendships you'll make. The places you'll go. The things you'll build.<br class="desktop-br"> Your next chapter could begin here.</p>
+      </div>
+
+      <div class="story-stage" id="story-stage">
+        <svg class="thread-map" viewBox="0 0 1440 560" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="threadGold" x1="0" x2="1"><stop offset="0%" stop-color="#d59735" stop-opacity=".03"/><stop offset="48%" stop-color="#ffd578" stop-opacity=".83"/><stop offset="100%" stop-color="#ad6d23" stop-opacity=".08"/></linearGradient>
+            <filter id="threadGlow"><feGaussianBlur stdDeviation="4"/></filter>
+          </defs>
+          <g class="thread-haze" filter="url(#threadGlow)">
+            <path d="M 100 190 C 300 90 340 280 720 284 S 1130 74 1340 188"/>
+            <path d="M 56 374 C 320 500 460 300 720 284 S 1090 475 1380 366"/>
+          </g>
+          <g class="thread-strokes">
+            <path d="M 100 190 C 300 90 340 280 720 284 S 1130 74 1340 188"/>
+            <path d="M 56 374 C 320 500 460 300 720 284 S 1090 475 1380 366"/>
+          </g>
+          <g class="thread-orbiting-dots">
+            <circle r="3.3" fill="#ffe0a0"><animateMotion dur="16s" repeatCount="indefinite" path="M 100 190 C 300 90 340 280 720 284 S 1130 74 1340 188"/></circle>
+            <circle r="3" fill="#ffe0a0"><animateMotion dur="20s" repeatCount="indefinite" path="M 1380 366 C 1090 475 980 335 720 284 S 320 500 56 374"/></circle>
+          </g>
+        </svg>
+
+        <div class="hive-side hive-side-left" aria-label="Connection possibilities">
+          <button class="memory memory-1" type="button" data-memory="friends" aria-label="Explore lifelong friendships">
+            <span class="memory-frame"><span class="memory-picture"><img src="./assets/lifelong-friendships.webp" alt="Friends enjoying dinner on a Los Angeles rooftop" loading="eager"><span class="memory-shade"></span><span class="memory-label"><b class="memory-icon" aria-hidden="true">♧</b> Lifelong<br>Friendships</span></span></span>
+          </button>
+          <button class="memory memory-2" type="button" data-memory="relationships" aria-label="Explore meaningful relationships">
+            <span class="memory-frame"><span class="memory-picture"><img src="./assets/meaningful-relationships.webp" alt="Friends forming meaningful connections while talking on a rooftop" loading="eager"><span class="memory-shade"></span><span class="memory-label"><b class="memory-icon" aria-hidden="true">♡</b> Meaningful<br>Relationships</span></span></span>
+          </button>
+          <button class="memory memory-3" type="button" data-memory="adventures" aria-label="Explore shared adventures">
+            <span class="memory-frame"><span class="memory-picture"><img src="./assets/unforgettable-experiences.webp" alt="Friends walking together by the beach in Miami" loading="eager"><span class="memory-shade"></span><span class="memory-label"><b class="memory-icon" aria-hidden="true">✧</b> Unforgettable<br>Experiences</span></span></span>
+          </button>
+        </div>
+
+        <div class="living-core" aria-label="A shining TrueHive honeycomb surrounded by connections">
+          <span class="orbital orbital-one" aria-hidden="true"></span>
+          <span class="orbital orbital-two" aria-hidden="true"></span>
+          <span class="orbital orbital-three" aria-hidden="true"></span>
+          <div class="core-emblem" aria-hidden="true">
+            <svg viewBox="0 0 192 184" fill="none">
+              <defs><linearGradient id="emblemGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff4c7"/><stop offset=".5" stop-color="#e7aa3b"/><stop offset="1" stop-color="#fff3bb"/></linearGradient></defs>
+              <path d="M96 10 139 35v49l-43 25-43-25V35Z"/>
+              <path d="m52 84 43 25v49l-43 25-43-25v-49Z"/>
+              <path d="m140 84 43 25v49l-43 25-43-25v-49Z"/>
+            </svg>
+          </div>
+          <p class="core-caption">Different paths. <span>One place to belong.</span></p>
+          <p class="core-hint">Discover communities built around what matters to you.</p>
+          <a class="primary-cta" id="find-hive" href="/find-your-hive" data-th-action="find-your-hive">
+            <span>Find Your Hive</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"/></svg>
+          </a>
+          <span class="cta-footnote">YOUR NEXT CHAPTER STARTS HERE</span>
+        </div>
+
+        <div class="hive-side hive-side-right" aria-label="More connection possibilities">
+          <button class="memory memory-4" type="button" data-memory="creative" aria-label="Explore creative collaborations">
+            <span class="memory-frame"><span class="memory-picture"><img src="./assets/creative-collaborations.webp" alt="A filmmaking team collaborating on a set" loading="eager"><span class="memory-shade"></span><span class="memory-label"><b class="memory-icon" aria-hidden="true">◇</b> Creative<br>Collaborations</span></span></span>
+          </button>
+          <button class="memory memory-5" type="button" data-memory="career" aria-label="Explore career and growth">
+            <span class="memory-frame"><span class="memory-picture"><img src="./assets/career-growth.webp" alt="Professionals discussing career goals around a conference table" loading="eager"><span class="memory-shade"></span><span class="memory-label"><b class="memory-icon" aria-hidden="true">↗</b> Career &amp;<br>Growth</span></span></span>
+          </button>
+          <button class="memory memory-6" type="button" data-memory="create" aria-label="Explore building your own Hive">
+            <span class="memory-frame"><span class="memory-picture"><img src="./assets/build-your-hive.webp" alt="Creative community members working together at a studio table" loading="eager"><span class="memory-shade"></span><span class="memory-label"><b class="memory-icon" aria-hidden="true">♛</b> Build Your<br>Own Hive</span></span></span>
+          </button>
+        </div>
+      </div>
+
+      <div class="closing-values" aria-label="What TrueHive makes possible">
+        <div class="value"><svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="11" cy="11" r="4"/><circle cx="23" cy="12" r="3"/><path d="M3 28v-4c0-4 4-6 8-6s8 2 8 6v4M21 19c4 0 8 2 8 6v3"/></svg><div><strong>Real People</strong><span>Find your circle and your community.</span></div></div>
+        <div class="value"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M18 2 6 18h10l-2 12 12-17H16Z"/></svg><div><strong>Real Opportunity</strong><span>Dream, create, explore and grow.</span></div></div>
+        <div class="value"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M2 17c4-7 9-8 14-1 5 7 10 6 14-1-4-7-9-8-14-1-5 7-10 6-14-1Z"/></svg><div><strong>Lasting Impact</strong><span>Connections that go beyond the app.</span></div></div>
+      </div>
+      <div class="edge-glow" aria-hidden="true"></div>
+    </section>
+  </main>
+
+  <dialog id="memory-dialog" class="story-dialog" aria-labelledby="dialog-title">
+    <button class="dialog-close" type="button" id="close-dialog" aria-label="Close story">×</button>
+    <div class="dialog-image"><img id="dialog-image" src="./assets/lifelong-friendships.webp" alt=""></div>
+    <div class="dialog-body">
+      <span class="dialog-overline">A TRUEHIVE POSSIBILITY · ILLUSTRATIVE SCENARIO</span>
+      <h2 id="dialog-title">Lifelong friendships</h2>
+      <p id="dialog-description"></p>
+      <a href="/find-your-hive" class="dialog-link" data-th-action="find-your-hive">Find Your Hive <span aria-hidden="true">↗</span></a>
+    </div>
+  </dialog>
+</body>
+</html>
