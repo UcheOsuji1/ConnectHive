@@ -6,7 +6,20 @@ import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 import { getCachedMetros, nearestMetro, metroSubline } from '../lib/geo.js';
 import { api } from '../lib/api';
+import SkillPicker from '../components/deep-dive/SkillPicker.jsx';
+import RoleBuilder from '../components/deep-dive/RoleBuilder.jsx';
+import RoleWishlist from '../components/deep-dive/RoleWishlist.jsx';
 import '../styles/category-deep-dive.css';
+
+function GroupHead({ text, sub }) {
+  return (
+    <div className="group-head">
+      <span className="group-head-text">{text}</span>
+      <span className="group-head-sub">{sub}</span>
+      <span className="group-head-line" />
+    </div>
+  );
+}
 
 // Deep Dive phrases the slider's value differently from Quick Find's
 // "Within 25 mi" — "Up to 25 miles" is this surface's own wording.
@@ -112,6 +125,8 @@ const PROF_CHIPS_INDUSTRY = [
   '🛍️ Retail / E-commerce', '🌿 Wellness / Fitness',   '🏛️ Government / Nonprofit',
   '🔬 Science / Research', '✈️ Hospitality / Travel', '🏭 Manufacturing',
   '🎮 Gaming / Esports',   '🏦 Banking / Fintech',   '🌍 International / Global',
+  '👗 Fashion & Apparel',  '🍽️ Food & Beverage',     '🏟️ Sports',
+  '💄 Beauty & Personal care', '🎤 Performing Arts',
 ];
 
 const PROF_CHIPS_GOALS = [
@@ -137,7 +152,7 @@ const PROF_CARDS_PRIMARY_GOAL = [
   { emoji: '💡', name: 'Break into a new industry',      desc: 'Pivoting or expanding into new territory.' },
   { emoji: '🧠', name: 'Develop a specific skill',       desc: 'Focused on learning and leveling up.' },
   { emoji: '🌐', name: 'Expand my professional network', desc: 'More connections, more opportunities.' },
-  { emoji: '💰', name: 'Increase my income',             desc: 'Freelance, raise, side income — all of the above.' },
+  { emoji: '💰', name: 'Increase my income',             desc: 'Freelance, raise, side income. All of the above.' },
   { emoji: '🏆', name: 'Build authority in my field',    desc: 'Become a recognized name in my industry.' },
   { emoji: '🤝', name: 'Find a business partner',        desc: 'Looking for a co-founder or long-term collaborator.' },
 ];
@@ -152,8 +167,8 @@ const PROF_CHIPS_WORKSIT = [
 const PROF_CARDS_MENTOR = [
   { emoji: '🧭', name: 'I want to be mentored',           desc: "Looking for guidance, advice, and someone who's been there before." },
   { emoji: '💡', name: 'I want to mentor others',         desc: 'I have experience to share and want to help people grow.' },
-  { emoji: '🔄', name: 'Both — I can do either',          desc: 'Open to mentoring and being mentored depending on context.' },
-  { emoji: '👥', name: 'Neither — just peer connections', desc: 'I want equals to grow alongside, not a mentor dynamic.' },
+  { emoji: '🔄', name: 'Both, I can do either',          desc: 'Open to mentoring and being mentored depending on context.' },
+  { emoji: '👥', name: 'Neither, just peer connections', desc: 'I want equals to grow alongside, not a mentor dynamic.' },
 ];
 
 const PROF_CARDS_INDUSTRY_PREF = [
@@ -247,25 +262,35 @@ const PROJECT_CHIPS_TYPES = [
   '🛍️ Brand / e-commerce venture',   '🤖 AI / ML research group',
   '📚 Research & academic collab',  '🏗️ Physical product / hardware',
   '🌿 Social impact project',       '🎓 Student project group',
-  '🔍 Looking to join a project',
+  '🎮 Game studio',                 '👕 Fashion / clothing brand',
+  '🍳 Food / culinary venture',     '🎭 Theater / live performance',
+  '🎙️ Podcast / audio show',         '📖 Book / publishing',
+  '🎪 Event production',
+];
+
+// "Are you joining a project or building a team?" — determines the labels
+// below and which of the Building/Joining groups show.
+const PROJECT_CARDS_PATH = [
+  { emoji: '🔍', name: 'Joining a project', desc: 'I want to bring my skills to someone else’s project.' },
+  { emoji: '🛠️', name: 'Building a team',   desc: 'I have a project and I’m looking for people.' },
+  { emoji: '🔀', name: 'Open to either',    desc: 'Show me both. I’ll decide once I see the fit.' },
 ];
 
 const PROJECT_CARDS_PRIMARY_GOAL = [
   { emoji: '🚀', name: 'Ship a real product or business',     desc: "I'm here to build something real and launch it." },
   { emoji: '🧠', name: 'Learn by building with others',       desc: 'Growth and skill-building is the main priority.' },
-  { emoji: '💰', name: 'Generate income from the project',    desc: 'This needs to make money — monetization is the goal.' },
+  { emoji: '💰', name: 'Generate income from the project',    desc: 'This needs to make money. Monetization is the goal.' },
   { emoji: '🏆', name: 'Build my portfolio / credentials',    desc: 'I want tangible work to show for this collaboration.' },
   { emoji: '🌱', name: 'Find a long-term co-founder',         desc: 'Looking for a partner, not just a project teammate.' },
   { emoji: '🎯', name: 'Complete a specific one-time project', desc: 'Defined scope, clear end date, deliver and done.' },
-  { emoji: '🌍', name: 'Create social impact',                desc: "Profit isn't the point — impact and mission are." },
+  { emoji: '🌍', name: 'Create social impact',                desc: "Profit isn't the point. Impact and mission are." },
   { emoji: '📣', name: 'Build an audience or brand',          desc: 'Growing a following, platform, or creative identity.' },
 ];
 
 const PROJECT_CARDS_STAGE = [
-  { emoji: '💡', name: 'Just an idea',              desc: 'I have a concept but nothing built yet.' },
-  { emoji: '🔧', name: 'Building MVP',               desc: 'Actively building the first version.' },
-  { emoji: '🚀', name: 'Launched — growing',        desc: 'Already live, looking to scale.' },
-  { emoji: '🔍', name: 'Looking to join a project', desc: 'No project yet, I want to contribute to one.' },
+  { emoji: '💡', name: 'Just an idea',          desc: 'I have a concept but nothing made yet.' },
+  { emoji: '🔧', name: 'In progress',           desc: 'Actively making the first version.' },
+  { emoji: '🚀', name: 'Launched and growing',  desc: 'Already out there, looking to scale.' },
 ];
 
 const PROJECT_CHIPS_INDUSTRY = [
@@ -277,35 +302,29 @@ const PROJECT_CHIPS_INDUSTRY = [
   '🎨 Art & Design',               '🏗️ Hardware / Physical product',
   '🌿 Sustainability / CleanTech', '🎮 Gaming / Interactive',
   '🏠 Real Estate / PropTech',
+  '👗 Fashion & Apparel',        '🍽️ Food & Beverage',
+  '🏋️ Sports & Fitness',          '📖 Publishing & Writing',
+  '💄 Beauty & Personal care',
 ];
 
-const PROJECT_CHIPS_SKILLS_BRINGING = [
-  '💻 Frontend development',   '🗄️ Backend development',
-  '📱 Mobile development',     '🤖 AI / ML engineering',
-  '🖥️ UI/UX design',           '🎨 Graphic / visual design',
-  '🎬 Video production',       '🎙️ Audio / music production',
-  '📢 Marketing & growth',     '✍️ Writing / copywriting',
-  '📊 Data & analytics',       '💼 Business strategy & ops',
-  '💰 Finance & fundraising',  '🧭 Project management',
-  '🎤 Sales & partnerships',   '⚖️ Legal & contracts',
-  '🔬 Research',
+// "What's your experience level?" (Joining path)
+const PROJECT_CARDS_EXPERIENCE = [
+  { emoji: '🌱', name: 'Still learning',   desc: 'I’m building my skills and want real practice.' },
+  { emoji: '🧩', name: 'Some experience',  desc: 'I’ve done this on a few projects.' },
+  { emoji: '💪', name: 'Experienced',      desc: 'I do this regularly and can own my part.' },
+  { emoji: '🏆', name: 'Expert',           desc: 'I can lead this area and mentor others.' },
 ];
 
-const PROJECT_CHIPS_SKILLS_NEEDED = [
-  '💻 A developer',         '🖥️ A designer',
-  '📢 A marketer',          '💼 Business / operations',
-  '📊 Data / analyst',      '💰 Finance / fundraising',
-  '✍️ Writer / copywriter', '🎬 Filmmaker / editor',
-  '🧭 Project manager',     '🎙️ Audio / music producer',
-  '🎤 Sales person',        '⚖️ Legal advisor',
-  '🔬 Researcher',
+// Shared by "What can you offer collaborators?" (Building) and "What are
+// you looking for in return?" (Joining) — same options either direction.
+const PROJECT_CHIPS_OFFER = [
+  '💵 Paid', '📈 Equity', '🤝 Revenue share', '🏆 Portfolio / credit', '🌱 Unpaid / volunteer', '🎓 Academic credit',
 ];
 
-const PROJECT_CHIPS_ROLES = [
-  '💻 Developer',          '🎨 Designer',             '📢 Marketer',
-  '💼 Business / Ops',     '📊 Data / Analytics',     '🎬 Filmmaker / Editor',
-  '✍️ Writer / Copywriter', '💰 Finance / Fundraising', '🧭 Project Lead',
-  '🎤 Content Creator',    '🔬 Researcher',
+// "What stage do you want to join at?" (Joining, optional) — "Any stage" is
+// exclusive with the other three, same pattern as the age-band chips elsewhere.
+const PROJECT_CHIPS_PREF_STAGE = [
+  '💡 Just an idea', '🔧 In progress', '🚀 Launched and growing', '🔀 Any stage',
 ];
 
 const PROJECT_CARDS_WORKSTYLE = [
@@ -329,10 +348,10 @@ const PROJECT_CHIPS_TIMELINE = [
 ];
 
 const PROJECT_CARDS_LOCATION = [
-  { emoji: '🌐', name: 'Fully remote / online',       desc: "Zoom, Slack, async tools, location doesn't matter." },
-  { emoji: '📍', name: 'In-person only (local team)', desc: 'I want to be in the same room as my collaborators.' },
-  { emoji: '🔀', name: 'Hybrid',                      desc: 'Mostly online with occasional in-person meetups.' },
-  { emoji: '🏢', name: 'Co-working space',             desc: 'A shared physical workspace to build together.' },
+  { emoji: '🌐', name: 'Fully remote / online',  desc: "Zoom, Slack, async tools. Location doesn't matter." },
+  { emoji: '📍', name: 'In-person (local team)', desc: 'I want to be in the same room as my collaborators.' },
+  { emoji: '🔀', name: 'Hybrid',                 desc: 'Mostly online with in-person days when it counts.' },
+  { emoji: '🏢', name: 'Co-working space',       desc: 'A shared physical workspace to build together.' },
 ];
 
 const PROJECT_CARDS_FUNDING = [
@@ -507,7 +526,7 @@ const CATEGORY_CONTENT = {
     subtitle:    "The right connections depend on where you are in your career and what you're trying to accomplish. The more you share, the better your matches.",
     nextText:    'Find My Professional Hive →',
     createText:  'Create Professional Hive',
-    totalItems:  72,
+    totalItems:  94,
   },
   travel: {
     eyebrow:     'Travel Buddies · Deep Dive',
@@ -527,7 +546,7 @@ const CATEGORY_CONTENT = {
     subtitle:    "Great collaborations start with the right match of skills, goals, work styles, and commitment. The more you share, the better your team match.",
     nextText:    'Find My Collab Hive →',
     createText:  'Create Collab Hive',
-    totalItems:  114,
+    totalItems:  147,
   },
   event: {
     eyebrow:     'Event Buddies · Deep Dive',
@@ -815,6 +834,7 @@ function LocationQuestion({
   cityText, onCityTextChange,
   onMetroKeyChange,
   onPlaceLabelChange,
+  hideOnlineChip = false,
 }) {
   const [geoStatus, setGeoStatus] = useState('idle'); // idle | locating | confirmed | failed
   const [confirmedMetro, setConfirmedMetro] = useState(null);
@@ -906,10 +926,14 @@ function LocationQuestion({
 
   const showTyping = selectedChip === "✍️ I'll type it in" || geoStatus === 'failed';
 
+  const visibleLocationChips = hideOnlineChip
+    ? LOCATION_CHIPS.filter(c => c !== '💻 Online community only')
+    : LOCATION_CHIPS;
+
   return (
     <div>
       <div className="cdd-chip-row">
-        {LOCATION_CHIPS.map(chip => (
+        {visibleLocationChips.map(chip => (
           <button
             key={chip}
             type="button"
@@ -951,9 +975,9 @@ function LocationQuestion({
   );
 }
 
-function CardGrid({ id, cards, selectedCard, onSelect }) {
+function CardGrid({ id, cards, selectedCard, onSelect, cols }) {
   return (
-    <div className="cdd-card-grid">
+    <div className={`cdd-card-grid${cols === 3 ? ' three' : ''}`}>
       {cards.map(card => (
         <div
           key={card.name}
@@ -1441,6 +1465,42 @@ export default function CategoryDeepDivePage() {
   const [textValues,    setTextValues]    = useState(location.state?.textValues ?? {});
   const [metroKeys,     setMetroKeys]     = useState(location.state?.metroKeys ?? {});
   const [placeLabels,   setPlaceLabels]   = useState(location.state?.placeLabels ?? {});
+  const [roles,         setRoles]         = useState(location.state?.roles ?? []);
+  const [saveSkillsToProfile, setSaveSkillsToProfile] = useState(true);
+
+  // Pre-fill prof-skills / proj-skills from the signed-in user's saved
+  // profile skills, but only on first load — never when Back is restoring a
+  // previously-answered picker (location.state already carries that answer).
+  useEffect(() => {
+    const skillsId = category === 'professional' ? 'prof-skills' : category === 'project' ? 'proj-skills' : null;
+    if (!skillsId) return;
+    if (location.state?.chips?.[skillsId]?.length) return; // Back is restoring this
+    if (chips[skillsId]?.length) return; // already has an answer this session
+    api.get('/api/users/profile')
+      .then(({ profile }) => {
+        if (profile?.skills?.length) {
+          setChips(prev => (prev[skillsId]?.length ? prev : { ...prev, [skillsId]: profile.skills }));
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
+
+  // Pre-fill "Company or school" from the profile the same way, when there's
+  // no saved answer yet.
+  useEffect(() => {
+    if (category !== 'professional') return;
+    if (location.state?.textValues?.['prof-org']) return;
+    if (textValues['prof-org']) return;
+    api.get('/api/users/profile')
+      .then(({ profile }) => {
+        if (profile?.school_company) {
+          setTextValues(prev => (prev['prof-org'] ? prev : { ...prev, 'prof-org': profile.school_company }));
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category]);
 
   // A search handed off from Quick Find's own slider continues at that
   // value; arriving fresh (no refineFilters yet) seeds from the user's saved
@@ -1492,6 +1552,42 @@ export default function CategoryDeepDivePage() {
   const setMetroKey   = (id, key)   => setMetroKeys(prev => ({ ...prev, [id]: key }));
   const setPlaceLabel = (id, label) => setPlaceLabels(prev => ({ ...prev, [id]: label }));
 
+  // Multi-select where one option (e.g. "Any stage") is exclusive with the
+  // rest — same mutual-exclusion idea as toggleAgeBand, generalised.
+  const toggleExclusiveChip = (id, label, exclusiveLabel) =>
+    setChips(prev => {
+      const cur = prev[id] || [];
+      let next;
+      if (label === exclusiveLabel) {
+        next = cur.includes(exclusiveLabel) ? [] : [exclusiveLabel];
+      } else {
+        const withoutExclusive = cur.filter(c => c !== exclusiveLabel);
+        next = withoutExclusive.includes(label) ? withoutExclusive.filter(c => c !== label) : [...withoutExclusive, label];
+      }
+      return { ...prev, [id]: next };
+    });
+
+  // The merged "Where and how will you work together?" question. Picking
+  // Remote internally sets chips['project-location'] to the same marker the
+  // old standalone LocationQuestion chip used, so createPrefills/handleNext's
+  // existing searchMode derivation keeps working unchanged. Leaving Remote
+  // for another card (or deselecting it) clears that forced marker so the
+  // real LocationQuestion starts fresh.
+  const REMOTE_CARD = 'Fully remote / online';
+  // CardGrid calls onSelect(id, card.name) — matched here (id is always
+  // 'proj-location' for this grid, kept only so the signature lines up).
+  const handleProjLocationCard = (_id, name) => {
+    const next = cards['proj-location'] === name ? null : name;
+    toggleCard('proj-location', name);
+    if (next === REMOTE_CARD) {
+      setLocationChip('project-location', '💻 Online community only');
+      setMetroKey('project-location', null);
+      setPlaceLabel('project-location', '');
+    } else if (chips['project-location']?.[0] === '💻 Online community only') {
+      setLocationChip('project-location', null);
+    }
+  };
+
   const showCustom = (id) =>
     setCustomVisible(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -1508,13 +1604,42 @@ export default function CategoryDeepDivePage() {
   };
 
   // ── Progress ──
+  // Chip-array lengths already count each selected skill (prof-skills /
+  // proj-skills are stored as chips), so roles need their own term — one
+  // point per role, same unit the prompt asks for.
   const progress = useMemo(() => {
     const chipCount = Object.values(chips).reduce((n, arr) => n + arr.length, 0);
     const cardCount = Object.values(cards).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length;
     const textCount = Object.values(textValues).filter(v => v.trim()).length;
-    const total = chipCount + cardCount + textCount;
+    const rolesCount = roles.length;
+    const total = chipCount + cardCount + textCount + rolesCount;
     return Math.min((total / (content.totalItems * 0.2)) * 100, 100);
-  }, [chips, cards, textValues, content.totalItems]);
+  }, [chips, cards, textValues, roles, content.totalItems]);
+
+  // Project only: which answers belong to the visible path(s), so a
+  // Building-only answer never gets sent once someone has switched to
+  // Joining (and vice versa) — the hidden group's state is kept, just not sent.
+  const projPath = cards['proj-path'] ?? null;
+  const showBuildingGroup = projPath === 'Building a team' || projPath === 'Open to either';
+  const showJoiningGroup = projPath === 'Joining a project' || projPath === 'Open to either';
+  const isJoiningOnly = projPath === 'Joining a project';
+
+  function visibleProjectAnswers() {
+    const BUILDING_IDS = { chips: ['proj-offer'], cards: ['proj-stage'], text: [] };
+    const JOINING_IDS = { chips: ['proj-want-roles', 'proj-return', 'proj-pref-stage'], cards: ['proj-experience'], text: [] };
+    const hiddenChipIds = new Set([
+      ...(!showBuildingGroup ? BUILDING_IDS.chips : []),
+      ...(!showJoiningGroup ? JOINING_IDS.chips : []),
+    ]);
+    const hiddenCardIds = new Set([
+      ...(!showBuildingGroup ? BUILDING_IDS.cards : []),
+      ...(!showJoiningGroup ? JOINING_IDS.cards : []),
+    ]);
+    const visibleChips = Object.fromEntries(Object.entries(chips).filter(([id]) => !hiddenChipIds.has(id)));
+    const visibleCards = Object.fromEntries(Object.entries(cards).filter(([id]) => !hiddenCardIds.has(id)));
+    const visibleRoles = showBuildingGroup ? roles : [];
+    return { chips: visibleChips, cards: visibleCards, roles: visibleRoles };
+  }
 
   useEffect(() => {
     if (!CATEGORY_CONTENT[category]) {
@@ -1522,21 +1647,52 @@ export default function CategoryDeepDivePage() {
     }
   }, [category, navigate]);
 
+  // Best-effort save of whatever Deep Dive has learned about this person's
+  // profile — new skills (if the picker's checkbox is on) and, for
+  // Professional, the title/org fields. Never blocks navigation; a failure
+  // here just means the profile doesn't pick up these fields this time.
+  function saveCollabProfile() {
+    const skillsId = category === 'professional' ? 'prof-skills' : category === 'project' ? 'proj-skills' : null;
+    const addSkills = saveSkillsToProfile && skillsId ? (chips[skillsId] ?? []) : [];
+    const headline = category === 'professional' ? (textValues['prof-title'] || '').trim() : '';
+    const schoolCompany = category === 'professional' ? (textValues['prof-org'] || '').trim() : '';
+    if (!addSkills.length && !headline && !schoolCompany) return;
+    api.patch('/api/users/profile/collab', {
+      ...(addSkills.length ? { addSkills } : {}),
+      ...(headline ? { headline } : {}),
+      ...(schoolCompany ? { schoolCompany } : {}),
+    }).catch(err => console.error('[CategoryDeepDivePage] profile collab save failed:', err));
+  }
+
   // ── Navigate next ──
   const handleNext = () => {
     const refineFilters = { ...(location.state?.refineFilters ?? {}), maxDistance };
-    const answers = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters };
-    // Preserve this history entry so browser Back restores the search answers.
-    window.history.replaceState({ ...window.history.state, usr: answers }, '');
+    // The full (unfiltered) answers — this is what seeds this page's own
+    // state again if the person comes Back from Discovery, so the hidden
+    // group's answers survive the round trip, not just in-session switches.
+    const fullAnswers = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters, roles };
+    window.history.replaceState({ ...window.history.state, usr: fullAnswers }, '');
+    // What actually travels to Discovery — for Project, only the visible
+    // path's answers (Part 4: "don't send hidden-group answers").
+    const projectOverrides = category === 'project' ? visibleProjectAnswers() : null;
+    const sentAnswers = projectOverrides
+      ? { ...fullAnswers, chips: projectOverrides.chips, cards: projectOverrides.cards, roles: projectOverrides.roles }
+      : fullAnswers;
     // Best-effort — the Deep Dive's own save of the radius choice. Never
     // blocks navigation; failing here still lets this search use `maxDistance`.
     api.put('/api/users/max-distance', { maxDistanceMiles: maxDistance }).catch(() => {});
-    navigate('/hive-discovery', { state: answers });
+    saveCollabProfile();
+    navigate('/hive-discovery', { state: sentAnswers });
   };
   const createPrefills = () => {
     const locationId = `${category === 'specialized' ? 'spec' : category}-location`;
+    const projectOverrides = category === 'project' ? visibleProjectAnswers() : null;
+    saveCollabProfile();
     return {
-      chips, cards, textValues,
+      chips: projectOverrides?.chips ?? chips,
+      cards: projectOverrides?.cards ?? cards,
+      textValues,
+      roles: projectOverrides?.roles ?? roles,
       searchMetroKey: metroKeys[locationId] ?? null,
       searchPlaceLabel: placeLabels[locationId] || null,
       searchMode: chips[locationId]?.[0] === '💻 Online community only' ? 'online' : 'area',
@@ -1768,6 +1924,37 @@ export default function CategoryDeepDivePage() {
           )}
 
           <div className="cdd-section">
+            <div className="cdd-section-label">What do you do?</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+              <div>
+                <label className="field-label" htmlFor="prof-title">Role or title</label>
+                <input
+                  id="prof-title"
+                  className="cdd-text-input"
+                  type="text"
+                  maxLength={80}
+                  value={textValues['prof-title'] || ''}
+                  onChange={e => setTextValues(prev => ({ ...prev, 'prof-title': e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="field-label" htmlFor="prof-org">
+                  Company or school <span className="cdd-optional">(from your profile)</span>
+                </label>
+                <input
+                  id="prof-org"
+                  className="cdd-text-input"
+                  type="text"
+                  maxLength={120}
+                  value={textValues['prof-org'] || ''}
+                  onChange={e => setTextValues(prev => ({ ...prev, 'prof-org': e.target.value }))}
+                />
+              </div>
+            </div>
+            <p className="cdd-hint">Shows on your card in Professional Hives, e.g. "Software Engineer · CSUN". Saves to your profile.</p>
+          </div>
+
+          <div className="cdd-section">
             <div className="cdd-section-label">What&apos;s your primary professional goal right now?</div>
             <CardGrid
               id="prof-primary-goal"
@@ -1814,6 +2001,16 @@ export default function CategoryDeepDivePage() {
               onCustomAdd={addCustom}
               customLabel="+ My industry"
               customPlaceholder="Type your industry or field..."
+            />
+          </div>
+
+          <div className="cdd-section">
+            <div className="cdd-section-label">What skills do you bring?</div>
+            <SkillPicker
+              value={chips['prof-skills'] || []}
+              onChange={skills => setChips(prev => ({ ...prev, 'prof-skills': skills }))}
+              saveToProfile={saveSkillsToProfile}
+              onSaveToggleChange={setSaveSkillsToProfile}
             />
           </div>
 
@@ -2031,7 +2228,21 @@ export default function CategoryDeepDivePage() {
         {category === 'project' && (<>
 
           <div className="cdd-section">
-            <div className="cdd-section-label">What type of Hive are you looking for?</div>
+            <div className="cdd-section-label">Are you joining a project or building a team?</div>
+            <CardGrid
+              id="proj-path"
+              cols={3}
+              cards={PROJECT_CARDS_PATH}
+              selectedCard={cards['proj-path'] ?? null}
+              onSelect={toggleCard}
+            />
+            <p className="cdd-hint">Your answer decides which questions come next.</p>
+          </div>
+
+          <div className="cdd-section">
+            <div className="cdd-section-label">
+              {isJoiningOnly ? 'What kind of project do you want to join?' : 'What kind of project is it?'}
+            </div>
             <ChipGroup
               id="proj-types"
               chips={PROJECT_CHIPS_TYPES}
@@ -2050,24 +2261,32 @@ export default function CategoryDeepDivePage() {
           </div>
 
           <div className="cdd-section">
-            <div className="cdd-section-label">What city or area are you in?</div>
-            <LocationQuestion
-              selectedChip={chips['project-location']?.[0] ?? null}
-              savedMetroKey={metroKeys['project-location']}
-              onSelectChip={label => setLocationChip('project-location', label)}
-              cityText={textValues['project-city'] || ''}
-              onCityTextChange={val => setTextValues(prev => ({ ...prev, 'project-city': val }))}
-              onMetroKeyChange={key => setMetroKey('project-location', key)}
-              onPlaceLabelChange={label => setPlaceLabel('project-location', label)}
+            <div className="cdd-section-label">Where and how will you work together?</div>
+            <CardGrid
+              id="proj-location"
+              cards={PROJECT_CARDS_LOCATION}
+              selectedCard={cards['proj-location'] ?? null}
+              onSelect={handleProjLocationCard}
             />
+            {cards['proj-location'] && cards['proj-location'] !== REMOTE_CARD && (<>
+              <div style={{ marginTop: 14 }}>
+                <LocationQuestion
+                  hideOnlineChip
+                  selectedChip={chips['project-location']?.[0] ?? null}
+                  savedMetroKey={metroKeys['project-location']}
+                  onSelectChip={label => setLocationChip('project-location', label)}
+                  cityText={textValues['project-city'] || ''}
+                  onCityTextChange={val => setTextValues(prev => ({ ...prev, 'project-city': val }))}
+                  onMetroKeyChange={key => setMetroKey('project-location', key)}
+                  onPlaceLabelChange={label => setPlaceLabel('project-location', label)}
+                />
+              </div>
+              <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
+            </>)}
           </div>
 
-          {chips['project-location']?.[0] !== '💻 Online community only' && (
-            <DistanceQuestion value={maxDistance} onChange={setMaxDistance} />
-          )}
-
           <div className="cdd-section">
-            <div className="cdd-section-label">What&apos;s your primary collaboration goal?</div>
+            <div className="cdd-section-label">What&apos;s your main goal?</div>
             <CardGrid
               id="proj-primary-goal"
               cards={PROJECT_CARDS_PRIMARY_GOAL}
@@ -2077,17 +2296,9 @@ export default function CategoryDeepDivePage() {
           </div>
 
           <div className="cdd-section">
-            <div className="cdd-section-label">What stage is your project at?</div>
-            <CardGrid
-              id="proj-stage"
-              cards={PROJECT_CARDS_STAGE}
-              selectedCard={cards['proj-stage'] ?? null}
-              onSelect={toggleCard}
-            />
-          </div>
-
-          <div className="cdd-section">
-            <div className="cdd-section-label">What industry or space is your project in?</div>
+            <div className="cdd-section-label">
+              {isJoiningOnly ? 'What industries interest you?' : 'What industry or space is it in?'}
+            </div>
             <ChipGroup
               id="proj-industry"
               chips={PROJECT_CHIPS_INDUSTRY}
@@ -2100,72 +2311,123 @@ export default function CategoryDeepDivePage() {
               customInputVal={customInput['proj-industry'] || ''}
               onCustomChange={handleCustomInput}
               onCustomAdd={addCustom}
-              customLabel="+ My industry"
+              customLabel="+ Something else"
               customPlaceholder="Enter your industry or space..."
             />
           </div>
 
           <div className="cdd-section">
-            <div className="cdd-section-label">What skills are you bringing to the table?</div>
-            <ChipGroup
-              id="proj-skills-bringing"
-              chips={PROJECT_CHIPS_SKILLS_BRINGING}
-              selected={chips['proj-skills-bringing'] || []}
-              onToggle={toggleChip}
-              customizable
-              customAdded={customAdded['proj-skills-bringing'] || []}
-              customVisible={!!customVisible['proj-skills-bringing']}
-              onShowCustom={showCustom}
-              customInputVal={customInput['proj-skills-bringing'] || ''}
-              onCustomChange={handleCustomInput}
-              onCustomAdd={addCustom}
-              customLabel="+ My skill"
-              customPlaceholder="Enter a skill you're bringing..."
+            <div className="cdd-section-label">What skills do you bring?</div>
+            <SkillPicker
+              value={chips['proj-skills'] || []}
+              onChange={skills => setChips(prev => ({ ...prev, 'proj-skills': skills }))}
+              saveToProfile={saveSkillsToProfile}
+              onSaveToggleChange={setSaveSkillsToProfile}
             />
           </div>
 
-          <div className="cdd-section">
-            <div className="cdd-section-label">
-              What skills is your project missing?{' '}
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9.5px', fontWeight: 300, color: '#b0a880' }}>
-                (what do you need?)
-              </span>
+          {!projPath && <p className="cdd-hint">Your answer decides which questions come next.</p>}
+
+          {showBuildingGroup && (<>
+            <GroupHead text="Building a team" sub="4 questions" />
+
+            <div className="cdd-section">
+              <div className="cdd-section-label">What stage is your project at?</div>
+              <CardGrid
+                id="proj-stage"
+                cols={3}
+                cards={PROJECT_CARDS_STAGE}
+                selectedCard={cards['proj-stage'] ?? null}
+                onSelect={toggleCard}
+              />
             </div>
-            <ChipGroup
-              id="proj-skills-needed"
-              chips={PROJECT_CHIPS_SKILLS_NEEDED}
-              selected={chips['proj-skills-needed'] || []}
-              onToggle={toggleChip}
-              customizable
-              customAdded={customAdded['proj-skills-needed'] || []}
-              customVisible={!!customVisible['proj-skills-needed']}
-              onShowCustom={showCustom}
-              customInputVal={customInput['proj-skills-needed'] || ''}
-              onCustomChange={handleCustomInput}
-              onCustomAdd={addCustom}
-              customLabel="+ Something else"
-              customPlaceholder="Describe the skill or role you need..."
-            />
-          </div>
 
-          <div className="cdd-section">
-            <div className="cdd-section-label">What role are you filling or looking for?</div>
-            <ChipGroup
-              id="proj-roles"
-              chips={PROJECT_CHIPS_ROLES}
-              selected={chips['proj-roles'] || []}
-              onToggle={toggleChip}
-              customizable
-              customAdded={customAdded['proj-roles'] || []}
-              customVisible={!!customVisible['proj-roles']}
-              onShowCustom={showCustom}
-              customInputVal={customInput['proj-roles'] || ''}
-              onCustomChange={handleCustomInput}
-              onCustomAdd={addCustom}
-              customLabel="+ My role"
-              customPlaceholder="Enter your specific role..."
-            />
-          </div>
+            <div className="cdd-section">
+              <div className="cdd-section-label">Who do you need?</div>
+              <RoleBuilder
+                value={roles}
+                onChange={setRoles}
+                projectTypes={chips['proj-types'] || []}
+              />
+            </div>
+
+            <div className="cdd-section">
+              <div className="cdd-section-label">What&apos;s your funding situation?</div>
+              <FundingCardRow
+                id="proj-funding"
+                cards={PROJECT_CARDS_FUNDING}
+                selectedCard={cards['proj-funding'] ?? null}
+                onSelect={toggleCard}
+              />
+            </div>
+
+            <div className="cdd-section">
+              <div className="cdd-section-label">What can you offer collaborators?</div>
+              <ChipGroup
+                id="proj-offer"
+                chips={PROJECT_CHIPS_OFFER}
+                selected={chips['proj-offer'] || []}
+                onToggle={toggleChip}
+              />
+              <p className="cdd-hint">Pick all that apply. People joining answer the same options, so you only meet people who want what you can offer.</p>
+            </div>
+          </>)}
+
+          {showJoiningGroup && (<>
+            <GroupHead text="Joining a project" sub="4 questions" />
+
+            <div className="cdd-section">
+              <div className="cdd-section-label">What role(s) do you want to play?</div>
+              <RoleWishlist
+                value={chips['proj-want-roles'] || []}
+                onChange={roles => setChips(prev => ({ ...prev, 'proj-want-roles': roles }))}
+                projectTypes={chips['proj-types'] || []}
+                selectedSkills={chips['proj-skills'] || []}
+              />
+              <p className="cdd-hint">Add as many as you're open to. Owners see these on your join request.</p>
+            </div>
+
+            <div className="cdd-section">
+              <div className="cdd-section-label">What&apos;s your experience level?</div>
+              <CardGrid
+                id="proj-experience"
+                cards={PROJECT_CARDS_EXPERIENCE}
+                selectedCard={cards['proj-experience'] ?? null}
+                onSelect={toggleCard}
+              />
+            </div>
+
+            <div className="cdd-section">
+              <div className="cdd-section-label">What are you looking for in return?</div>
+              <ChipGroup
+                id="proj-return"
+                chips={PROJECT_CHIPS_OFFER}
+                selected={chips['proj-return'] || []}
+                onToggle={toggleChip}
+              />
+              <p className="cdd-hint">Pick everything you'd say yes to. Same options project owners pick from.</p>
+            </div>
+
+            <div className="cdd-section">
+              <div className="cdd-section-label">
+                What stage do you want to join at? <span className="cdd-optional">(optional)</span>
+              </div>
+              <div className="cdd-chip-row">
+                {PROJECT_CHIPS_PREF_STAGE.map(chip => (
+                  <button
+                    key={chip}
+                    type="button"
+                    className={`cdd-chip${(chips['proj-pref-stage'] || []).includes(chip) ? ' selected' : ''}`}
+                    onClick={() => toggleExclusiveChip('proj-pref-stage', chip, '🔀 Any stage')}
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>)}
+
+          <GroupHead text="How you work" sub="Everyone" />
 
           <div className="cdd-section">
             <div className="cdd-section-label">Work style preference?</div>
@@ -2188,7 +2450,9 @@ export default function CategoryDeepDivePage() {
           </div>
 
           <div className="cdd-section">
-            <div className="cdd-section-label">How long is your project timeline?</div>
+            <div className="cdd-section-label">
+              {isJoiningOnly ? 'How long do you want to commit?' : 'How long is your project timeline?'}
+            </div>
             <ChipGroup
               id="proj-timeline"
               chips={PROJECT_CHIPS_TIMELINE}
@@ -2199,36 +2463,16 @@ export default function CategoryDeepDivePage() {
           </div>
 
           <div className="cdd-section">
-            <div className="cdd-section-label">Where do you prefer to collaborate?</div>
-            <CardGrid
-              id="proj-location"
-              cards={PROJECT_CARDS_LOCATION}
-              selectedCard={cards['proj-location'] ?? null}
-              onSelect={toggleCard}
-            />
-          </div>
-
-          <div className="cdd-section">
-            <div className="cdd-section-label">What&apos;s your funding situation?</div>
-            <FundingCardRow
-              id="proj-funding"
-              cards={PROJECT_CARDS_FUNDING}
-              selectedCard={cards['proj-funding'] ?? null}
-              onSelect={toggleCard}
-            />
-          </div>
-
-          <div className="cdd-section">
             <div className="cdd-section-label">
-              Describe your project or what you want to build{' '}
-              <span style={{ fontFamily: "'DM Sans', sans-serif", fontSize: '9.5px', fontWeight: 300, color: '#b0a880' }}>
-                (optional)
-              </span>
+              Anything else?{' '}
+              <span className="cdd-optional">(optional)</span>
             </div>
             <textarea
               className="cdd-textarea"
               style={{ height: '80px', resize: 'none' }}
-              placeholder="e.g. Building a React app that connects freelancers with local businesses. I'm the developer — need a designer and marketer. MVP stage, 10hrs/week commitment, fully remote..."
+              placeholder={isJoiningOnly
+                ? "e.g. Product designer with 4 years in fintech. Want to help an early team ship their first app…"
+                : "e.g. Shooting a 12-minute short in LA this spring. Script is done, we shoot weekends in March…"}
               value={textValues['proj-notes'] || ''}
               onChange={e => setTextValues(prev => ({ ...prev, 'proj-notes': e.target.value }))}
             />

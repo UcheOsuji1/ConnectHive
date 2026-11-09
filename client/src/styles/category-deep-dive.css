@@ -166,6 +166,9 @@
   font-weight: 500;
 }
 
+.cdd-chip:disabled { opacity: .4; cursor: not-allowed; }
+.cdd-chip:disabled:hover { border-color: #d8d0bc; color: #4a4030; }
+
 .cdd-chip-dashed {
   padding: 7px 15px;
   border: 0.5px dashed #c49a28;
@@ -462,3 +465,68 @@
 }
 
 .cdd-nav-next:hover { background: #d4aa38; }
+
+/* ── Tags, 3-col grid, create button (Prompt 77) ────────────── */
+.tag { font-size: 9px; font-weight: 600; letter-spacing: .08em; border-radius: 20px; padding: 2px 8px; text-transform: uppercase; }
+.tag-new { background: #1a1508; color: #f5f0e8; }
+.tag-chg { background: #fdf0cf; color: #7a5a0c; border: 0.5px solid #e2c56e; }
+.cdd-chip.added { border-color: #c49a28; box-shadow: inset 0 0 0 0.5px #c49a28; }
+.cdd-card-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cdd-card-hours { font-size: 10.5px; font-weight: 500; color: #a07a14; margin-bottom: 3px; }
+.cdd-nav-create {
+  height: 44px; padding: 0 20px; border: 0.5px solid #c49a28; border-radius: 8px; background: #fff;
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; letter-spacing: .1em;
+  text-transform: uppercase; color: #8a6510; cursor: pointer;
+}
+
+/* ── Group headers (Building a team / Joining a project / How you work) ── */
+.group-head { display: flex; align-items: center; gap: 12px; margin: 36px 0 18px; }
+.group-head-line { flex: 1; height: 0.5px; background: #c49a28; }
+.group-head-text { font-family: 'Cormorant Garamond', serif; font-size: 20px; font-style: italic; color: #8a6510; }
+.group-head-sub { font-size: 11px; color: #7d7158; letter-spacing: .04em; }
+
+/* ── Skill picker (SkillPicker.jsx) ──────────────────────────── */
+.sp { border: 0.5px solid #d8d0bc; border-radius: 12px; background: #fff; padding: 14px; }
+.sp-sel-label { font-size: 11px; font-weight: 500; color: #6f6656; margin-bottom: 8px; }
+.sp-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px 6px 13px; border-radius: 20px;
+  background: #c49a28; color: #0f0d07; font-size: 12.5px; font-weight: 500; border: none; font-family: inherit;
+}
+.sp-chip-x {
+  display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(15, 13, 7, .12); border: none; cursor: pointer; padding: 0; color: #0f0d07;
+}
+.sp-search { position: relative; margin: 14px 0 10px; }
+.sp-search input { width: 100%; height: 40px; border: 0.5px solid #d8d0bc; border-radius: 8px; padding: 0 12px 0 36px; font-family: inherit; font-size: 13px; background: #fdfbf6; box-sizing: border-box; }
+.sp-search svg { position: absolute; left: 12px; top: 12px; }
+.sp-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; }
+.sp-tab { flex: 0 0 auto; padding: 6px 12px; border-radius: 8px; border: 0.5px solid #e2dacb; background: #fdfbf6; font-family: inherit; font-size: 11.5px; color: #4a4030; cursor: pointer; white-space: nowrap; min-height: 32px; }
+.sp-tab.active { border-color: #c49a28; background: #fffbf0; color: #1a1508; font-weight: 500; }
+.sp-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 0.5px solid #efe8da; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #4a4030; }
+.check input { width: 16px; height: 16px; accent-color: #c49a28; margin: 0; }
+
+/* ── Role builder (RoleBuilder.jsx) ──────────────────────────── */
+.role { border: 0.5px solid #d8d0bc; border-radius: 12px; background: #fff; padding: 14px 16px; margin-bottom: 10px; }
+.role-top { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; }
+.field-label { display: block; font-size: 10px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: #6f6656; margin-bottom: 5px; }
+.role-name { flex: 1 1 260px; }
+.role-name input { width: 100%; height: 40px; border: 0.5px solid #d8d0bc; border-radius: 8px; padding: 0 12px; font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 600; color: #1a1508; background: #fffdf7; box-sizing: border-box; }
+.stepper { display: flex; align-items: center; border: 0.5px solid #d8d0bc; border-radius: 8px; height: 40px; overflow: hidden; }
+.stepper button { width: 36px; height: 40px; border: none; background: #fdfbf6; font-size: 16px; color: #4a4030; cursor: pointer; }
+.stepper span { width: 34px; text-align: center; font-size: 13px; font-weight: 500; }
+.icon-btn { width: 40px; height: 40px; border: 0.5px solid #e2dacb; border-radius: 8px; background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #7d7158; }
+.role-row { margin-top: 12px; }
+.mini-chip { padding: 5px 11px; border: 0.5px solid #d8d0bc; border-radius: 20px; background: #fff; font-size: 11.5px; color: #4a4030; font-family: inherit; cursor: pointer; min-height: 30px; }
+.mini-chip.selected { background: #1a1508; border-color: #1a1508; color: #f5f0e8; }
+.skill-tag { display: inline-flex; align-items: center; gap: 6px; padding: 5px 7px 5px 11px; border-radius: 20px; background: #fdf0cf; border: 0.5px solid #e2c56e; font-size: 11.5px; color: #4a3608; }
+.skill-tag button { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border: none; border-radius: 50%; background: rgba(74, 54, 8, .12); padding: 0; cursor: pointer; color: #4a3608; }
+.add-role { width: 100%; height: 46px; border: 0.5px dashed #c49a28; border-radius: 12px; background: #fffdf7; font-family: inherit; font-size: 13px; font-weight: 500; color: #8a6510; cursor: pointer; }
+.add-role:disabled { opacity: .5; cursor: not-allowed; }
+.suggest { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.suggest-label { font-size: 11.5px; color: #7d7158; margin-right: 2px; }
+
+@media (max-width: 600px) {
+  .cdd-card-grid, .cdd-card-grid.three { grid-template-columns: minmax(0, 1fr); }
+  .cdd-title { font-size: 30px; }
+}

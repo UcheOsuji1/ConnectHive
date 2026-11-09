@@ -7,4 +7,5 @@ export const LIMITS = {
   hiveJoins:    { windowMs: 60 * 60 * 1000,      max: 20 }, // 20 per hour (join requests + instant joins)
   hiveCreation: { windowMs: 24 * 60 * 60 * 1000, max: 5  }, // 5 per day
   reports:      { windowMs: 60 * 60 * 1000,      max: 10 }, // 10 per hour
+  profileCollab: { windowMs: 60 * 60 * 1000,     max: 30 }, // 30 per hour
 };

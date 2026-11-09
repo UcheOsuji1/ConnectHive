@@ -57,6 +57,75 @@ export const updateProfile = async (req, res) => {
   }
 };
 
+// Partial Deep Dive saves (Professional title/org, and skills picked while
+// answering Project/Professional questions). Deliberately separate from
+// setupProfile's full upsert, which would overwrite every other column
+// (including the three payment handles) with whatever happens to be absent
+// from this narrower request body.
+export const updateCollabProfile = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { headline, schoolCompany, addSkills } = req.body ?? {};
+
+    const sets = [];
+    const vals = [];
+    let i = 1;
+
+    if (typeof headline === 'string' && headline.trim()) {
+      const h = headline.trim();
+      if (h.length > 80) return res.status(400).json({ error: 'Headline must be 80 characters or fewer.' });
+      sets.push(`headline = $${i++}`); vals.push(h);
+    }
+    if (typeof schoolCompany === 'string' && schoolCompany.trim()) {
+      const s = schoolCompany.trim();
+      if (s.length > 120) return res.status(400).json({ error: 'Company or school must be 120 characters or fewer.' });
+      sets.push(`school_company = $${i++}`); vals.push(s);
+    }
+
+    if (addSkills !== undefined) {
+      if (!Array.isArray(addSkills) || addSkills.length > 30) {
+        return res.status(400).json({ error: 'addSkills must be an array of at most 30 strings.' });
+      }
+      const cleaned = addSkills.map(s => String(s).trim()).filter(Boolean);
+      if (cleaned.some(s => s.length > 60)) {
+        return res.status(400).json({ error: 'Each skill must be 60 characters or fewer.' });
+      }
+      const { rows: [existing] } = await query('SELECT skills FROM profiles WHERE user_id = $1', [userId]);
+      const current = existing?.skills ?? [];
+      // Dedupe case-insensitively on the text after the emoji, same rule the
+      // Deep Dive's skill picker uses — "Python" and "🐍 Python" are one skill.
+      const labelOf = s => s.split(' ').slice(1).join(' ').toLowerCase() || s.toLowerCase();
+      const seen = new Set(current.map(labelOf));
+      const merged = [...current];
+      for (const s of cleaned) {
+        const label = labelOf(s);
+        if (!seen.has(label)) { seen.add(label); merged.push(s); }
+      }
+      sets.push(`skills = $${i++}`); vals.push(JSON.stringify(merged));
+    }
+
+    if (!sets.length) {
+      const { rows: [current] } = await query(
+        'SELECT headline, school_company, skills FROM profiles WHERE user_id = $1', [userId],
+      );
+      if (!current) return res.status(404).json({ error: 'Profile not found.' });
+      return res.json({ headline: current.headline, schoolCompany: current.school_company, skills: current.skills });
+    }
+
+    sets.push('updated_at = NOW()');
+    vals.push(userId);
+    const { rows: [updated] } = await query(
+      `UPDATE profiles SET ${sets.join(', ')} WHERE user_id = $${i} RETURNING headline, school_company, skills`,
+      vals,
+    );
+    if (!updated) return res.status(404).json({ error: 'Profile not found.' });
+    res.json({ headline: updated.headline, schoolCompany: updated.school_company, skills: updated.skills });
+  } catch (err) {
+    console.error('[users/updateCollabProfile]', err);
+    res.status(500).json({ error: 'Failed to save your profile.' });
+  }
+};
+
 export const setupProfile = async (req, res) => {
   try {
     const userId = req.userId;

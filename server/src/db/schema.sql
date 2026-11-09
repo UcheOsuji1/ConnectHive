@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 -- Idempotent column additions for databases created before these columns existed
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS connection_purposes JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS social_preferences  JSONB NOT NULL DEFAULT '{}';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS headline TEXT;
 
 -- ─── Categories ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS categories (

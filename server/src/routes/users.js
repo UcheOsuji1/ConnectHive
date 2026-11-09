@@ -1,7 +1,9 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   getProfile,
   updateProfile,
+  updateCollabProfile,
   setupProfile,
   setLocationFromCoords,
   setMaxDistance,
@@ -12,11 +14,22 @@ import {
   getMemberActivity,
 } from '../controllers/usersController.js';
 import { requireAuth } from '../middleware/auth.js';
+import { LIMITS } from '../lib/limits.js';
 
 const router = Router();
 
+// Keyed on the authenticated user, not IP — requireAuth runs first.
+const profileCollabLimiter = rateLimit({
+  ...LIMITS.profileCollab,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId,
+  message: { error: 'Too many profile updates — slow down and try again later.' },
+});
+
 router.get('/profile',               requireAuth, getProfile);
 router.put('/profile',               requireAuth, updateProfile);
+router.patch('/profile/collab',      requireAuth, profileCollabLimiter, updateCollabProfile);
 router.post('/profile/setup',        requireAuth, setupProfile);
 router.post('/location',             requireAuth, setLocationFromCoords);
 router.put('/max-distance',          requireAuth, setMaxDistance);
