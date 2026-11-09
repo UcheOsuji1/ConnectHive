@@ -39,6 +39,8 @@ import { startEmailOutboxJob } from './jobs/emailOutboxJob.js';
 import { startDigestJob } from './jobs/digestJob.js';
 import { reportProblem } from './lib/reportProblem.js';
 import { MAX_MEMBERS_MIN, MAX_MEMBERS_CAP } from './lib/policy.js';
+import { publicCatalog } from './lib/toolCatalog.js';
+import { PLATFORM_FEE_PERCENT } from './lib/billingPolicy.js';
 
 // ── Required env check — fail fast before binding a port ─────────────────────
 {
@@ -136,6 +138,17 @@ app.get('/api/config', (_req, res) => {
     googleSignIn: !!process.env.GOOGLE_CLIENT_ID,
     maxMembersMin: MAX_MEMBERS_MIN,
     maxMembersCap: MAX_MEMBERS_CAP,
+  });
+});
+
+// ── Public product-info (the /product page, read before login) ───────────────
+app.get('/api/public/product-info', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({
+    tools: publicCatalog()
+      .filter(t => t.available)
+      .map(({ key, name, description, defaultOn }) => ({ key, name, description, defaultOn })),
+    platformFeePercent: PLATFORM_FEE_PERCENT,
   });
 });
 

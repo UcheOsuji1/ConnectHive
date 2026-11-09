@@ -8,7 +8,7 @@ const FOOTER_LINKS = [
   '/find-your-hive', '/create-hive', '/profile-setup', '/home', '/my-hive',
   '/privacy', '/terms', '/safety',
 ];
-const HEADER_LINKS_LOGGED_OUT = ['/', '/about', '/find-your-hive', '/create-hive', '/login', '/signup'];
+const HEADER_LINKS_LOGGED_OUT = ['/', '/about', '/find-your-hive', '/create-hive', '/login', '/signup', '/product'];
 
 test.describe('Flow 1 — Public site', () => {
   test('landing page loads clean', async ({ page }) => {

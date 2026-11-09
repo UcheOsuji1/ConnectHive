@@ -3,6 +3,7 @@ import HiveBillingPage from './pages/hive/HiveBillingPage.jsx';
 import AdminMonetizationPage from './pages/AdminMonetizationPage.jsx';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LandingPage from './pages/LandingPage';
+import ProductPage from './pages/ProductPage.jsx';
 import SignUpPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import ProfileSetupPage from './pages/ProfileSetupPage';
@@ -78,6 +79,7 @@ export default function App() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/product" element={<ProductPage />} />
       <Route path="/signup" element={<SignUpPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />

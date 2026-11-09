@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { goToFindYourHive } from './FindYourHiveCTA.jsx';
 import '../styles/public-header.css';
@@ -13,7 +13,7 @@ import '../styles/public-header.css';
 // the hero animation instead of being a fixed bar.
 
 const NAV = [
-  { label: 'Product' },
+  { label: 'Product', to: '/product' },
   { label: 'Subscriptions' },
   { label: 'Safety', to: '/safety' },
   { label: 'Support', to: '/contact' },
@@ -25,6 +25,7 @@ const NAV = [
 export default function PublicHeader({ overlay = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const ref = useRef(null);
   const [scrolled, setScrolled] = useState(false);
 
@@ -63,9 +64,15 @@ export default function PublicHeader({ overlay = false }) {
       </Link>
 
       <div className="th-ph-links" aria-label="Site navigation">
-        {NAV.map(({ label, to }) => (to
-          ? <Link key={label} to={to}>{label}</Link>
-          : <span key={label} title="Coming soon">{label}</span>))}
+        {NAV.map(({ label, to }) => {
+          if (!to) return <span key={label} title="Coming soon">{label}</span>;
+          const active = location.pathname === to;
+          return (
+            <Link key={label} to={to} className={active ? 'th-ph-active' : undefined} aria-current={active ? 'page' : undefined}>
+              {label}
+            </Link>
+          );
+        })}
       </div>
 
       <div className="th-ph-actions">
