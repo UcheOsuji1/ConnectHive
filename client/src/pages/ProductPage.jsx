@@ -107,6 +107,30 @@ const TAB_ICON = [
   <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9L12 3Z" />,
 ];
 
+// Mirrors PURPOSE_WEIGHTS, PAIR_WEIGHTS and BLEND in server/src/lib/compatibility.js —
+// each bar width here is that factor's weight divided by the largest weight in its
+// group (never the raw weight itself; those stay server-only, not exposed via any API).
+// Update this if PURPOSE_WEIGHTS, PAIR_WEIGHTS or BLEND change.
+const MATCH_FACTORS = {
+  blend: { purpose: 60, people: 40 },
+  hiveFit: [
+    { label: 'Category', width: 100, note: 'The kind of connection you picked' },
+    { label: 'Interests', width: 57, note: 'Your interests and the Hive’s tags' },
+    { label: 'Goals', width: 57, note: 'What you want and what the Hive values' },
+    { label: 'Skills', width: 29, note: 'What you bring and who it’s looking for' },
+    { label: 'Location', width: 14, note: 'How close you are' },
+    { label: 'Schedule', width: 14, note: 'How often you want to meet, and how often it does' },
+    { label: 'Personality', width: 14, note: 'Your style and the Hive’s vibe' },
+  ],
+  peopleFit: [
+    { label: 'Interests', width: 100, note: 'What you’re both into' },
+    { label: 'Goals', width: 71, note: 'What you’re both after' },
+    { label: 'Personality', width: 57, note: 'How your styles mesh' },
+    { label: 'Availability', width: 43, note: 'When you’re both free' },
+    { label: 'Age', width: 14, note: 'The age ranges you each prefer' },
+  ],
+};
+
 function money(v) { return '$' + Math.round(v).toLocaleString('en-US'); }
 
 export default function ProductPage() {
@@ -207,9 +231,123 @@ export default function ProductPage() {
             </div>
             <div className="steps">
               <div className="step"><span className="step-no">01</span><h3>Tell us what you’re looking for</h3><p>Your interests, what you want out of a group, and where you are. It takes a few minutes and shapes everything after.</p></div>
-              <div className="step"><span className="step-no">02</span><h3>See how well each Hive fits</h3><p>Every Hive shows a fit score built from two things: how well its purpose matches yours, and how well you match the people already in it.</p></div>
+              <div className="step"><span className="step-no">02</span><h3>See how well each Hive fits</h3><p>Every Hive shows a fit score built from two things: how well its purpose matches yours, and how well you match the people already in it. <a href="#matching" style={{ fontWeight: 700, textDecoration: 'none' }}>How matching works →</a></p></div>
               <div className="step"><span className="step-no">03</span><h3>Request to join</h3><p>The owner sees why you’d be a good fit and welcomes you in. Every Hive stays a group of people who chose each other.</p></div>
               <div className="step"><span className="step-no">04</span><h3>Show up together</h3><p>Chat, post, make plans and RSVP, with tools picked for what your Hive actually does.</p></div>
+            </div>
+          </div>
+        </section>
+
+        {/* MATCHMAKING */}
+        <section className="sec" id="matching" style={{ background: 'linear-gradient(180deg,#0d0907,#0a0705)', scrollMarginTop: 'var(--header-h)' }}>
+          <div className="wrap">
+            <div className="sec-head">
+              <div>
+                <div className="eyebrow">Matchmaking</div>
+                <h2>Matched on purpose. <em>And on people.</em></h2>
+              </div>
+              <p className="lead">Most apps match you to a topic or to a person. TrueHive checks both: whether a Hive is built for what you want, and whether you’ll click with the people already in it.</p>
+            </div>
+
+            <div className="mx">
+              <div className="mx-card">
+                <div className="mx-top"><h3>Hive fit</h3><div className="mx-share"><strong>{MATCH_FACTORS.blend.purpose}%</strong><span>of your score</span></div></div>
+                <p className="mx-q">Is this Hive built for what you want?</p>
+                <div className="fx">
+                  {MATCH_FACTORS.hiveFit.map(f => (
+                    <div className="fx-row" key={f.label}><b>{f.label}</b><span className="fx-bar"><i style={{ width: `${f.width}%` }} /></span><small>{f.note}</small></div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mx-core">
+                <div className="mx-hex"><div><strong>92%</strong><span>Your match</span></div></div>
+                <span className="mx-plus">HIVE FIT + PEOPLE FIT</span>
+                <p>One score from 0 to 100, shown on every Hive before you ask to join.</p>
+              </div>
+
+              <div className="mx-card">
+                <div className="mx-top"><h3>People fit</h3><div className="mx-share"><strong>{MATCH_FACTORS.blend.people}%</strong><span>of your score</span></div></div>
+                <p className="mx-q">Will you click with the people in it?</p>
+                <div className="fx">
+                  {MATCH_FACTORS.peopleFit.map(f => (
+                    <div className="fx-row" key={f.label}><b>{f.label}</b><span className="fx-bar"><i style={{ width: `${f.width}%` }} /></span><small>{f.note}</small></div>
+                  ))}
+                </div>
+                <p style={{ margin: '18px 0 0', fontSize: 13, lineHeight: 1.55, color: '#a99884' }}>Compared with every current member, one by one.</p>
+              </div>
+            </div>
+
+            <div className="mx-rules">
+              <div className="rule"><svg viewBox="0 0 24 24" aria-hidden="true">{TAB_ICON[0]}</svg><strong>One clash counts</strong><p>Your people fit isn’t just an average. If you’d clash with even one member, the score drops, so every Hive stays comfortable for the people already in it.</p></div>
+              <div className="sample" aria-label="Example match card">
+                <div className="sample-top"><b>LA Social Circle</b><span className="pill-green">92% match</span></div>
+                <small>Why it’s a match · Example</small>
+                <ul className="reasons">
+                  <li>Strong interest overlap with this Hive</li>
+                  <li>Shared goals alignment</li>
+                  <li>Great location fit</li>
+                  <li>Great personal chemistry with Maya</li>
+                </ul>
+                <p className="sample-note">Every score comes with the reasons behind it.</p>
+              </div>
+              <div className="rule"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="m6 6 12 12" /></svg><strong>Blocked means never matched</strong><p>Anyone you block is never matched with you, and you’re never shown to them.</p></div>
+            </div>
+
+            <div className="ways">
+              <div className="way"><span className="step-no">QF</span><div><strong>Quick Find</strong><p>Answer a few questions and get your best matches, ranked.</p></div></div>
+              <div className="way"><span className="step-no">DD</span><div><strong>Deep Dive</strong><p>Explore one category at a time, with filters for distance, age ranges, and in person or online.</p></div></div>
+              <div className="way"><span className="step-no"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21v-1.5a7 7 0 0 1 14 0V21" /></svg></span><div><strong>Owners see it too</strong><p>When you ask to join, the owner sees your Hive fit and personal compatibility, so great matches stand out.</p></div></div>
+            </div>
+          </div>
+        </section>
+
+        {/* AI (COMING SOON) */}
+        <section className="sec ai" id="ai">
+          <div className="wrap">
+            <div className="sec-head">
+              <div>
+                <span className="soon">Coming soon</span>
+                <h2 style={{ marginTop: 22 }}>AI that explains. <em>People still decide.</em></h2>
+              </div>
+              <p className="lead">The match score stays simple and transparent. AI adds what numbers can’t: the why, in plain words, for the people joining and the people running each Hive.</p>
+            </div>
+
+            <div className="ai-grid">
+              <div className="ai-feats">
+                <div className="ai-feat"><span className="ai-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 13.8 8.2 19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3ZM18.5 15.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" /></svg></span><div><em className="who">For people finding a Hive</em><h3>Why this Hive fits you</h3><p>Open any Hive and get a short, personal explanation of why it matches you, plus the highlights worth knowing.</p></div></div>
+                <div className="ai-feat"><span className="ai-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M3 20v-1.5a6 6 0 0 1 12 0V20M16 11l2 2 4-4" /></svg></span><div><em className="who">For Hive owners</em><h3>AI Fit Analysis</h3><p>When someone asks to join, get a two or three sentence summary, their top strengths, and one thing to consider.</p></div></div>
+                <div className="ai-feat"><span className="ai-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h4M4 12h10M4 6h16M17 15l3 3-3 3" /></svg></span><div><em className="who">For everyone</em><h3>Smarter ranking</h3><p>AI reads Hive descriptions and profiles more like a person would, then reorders your top matches so the best ones rise.</p></div></div>
+              </div>
+
+              <div className="fit" aria-label="Example of an AI Fit Analysis an owner would see">
+                <div className="fit-head"><span>Join request</span><span>Example</span></div>
+                <div className="fit-body">
+                  <div className="fit-who"><span className="avatar">AR</span><div><b>Alex Rivera</b><small>wants to join LA Creative Collective</small></div></div>
+                  <div className="scores">
+                    <div className="score"><span>Hive fit</span><strong>88%</strong></div>
+                    <div className="score"><span>Personal compatibility</span><strong>81%</strong></div>
+                  </div>
+                  <div className="ai-box">
+                    <div className="lbl"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true"><path d="M12 3 13.8 8.2 19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" /></svg>AI Fit Analysis</div>
+                    <p>Alex’s design and photography background lines up closely with what this Hive is looking for, and their goal of collaborating on real projects matches its focus. Their availability fits the weekly meetups.</p>
+                    <ul>
+                      <li>Shared interest in photography and visual design</li>
+                      <li>Wants to collaborate, which the Hive values</li>
+                      <li>Strong personal compatibility with current members</li>
+                    </ul>
+                    <p className="consider"><b>To consider:</b> Alex is new to LA, so in-person attendance may take a few weeks to settle.</p>
+                  </div>
+                  <div className="fit-actions"><span>Decline</span><span className="ok">Accept</span></div>
+                  <p className="fit-foot">AI never accepts or declines anyone. You do.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="ai-rules">
+              <div className="rule"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5 21v-1.5a7 7 0 0 1 14 0V21" /></svg><strong>People decide</strong><p>AI explains and suggests. Owners decide who joins, and you decide where you go.</p></div>
+              <div className="rule"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10.5" rx="2.5" /><path d="M8 10V7.5a4 4 0 0 1 8 0V10" /></svg><strong>Your profile, not your chats</strong><p>It only reads what’s in profiles, Hive descriptions and join requests. Never your private messages.</p></div>
+              <div className="rule"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 13.8 8.2 19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" /></svg><strong>Always labeled</strong><p>Anything written by AI is marked as AI, so you always know what you’re reading.</p></div>
             </div>
           </div>
         </section>
@@ -410,7 +548,8 @@ export default function ProductPage() {
             <h2 style={{ fontSize: 'clamp(36px,4vw,54px)', margin: '20px 0 40px' }}>Good to know</h2>
             <div className="faq">
               <details open><summary>Is TrueHive free?</summary><p>Yes. Joining Hives and creating free Hives costs nothing. Paid Hives are optional memberships that individual owners choose to offer.</p></details>
-              <details><summary>How does matching work?</summary><p>Each Hive gets a fit score from two things: how well its purpose lines up with what you’re looking for, and how well you match the people already in it. You see the score before you ask to join.</p></details>
+              <details><summary>How does matching work?</summary><p>Every Hive gets one score built from two parts. Hive fit (60%) checks how well its purpose matches yours. People fit (40%) checks how well you match the members already in it. You see the score and the reasons behind it before you ask to join.</p></details>
+              <details><summary>Does TrueHive use AI?</summary><p>Not yet, but it’s coming. AI will explain matches in plain language and help owners review join requests. It never decides who gets in: owners do. And it only reads what’s in profiles and join requests, never your private chats.</p></details>
               <details><summary>Can I be in more than one Hive?</summary><p>Yes. Most people mix a few: a social crew, a professional circle, a trip they’re planning.</p></details>
               <details><summary>Who can start a Paid Hive?</summary><p>Anyone with TrueHive Plus, once they’ve connected payouts through Stripe and described what members get.</p></details>
               <details><summary>What happens if I cancel a membership?</summary><p>It stops renewing and you keep access until the end of the period you already paid for. No surprise charges.</p></details>
