@@ -42,3 +42,24 @@
   /* Same, for the original 545px stage on very wide screens. */
   .orbital{top:calc(100% - 392.4px)}
   .thread-map{height:545px}}
+
+/* ── BACKGROUND TEST (Nov 2026) ─────────────────────────────────────────────
+   Trying a new background photo for section 10.
+   ORIGINAL: ./assets/los-angeles-sunset.webp (still set in the .skyline rule
+   near the top of this file, untouched).
+   TO GO BACK TO THE ORIGINAL: delete this whole block.
+   TO TRY ANOTHER PHOTO: put it in ./assets/ and change the file name below. */
+.skyline{background-image:url('./assets/bg-hilltop-sunset.webp')}
+/* Desktop and tablet: show the whole width of the photo along the bottom of the
+   section instead of zooming it up to fill the section's full height, fade it
+   into the dark backdrop above, and keep the slow drift gentle. */
+@media (min-width:751px){
+  .skyline{
+    inset:-5% -5% 0;
+    background:linear-gradient(180deg,#0b0a12 0,#0b0a12 calc(100% - 64vw),rgba(11,10,18,0) calc(100% - 48vw)),
+               url('./assets/bg-hilltop-sunset.webp') center bottom/100% auto no-repeat,
+               #0b0a12;
+    animation-name:skyline-drift-soft;
+  }
+  @keyframes skyline-drift-soft{0%{transform:scale(1) translate3d(0,0,0)}100%{transform:scale(1.035) translate3d(0,-.4%,0)}}
+}
