@@ -18,7 +18,7 @@ const CATEGORIES = [
     key: 'social', dbName: 'Social Groups', short: 'Social Groups', name: 'Social Groups',
     count: '01 / 06', img: '/product/social.webp', alt: 'Friends laughing together over a meal',
     tagline: 'New friends, standing plans, a crew of your own.',
-    lead: 'Social Hives are for the part of life that’s better shared — the brunch regulars, the game-night group, the people you text when something’s happening.',
+    lead: 'Social Hives are for the part of life that’s better shared: the brunch regulars, the game-night group, the people you text when something’s happening.',
     perfect: ['Just moved and starting from zero', 'Turning acquaintances into a regular crew', 'Brunch clubs, game nights and run clubs'],
     examples: [{ name: 'LA Social Circle', where: 'In person · Los Angeles' }, { name: 'The Newcomers Club', where: 'In person' }, { name: 'Weekend Social Club', where: 'In person' }],
   },
@@ -26,14 +26,14 @@ const CATEGORIES = [
     key: 'professional', dbName: 'Professional Networking', short: 'Professional', name: 'Professional Networking',
     count: '02 / 06', img: '/product/professional.webp', alt: 'Professionals talking around a table',
     tagline: 'Careers grow through people.',
-    lead: 'Meet people in your field, trade advice and referrals, and find mentors who’ve already been where you’re headed — without the cold-message energy.',
+    lead: 'Meet people in your field, trade advice and referrals, and find mentors who’ve already been where you’re headed, without the cold-message energy.',
     perfect: ['Breaking into a new industry', 'Peer circles for founders, engineers and designers', 'Finding a mentor, or becoming one'],
     examples: [{ name: 'Career Collective', where: 'Hybrid · Online + LA' }, { name: 'Young Professionals', where: 'Hybrid' }],
   },
   {
     key: 'travel', dbName: 'Travel Buddies', short: 'Travel Buddies', name: 'Travel Buddies',
     count: '03 / 06', img: '/product/travel.webp', alt: 'Friends on a trip together',
-    tagline: 'The trip in the group chat — actually happening.',
+    tagline: 'The trip in the group chat, actually happening.',
     lead: 'Find people who want to go where you want to go, then plan the whole thing in one place: dates, the itinerary, who owes what.',
     perfect: ['Weekend road trips and day hikes', 'Finding people to split the rental with', 'Big trips planned months ahead'],
     examples: [{ name: 'Weekend Explorers', where: 'In person · Southern California' }, { name: 'Passport Collective', where: 'Worldwide' }],
@@ -42,7 +42,7 @@ const CATEGORIES = [
     key: 'project', dbName: 'Project Collaboration', short: 'Projects', name: 'Project Collaboration',
     count: '04 / 06', img: '/product/projects.webp', alt: 'A team working together on a project',
     tagline: 'Ideas need teams.',
-    lead: 'Find the developers, designers, writers and founders who want to build what you’re building — then keep the work moving together.',
+    lead: 'Find the developers, designers, writers and founders who want to build what you’re building, then keep the work moving together.',
     perfect: ['Side projects and early startups', 'Hackathon and portfolio teams', 'Creative collaborations of every kind'],
     examples: [{ name: 'Startup Builders', where: 'Online' }, { name: 'The Creators Studio', where: 'Hybrid' }],
   },
@@ -50,7 +50,7 @@ const CATEGORIES = [
     key: 'events', dbName: 'Event Buddies', short: 'Event Buddies', name: 'Event Buddies',
     count: '05 / 06', img: '/product/events.webp', alt: 'Friends celebrating at a concert',
     tagline: 'Concerts, meetups, and experiences are better with great company.',
-    lead: 'Never skip a show again because nobody could make it. Find people who are already going — or who’ll go if you do.',
+    lead: 'Never skip a show again because nobody could make it. Find people who are already going, or who’ll go if you do.',
     perfect: ['Concerts and festivals', 'Games, watch parties and comedy nights', 'Trying the thing you wouldn’t try alone'],
     examples: [{ name: 'Event Circle', where: 'In person · Los Angeles' }, { name: 'Live Music Lovers', where: 'In person · LA' }],
   },
@@ -58,7 +58,7 @@ const CATEGORIES = [
     key: 'specialized', dbName: 'Specialized Groups', short: 'Specialized', name: 'Specialized Groups',
     count: '06 / 06', img: '/product/specialized.webp', alt: 'People painting together in a studio',
     tagline: 'Whatever your niche, find others who care just as much.',
-    lead: 'Accountability crews, study circles, language exchanges, book clubs — if it matters to you, there’s room for a Hive built around it.',
+    lead: 'Accountability crews, study circles, language exchanges, book clubs: if it matters to you, there’s room for a Hive built around it.',
     perfect: ['Fitness and habit accountability', 'Study and learning circles', 'Hobbies too specific for anywhere else'],
     examples: [{ name: 'Growth Collective', where: 'Hybrid · Online + local' }, { name: 'Fitness Accountability Crew', where: 'In person' }, { name: 'Study Collective', where: 'Online' }],
   },
@@ -112,6 +112,8 @@ function money(v) { return '$' + Math.round(v).toLocaleString('en-US'); }
 export default function ProductPage() {
   usePageMeta('Product', 'TrueHive matches you with Hives — small, purpose-based groups with the chat, plans and tools to make it happen.');
 
+  useEffect(() => { document.title = 'Product | TrueHive'; }, []);
+
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -164,7 +166,7 @@ export default function ProductPage() {
             <div>
               <div className="eyebrow">The product</div>
               <h1>Find your people.<br /><em>Then do something together.</em></h1>
-              <p className="lead" style={{ maxWidth: 540 }}>TrueHive matches you with Hives — small, purpose-based groups built around what you actually want to do. Then it gives every Hive the chat, plans and tools to make it happen.</p>
+              <p className="lead" style={{ maxWidth: 540 }}>TrueHive matches you with Hives: small, purpose-based groups built around what you actually want to do. Then it gives every Hive the chat, plans and tools to make it happen.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 36 }}>
                 <button type="button" className="btn-gold" onClick={() => goToFindYourHive({ user, navigate, label: 'Find Your Hive', source: 'product' })}>
                   Find Your Hive <span aria-hidden="true">→</span>
@@ -207,7 +209,7 @@ export default function ProductPage() {
               <div className="step"><span className="step-no">01</span><h3>Tell us what you’re looking for</h3><p>Your interests, what you want out of a group, and where you are. It takes a few minutes and shapes everything after.</p></div>
               <div className="step"><span className="step-no">02</span><h3>See how well each Hive fits</h3><p>Every Hive shows a fit score built from two things: how well its purpose matches yours, and how well you match the people already in it.</p></div>
               <div className="step"><span className="step-no">03</span><h3>Request to join</h3><p>The owner sees why you’d be a good fit and welcomes you in. Every Hive stays a group of people who chose each other.</p></div>
-              <div className="step"><span className="step-no">04</span><h3>Show up together</h3><p>Chat, post, make plans and RSVP — with tools picked for what your Hive actually does.</p></div>
+              <div className="step"><span className="step-no">04</span><h3>Show up together</h3><p>Chat, post, make plans and RSVP, with tools picked for what your Hive actually does.</p></div>
             </div>
           </div>
         </section>
@@ -294,7 +296,7 @@ export default function ProductPage() {
                 <div className="eyebrow">Inside every Hive</div>
                 <h2>Built for doing things, <em>not just talking about them.</em></h2>
               </div>
-              <p className="lead">Every Hive gets the essentials. Then {toolCount ?? '—'} tools cover the rest of what groups actually do — from finding a time that works to splitting the bill after.</p>
+              <p className="lead">Every Hive gets the essentials. Then {toolCount ?? '—'} tools cover the rest of what groups actually do, from finding a time that works to splitting the bill after.</p>
             </div>
 
             <div className="tools-base">
@@ -328,7 +330,7 @@ export default function ProductPage() {
                 <div className="eyebrow dark">Paid Hives</div>
                 <h2>Turn your community <em>into a membership.</em></h2>
               </div>
-              <p className="lead">Most Hives are free, and always will be. When you’re ready to offer more — workshops, coaching, resources, a members-only space — you can charge a monthly membership.</p>
+              <p className="lead">Most Hives are free, and always will be. When you’re ready to offer more, like workshops, coaching, resources or a members-only space, you can charge a monthly membership.</p>
             </div>
 
             <div className="paid-grid">
@@ -337,7 +339,7 @@ export default function ProductPage() {
                 <div className="owner-steps">
                   <div className="ostep"><span className="step-no">01</span><div><h3>Get TrueHive Plus</h3><p>Paid Hives are part of <b>TrueHive Plus</b>. Plans and pricing live on the Subscriptions page.</p></div></div>
                   <div className="ostep"><span className="step-no">02</span><div><h3>Connect payouts with Stripe</h3><p>Stripe verifies your identity and pays out to your bank. TrueHive never sees a card number.</p></div></div>
-                  <div className="ostep"><span className="step-no">03</span><div><h3>Set your price and your promise</h3><p>Choose a monthly price, then describe what members get and your cancellation terms — so everyone knows the deal before they pay.</p></div></div>
+                  <div className="ostep"><span className="step-no">03</span><div><h3>Set your price and your promise</h3><p>Choose a monthly price, then describe what members get and your cancellation terms, so everyone knows the deal before they pay.</p></div></div>
                   <div className="ostep"><span className="step-no">04</span><div><h3>Publish and grow</h3><p>Members join through Stripe’s secure checkout. You keep <b>{keepPercent != null ? `${keepPercent}%` : '…'}</b> of every membership, minus card processing.</p></div></div>
                 </div>
               </div>
@@ -367,8 +369,8 @@ export default function ProductPage() {
               <div className="cmp-row" role="row"><div role="columnheader">&nbsp;</div><div role="columnheader">Free Hive</div><div role="columnheader">Paid Hive</div></div>
               <div className="cmp-row" role="row"><div role="rowheader">Cost to join</div><div role="cell">Free</div><div role="cell">Monthly membership, set by the owner</div></div>
               <div className="cmp-row" role="row"><div role="rowheader">Chat, feed, plans and all {toolCount ?? '—'} tools</div><div role="cell" className="yes">Included</div><div role="cell" className="yes">Included</div></div>
-              <div className="cmp-row" role="row"><div role="rowheader">Members-only benefits</div><div role="cell">—</div><div role="cell" className="yes">Workshops, resources, sessions — your call</div></div>
-              <div className="cmp-row" role="row"><div role="rowheader">Owner earns</div><div role="cell">—</div><div role="cell">{keepPercent != null ? `${keepPercent}%` : '…'} of each membership, minus card processing</div></div>
+              <div className="cmp-row" role="row"><div role="rowheader">Members-only benefits</div><div role="cell">Not included</div><div role="cell" className="yes">Workshops, resources, sessions: your call</div></div>
+              <div className="cmp-row" role="row"><div role="rowheader">Owner earns</div><div role="cell">Not applicable</div><div role="cell">{keepPercent != null ? `${keepPercent}%` : '…'} of each membership, minus card processing</div></div>
               <div className="cmp-row" role="row"><div role="rowheader">Who can create one</div><div role="cell">Anyone</div><div role="cell">TrueHive Plus members</div></div>
             </div>
 
@@ -389,7 +391,7 @@ export default function ProductPage() {
                 <div className="eyebrow">Safety &amp; control</div>
                 <h2>Small groups, <em>clear rules.</em></h2>
               </div>
-              <p className="lead">Every Hive has an owner who decides who joins and how it runs — and everyone has the tools to step away from anyone, anytime.</p>
+              <p className="lead">Every Hive has an owner who decides who joins and how it runs, and everyone has the tools to step away from anyone, anytime.</p>
             </div>
             <div className="safe-grid">
               <div className="safe"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M3 20v-1.5a6 6 0 0 1 12 0V20M17 8h5M19.5 5.5v5" /></svg><strong>Join requests</strong><p>Owners review who wants in before welcoming them.</p></div>
@@ -409,7 +411,7 @@ export default function ProductPage() {
             <div className="faq">
               <details open><summary>Is TrueHive free?</summary><p>Yes. Joining Hives and creating free Hives costs nothing. Paid Hives are optional memberships that individual owners choose to offer.</p></details>
               <details><summary>How does matching work?</summary><p>Each Hive gets a fit score from two things: how well its purpose lines up with what you’re looking for, and how well you match the people already in it. You see the score before you ask to join.</p></details>
-              <details><summary>Can I be in more than one Hive?</summary><p>Yes. Most people mix a few — a social crew, a professional circle, a trip they’re planning.</p></details>
+              <details><summary>Can I be in more than one Hive?</summary><p>Yes. Most people mix a few: a social crew, a professional circle, a trip they’re planning.</p></details>
               <details><summary>Who can start a Paid Hive?</summary><p>Anyone with TrueHive Plus, once they’ve connected payouts through Stripe and described what members get.</p></details>
               <details><summary>What happens if I cancel a membership?</summary><p>It stops renewing and you keep access until the end of the period you already paid for. No surprise charges.</p></details>
             </div>

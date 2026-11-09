@@ -33,7 +33,7 @@ export const TOOL_CATALOG = [
     available: true,
   },
   {
-    key: 'signups', name: 'Sign-up lists', description: 'Let members claim a slot — bring a dish, a ride seat, a task.',
+    key: 'signups', name: 'Sign-up lists', description: 'Let members claim a slot: bring a dish, a ride seat, a task.',
     icon: 'clipboard', scope: 'both',
     defaultOn: ['Social Groups', 'Event Buddies', 'Travel Buddies'],
     available: true,

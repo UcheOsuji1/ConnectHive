@@ -164,7 +164,7 @@
 .pp .faq summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 64px; font-size: 17px; font-weight: 600; color: #fff; }
 .pp .faq summary::-webkit-details-marker { display: none; }
 .pp .faq summary::after { content: "+"; font-size: 24px; color: #e9ba62; font-weight: 400; }
-.pp .faq details[open] summary::after { content: "\2013"; }
+.pp .faq details[open] summary::after { content: "\2212"; }
 .pp .faq details p { margin: 0 0 22px; font-size: 15.5px; line-height: 1.7; color: #c7b6a3; max-width: 720px; }
 
 /* cta */
