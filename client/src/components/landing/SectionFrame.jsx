@@ -146,7 +146,7 @@ function openLinksInWholeTab(doc, handlersRef) {
   return () => doc.removeEventListener('click', onClick);
 }
 
-export default function SectionFrame({ id, src, title, label, background, loadWhenVisible = false, placeholderHeight = 1200, onAction, onNavigate }) {
+export default function SectionFrame({ id, src, title, label, background, loadWhenVisible = false, placeholderHeight = 1200, injectCss, onAction, onNavigate }) {
   const sectionRef = useRef(null);
   const frameRef = useRef(null);
   // Kept in a ref so new handler functions on re-render don't reload the frame.
@@ -210,6 +210,12 @@ export default function SectionFrame({ id, src, title, label, background, loadWh
       const doc = frame.contentDocument;
       if (!doc) return;
       cleanups.splice(0).forEach((fn) => fn());
+      if (injectCss && !doc.querySelector('style[data-th-inject]')) {
+        const extra = doc.createElement('style');
+        extra.setAttribute('data-th-inject', '');
+        extra.textContent = injectCss;
+        doc.head.appendChild(extra);
+      }
       rules = collectRules(doc);
       cleanups.push(openLinksInWholeTab(doc, handlersRef));
       resize();

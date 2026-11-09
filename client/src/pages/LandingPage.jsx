@@ -2,6 +2,7 @@ import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import SiteFooter from '../components/SiteFooter.jsx';
+import PublicHeader from '../components/PublicHeader.jsx';
 import SectionFrame from '../components/landing/SectionFrame.jsx';
 import { landingSections } from '../components/landing/landingSections.js';
 import { goToFindYourHive } from '../components/FindYourHiveCTA.jsx';
@@ -37,6 +38,8 @@ export default function LandingPage() {
   return (
     <>
       <main id="truehive-landing">
+        {/* The site header, laid over the hero (the hero's own copy is hidden). */}
+        <PublicHeader overlay />
         {landingSections.map((s) => (
           <SectionFrame key={s.id} {...s} onAction={handleAction} onNavigate={handleNavigate} />
         ))}

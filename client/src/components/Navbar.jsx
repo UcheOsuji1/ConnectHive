@@ -6,6 +6,7 @@ import NotificationBell from './NotificationBell.jsx';
 import TrueHiveMark from './TrueHiveMark.jsx';
 import TrueHiveWordmark from './TrueHiveWordmark.jsx';
 import VerifyStrip from './VerifyStrip.jsx';
+import PublicHeader from './PublicHeader.jsx';
 
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
@@ -51,6 +52,9 @@ export default function Navbar() {
     setUserMenuOpen(false);
     navigate('/');
   }
+
+  // Signed out: the same header as the landing page (components/PublicHeader).
+  if (!loading && !user) return <PublicHeader />;
 
   return (
     <>

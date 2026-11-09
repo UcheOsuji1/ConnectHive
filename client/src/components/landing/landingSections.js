@@ -8,6 +8,9 @@ export const landingSections = [
     title: 'Landing hero and Hive discovery showcase',
     label: 'Animated landing hero and Hive discovery showcase',
     background: '#050505',
+    // The real site header (components/PublicHeader) is laid over this
+    // section, so hide the section's own copy but keep the space it takes.
+    injectCss: '.tinder-inspired-header{visibility:hidden}',
   },
   {
     id: '03',
