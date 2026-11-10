@@ -7,6 +7,12 @@ import StarterHiveBadge from '../components/StarterHiveBadge.jsx';
 import DistanceSlider, { distanceLabel } from '../components/DistanceSlider.jsx';
 import '../styles/hive-discovery.css';
 import '../styles/find-your-hive.css';
+import socialGroupsPhoto from '../assets/categories/social-groups.jpg';
+import professionalPhoto from '../assets/categories/professional.jpg';
+import travelBuddiesPhoto from '../assets/categories/travel-buddies.jpg';
+import projectCollabPhoto from '../assets/categories/project-collab.jpg';
+import eventBuddiesPhoto from '../assets/categories/event-buddies.jpg';
+import specializedPhoto from '../assets/categories/specialized.jpg';
 
 function filterParams(filters) {
   const params = new URLSearchParams();
@@ -22,7 +28,7 @@ function filterParams(filters) {
 // monoline, stroked in gold, viewBox 0 0 24 24.
 const CATEGORIES = [
   {
-    key: 'social', name: 'Social Groups', dbName: 'Social Groups',
+    key: 'social', photoUrl: socialGroupsPhoto, photoPos: '50% 50%', photoPosWide: '50% 20%', name: 'Social Groups', dbName: 'Social Groups',
     desc: 'Friends, hangouts and expanding your circle',
     icon: (
       <>
@@ -33,7 +39,7 @@ const CATEGORIES = [
     ),
   },
   {
-    key: 'professional', name: 'Professional', dbName: 'Professional Networking',
+    key: 'professional', photoUrl: professionalPhoto, photoPos: '50% 50%', photoPosWide: '50% 30%', name: 'Professional', dbName: 'Professional Networking',
     desc: 'Network, mentors and career connections',
     icon: (
       <>
@@ -44,12 +50,12 @@ const CATEGORIES = [
     ),
   },
   {
-    key: 'travel', name: 'Travel Buddies', dbName: 'Travel Buddies',
+    key: 'travel', photoUrl: travelBuddiesPhoto, photoPos: '52% 50%', photoPosWide: '50% 30%', name: 'Travel Buddies', dbName: 'Travel Buddies',
     desc: 'Explore cities, trips and local adventures',
     icon: <path d="M3 13.5l18-6-3.5 9-4-2.5-2 4-1.5-5z" />,
   },
   {
-    key: 'project', name: 'Project Collab', dbName: 'Project Collaboration',
+    key: 'project', photoUrl: projectCollabPhoto, photoPos: '45% 50%', photoPosWide: '50% 34%', name: 'Project Collab', dbName: 'Project Collaboration',
     desc: 'Build startups, apps and creative work',
     icon: (
       <>
@@ -59,7 +65,7 @@ const CATEGORIES = [
     ),
   },
   {
-    key: 'event', name: 'Event Buddies', dbName: 'Event Buddies',
+    key: 'event', photoUrl: eventBuddiesPhoto, photoPos: '50% 50%', photoPosWide: '50% 40%', name: 'Event Buddies', dbName: 'Event Buddies',
     desc: 'Concerts, conferences and campus events',
     icon: (
       <>
@@ -69,7 +75,7 @@ const CATEGORIES = [
     ),
   },
   {
-    key: 'specialized', name: 'Specialized', dbName: 'Specialized Groups',
+    key: 'specialized', photoUrl: specializedPhoto, photoPos: '55% 50%', photoPosWide: '50% 34%', name: 'Specialized', dbName: 'Specialized Groups',
     desc: 'Niche groups for specific purposes',
     icon: <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.8L12 16.9 6.7 19.6l1.1-5.8L3.5 9.7l5.9-.8z" />,
   },
@@ -85,7 +91,7 @@ const CONN_LABELS = { online: 'Online', 'in-person': 'In-person', hybrid: 'Hybri
 // ── One hex cell ─────────────────────────────────────────────────────────────
 // Rendered as a real <button> — not a div with an onClick — so Tab reaches it
 // and Enter/Space activate it for free. No custom key handling needed.
-function HexCell({ cat, index, isSelected, count, onToggle }) {
+function HexCell({ cat, index, isSelected, onToggle }) {
   return (
     <div className="cellw" style={{ '--i': index }}>
       <div className="hexpad">
@@ -96,19 +102,11 @@ function HexCell({ cat, index, isSelected, count, onToggle }) {
           aria-pressed={isSelected}
         >
           <div className="hexin">
-            {/*
-              Category photo slot: Uche is adding these later. Drop an
-              <img className="hex-photo" src={cat.photoUrl} alt="" /> here,
-              directly above this comment and below nothing — it sits behind
-              the .hex-scrim and the content below via z-index, and never
-              touches .hexout/.hexin geometry (clip-path, size) at all.
-            */}
-            {cat.photoUrl && <img className="hex-photo" src={cat.photoUrl} alt="" />}
+            {cat.photoUrl && <img className="hex-photo" src={cat.photoUrl} alt="" decoding="async" draggable="false" style={{ objectPosition: cat.photoPos }} />}
             {cat.photoUrl && <div className="hex-scrim" aria-hidden="true" />}
             <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">{cat.icon}</svg>
             <div className="nm">{cat.name}</div>
             <div className="ds">{cat.desc}</div>
-            <div className="ct">{count === null ? '—' : count === 1 ? '1 HIVE' : `${count} HIVES`}</div>
           </div>
         </button>
       </div>
@@ -116,7 +114,45 @@ function HexCell({ cat, index, isSelected, count, onToggle }) {
   );
 }
 
-function Honeycomb({ rows, selected, counts, onToggle, startIndex = 0 }) {
+// ── Mobile: stacked hex banners ───────────────────────────────────────────────
+// One wide hexagon per row (pointed left/right ends). The wide shape matches
+// the landscape photos and leaves room for the description, which the hover-
+// only reveal on the honeycomb never shows on touch screens. The <button> is
+// unclipped so its focus ring stays visible; only the inner spans are clipped.
+function HexBannerList({ selected, onToggle }) {
+  return (
+    <div className="fyh-hexlist fyh-mobile-only" role="group" aria-label="Categories">
+      {CATEGORIES.map((cat, i) => {
+        const isSelected = selected === cat.name;
+        return (
+          <button
+            key={cat.key}
+            type="button"
+            className={`hexbar${isSelected ? ' on' : ''}`}
+            style={{ '--i': i }}
+            onClick={() => onToggle(cat.name)}
+            aria-pressed={isSelected}
+          >
+            <span className="hexbar-frame">
+              <span className="hexbar-in">
+                {cat.photoUrl && <img className="hexbar-photo" src={cat.photoUrl} alt="" decoding="async" draggable="false" style={{ objectPosition: cat.photoPosWide || cat.photoPos }} />}
+                <span className="hexbar-scrim" aria-hidden="true" />
+                <svg className="hexbar-ic" viewBox="0 0 24 24" aria-hidden="true">{cat.icon}</svg>
+                <span className="hexbar-text">
+                  <span className="hexbar-nm">{cat.name}</span>
+                  <span className="hexbar-ds">{cat.desc}</span>
+                </span>
+                <svg className="hexbar-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+              </span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Honeycomb({ rows, selected, onToggle, startIndex = 0 }) {
   let i = startIndex;
   return (
     <>
@@ -130,7 +166,6 @@ function Honeycomb({ rows, selected, counts, onToggle, startIndex = 0 }) {
                 cat={cat}
                 index={idx}
                 isSelected={selected === cat.name}
-                count={counts[cat.dbName] ?? null}
                 onToggle={onToggle}
               />
             );
@@ -142,7 +177,7 @@ function Honeycomb({ rows, selected, counts, onToggle, startIndex = 0 }) {
 }
 
 // ── Quick find ───────────────────────────────────────────────────────────────
-function QuickFind({ navigate }) {
+function QuickFind({ navigate, purposeWhere = 'on the right' }) {
   const [q, setQ]           = useState('');
   const [results, setResults] = useState([]);
   const [open, setOpen]     = useState(false);
@@ -232,7 +267,7 @@ function QuickFind({ navigate }) {
           </div>
         )}
       </div>
-      <p className="hint">Go straight to a Hive you already know. To be matched, pick a purpose on the right.</p>
+      <p className="hint">Go straight to a Hive you already know. To be matched, pick a purpose {purposeWhere}.</p>
     </div>
   );
 }
@@ -430,7 +465,6 @@ function MightSuitYou({ navigate, filters }) {
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function FindYourHivePage() {
   const [selected, setSelected] = useState(null);
-  const [categoryCounts, setCategoryCounts] = useState({});
   const [filters, setFilters] = useState({ location: '', metroKey: null, connection: [], groupSize: [], cadence: [], maxDistance: 50 });
   const [facets, setFacets] = useState({ locations: [], connectionOptions: [], sizeOptions: [], cadenceOptions: [] });
   const [refineOpen, setRefineOpen] = useState(false); // mobile accordion
@@ -450,11 +484,29 @@ export default function FindYourHivePage() {
     const timer = setTimeout(() => api.get(`/api/hives/filter-facets?${params.toString()}`)
       .then(data => { if (!cancelled) {
         setFacets(data);
-        if (data.categoryCounts) setCategoryCounts(Object.fromEntries(CATEGORIES.map(c => [c.dbName, data.categoryCounts[c.dbName] ?? 0])));
       } })
       .catch(() => {}), 250);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [filters]);
+
+  // Mobile: when the in-flow selection bar is below the screen, a floating
+  // copy of its action is shown (see .fyh-dock). position: sticky can't be
+  // used here because the global `body { overflow-x: hidden }` makes body the
+  // scroll container, which disables sticky for the whole page.
+  const selbarRef = useRef(null);
+  const [selbarBelow, setSelbarBelow] = useState(false);
+  useEffect(() => {
+    const el = selbarRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    // Show the dock until the whole bar (including its button) is on screen,
+    // and only when the bar is below the viewport, not scrolled past above it.
+    const io = new IntersectionObserver(([entry]) => {
+      const viewBottom = entry.rootBounds ? entry.rootBounds.bottom : window.innerHeight;
+      setSelbarBelow(entry.intersectionRatio < 1 && entry.boundingClientRect.bottom > viewBottom);
+    }, { threshold: [0, 0.25, 0.5, 0.75, 1] });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   const toggleHex = useCallback((name) => {
     setSelected(prev => (prev === name ? null : name));
@@ -479,7 +531,6 @@ export default function FindYourHivePage() {
   };
 
   const desktopRows = [CATEGORIES.slice(0, 3), CATEGORIES.slice(3, 6)];
-  const mobileRows   = [CATEGORIES.slice(0, 2), CATEGORIES.slice(2, 4), CATEGORIES.slice(4, 6)];
 
   return (
     <div className="fyh-root">
@@ -488,7 +539,7 @@ export default function FindYourHivePage() {
 
         {/* ── Mobile-only quick find (full width, ahead of everything) ── */}
         <div className="fyh-mobile-only fyh-quickfind-wrap">
-          <QuickFind navigate={navigate} />
+          <QuickFind navigate={navigate} purposeWhere="below" />
         </div>
 
         <aside className="side">
@@ -523,13 +574,11 @@ export default function FindYourHivePage() {
           </div>
 
           <div className="comb fyh-desktop-only">
-            <Honeycomb rows={desktopRows} selected={selected} counts={categoryCounts} onToggle={toggleHex} />
+            <Honeycomb rows={desktopRows} selected={selected} onToggle={toggleHex} />
           </div>
-          <div className="comb fyh-comb-mobile fyh-mobile-only">
-            <Honeycomb rows={mobileRows} selected={selected} counts={categoryCounts} onToggle={toggleHex} />
-          </div>
+          <HexBannerList selected={selected} onToggle={toggleHex} />
 
-          <div className="selbar">
+          <div className="selbar" ref={selbarRef}>
             <div>
               <div className="lb">YOUR SELECTED CATEGORY</div>
               {!selected
@@ -540,6 +589,12 @@ export default function FindYourHivePage() {
               FIND MY HIVE →
             </button>
           </div>
+          {selected && selbarBelow && (
+            <div className="fyh-dock" role="region" aria-label="Selected category">
+              <span className="fyh-dock-sel"><span className="lb">SELECTED</span>{selected}</span>
+              <button type="button" className="go" onClick={findHive} aria-label={`Find my Hive for ${selected}`}>FIND MY HIVE →</button>
+            </div>
+          )}
 
           <MightSuitYou navigate={navigate} filters={filters} />
 

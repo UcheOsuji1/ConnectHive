@@ -4,6 +4,7 @@
 
 .fyh-desktop-only { display: block; }
 .fyh-mobile-only   { display: none; }
+.fyh-dock { display: none; }
 
 .shell {
   display: flex; gap: 30px;
@@ -169,19 +170,25 @@
     linear-gradient(170deg, #332B24 0%, #221D18 55%, #181412 100%);
 }
 
-/* Category photo slot (Uche adding later) — sits behind the content layer,
-   never touches the hexout/hexin clip-path geometry above. */
-.hex-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; }
-.hex-scrim { position: absolute; inset: 0; background: rgba(20,17,16,.55); z-index: 1; }
+/* Photo layers preserve existing honeycomb geometry and animations. */
+.hex-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 50%; z-index: 0; pointer-events: none; user-select: none; }
+.hex-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20,17,16,.16), rgba(20,17,16,.68) 48%, rgba(20,17,16,.78)); z-index: 1; pointer-events: none; transition: background .22s ease; }
+/* Darker on hover/selected so the revealed description stays readable. */
+.cellw:hover .hex-scrim, .hexout.on .hex-scrim, .hexout:focus-visible .hex-scrim {
+  background: linear-gradient(180deg, rgba(20,17,16,.42), rgba(20,17,16,.80) 45%, rgba(20,17,16,.88));
+}
+.hex-photo ~ .ic { filter: drop-shadow(0 1px 4px rgba(0,0,0,.85)); }
+.hex-photo ~ .ds { color: rgba(255,255,255,.9); text-shadow: 0 1px 4px rgba(0,0,0,.85); }
 
 .hexin .ic { width: 32px; height: 32px; stroke: var(--gold); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; position: relative; z-index: 2; }
-.hexin .nm { color: #fff; font: 600 19px 'Cormorant Garamond', serif; text-align: center; padding: 0 34px; position: relative; z-index: 2; }
+.hexin .nm { text-shadow: 0 2px 8px rgba(0,0,0,.9); color: #fff; font: 600 19px 'Cormorant Garamond', serif; text-align: center; padding: 0 34px; position: relative; z-index: 2; }
 .hexin .ds {
   color: rgba(255,255,255,.72); font: 400 12.5px/1.4 'DM Sans', sans-serif; text-align: center; padding: 0 42px;
   max-height: 0; opacity: 0; overflow: hidden; transition: max-height .25s ease, opacity .25s ease; position: relative; z-index: 2;
 }
 .cellw:hover .hexin .ds, .hexout.on .hexin .ds { max-height: 50px; opacity: 1; }
-.hexin .ct { color: var(--gold); font: 700 10.5px 'DM Sans', sans-serif; letter-spacing: .12em; position: relative; z-index: 2; }
+/* Hive counts are intentionally hidden on the category hexes. */
+.hexin .ct { display: none; }
 
 /* ── Selection bar ────────────────────────────────────────────────────────── */
 .selbar {
@@ -252,7 +259,6 @@
 
   .fyh-quickfind-wrap  { order: 1; }
   .fyh-title-block     { order: 2; }
-  .fyh-comb-mobile     { order: 3; }
   .selbar              { order: 4; }
   .fyh-accordion       { order: 5; }
   .sugg                { order: 6; }
@@ -261,19 +267,68 @@
 
   .fyh-title-block h1 { font-size: 32px; }
 
-  /* 2 hexes per row, 3 rows — same lattice math, smaller --hexW. Because every
-     other value in the honeycomb block derives from --hexW via calc(), this
-     is the only line that needs to change for the grid to re-tessellate. */
-  .fyh-comb-mobile {
-    --hexW: clamp(132px, 40vw, 236px);
-    width: calc(var(--hexW) * 2.5);
+  /* Mobile categories: stacked hex banners (see HexBannerList). */
+  .fyh-hexlist { order: 3; display: flex; flex-direction: column; gap: 6px; width: 100%; }
+  .hexbar {
+    --tip: 22px;
+    display: block; width: 100%; border: 0; padding: 0; margin: 0; background: none; cursor: pointer;
+    font: inherit; color: inherit; text-align: left; -webkit-tap-highlight-color: transparent;
+    opacity: 0; animation: fyh-barIn .5s cubic-bezier(.16,.84,.44,1) both; animation-delay: calc(var(--i) * 60ms);
   }
-  .fyh-comb-mobile .hexin .ds { display: none; }
-  .fyh-comb-mobile .hexin .nm { padding: 0 18px; font-size: 15px; }
-  .fyh-comb-mobile .hexin .ic { width: 26px; height: 26px; }
+  @keyframes fyh-barIn { from { opacity: 0; translate: 0 12px; } to { opacity: 1; translate: 0 0; } }
+  .hexbar:focus-visible { outline: 3px solid var(--gold-dark); outline-offset: 3px; border-radius: 4px; }
+  .hexbar-frame, .hexbar-in {
+    display: block;
+    clip-path: polygon(var(--tip) 0, calc(100% - var(--tip)) 0, 100% 50%, calc(100% - var(--tip)) 100%, var(--tip) 100%, 0 50%);
+  }
+  .hexbar-frame { padding: 2px; background: rgba(201,162,74,.38); transition: background .22s ease, scale .15s ease; }
+  .hexbar.on .hexbar-frame { background: var(--gold); }
+  .hexbar:active .hexbar-frame { scale: .985; }
+  .hexbar-in {
+    position: relative; overflow: hidden; height: 64px; display: flex; align-items: center; gap: 12px;
+    padding: 0 calc(var(--tip) + 10px); background: #1C1815;
+  }
+  .hexbar-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; pointer-events: none; user-select: none; }
+  .hexbar-scrim {
+    position: absolute; inset: 0; z-index: 1; pointer-events: none; transition: background .22s ease;
+    background: linear-gradient(90deg, rgba(20,17,16,.84) 0%, rgba(20,17,16,.62) 55%, rgba(20,17,16,.42) 100%);
+  }
+  .hexbar.on .hexbar-scrim { background: linear-gradient(90deg, rgba(20,17,16,.88) 0%, rgba(20,17,16,.7) 55%, rgba(20,17,16,.5) 100%); }
+  .hexbar-ic, .hexbar-text, .hexbar-check { position: relative; z-index: 2; }
+  .hexbar-ic { flex: none; width: 24px; height: 24px; stroke: var(--gold); fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 3px rgba(0,0,0,.8)); }
+  .hexbar-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .hexbar-nm { color: #fff; font: 600 18px/1.15 'Cormorant Garamond', serif; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+  .hexbar-ds {
+    color: rgba(255,255,255,.88); font: 400 11.5px/1.3 'DM Sans', sans-serif; text-shadow: 0 1px 4px rgba(0,0,0,.85);
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+  }
+  .hexbar-check {
+    flex: none; width: 20px; height: 20px; stroke: var(--gold); fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
+    opacity: 0; scale: .6; transition: opacity .2s ease, scale .2s ease;
+  }
+  .hexbar.on .hexbar-check { opacity: 1; scale: 1; }
 
   .selbar { flex-direction: column; align-items: stretch; gap: 12px; }
   .selbar .go { margin-left: 0; width: 100%; justify-content: center; }
+  /* Floating action while the selection bar is below the screen (JS-driven:
+     sticky is disabled page-wide by body's overflow-x). */
+  .fyh-dock {
+    display: flex; align-items: center; gap: 12px; position: fixed; z-index: 40;
+    left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    background: #fff; border: 1px solid rgba(30,27,24,.10); border-radius: var(--radius-lg); padding: 10px 10px 10px 16px;
+    box-shadow: 0 10px 30px rgba(30,27,24,.18), 0 2px 8px rgba(30,27,24,.08);
+    animation: fyh-barIn .3s cubic-bezier(.16,.84,.44,1) both;
+  }
+  .fyh-dock-sel { flex: 1; min-width: 0; display: flex; flex-direction: column; font: 600 15px/1.2 'DM Sans', sans-serif; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fyh-dock-sel .lb { font: 700 10px 'DM Sans', sans-serif; letter-spacing: .14em; color: var(--gold); margin-bottom: 2px; }
+  .fyh-dock .go { flex: none; margin-left: 0; }
 
   .grid3 { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hexbar { animation: none !important; opacity: 1 !important; translate: 0 !important; }
+  .hexbar-frame, .hexbar-scrim, .hexbar-check { transition: none !important; }
+  .hexbar:active .hexbar-frame { scale: 1; }
+  .fyh-dock { animation: none !important; }
 }

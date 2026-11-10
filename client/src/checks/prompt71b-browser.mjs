@@ -87,7 +87,7 @@ try {
     check(captured.some(r => r.path.includes('filter-facets?') && r.path.includes('metro_key=los-angeles')), `Refine sends metro to real filter API at ${width}`);
     const inPerson = page.locator('.fo').filter({ hasText: 'In-person' }).filter({ visible: true });
     await inPerson.locator('input').check();
-    const hex = page.locator('.hexout').filter({ hasText: 'Social Groups' }).filter({ visible: true });
+    const hex = page.locator('.hexout, .hexbar').filter({ hasText: 'Social Groups' }).filter({ visible: true }); // desktop honeycomb or mobile hex banners
     await hex.click();
     await page.getByRole('button', { name: 'FIND MY HIVE →', exact: true }).click();
     const deepInput = page.getByRole('combobox', { name: 'Location' });
