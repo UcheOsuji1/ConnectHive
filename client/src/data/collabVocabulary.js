@@ -987,6 +987,15 @@ export const ROLE_SUGGESTIONS = {
 };
 
 
+// Safety ceilings, not product limits — the owner chooses their own role
+// count, spot count and skill lists; these just stop one Hive from writing
+// an unbounded amount of JSON. Values a key validator/trimmer, never a UI cap
+// the product actually wants enforced as "the" limit.
+export const COLLAB_LIMITS = {
+  maxRoles: 25, maxSlotsPerRole: 50, maxSkillsPerRole: 12, maxRoleTitle: 60,
+  maxSkills: 30, maxWantRoles: 8, maxOther: 10, maxOtherLength: 60,
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 // Reassemble the display chip string from a vocabulary item: "🐍 Python".
@@ -1037,13 +1046,13 @@ export function keyForLabel(list, text) {
   return null;
 }
 
-const MAX_SKILLS = 30;
-const MAX_ROLE_SKILLS = 8;
-const MAX_ROLES = 10;
-const MAX_WANT_ROLES = 8;
-const MAX_OTHER_ENTRIES = 10;
-const MAX_TITLE_LEN = 60;
-const MAX_OTHER_LEN = 60;
+const MAX_SKILLS = COLLAB_LIMITS.maxSkills;
+const MAX_ROLE_SKILLS = COLLAB_LIMITS.maxSkillsPerRole;
+const MAX_ROLES = COLLAB_LIMITS.maxRoles;
+const MAX_WANT_ROLES = COLLAB_LIMITS.maxWantRoles;
+const MAX_OTHER_ENTRIES = COLLAB_LIMITS.maxOther;
+const MAX_TITLE_LEN = COLLAB_LIMITS.maxRoleTitle;
+const MAX_OTHER_LEN = COLLAB_LIMITS.maxOtherLength;
 
 function trimTitle(s) {
   return String(s ?? '').trim().slice(0, MAX_TITLE_LEN);
@@ -1122,7 +1131,7 @@ function normalizeProject(chips, cards, textValues, roles) {
     const normRoles = rawRoles
       .map(r => ({
         title: trimTitle(r?.title),
-        slots: Math.max(1, Math.min(10, Number(r?.slots) || 1)),
+        slots: Math.max(1, Math.min(COLLAB_LIMITS.maxSlotsPerRole, Number(r?.slots) || 1)),
         skills: dedupeTrimmed(r?.skills, MAX_ROLE_SKILLS, 'role.skills'),
         experience: (r?.experience == null || r.experience === 'Any level')
           ? null

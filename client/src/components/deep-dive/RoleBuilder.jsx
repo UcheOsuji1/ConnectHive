@@ -1,14 +1,14 @@
 import { useRef, useState } from 'react';
 import SkillPicker from './SkillPicker.jsx';
 import { ROLE_SUGGESTIONS } from '../../data/roleSuggestions.js';
-import { EXPERIENCE_LEVELS, PROJECT_TYPES, keyForLabel } from '../../data/collabVocabulary.js';
+import { EXPERIENCE_LEVELS, PROJECT_TYPES, COLLAB_LIMITS, keyForLabel } from '../../data/collabVocabulary.js';
 
 // "Any level" isn't a level (RoleBuilder stores it as null experience, see
 // collabVocabulary.js's normalizeDeepDive) — prepended here, not in the
 // vocabulary's EXPERIENCE_LEVELS list.
 const EXPERIENCE_OPTIONS = ['Any level', ...EXPERIENCE_LEVELS.map(l => l.label)];
-const MAX_ROLES = 10;
-const MAX_ROLE_SKILLS = 8;
+const MAX_ROLES = COLLAB_LIMITS.maxRoles;
+const MAX_ROLE_SKILLS = COLLAB_LIMITS.maxSkillsPerRole;
 const emptyRole = (title = '', skills = []) => ({ title, slots: 1, skills, experience: 'Any level' });
 
 // Project "Who do you need?" — each role is { title, slots, skills, experience }.
@@ -57,7 +57,7 @@ export default function RoleBuilder({ value, onChange, projectTypes = [] }) {
                 id={`role-title-${i}`}
                 ref={el => { inputRefs.current[i] = el; }}
                 type="text"
-                maxLength={60}
+                maxLength={COLLAB_LIMITS.maxRoleTitle}
                 value={role.title}
                 onChange={e => updateRole(i, { title: e.target.value })}
               />
@@ -67,7 +67,7 @@ export default function RoleBuilder({ value, onChange, projectTypes = [] }) {
               <div className="stepper">
                 <button type="button" aria-label="Fewer spots" onClick={() => updateRole(i, { slots: Math.max(1, role.slots - 1) })}>−</button>
                 <span>{role.slots}</span>
-                <button type="button" aria-label="More spots" onClick={() => updateRole(i, { slots: Math.min(10, role.slots + 1) })}>+</button>
+                <button type="button" aria-label="More spots" onClick={() => updateRole(i, { slots: Math.min(COLLAB_LIMITS.maxSlotsPerRole, role.slots + 1) })}>+</button>
               </div>
             </div>
             <button type="button" className="icon-btn" aria-label="Remove role" onClick={() => removeRole(i)}>
@@ -101,6 +101,7 @@ export default function RoleBuilder({ value, onChange, projectTypes = [] }) {
               <div style={{ marginTop: 10 }}>
                 <SkillPicker
                   compact
+                  max={MAX_ROLE_SKILLS}
                   value={role.skills}
                   onChange={skills => updateRole(i, { skills: skills.slice(0, MAX_ROLE_SKILLS) })}
                 />

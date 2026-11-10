@@ -1519,11 +1519,23 @@ export default function CategoryDeepDivePage() {
     const addSkills = saveSkillsToProfile && skillsId ? (chips[skillsId] ?? []) : [];
     const headline = category === 'professional' ? (textValues['prof-title'] || '').trim() : '';
     const schoolCompany = category === 'professional' ? (textValues['prof-org'] || '').trim() : '';
-    if (!addSkills.length && !headline && !schoolCompany) return;
+
+    // Only the visible path's answers travel here too — same rule the
+    // match request itself follows (see visibleProjectAnswers above).
+    let deepDive = null;
+    if (category === 'project') {
+      const { chips: visChips, cards: visCards, roles: visRoles } = visibleProjectAnswers();
+      deepDive = { category, answers: { chips: visChips, cards: visCards, textValues, roles: visRoles } };
+    } else if (category === 'professional') {
+      deepDive = { category, answers: { chips, cards, textValues, roles } };
+    }
+
+    if (!addSkills.length && !headline && !schoolCompany && !deepDive) return;
     api.patch('/api/users/profile/collab', {
       ...(addSkills.length ? { addSkills } : {}),
       ...(headline ? { headline } : {}),
       ...(schoolCompany ? { schoolCompany } : {}),
+      ...(deepDive ? { deepDive } : {}),
     }).catch(err => console.error('[CategoryDeepDivePage] profile collab save failed:', err));
   }
 

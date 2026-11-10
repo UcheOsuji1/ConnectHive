@@ -26,6 +26,11 @@ import { hasPlus, fail } from '../lib/billingStore.js';
 import { validatePaidConfig } from '../lib/billingPolicy.js';
 import { withPaidOffers } from '../lib/paidOffers.js';
 import { billingGuardError } from '../lib/billingGuardErrors.js';
+import { validateCollab, roleCapacityError, openRolesClause, PROJECT_CATEGORY, PROFESSIONAL_CATEGORY } from '../lib/collab.js';
+import { display, PROJECT_TYPES, PROJECT_STAGES, PROJECT_TIMELINES, COMMITMENTS, WORK_STYLES,
+         FUNDING, COMPENSATION, PROJECT_INDUSTRIES, PRO_INDUSTRIES, CAREER_STAGES,
+         INDUSTRY_SCOPES, EXPERIENCE_LEVELS } from '../lib/collabVocabulary.js';
+import { validateUrl } from '../lib/validateUrl.js';
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -142,6 +147,7 @@ export const matchHives = async (req, res) => {
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active')
+         AND ${openRolesClause('h')}
          ${areaFilter}
          ${refineClauses.join('\n')}
          ${distanceWhereClause}
@@ -167,6 +173,7 @@ export const matchHives = async (req, res) => {
         `SELECT COUNT(*)::int AS count
          FROM hives h
          WHERE h.discoverable = TRUE
+           AND ${openRolesClause('h')}
            ${areaFilter}
            ${refineClauses.join('\n')}
            AND h.hive_status = 'active'
@@ -340,7 +347,7 @@ export const quickFindHives = async (req, res) => {
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.hive_status = 'active'
          AND (
-           (h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_name ILIKE $1)
+           (h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND ${openRolesClause('h')} AND h.hive_name ILIKE $1)
            OR h.hive_code = $2
          )
        GROUP BY h.hive_id, c.category_name
@@ -364,6 +371,7 @@ export const getCategoryCounts = async (req, res) => {
        FROM categories c
        LEFT JOIN hives h ON h.category_id = c.category_id
                          AND h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
+                         AND ${openRolesClause('h')}
        GROUP BY c.category_id, c.category_name`,
     );
     res.json({ counts: rows });
@@ -385,7 +393,8 @@ export const getFilterFacets = async (req, res) => {
       `SELECT h.hive_id, h.location, h.metro_key, h.location_type, h.max_members, h.cadence,
               h.latitude, h.longitude, c.category_name
        FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
-       WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'`,
+       WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
+         AND ${openRolesClause('h')}`,
     );
 
     const filters = await readRefineFilters(req.query);
@@ -456,6 +465,7 @@ export const getSuggestions = async (req, res) => {
        LEFT JOIN categories   c  ON c.category_id = h.category_id
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
+         AND ${openRolesClause('h')}
          AND NOT EXISTS (
            SELECT 1 FROM hive_members
            WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active'
@@ -1203,6 +1213,49 @@ export const updateHive = async (req, res) => {
   }
 };
 
+// Role-aware instant join (Prompt 78). Locks the requested role row FOR
+// UPDATE inside its own transaction before the membership write, so two
+// concurrent instant joins (or an instant join racing an accept) for the
+// last spot can't both succeed — the loser still joins the Hive, just with
+// collab_role_id left NULL (roleFilled: true). writeMember(client,
+// assignedRoleId) does the actual hive_members INSERT/UPSERT.
+async function joinWithRole(roleId, writeMember) {
+  const client = await getClient();
+  try {
+    await client.query('BEGIN');
+    let assignedRoleId = null;
+    let roleFilled = false;
+    if (roleId) {
+      const { rows: [roleLock] } = await client.query(
+        `SELECT role_id, slots, status FROM hive_roles WHERE role_id = $1 FOR UPDATE`,
+        [roleId],
+      );
+      if (roleLock) {
+        const { rows: [{ filled }] } = await client.query(
+          `SELECT COUNT(*)::int AS filled FROM hive_members hm
+            WHERE hm.collab_role_id = $1 AND hm.membership_status = 'active' AND ${excludeSystemClause('hm')}`,
+          [roleId],
+        );
+        if (roleLock.status === 'open' && Number(filled) < Number(roleLock.slots)) {
+          assignedRoleId = roleLock.role_id;
+        } else {
+          roleFilled = true;
+        }
+      } else {
+        roleFilled = true;
+      }
+    }
+    await writeMember(client, assignedRoleId);
+    await client.query('COMMIT');
+    return { assignedRoleId, roleFilled };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
 // ── requestToJoin ─────────────────────────────────────────────────────────────
 export const requestToJoin = async (req, res) => {
   try {
@@ -1227,6 +1280,29 @@ export const requestToJoin = async (req, res) => {
     if (!hive) return res.status(404).json({ error: 'Hive not found.' });
     if (hive.hive_status !== 'active')
       return res.status(400).json({ error: 'This Hive is not currently active.' });
+
+    // Role-aware join (Prompt 78) — a role_id must be an open role on THIS
+    // Hive with an open spot, checked once here so every path below (the
+    // three instant-join branches and the request-flow insert) agrees.
+    const { role_id: requestedRoleId, portfolioUrl: portfolioUrlRaw } = req.body;
+    let validatedRoleId = null;
+    if (requestedRoleId) {
+      const { rows: [role] } = await query(
+        `SELECT hr.role_id, hr.slots,
+                COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS filled
+           FROM hive_roles hr
+           LEFT JOIN hive_members hm ON hm.collab_role_id = hr.role_id
+          WHERE hr.role_id = $1 AND hr.hive_id = $2 AND hr.status = 'open'
+          GROUP BY hr.role_id, hr.slots`,
+        [requestedRoleId, hiveId],
+      );
+      if (!role || Number(role.filled) >= Number(role.slots)) {
+        return res.status(400).json({ error: 'That role is no longer open.' });
+      }
+      validatedRoleId = role.role_id;
+    }
+    const { url: portfolioUrl, error: portfolioUrlError } = validateUrl(portfolioUrlRaw);
+    if (portfolioUrlError) return res.status(400).json({ error: portfolioUrlError });
 
     // Already a member?
     const { rows: [existingMember] } = await query(
@@ -1261,15 +1337,16 @@ export const requestToJoin = async (req, res) => {
     // the existing join-button UI — which only checks that flag — keeps
     // working unchanged) so any future consumer of either path agrees.
     if (hive.is_seed) {
-      await query(
+      const { roleFilled: seedRoleFilled } = await joinWithRole(validatedRoleId, (client, assignedRoleId) => client.query(
         `INSERT INTO hive_members
-           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
-         VALUES ($1, $2, 'member', 'active', 'completed', NULL)
+           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at, collab_role_id)
+         VALUES ($1, $2, 'member', 'active', 'completed', NULL, $3)
          ON CONFLICT (hive_id, user_id) DO UPDATE SET
            role = 'member', membership_status = 'active', onboarding_status = 'completed',
-           welcome_seen_at = NULL, onboarding_started_at = NULL, onboarding_completed_at = NULL`,
-        [hiveId, req.userId],
-      );
+           welcome_seen_at = NULL, onboarding_started_at = NULL, onboarding_completed_at = NULL,
+           collab_role_id = $3`,
+        [hiveId, req.userId, assignedRoleId],
+      ));
 
       const { rows: [{ count }] } = await query(
         `SELECT COUNT(*)::int AS count FROM hive_members hm
@@ -1325,6 +1402,7 @@ export const requestToJoin = async (req, res) => {
       return res.json({
         joined: true, reviewed: true, action: 'accept',
         member_count: Number(count), new_member: newMember, join_experience: 'standard',
+        roleFilled: seedRoleFilled,
       });
     }
 
@@ -1341,15 +1419,16 @@ export const requestToJoin = async (req, res) => {
     // still go through approval — skipping it here let anyone with the link
     // into a Hive whose owner chose to review members first.
     if (joinExp === 'simple' && hive.join_policy === 'open') {
-      await query(
+      const { roleFilled: simpleRoleFilled } = await joinWithRole(validatedRoleId, (client, assignedRoleId) => client.query(
         `INSERT INTO hive_members
-           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
-         VALUES ($1, $2, 'member', 'active', 'completed', NULL)
+           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at, collab_role_id)
+         VALUES ($1, $2, 'member', 'active', 'completed', NULL, $3)
          ON CONFLICT (hive_id, user_id) DO UPDATE SET
            role = 'member', membership_status = 'active', onboarding_status = 'completed',
-           welcome_seen_at = NULL, onboarding_started_at = NULL, onboarding_completed_at = NULL`,
-        [hiveId, req.userId],
-      );
+           welcome_seen_at = NULL, onboarding_started_at = NULL, onboarding_completed_at = NULL,
+           collab_role_id = $3`,
+        [hiveId, req.userId, assignedRoleId],
+      ));
       // Best-effort: welcome notification + notify existing members
       try {
         const [{ rows: [profile] }, { rows: existingMembers }, { rows: [catRow] }] = await Promise.all([
@@ -1408,22 +1487,22 @@ export const requestToJoin = async (req, res) => {
       } catch (e) {
         console.error('[hives/requestToJoin] simple-join notification failed (non-fatal):', e);
       }
-      return res.json({ joined: true });
+      return res.json({ joined: true, roleFilled: simpleRoleFilled });
     }
 
     // Open policy → join directly, no request needed
     if (hive.join_policy === 'open') {
       const obStatus = joinExp === 'guided' || joinExp === 'application' ? 'pending' : 'completed';
-      await query(
+      const { roleFilled: openRoleFilled } = await joinWithRole(validatedRoleId, (client, assignedRoleId) => client.query(
         `INSERT INTO hive_members
-           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at)
-         VALUES ($1, $2, 'member', 'active', $3, NULL)
+           (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at, collab_role_id)
+         VALUES ($1, $2, 'member', 'active', $3, NULL, $4)
          ON CONFLICT (hive_id, user_id) DO UPDATE SET
            role = 'member', membership_status = 'active', onboarding_status = $3,
-           welcome_seen_at = NULL`,
-        [hiveId, req.userId, obStatus],
-      );
-      return res.json({ joined: true });
+           welcome_seen_at = NULL, collab_role_id = $4`,
+        [hiveId, req.userId, obStatus, assignedRoleId],
+      ));
+      return res.json({ joined: true, roleFilled: openRoleFilled });
     }
 
     // Check for an existing request row
@@ -1440,17 +1519,17 @@ export const requestToJoin = async (req, res) => {
       // Rejected or previously accepted → reset to pending (re-request)
       await query(
         `UPDATE join_requests
-         SET status = 'pending', request_message = $3,
+         SET status = 'pending', request_message = $3, role_id = $4, portfolio_url = $5,
              requested_at = NOW(), reviewed_at = NULL, reviewed_by = NULL
          WHERE hive_id = $1 AND user_id = $2`,
-        [hiveId, req.userId, message?.trim() || null],
+        [hiveId, req.userId, message?.trim() || null, validatedRoleId, portfolioUrl],
       );
       thisRequestId = existingReq.request_id;
     } else {
       const { rows: [inserted] } = await query(
-        `INSERT INTO join_requests (hive_id, user_id, request_message)
-         VALUES ($1, $2, $3) RETURNING request_id`,
-        [hiveId, req.userId, message?.trim() || null],
+        `INSERT INTO join_requests (hive_id, user_id, request_message, role_id, portfolio_url)
+         VALUES ($1, $2, $3, $4, $5) RETURNING request_id`,
+        [hiveId, req.userId, message?.trim() || null, validatedRoleId, portfolioUrl],
       );
       thisRequestId = inserted.request_id;
     }
@@ -1517,6 +1596,7 @@ export const getHiveRequests = async (req, res) => {
 
     const { rows } = await query(
       `SELECT jr.request_id, jr.user_id, jr.request_message, jr.status, jr.requested_at,
+              jr.role_id, jr.portfolio_url, hr.title AS role_title,
               p.full_name, p.profile_photo_url, p.age, p.location, p.interests, p.skills,
               u.member_id,
               uc.total_score AS pair_score,
@@ -1524,6 +1604,7 @@ export const getHiveRequests = async (req, res) => {
        FROM join_requests jr
        LEFT JOIN profiles p  ON p.user_id  = jr.user_id
        LEFT JOIN users u     ON u.user_id  = jr.user_id
+       LEFT JOIN hive_roles hr ON hr.role_id = jr.role_id
        LEFT JOIN user_compatibility uc ON (
          (uc.user_a = $2 AND uc.user_b = jr.user_id) OR
          (uc.user_b = $2 AND uc.user_a = jr.user_id)
@@ -1533,6 +1614,10 @@ export const getHiveRequests = async (req, res) => {
        ORDER BY cs.total_score DESC NULLS LAST, jr.requested_at ASC`,
       [hiveId, req.userId],
     );
+    const requestsWithRole = rows.map(({ role_id, role_title, ...r }) => ({
+      ...r,
+      role: role_id ? { role_id, title: role_title } : null,
+    }));
 
     const { rows: [cap] } = await query(
       `SELECT h.max_members,
@@ -1545,7 +1630,7 @@ export const getHiveRequests = async (req, res) => {
     );
 
     res.json({
-      requests:     rows,
+      requests:     requestsWithRole,
       member_count: cap?.member_count != null ? Number(cap.member_count) : 0,
       max_members:  cap?.max_members  != null ? Number(cap.max_members)  : null,
     });
@@ -1575,7 +1660,7 @@ export const reviewRequest = async (req, res) => {
     }
 
     const { rows: [request] } = await query(
-      `SELECT request_id, user_id FROM join_requests
+      `SELECT request_id, user_id, role_id FROM join_requests
        WHERE request_id = $1 AND hive_id = $2 AND status = 'pending'`,
       [requestId, hiveId],
     );
@@ -1589,6 +1674,8 @@ export const reviewRequest = async (req, res) => {
     // locks the Hive row so two concurrent accepts can't both pass the
     // capacity check and overshoot max_members.
     let joinExp = null;
+    let roleFilled = false;
+    let assignedRoleId = null;
     const client = await getClient();
     try {
       await client.query('BEGIN');
@@ -1612,6 +1699,34 @@ export const reviewRequest = async (req, res) => {
           return res.status(400).json({ error: 'Hive is full.' });
         }
 
+        // Re-check the role's spot inside this same transaction, locking the
+        // role row so two concurrent accepts for the last spot can't both
+        // pass. If it filled up in the meantime, accept the person into the
+        // Hive anyway (collab_role_id stays NULL) rather than fail the whole
+        // acceptance over a race on one role.
+        if (request.role_id) {
+          // FOR UPDATE can't combine with an aggregate in the same query —
+          // lock the role row first, then count filled spots separately.
+          const { rows: [roleLock] } = await client.query(
+            `SELECT role_id, slots, status FROM hive_roles WHERE role_id = $1 FOR UPDATE`,
+            [request.role_id],
+          );
+          if (roleLock) {
+            const { rows: [{ filled }] } = await client.query(
+              `SELECT COUNT(*)::int AS filled FROM hive_members hm
+                WHERE hm.collab_role_id = $1 AND hm.membership_status = 'active' AND ${excludeSystemClause('hm')}`,
+              [request.role_id],
+            );
+            if (roleLock.status === 'open' && Number(filled) < Number(roleLock.slots)) {
+              assignedRoleId = roleLock.role_id;
+            } else {
+              roleFilled = true;
+            }
+          } else {
+            roleFilled = true;
+          }
+        }
+
         // Determine onboarding status from hive settings
         const { rows: [obSettings] } = await client.query(
           `SELECT join_experience FROM hive_onboarding_settings WHERE hive_id = $1`,
@@ -1632,16 +1747,17 @@ export const reviewRequest = async (req, res) => {
         );
         await client.query(
           `INSERT INTO hive_members
-             (hive_id, user_id, role, membership_status, welcome_seen_at, onboarding_status)
-           VALUES ($1, $2, 'member', 'active', NULL, $3)
+             (hive_id, user_id, role, membership_status, welcome_seen_at, onboarding_status, collab_role_id)
+           VALUES ($1, $2, 'member', 'active', NULL, $3, $4)
            ON CONFLICT (hive_id, user_id) DO UPDATE
              SET role                    = 'member',
                  membership_status       = 'active',
                  welcome_seen_at         = NULL,
                  onboarding_status       = $3,
                  onboarding_started_at   = NULL,
-                 onboarding_completed_at = NULL`,
-          [hiveId, request.user_id, onboardingStatus],
+                 onboarding_completed_at = NULL,
+                 collab_role_id          = $4`,
+          [hiveId, request.user_id, onboardingStatus, assignedRoleId],
         );
       } else {
         await client.query(
@@ -1787,6 +1903,7 @@ export const reviewRequest = async (req, res) => {
       member_count: Number(count),
       new_member:   newMember,
       join_experience: action === 'accept' ? joinExp : undefined,
+      roleFilled:   action === 'accept' ? roleFilled : undefined,
     });
   } catch (err) {
     const guard = billingGuardError(err);
@@ -2562,5 +2679,330 @@ export const getMyDeletedHives = async (req, res) => {
   } catch (err) {
     console.error('[hives/getMyDeletedHives]', err);
     res.status(500).json({ error: 'Failed to fetch deleted Hives.' });
+  }
+};
+
+// ── Collab basics + roles (Prompt 78) ───────────────────────────────────────
+
+const PROJECT_BASIC_COLS = [
+  'project_types', 'project_types_other', 'project_stage', 'project_timeline', 'commitment',
+  'work_style', 'funding', 'compensation', 'project_industries',
+];
+const PROFESSIONAL_BASIC_COLS = ['pro_industries', 'career_stages', 'audience_scope'];
+
+// key -> display string, for every key present anywhere in `basics` and
+// every role's experience_level. Lets the client show real words without
+// re-implementing collabVocabulary's lookups itself.
+function buildCollabLabels(categoryName, basics, roles = []) {
+  const labels = {};
+  const addOne = (list, key) => {
+    if (!key) return;
+    const item = list.find(it => it.key === key);
+    if (item) labels[key] = display(item);
+  };
+  const addMany = (list, keys) => { for (const k of keys ?? []) addOne(list, k); };
+
+  if (categoryName === PROJECT_CATEGORY) {
+    addMany(PROJECT_TYPES, basics.project_types);
+    addOne(PROJECT_STAGES, basics.project_stage);
+    addOne(PROJECT_TIMELINES, basics.project_timeline);
+    addOne(COMMITMENTS, basics.commitment);
+    addOne(WORK_STYLES, basics.work_style);
+    addOne(FUNDING, basics.funding);
+    addMany(COMPENSATION, basics.compensation);
+    addMany(PROJECT_INDUSTRIES, basics.project_industries);
+  } else if (categoryName === PROFESSIONAL_CATEGORY) {
+    addMany(PRO_INDUSTRIES, basics.pro_industries);
+    addMany(CAREER_STAGES, basics.career_stages);
+    addOne(INDUSTRY_SCOPES, basics.audience_scope);
+  }
+  for (const r of roles) addOne(EXPERIENCE_LEVELS, r.experience_level);
+  return labels;
+}
+
+// Same visibility rule as getHive: a non-member of a non-discoverable Hive
+// gets a stripped shell, never a 403/404 — the Hive's existence itself isn't
+// a secret, only its collab details are.
+export const getHiveCollab = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const { rows: [row] } = await query(
+      `SELECT h.hive_id, h.category_id, c.category_name, h.max_members, h.discoverable,
+              h.project_types, h.project_types_other, h.project_stage, h.project_timeline,
+              h.commitment, h.work_style, h.funding, h.compensation, h.project_industries,
+              h.pro_industries, h.career_stages, h.audience_scope, h.collab_updated_at,
+              my_mem.role AS my_role
+         FROM hives h
+         LEFT JOIN categories c ON c.category_id = h.category_id
+         LEFT JOIN hive_members my_mem ON my_mem.hive_id = h.hive_id
+                                       AND my_mem.user_id = $1
+                                       AND my_mem.membership_status = 'active'
+        WHERE h.hive_id = $2`,
+      [req.userId, hiveId],
+    );
+    if (!row) return res.status(404).json({ error: 'Hive not found.' });
+
+    if (!row.discoverable && row.my_role === null) {
+      return res.json({ hive_id: row.hive_id, private: true });
+    }
+
+    const isOwnerAdmin = ['owner', 'admin'].includes(row.my_role);
+
+    const { rows: roleRows } = await query(
+      `SELECT hr.role_id, hr.title, hr.slots, hr.skills, hr.experience_level, hr.status, hr.position,
+              COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS filled
+         FROM hive_roles hr
+         LEFT JOIN hive_members hm ON hm.collab_role_id = hr.role_id
+        WHERE hr.hive_id = $1
+        GROUP BY hr.role_id, hr.title, hr.slots, hr.skills, hr.experience_level, hr.status, hr.position
+        ORDER BY hr.position`,
+      [hiveId],
+    );
+
+    // Member identities are owner/admin-only — grep-provable: this query (and
+    // the `members` field it feeds) never runs for anyone else.
+    let membersByRole = {};
+    if (isOwnerAdmin && roleRows.length) {
+      const { rows: memberRows } = await query(
+        `SELECT hm.collab_role_id AS role_id, hm.user_id, p.full_name
+           FROM hive_members hm
+           JOIN profiles p ON p.user_id = hm.user_id
+          WHERE hm.hive_id = $1 AND hm.collab_role_id IS NOT NULL
+            AND hm.membership_status = 'active' AND ${excludeSystemClause('hm')}`,
+        [hiveId],
+      );
+      for (const m of memberRows) {
+        (membersByRole[m.role_id] ??= []).push({ user_id: m.user_id, full_name: m.full_name });
+      }
+    }
+
+    const roles = roleRows.map(r => ({
+      role_id: r.role_id,
+      title: r.title,
+      slots: r.slots,
+      filled: Number(r.filled),
+      open: Math.max(0, r.slots - Number(r.filled)),
+      skills: r.skills,
+      experience_level: r.experience_level,
+      status: r.status,
+      ...(isOwnerAdmin ? { members: membersByRole[r.role_id] ?? [] } : {}),
+    }));
+    const allRolesFilled = roles.length > 0 && !roles.some(r => r.status === 'open' && r.filled < r.slots);
+
+    const basics = {
+      project_types: row.project_types, project_types_other: row.project_types_other,
+      project_stage: row.project_stage, project_timeline: row.project_timeline,
+      commitment: row.commitment, work_style: row.work_style, funding: row.funding,
+      compensation: row.compensation, project_industries: row.project_industries,
+      pro_industries: row.pro_industries, career_stages: row.career_stages,
+      audience_scope: row.audience_scope,
+    };
+
+    res.json({
+      hive_id: row.hive_id,
+      category_name: row.category_name,
+      ...basics,
+      collab_updated_at: row.collab_updated_at,
+      labels: buildCollabLabels(row.category_name, basics, roles),
+      roles,
+      allRolesFilled,
+    });
+  } catch (err) {
+    console.error('[hives/getHiveCollab]', err);
+    res.status(500).json({ error: 'Failed to load collab info.' });
+  }
+};
+
+// Owner/admin only. Body = basics + roles (the full desired role list, in
+// order) — role_id present & belonging to this Hive -> UPDATE; absent ->
+// INSERT; an existing role missing from the array -> DELETE (members keep
+// their membership; collab_role_id -> NULL via the FK, never removed).
+export const updateHiveCollab = async (req, res) => {
+  try {
+    const hiveId = req.params.id;
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members
+       WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    const { rows: [hive] } = await query(
+      `SELECT h.hive_id, h.max_members, c.category_name
+         FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
+        WHERE h.hive_id = $1`,
+      [hiveId],
+    );
+    if (!hive) return res.status(404).json({ error: 'Hive not found.' });
+
+    const { value, error } = validateCollab(hive.category_name, req.body ?? {});
+    if (error) return res.status(400).json({ error });
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+
+      if (value.roles !== undefined) {
+        // Lock every existing role on this Hive so the slots/filled math
+        // below is consistent even under a concurrent accept or instant join.
+        const { rows: existingRoles } = await client.query(
+          `SELECT role_id, slots, status FROM hive_roles WHERE hive_id = $1 FOR UPDATE`,
+          [hiveId],
+        );
+        const existingById = new Map(existingRoles.map(r => [r.role_id, r]));
+
+        const { rows: filledRows } = await client.query(
+          `SELECT hm.collab_role_id AS role_id, COUNT(*)::int AS filled
+             FROM hive_members hm
+            WHERE hm.hive_id = $1 AND hm.collab_role_id IS NOT NULL
+              AND hm.membership_status = 'active' AND ${excludeSystemClause('hm')}
+            GROUP BY hm.collab_role_id`,
+          [hiveId],
+        );
+        const filledById = new Map(filledRows.map(r => [r.role_id, Number(r.filled)]));
+
+        // Slots can never drop below how many people already fill that role.
+        for (const incoming of value.roles) {
+          if (!incoming.role_id || !existingById.has(incoming.role_id)) continue;
+          const filled = filledById.get(incoming.role_id) ?? 0;
+          if (incoming.slots < filled) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({
+              error: `"${incoming.title}" has ${filled} member${filled === 1 ? '' : 's'} in it already — spots can't go below that.`,
+            });
+          }
+        }
+
+        // Hive-wide capacity check against the desired role list.
+        const { rows: [{ count: currentMemberCount }] } = await client.query(
+          `SELECT COUNT(*)::int AS count FROM hive_members
+            WHERE hive_id = $1 AND membership_status = 'active' AND ${excludeSystemClause()}`,
+          [hiveId],
+        );
+        const rolesWithFilled = value.roles.map(r => ({
+          ...r, filled: r.role_id ? (filledById.get(r.role_id) ?? 0) : 0,
+        }));
+        const capacityError = roleCapacityError(hive, rolesWithFilled, currentMemberCount);
+        if (capacityError) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: capacityError });
+        }
+
+        const keptIds = new Set();
+        for (let i = 0; i < value.roles.length; i++) {
+          const r = value.roles[i];
+          if (r.role_id && existingById.has(r.role_id)) {
+            await client.query(
+              `UPDATE hive_roles SET title = $1, slots = $2, skills = $3, experience_level = $4,
+                      status = $5, position = $6, updated_at = NOW()
+                WHERE role_id = $7 AND hive_id = $8`,
+              [r.title, r.slots, JSON.stringify(r.skills), r.experience_level, r.status, i, r.role_id, hiveId],
+            );
+            keptIds.add(r.role_id);
+          } else {
+            const { rows: [inserted] } = await client.query(
+              `INSERT INTO hive_roles (hive_id, title, slots, skills, experience_level, status, position)
+               VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING role_id`,
+              [hiveId, r.title, r.slots, JSON.stringify(r.skills), r.experience_level, r.status, i],
+            );
+            keptIds.add(inserted.role_id);
+          }
+        }
+        for (const existing of existingRoles) {
+          if (!keptIds.has(existing.role_id)) {
+            await client.query(`DELETE FROM hive_roles WHERE role_id = $1`, [existing.role_id]);
+          }
+        }
+      }
+
+      const basicsCols = hive.category_name === PROJECT_CATEGORY ? PROJECT_BASIC_COLS : PROFESSIONAL_BASIC_COLS;
+      const sets = basicsCols.map((c, i) => `${c} = $${i + 1}`);
+      const vals = basicsCols.map(c => {
+        const v = value[c];
+        return Array.isArray(v) ? JSON.stringify(v) : v;
+      });
+      await client.query(
+        `UPDATE hives SET ${sets.join(', ')}, collab_updated_at = NOW() WHERE hive_id = $${basicsCols.length + 1}`,
+        [...vals, hiveId],
+      );
+
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+
+    return getHiveCollab(req, res);
+  } catch (err) {
+    console.error('[hives/updateHiveCollab]', err);
+    res.status(500).json({ error: 'Failed to save collab info.' });
+  }
+};
+
+// Owner/admin only. { role_id | null } — same open-spot rule requestToJoin
+// enforces, re-checked under a row lock here too.
+export const updateMemberCollabRole = async (req, res) => {
+  try {
+    const { id: hiveId, userId: targetUserId } = req.params;
+    const { rows: [myRole] } = await query(
+      `SELECT role FROM hive_members WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, req.userId],
+    );
+    if (!myRole || !['owner', 'admin'].includes(myRole.role)) {
+      return res.status(403).json({ error: 'Not authorized.' });
+    }
+
+    const { rows: [targetMember] } = await query(
+      `SELECT hive_member_id FROM hive_members WHERE hive_id = $1 AND user_id = $2 AND membership_status = 'active'`,
+      [hiveId, targetUserId],
+    );
+    if (!targetMember) return res.status(404).json({ error: 'Member not found.' });
+
+    const roleId = req.body?.role_id ?? null;
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      let assignedRoleId = null;
+      if (roleId) {
+        const { rows: [roleLock] } = await client.query(
+          `SELECT role_id, slots, status FROM hive_roles WHERE role_id = $1 AND hive_id = $2 FOR UPDATE`,
+          [roleId, hiveId],
+        );
+        if (!roleLock || roleLock.status !== 'open') {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'That role is no longer open.' });
+        }
+        const { rows: [{ filled }] } = await client.query(
+          `SELECT COUNT(*)::int AS filled FROM hive_members hm
+            WHERE hm.collab_role_id = $1 AND hm.membership_status = 'active' AND hm.user_id != $2
+              AND ${excludeSystemClause('hm')}`,
+          [roleId, targetUserId],
+        );
+        if (Number(filled) >= Number(roleLock.slots)) {
+          await client.query('ROLLBACK');
+          return res.status(400).json({ error: 'That role is no longer open.' });
+        }
+        assignedRoleId = roleLock.role_id;
+      }
+      await client.query(
+        `UPDATE hive_members SET collab_role_id = $1 WHERE hive_id = $2 AND user_id = $3`,
+        [assignedRoleId, hiveId, targetUserId],
+      );
+      await client.query('COMMIT');
+      res.json({ role_id: assignedRoleId });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('[hives/updateMemberCollabRole]', err);
+    res.status(500).json({ error: 'Failed to update member role.' });
   }
 };

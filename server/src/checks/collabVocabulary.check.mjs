@@ -310,22 +310,31 @@ check('normalizeDeepDive: unknown single-select card value is dropped with a war
   }
 });
 
-check('normalizeDeepDive: 12 roles trimmed to 10 with a warning', () => {
+check(`normalizeDeepDive: ${serverVocab.COLLAB_LIMITS.maxRoles + 2} roles trimmed to ${serverVocab.COLLAB_LIMITS.maxRoles} with a warning`, () => {
   const origWarn = console.warn;
   const warnings = [];
   console.warn = (...args) => warnings.push(args.join(' '));
   try {
-    const roles = Array.from({ length: 12 }, (_, i) => ({ title: `Role ${i}`, slots: 1, skills: [], experience: 'Any level' }));
+    const overLimit = serverVocab.COLLAB_LIMITS.maxRoles + 2;
+    const roles = Array.from({ length: overLimit }, (_, i) => ({ title: `Role ${i}`, slots: 1, skills: [], experience: 'Any level' }));
     const result = normalizeDeepDive('project', {
       chips: {},
       cards: { 'proj-path': display(PROJECT_PATHS.find(p => p.key === 'building')) },
       textValues: {},
       roles,
     });
-    assert.equal(result.building.roles.length, 10);
+    assert.equal(result.building.roles.length, serverVocab.COLLAB_LIMITS.maxRoles);
     assert.ok(warnings.length >= 1, 'expected a console.warn for the role-count trim');
   } finally {
     console.warn = origWarn;
+  }
+});
+
+check('COLLAB_LIMITS: server and client are deep-equal', () => {
+  assert.ok(isDeepStrictEqual(serverVocab.COLLAB_LIMITS, clientVocab.COLLAB_LIMITS));
+  for (const [k, v] of Object.entries(serverVocab.COLLAB_LIMITS)) {
+    assert.equal(typeof v, 'number', `${k} should be a number`);
+    assert.ok(v > 0, `${k} should be positive`);
   }
 });
 

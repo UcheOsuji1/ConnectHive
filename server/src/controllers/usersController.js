@@ -4,6 +4,10 @@ import { flatten, norm } from '../lib/compatibility.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
 import { isBlockedEitherWay } from '../lib/blocks.js';
 import { geocode, reverseGeocode } from '../services/geocode.js';
+import { validateUrl } from '../lib/validateUrl.js';
+import { normalizeDeepDive } from '../lib/collabVocabulary.js';
+
+const LINK_LABELS = ['LinkedIn', 'Portfolio', 'GitHub', 'Website', 'Other'];
 
 export const getProfile = async (req, res) => {
   try {
@@ -65,7 +69,7 @@ export const updateProfile = async (req, res) => {
 export const updateCollabProfile = async (req, res) => {
   try {
     const userId = req.userId;
-    const { headline, schoolCompany, addSkills } = req.body ?? {};
+    const { headline, schoolCompany, addSkills, links, deepDive } = req.body ?? {};
 
     const sets = [];
     const vals = [];
@@ -104,22 +108,62 @@ export const updateCollabProfile = async (req, res) => {
       sets.push(`skills = $${i++}`); vals.push(JSON.stringify(merged));
     }
 
+    if (links !== undefined) {
+      if (!Array.isArray(links) || links.length > 3) {
+        return res.status(400).json({ error: 'links must be an array of at most 3 items.' });
+      }
+      const cleaned = [];
+      const seenUrls = new Set();
+      for (const l of links) {
+        const label = LINK_LABELS.includes(l?.label) ? l.label : null;
+        if (!label) return res.status(400).json({ error: `Link label must be one of: ${LINK_LABELS.join(', ')}.` });
+        const { url, error } = validateUrl(l?.url);
+        if (error) return res.status(400).json({ error });
+        if (!url || seenUrls.has(url)) continue; // empty or duplicate URL -> dropped, not an error
+        seenUrls.add(url);
+        cleaned.push({ label, url });
+      }
+      sets.push(`links = $${i++}`); vals.push(JSON.stringify(cleaned));
+    }
+
+    // Deep Dive answers are never trusted pre-normalized from the client —
+    // normalizeDeepDive runs again here, server-side, and only this
+    // category's key in deep_dive_answers is replaced.
+    if (deepDive !== undefined) {
+      const { category, answers } = deepDive ?? {};
+      if (category !== 'project' && category !== 'professional') {
+        return res.status(400).json({ error: 'deepDive.category must be "project" or "professional".' });
+      }
+      const normalized = normalizeDeepDive(category, answers ?? {});
+      const { rows: [existing] } = await query('SELECT deep_dive_answers FROM profiles WHERE user_id = $1', [userId]);
+      const current = existing?.deep_dive_answers ?? {};
+      const merged = { ...current, [category]: { ...normalized, saved_at: new Date().toISOString() } };
+      sets.push(`deep_dive_answers = $${i++}`); vals.push(JSON.stringify(merged));
+    }
+
     if (!sets.length) {
       const { rows: [current] } = await query(
-        'SELECT headline, school_company, skills FROM profiles WHERE user_id = $1', [userId],
+        'SELECT headline, school_company, skills, links, deep_dive_answers FROM profiles WHERE user_id = $1', [userId],
       );
       if (!current) return res.status(404).json({ error: 'Profile not found.' });
-      return res.json({ headline: current.headline, schoolCompany: current.school_company, skills: current.skills });
+      return res.json({
+        headline: current.headline, schoolCompany: current.school_company, skills: current.skills,
+        links: current.links, deepDiveAnswers: current.deep_dive_answers,
+      });
     }
 
     sets.push('updated_at = NOW()');
     vals.push(userId);
     const { rows: [updated] } = await query(
-      `UPDATE profiles SET ${sets.join(', ')} WHERE user_id = $${i} RETURNING headline, school_company, skills`,
+      `UPDATE profiles SET ${sets.join(', ')} WHERE user_id = $${i}
+       RETURNING headline, school_company, skills, links, deep_dive_answers`,
       vals,
     );
     if (!updated) return res.status(404).json({ error: 'Profile not found.' });
-    res.json({ headline: updated.headline, schoolCompany: updated.school_company, skills: updated.skills });
+    res.json({
+      headline: updated.headline, schoolCompany: updated.school_company, skills: updated.skills,
+      links: updated.links, deepDiveAnswers: updated.deep_dive_answers,
+    });
   } catch (err) {
     console.error('[users/updateCollabProfile]', err);
     res.status(500).json({ error: 'Failed to save your profile.' });
@@ -477,6 +521,7 @@ export const getMemberProfile = async (req, res) => {
         connection_preference: target.connection_preference,
         connection_purposes: target.connection_purposes,
         social_preferences: target.social_preferences,
+        links: target.links,
         joined_at: target.joined_at,
         last_login: target.last_login,
       },

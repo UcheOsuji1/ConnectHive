@@ -68,6 +68,11 @@ CREATE TABLE IF NOT EXISTS profiles (
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS connection_purposes JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS social_preferences  JSONB NOT NULL DEFAULT '{}';
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS headline TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS links JSONB NOT NULL DEFAULT '[]';
+-- Keyed by Deep Dive category ('project', 'professional'); each value is a
+-- normalizeDeepDive() result plus saved_at. Never returned by another user's
+-- profile endpoint — see getMemberProfile.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS deep_dive_answers JSONB NOT NULL DEFAULT '{}';
 
 -- ─── Categories ──────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS categories (
@@ -112,6 +117,23 @@ ALTER TABLE hives ADD COLUMN IF NOT EXISTS deleted_at   TIMESTAMPTZ;
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS deleted_by   UUID REFERENCES users(user_id);
 ALTER TABLE hives ADD COLUMN IF NOT EXISTS purge_after  TIMESTAMPTZ;
 
+-- Project/Professional collab basics (Prompt 78). Vocabulary KEYS only, never
+-- display strings — server validates against collabVocabulary.js. No CHECK
+-- constraints on the key lists themselves; validateCollab() is the gate.
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS project_types        JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS project_types_other  JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS project_stage        TEXT;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS project_timeline     TEXT;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS commitment           TEXT;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS work_style           TEXT;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS funding              TEXT;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS compensation         JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS project_industries   JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS pro_industries       JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS career_stages        JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS audience_scope       TEXT;
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS collab_updated_at    TIMESTAMPTZ;
+
 -- ─── Hive code (public identifier: TH- + 6 chars) ──────────────────────────────
 -- Never the primary key — sequential UUIDs aren't sequential, but we still don't
 -- want the raw hive_id in a URL people paste into group chats. Alphabet drops
@@ -141,6 +163,23 @@ ALTER TABLE hives ALTER COLUMN hive_code SET DEFAULT generate_hive_code();
 -- but has not yet been backfilled.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_hives_hive_code ON hives(hive_code);
 
+-- ─── Hive Roles (Prompt 78) ───────────────────────────────────────────────────
+-- Open roles on a Project Hive. Filled spots are computed (count of active,
+-- non-system hive_members with collab_role_id = this role), never stored.
+CREATE TABLE IF NOT EXISTS hive_roles (
+  role_id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  hive_id          UUID        NOT NULL REFERENCES hives(hive_id) ON DELETE CASCADE,
+  title            TEXT        NOT NULL,
+  slots            INT         NOT NULL CHECK (slots BETWEEN 1 AND 50),
+  skills           JSONB       NOT NULL DEFAULT '[]',
+  experience_level TEXT,
+  status           TEXT        NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
+  position         INT         NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_hive_roles_hive ON hive_roles(hive_id, position);
+
 -- ─── Hive Members ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS hive_members (
   hive_member_id    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -152,6 +191,11 @@ CREATE TABLE IF NOT EXISTS hive_members (
   joined_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   UNIQUE (hive_id, user_id)
 );
+
+-- Which hive_roles slot this member fills, if any (Prompt 78). ON DELETE
+-- SET NULL: deleting a role never removes the membership, just the slot tie.
+ALTER TABLE hive_members ADD COLUMN IF NOT EXISTS collab_role_id UUID REFERENCES hive_roles(role_id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_hive_members_collab_role ON hive_members(collab_role_id);
 
 -- ─── Hive Followers (follow without joining) ─────────────────────────────────
 CREATE TABLE IF NOT EXISTS hive_followers (
@@ -175,6 +219,11 @@ CREATE TABLE IF NOT EXISTS join_requests (
   reviewed_by      UUID        REFERENCES users(user_id),
   UNIQUE (hive_id, user_id)
 );
+
+-- Which open role this request is for, if any (Prompt 78).
+ALTER TABLE join_requests ADD COLUMN IF NOT EXISTS role_id        UUID REFERENCES hive_roles(role_id) ON DELETE SET NULL;
+ALTER TABLE join_requests ADD COLUMN IF NOT EXISTS portfolio_url  TEXT;
+CREATE INDEX IF NOT EXISTS idx_join_requests_role ON join_requests(role_id);
 
 -- ─── Messages ────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS messages (

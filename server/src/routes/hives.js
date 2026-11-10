@@ -34,6 +34,9 @@ import {
   deleteHive,
   restoreHive,
   getMyDeletedHives,
+  getHiveCollab,
+  updateHiveCollab,
+  updateMemberCollabRole,
 } from '../controllers/hivesController.js';
 import {
   listMessages,
@@ -227,8 +230,11 @@ router.post('/:id/seen',                 requireAuth, markHiveSeen);
 router.post('/:id/welcome-seen',         requireAuth, markWelcomeSeen);
 router.get('/:id/overview',              requireAuth, getHiveOverview);
 router.get('/:id/analytics',             requireAuth, getHiveAnalytics);
+router.get('/:id/collab',                  requireAuth, getHiveCollab);
+router.put('/:id/collab',                  requireAuth, updateHiveCollab);
 router.get('/:id/members',                requireAuth, getHiveMembers);
 router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
+router.patch('/:id/members/:userId/collab-role', requireAuth, updateMemberCollabRole);
 router.post('/:id/members/:userId/notify', requireAuth, notifyMember);
 router.delete('/:id/members/:userId',      requireAuth, removeMember);
 router.post('/:id/leave',                requireAuth, leaveHive);

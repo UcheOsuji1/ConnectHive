@@ -1,14 +1,15 @@
 import { useMemo, useState } from 'react';
 import { SKILL_CATS } from '../../data/skillTaxonomy.js';
 import { labelOf } from '../../lib/skillLabel.js';
+import { COLLAB_LIMITS } from '../../data/collabVocabulary.js';
 
 const ALL_SKILL_CHIPS = SKILL_CATS.flatMap(c => c.chips);
-const MAX_SKILLS = 30;
 const VISIBLE_TABS = 7;
 
 // "What skills do you bring?" — reused (via `compact`) inside RoleBuilder's
-// per-role skill picker. Controlled: the parent owns `value` entirely.
-export default function SkillPicker({ value, onChange, compact = false, saveToProfile = true, onSaveToggleChange }) {
+// per-role skill picker, which passes its own (lower) `max`. Controlled: the
+// parent owns `value` entirely.
+export default function SkillPicker({ value, onChange, compact = false, saveToProfile = true, onSaveToggleChange, max = COLLAB_LIMITS.maxSkills }) {
   const [query, setQuery] = useState('');
   const [activeCat, setActiveCat] = useState(null);
   const [showAllTabs, setShowAllTabs] = useState(false);
@@ -21,7 +22,7 @@ export default function SkillPicker({ value, onChange, compact = false, saveToPr
     () => selected.filter(s => !ALL_SKILL_CHIPS.includes(s)).length,
     [selected],
   );
-  const atLimit = selected.length >= MAX_SKILLS;
+  const atLimit = selected.length >= max;
 
   // Default tab: the category of the first selected skill, else the first category.
   const defaultCatKey = useMemo(() => {
@@ -181,7 +182,7 @@ export default function SkillPicker({ value, onChange, compact = false, saveToPr
         </div>
       )}
 
-      {atLimit && <p className="cdd-hint">You've picked the max of {MAX_SKILLS} skills.</p>}
+      {atLimit && <p className="cdd-hint">You've picked the max of {max} skills.</p>}
     </div>
   );
 }
