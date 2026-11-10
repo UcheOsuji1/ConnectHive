@@ -1,16 +1,10 @@
 import { useMemo, useState } from 'react';
 import { SKILL_CATS } from '../../data/skillTaxonomy.js';
+import { labelOf } from '../../lib/skillLabel.js';
 
 const ALL_SKILL_CHIPS = SKILL_CATS.flatMap(c => c.chips);
 const MAX_SKILLS = 30;
 const VISIBLE_TABS = 7;
-
-// "🐍 Python" -> "python" — strips the leading emoji so a typed "Python"
-// dedupes against the taxonomy chip and against another custom entry with
-// the same label, same rule the rest of this picker's matching uses.
-function labelOf(chip) {
-  return chip.split(' ').slice(1).join(' ').toLowerCase() || chip.toLowerCase();
-}
 
 // "What skills do you bring?" — reused (via `compact`) inside RoleBuilder's
 // per-role skill picker. Controlled: the parent owns `value` entirely.

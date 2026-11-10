@@ -10,6 +10,7 @@ import '../styles/profile-setup.css';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
 import AreaLocationInput from '../components/AreaLocationInput.jsx';
+import { sameSkill } from '../lib/skillLabel.js';
 
 // ── Data ──────────────────────────────────────────────────────
 
@@ -158,24 +159,25 @@ function Accordion({ cats, selected, onToggle, customChips, onAddCustom, onRemov
   function commitCustom(raw) {
     const chip = normalizeChip(raw);
     if (!chip) return;
-    // If it matches an existing chip exactly (case-insensitive), find and select it
-    const exactMatch = allChipsForSuggest.find(c => c.toLowerCase() === chip.toLowerCase());
-    if (exactMatch) {
+    // A typed "python" matches the taxonomy chip "🐍 Python" on label, not
+    // full-string — select that chip instead of adding a parallel custom one.
+    const labelMatch = allChipsForSuggest.find(c => sameSkill(c, chip));
+    if (labelMatch) {
       // Find which cat it belongs to and toggle it
       for (const cat of cats) {
-        if (cat.chips.includes(exactMatch)) {
-          if (!(selected[cat.key] || []).includes(exactMatch)) {
-            onToggle(cat.key, exactMatch);
+        if (cat.chips.includes(labelMatch)) {
+          if (!(selected[cat.key] || []).includes(labelMatch)) {
+            onToggle(cat.key, labelMatch);
           }
           break;
         }
       }
     } else {
-      // Case-insensitive dedup against existing custom entries
-      const isDup = customChips.some(c => c.toLowerCase() === chip.toLowerCase());
-      // Also dedup against already-selected cat chips
+      // Dedup by label against existing custom entries and already-selected
+      // chips — a second "underwater welding" (any case) adds nothing new.
+      const isDup = customChips.some(c => sameSkill(c, chip));
       const alreadySelected = Object.values(selected).flat();
-      const isDupSelected = alreadySelected.some(c => c.toLowerCase() === chip.toLowerCase());
+      const isDupSelected = alreadySelected.some(c => sameSkill(c, chip));
       if (!isDup && !isDupSelected) {
         onAddCustom(chip);
       }

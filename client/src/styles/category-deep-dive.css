@@ -473,11 +473,6 @@
 .cdd-chip.added { border-color: #c49a28; box-shadow: inset 0 0 0 0.5px #c49a28; }
 .cdd-card-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .cdd-card-hours { font-size: 10.5px; font-weight: 500; color: #a07a14; margin-bottom: 3px; }
-.cdd-nav-create {
-  height: 44px; padding: 0 20px; border: 0.5px solid #c49a28; border-radius: 8px; background: #fff;
-  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; letter-spacing: .1em;
-  text-transform: uppercase; color: #8a6510; cursor: pointer;
-}
 
 /* ── Group headers (Building a team / Joining a project / How you work) ── */
 .group-head { display: flex; align-items: center; gap: 12px; margin: 36px 0 18px; }

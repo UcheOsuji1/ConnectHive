@@ -14,14 +14,31 @@ import { trackPage, assertCleanPage, loginViaSession, QA_USERS } from './helpers
 // content, not mechanism, so exhaustively filling all of them 6x over
 // wouldn't catch anything the Social Groups pass doesn't already cover.
 
+// Project Collab is handled by its own two tests below — Prompt 77 moved its
+// city question behind the "Where and how will you work together?" cards, so
+// it no longer fits this loop's "location chips are immediately visible" shape.
 const CATEGORIES = [
   { hexName: 'Social Groups', key: 'social' },
   { hexName: 'Professional', key: 'professional' },
   { hexName: 'Travel Buddies', key: 'travel' },
-  { hexName: 'Project Collab', key: 'project' },
   { hexName: 'Event Buddies', key: 'event' },
   { hexName: 'Specialized', key: 'specialized' },
 ];
+
+// A category with zero matching Hives, for the founder-screen test below.
+// Metro choice can't produce this anymore: server/src/lib/metros.js's
+// LAUNCH_METROS is hardcoded to ['los-angeles'] only, so every other metro
+// hits the "outsideLaunch" / "Los Angeles first" screen instead of the plain
+// founder screen, regardless of hive data (confirmed by reading
+// hivesController.js's isLaunchArea/outsideLaunch logic, and by direct
+// testing — Boston genuinely has 0 Travel Hives but still renders "Los
+// Angeles first", not "Become the founder"). And a seed change elsewhere
+// (the "Starter Hives" batch) now gives every one of the 6 categories at
+// least one in-person Hive in Los Angeles, so no category+LA pair is empty
+// either. searchMode: 'online' sidesteps both: outsideLaunch is forced false
+// for online searches, and the real DB currently has zero online Event
+// Buddies Hives (confirmed via a direct query and via the setup check below).
+const EMPTY_CATEGORY = { hexName: 'Event Buddies', key: 'event' };
 
 const SILVER_LAKE  = { latitude: 34.0900, longitude: -118.2700 };
 const MIAMI        = { latitude: 25.7617, longitude: -80.1918 };
@@ -177,21 +194,35 @@ test.describe('Flow 4 — Find Your Hive', () => {
   });
 
   test('a category with no matching Hives shows the founder screen', async ({ page }) => {
-    // Travel Buddies has no seeded qa- Hives at all (seedBeta.js only makes
-    // Social Groups / Professional Networking / Project Collaboration ones),
-    // so an LA search here should genuinely find zero matches.
     const tracked = trackPage(page, { allowedFailedPaths: ['/api/auth/me'] });
     await loginViaSession(page, QA_USERS.owner1);
-    await selectCategory(page, 'Travel Buddies');
-    await page.getByRole('button', { name: /I'll type it in/ }).click();
-    await page.locator('.cdd-custom-input').fill('Los Angeles, CA');
-    await page.getByText(/^Los Angeles/i).first().click();
+
+    // Setup: don't assume the category is empty — a seed change elsewhere
+    // broke that assumption once already (Travel Buddies @ LA picked up
+    // Hives from an unrelated "Starter Hives" batch). Confirm through the
+    // real match endpoint before trusting the UI to show the founder screen.
+    const matchRes = await page.request.post('/api/hives/match', {
+      data: { category: EMPTY_CATEGORY.key, searchMode: 'online' },
+    });
+    const matchBody = await matchRes.json();
+    if (!matchRes.ok() || matchBody.hives?.length !== 0) {
+      throw new Error(
+        `Setup assumption failed: online ${EMPTY_CATEGORY.hexName} returned ` +
+        `${matchRes.ok() ? `${matchBody.hives?.length} Hive(s)` : `HTTP ${matchRes.status()}`}, not 0. ` +
+        'Pick a different category.',
+      );
+    }
+
+    await selectCategory(page, EMPTY_CATEGORY.hexName);
+    await page.getByRole('button', { name: /Online community only/ }).click();
     await page.locator('.cdd-nav-next').click();
     await page.waitForURL(url => url.pathname === '/hive-discovery', { timeout: 10000 });
     await page.waitForLoadState('networkidle');
     await assertCleanPage(page, tracked);
 
-    await expect(page.getByRole('heading', { name: 'Become the founder' })).toBeVisible();
+    // The empty-results screen has a deliberate minimum loading delay before
+    // it settles — longer than the default assertion timeout.
+    await expect(page.getByRole('heading', { name: 'Become the founder' })).toBeVisible({ timeout: 10000 });
   });
 
   for (const { hexName } of CATEGORIES) {
@@ -216,4 +247,37 @@ test.describe('Flow 4 — Find Your Hive', () => {
       await assertCleanPage(page, tracked);
     });
   }
+
+  test('Project Collab: category select -> location question -> results loads clean', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'Desktop Chrome', 'identical mechanism across categories — see file header');
+    const tracked = trackPage(page, { allowedFailedPaths: ['/api/auth/me'] });
+    await loginViaSession(page, QA_USERS.owner1);
+    await selectCategory(page, 'Project Collab');
+    await assertCleanPage(page, tracked);
+
+    // The city question only appears once a non-remote location mode is
+    // picked (Prompt 77's merged "Where and how will you work together?").
+    await page.locator('.cdd-card', { hasText: 'In-person (local team)' }).click();
+    await expect(page.getByRole('button', { name: /Use my current location/ })).toBeVisible();
+
+    await page.getByRole('button', { name: /I'll type it in/ }).click();
+    await page.locator('.cdd-custom-input').fill('Los Angeles, CA');
+    await page.getByText(/^Los Angeles/i).first().click();
+    await page.locator('.cdd-nav-next').click();
+    await page.waitForURL(url => url.pathname === '/hive-discovery', { timeout: 10000 });
+    await page.waitForLoadState('networkidle');
+    await assertCleanPage(page, tracked);
+  });
+
+  test('Project Collab: Fully remote hides the city question and distance control', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'Desktop Chrome', 'identical mechanism across categories — see file header');
+    const tracked = trackPage(page, { allowedFailedPaths: ['/api/auth/me'] });
+    await loginViaSession(page, QA_USERS.owner1);
+    await selectCategory(page, 'Project Collab');
+    await assertCleanPage(page, tracked);
+
+    await page.locator('.cdd-card', { hasText: 'Fully remote / online' }).click();
+    await expect(page.getByRole('button', { name: /Use my current location/ })).toHaveCount(0);
+    await expect(page.getByText('How far will you go to meet your Hive?')).toHaveCount(0);
+  });
 });
