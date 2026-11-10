@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ROLE_SUGGESTIONS } from '../../data/roleSuggestions.js';
+import { PROJECT_TYPES, keyForLabel } from '../../data/collabVocabulary.js';
 
 const MAX_ROLES = 8;
 
@@ -30,7 +31,8 @@ export default function RoleWishlist({ value, onChange, projectTypes = [], selec
   const seen = new Set();
   const candidates = [];
   for (const type of projectTypes) {
-    for (const s of (ROLE_SUGGESTIONS[type] ?? [])) {
+    const typeKey = keyForLabel(PROJECT_TYPES, type);
+    for (const s of (ROLE_SUGGESTIONS[typeKey] ?? [])) {
       const key = s.title.toLowerCase();
       if (seen.has(key) || addedTitles.has(key)) continue;
       seen.add(key);

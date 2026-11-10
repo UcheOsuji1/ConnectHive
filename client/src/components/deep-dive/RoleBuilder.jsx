@@ -1,8 +1,12 @@
 import { useRef, useState } from 'react';
 import SkillPicker from './SkillPicker.jsx';
 import { ROLE_SUGGESTIONS } from '../../data/roleSuggestions.js';
+import { EXPERIENCE_LEVELS, PROJECT_TYPES, keyForLabel } from '../../data/collabVocabulary.js';
 
-const EXPERIENCE_OPTIONS = ['Any level', 'Still learning', 'Some experience', 'Experienced', 'Expert'];
+// "Any level" isn't a level (RoleBuilder stores it as null experience, see
+// collabVocabulary.js's normalizeDeepDive) — prepended here, not in the
+// vocabulary's EXPERIENCE_LEVELS list.
+const EXPERIENCE_OPTIONS = ['Any level', ...EXPERIENCE_LEVELS.map(l => l.label)];
 const MAX_ROLES = 10;
 const MAX_ROLE_SKILLS = 8;
 const emptyRole = (title = '', skills = []) => ({ title, slots: 1, skills, experience: 'Any level' });
@@ -28,7 +32,8 @@ export default function RoleBuilder({ value, onChange, projectTypes = [] }) {
   const suggestions = [];
   const seenTitles = new Set();
   outer: for (const type of projectTypes) {
-    for (const s of (ROLE_SUGGESTIONS[type] ?? [])) {
+    const typeKey = keyForLabel(PROJECT_TYPES, type);
+    for (const s of (ROLE_SUGGESTIONS[typeKey] ?? [])) {
       const key = s.title.toLowerCase();
       if (seenTitles.has(key) || addedTitles.has(key)) continue;
       seenTitles.add(key);

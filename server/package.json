@@ -11,7 +11,8 @@
     "db:seed:hives": "node src/db/seedHives.js",
     "db:purge:test-hives": "node src/db/purgeTestHives.js",
     "db:backfill-coords": "node src/scripts/backfillCoordinates.js",
-    "billing:worker": "node --import ./src/instrument.js src/jobs/billingWorker.js"
+    "billing:worker": "node --import ./src/instrument.js src/jobs/billingWorker.js",
+    "check:collab": "node src/checks/collabVocabulary.check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

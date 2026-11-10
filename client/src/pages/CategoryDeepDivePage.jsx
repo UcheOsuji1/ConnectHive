@@ -9,6 +9,14 @@ import { api } from '../lib/api';
 import SkillPicker from '../components/deep-dive/SkillPicker.jsx';
 import RoleBuilder from '../components/deep-dive/RoleBuilder.jsx';
 import RoleWishlist from '../components/deep-dive/RoleWishlist.jsx';
+import {
+  asChips, asCards,
+  CAREER_STAGES, PRO_INDUSTRIES, PRO_LOOKING_FOR, PRO_NETWORK_STYLES, PRO_PRIMARY_GOALS,
+  PRO_WORK_SITUATIONS, MENTORSHIP_PREFS, INDUSTRY_SCOPES,
+  PROJECT_TYPES, PROJECT_PATHS, PROJECT_PRIMARY_GOALS, PROJECT_STAGES, PROJECT_INDUSTRIES,
+  EXPERIENCE_LEVELS, COMPENSATION, PROJECT_PREF_STAGES, WORK_STYLES, COMMITMENTS,
+  PROJECT_TIMELINES, COLLAB_FORMATS, FUNDING,
+} from '../data/collabVocabulary.js';
 import '../styles/category-deep-dive.css';
 
 function GroupHead({ text, sub }) {
@@ -110,72 +118,17 @@ const SOCIAL_CHIPS_REL = [
 // ── Professional content data ─────────────────────────────────
 
 
-const PROF_CARDS_STAGE = [
-  { emoji: '🎓', name: 'Student',                desc: 'Still in school, building foundations.' },
-  { emoji: '🌱', name: 'Early career (0–3 yrs)', desc: 'Just getting started in my field.' },
-  { emoji: '📈', name: 'Mid-career (3–8 yrs)',   desc: 'Growing and establishing myself.' },
-  { emoji: '🏆', name: 'Senior / Leadership',    desc: 'Experienced — giving and getting more.' },
-];
-
-const PROF_CHIPS_INDUSTRY = [
-  '💻 Tech / Software',    '🎬 Film & Media',        '💰 Finance / Investing',
-  '🚀 Startups',           '🎨 Design & Creative',   '📢 Marketing',
-  '⚕️ Healthcare',          '⚖️ Law / Legal',          '🏫 Education',
-  '🏗️ Real Estate',         '🎭 Entertainment',        '📊 Consulting',
-  '🛍️ Retail / E-commerce', '🌿 Wellness / Fitness',   '🏛️ Government / Nonprofit',
-  '🔬 Science / Research', '✈️ Hospitality / Travel', '🏭 Manufacturing',
-  '🎮 Gaming / Esports',   '🏦 Banking / Fintech',   '🌍 International / Global',
-  '👗 Fashion & Apparel',  '🍽️ Food & Beverage',     '🏟️ Sports',
-  '💄 Beauty & Personal care', '🎤 Performing Arts',
-];
-
-const PROF_CHIPS_GOALS = [
-  '🧭 A mentor',                 '👥 Peers in my field',           '🤝 Collaborators',
-  '💼 Job / internship leads',   '💡 Investors / advisors',        '📣 Speaking opportunities',
-  '🌐 Industry connections',     '🧠 Knowledge sharing',           '📰 Stay current on trends',
-  '🏆 Leadership development',   '💬 Honest career feedback',      '🎯 Accountability for goals',
-  '🧑‍💻 Find a business partner',  '📋 Join a mastermind group',     '🎙️ Podcast / media collab',
-  '🏛️ Board / advisory roles',   '🌍 International connections',   '📱 Social media growth collab',
-  '🤲 Mentor the next generation',
-];
-
-const PROF_CARDS_NETWORK = [
-  { emoji: '☕', name: '1-on-1 coffee chats',   desc: 'Intimate, focused conversations.' },
-  { emoji: '🎤', name: 'Group events & panels', desc: 'Structured, high-value group settings.' },
-  { emoji: '💬', name: 'Online / async first',  desc: 'Chat, DMs, and virtual calls.' },
-  { emoji: '🔀', name: 'Mix of everything',     desc: 'Flexible, whatever makes sense.' },
-];
-
-const PROF_CARDS_PRIMARY_GOAL = [
-  { emoji: '🎯', name: 'Land a new job or promotion',    desc: 'Actively looking to move up or move on.' },
-  { emoji: '🚀', name: 'Launch or grow my business',     desc: 'Building something of my own.' },
-  { emoji: '💡', name: 'Break into a new industry',      desc: 'Pivoting or expanding into new territory.' },
-  { emoji: '🧠', name: 'Develop a specific skill',       desc: 'Focused on learning and leveling up.' },
-  { emoji: '🌐', name: 'Expand my professional network', desc: 'More connections, more opportunities.' },
-  { emoji: '💰', name: 'Increase my income',             desc: 'Freelance, raise, side income. All of the above.' },
-  { emoji: '🏆', name: 'Build authority in my field',    desc: 'Become a recognized name in my industry.' },
-  { emoji: '🤝', name: 'Find a business partner',        desc: 'Looking for a co-founder or long-term collaborator.' },
-];
-
-const PROF_CHIPS_WORKSIT = [
-  '💼 Full-time employee',              '🚀 Founder / co-founder',
-  '🧑‍💻 Freelancer / consultant',         '🎓 Student',
-  '🔍 Actively job searching',           '🌱 Recently laid off / in transition',
-  '🏖️ Taking a break / sabbatical',      '🔀 Multiple things at once',
-];
-
-const PROF_CARDS_MENTOR = [
-  { emoji: '🧭', name: 'I want to be mentored',           desc: "Looking for guidance, advice, and someone who's been there before." },
-  { emoji: '💡', name: 'I want to mentor others',         desc: 'I have experience to share and want to help people grow.' },
-  { emoji: '🔄', name: 'Both, I can do either',          desc: 'Open to mentoring and being mentored depending on context.' },
-  { emoji: '👥', name: 'Neither, just peer connections', desc: 'I want equals to grow alongside, not a mentor dynamic.' },
-];
-
-const PROF_CARDS_INDUSTRY_PREF = [
-  { emoji: '🎯', name: 'Same industry only', desc: 'I want deep domain expertise around me.' },
-  { emoji: '🌍', name: 'Cross-industry',     desc: 'I value diverse perspectives from different fields.' },
-  { emoji: '🔀', name: 'No preference',      desc: "Just match me well — industry doesn't matter." },
-];
+// These 8 are rebuilt from collabVocabulary.js (Prompt 76) — same constant
+// names, same values, now derived from stable keys instead of being the
+// source of truth themselves. See server/src/checks/collabVocabulary.check.mjs.
+const PROF_CARDS_STAGE = asCards(CAREER_STAGES);
+const PROF_CHIPS_INDUSTRY = asChips(PRO_INDUSTRIES);
+const PROF_CHIPS_GOALS = asChips(PRO_LOOKING_FOR);
+const PROF_CARDS_NETWORK = asCards(PRO_NETWORK_STYLES);
+const PROF_CARDS_PRIMARY_GOAL = asCards(PRO_PRIMARY_GOALS);
+const PROF_CHIPS_WORKSIT = asChips(PRO_WORK_SITUATIONS);
+const PROF_CARDS_MENTOR = asCards(MENTORSHIP_PREFS);
+const PROF_CARDS_INDUSTRY_PREF = asCards(INDUSTRY_SCOPES);
 
 // ── Travel Buddies content data ───────────────────────────────
 
@@ -255,112 +208,22 @@ const TRAVEL_CHIPS_LENGTH = [
 
 // ── Project Collab content data ───────────────────────────────
 
-const PROJECT_CHIPS_TYPES = [
-  '📱 App / Software team',         '🚀 Co-founding a startup',
-  '🎬 Film / video crew',            '🎵 Music production team',
-  '📝 Content / media collective',  '🎨 Creative studio / design team',
-  '🛍️ Brand / e-commerce venture',   '🤖 AI / ML research group',
-  '📚 Research & academic collab',  '🏗️ Physical product / hardware',
-  '🌿 Social impact project',       '🎓 Student project group',
-  '🎮 Game studio',                 '👕 Fashion / clothing brand',
-  '🍳 Food / culinary venture',     '🎭 Theater / live performance',
-  '🎙️ Podcast / audio show',         '📖 Book / publishing',
-  '🎪 Event production',
-];
-
-// "Are you joining a project or building a team?" — determines the labels
-// below and which of the Building/Joining groups show.
-const PROJECT_CARDS_PATH = [
-  { emoji: '🔍', name: 'Joining a project', desc: 'I want to bring my skills to someone else’s project.' },
-  { emoji: '🛠️', name: 'Building a team',   desc: 'I have a project and I’m looking for people.' },
-  { emoji: '🔀', name: 'Open to either',    desc: 'Show me both. I’ll decide once I see the fit.' },
-];
-
-const PROJECT_CARDS_PRIMARY_GOAL = [
-  { emoji: '🚀', name: 'Ship a real product or business',     desc: "I'm here to build something real and launch it." },
-  { emoji: '🧠', name: 'Learn by building with others',       desc: 'Growth and skill-building is the main priority.' },
-  { emoji: '💰', name: 'Generate income from the project',    desc: 'This needs to make money. Monetization is the goal.' },
-  { emoji: '🏆', name: 'Build my portfolio / credentials',    desc: 'I want tangible work to show for this collaboration.' },
-  { emoji: '🌱', name: 'Find a long-term co-founder',         desc: 'Looking for a partner, not just a project teammate.' },
-  { emoji: '🎯', name: 'Complete a specific one-time project', desc: 'Defined scope, clear end date, deliver and done.' },
-  { emoji: '🌍', name: 'Create social impact',                desc: "Profit isn't the point. Impact and mission are." },
-  { emoji: '📣', name: 'Build an audience or brand',          desc: 'Growing a following, platform, or creative identity.' },
-];
-
-const PROJECT_CARDS_STAGE = [
-  { emoji: '💡', name: 'Just an idea',          desc: 'I have a concept but nothing made yet.' },
-  { emoji: '🔧', name: 'In progress',           desc: 'Actively making the first version.' },
-  { emoji: '🚀', name: 'Launched and growing',  desc: 'Already out there, looking to scale.' },
-];
-
-const PROJECT_CHIPS_INDUSTRY = [
-  '💻 Tech / Software',            '🎬 Film & Entertainment',
-  '🎵 Music & Audio',              '📱 Social media / Content',
-  '🤖 AI / Machine Learning',      '🛍️ E-commerce / Retail',
-  '🌍 Social impact / Nonprofit',  '🏥 Health & Wellness',
-  '🎓 Education / EdTech',         '💰 Finance / Fintech',
-  '🎨 Art & Design',               '🏗️ Hardware / Physical product',
-  '🌿 Sustainability / CleanTech', '🎮 Gaming / Interactive',
-  '🏠 Real Estate / PropTech',
-  '👗 Fashion & Apparel',        '🍽️ Food & Beverage',
-  '🏋️ Sports & Fitness',          '📖 Publishing & Writing',
-  '💄 Beauty & Personal care',
-];
-
-// "What's your experience level?" (Joining path)
-const PROJECT_CARDS_EXPERIENCE = [
-  { emoji: '🌱', name: 'Still learning',   desc: 'I’m building my skills and want real practice.' },
-  { emoji: '🧩', name: 'Some experience',  desc: 'I’ve done this on a few projects.' },
-  { emoji: '💪', name: 'Experienced',      desc: 'I do this regularly and can own my part.' },
-  { emoji: '🏆', name: 'Expert',           desc: 'I can lead this area and mentor others.' },
-];
-
-// Shared by "What can you offer collaborators?" (Building) and "What are
-// you looking for in return?" (Joining) — same options either direction.
-const PROJECT_CHIPS_OFFER = [
-  '💵 Paid', '📈 Equity', '🤝 Revenue share', '🏆 Portfolio / credit', '🌱 Unpaid / volunteer', '🎓 Academic credit',
-];
-
-// "What stage do you want to join at?" (Joining, optional) — "Any stage" is
-// exclusive with the other three, same pattern as the age-band chips elsewhere.
-const PROJECT_CHIPS_PREF_STAGE = [
-  '💡 Just an idea', '🔧 In progress', '🚀 Launched and growing', '🔀 Any stage',
-];
-
-const PROJECT_CARDS_WORKSTYLE = [
-  { emoji: '💬', name: 'Async / remote',       desc: 'Work independently, check in regularly online.' },
-  { emoji: '📅', name: 'Weekly sync meetings', desc: 'Structured check-ins, clear milestones and deadlines.' },
-  { emoji: '🔥', name: 'Intensive sprints',    desc: 'Deep focus, fast-paced, ship things quickly.' },
-  { emoji: '🔀', name: 'Flexible',             desc: 'Adapts to what the project and team need.' },
-];
-
-const PROJECT_CARDS_TIME = [
-  { emoji: '🔥', name: 'Full-time',    hours: '40+ hrs / week',         desc: 'This is my main focus — all in.' },
-  { emoji: '⚡', name: 'Part-time',    hours: '15–20 hrs / week',        desc: 'Serious commitment alongside other work.' },
-  { emoji: '📅', name: 'Side project', hours: '5–10 hrs / week',         desc: 'Nights and weekends, steady progress.' },
-  { emoji: '🌊', name: 'Casual',       hours: 'A few hours when I can',  desc: 'Low pressure, flexible timing.' },
-];
-
-const PROJECT_CHIPS_TIMELINE = [
-  '⚡ Short sprint (days–weeks)', '📅 A few months',
-  '🗓️ 6 months to a year',       '🚀 Long-term / ongoing',
-  '🔍 Not sure yet',
-];
-
-const PROJECT_CARDS_LOCATION = [
-  { emoji: '🌐', name: 'Fully remote / online',  desc: "Zoom, Slack, async tools. Location doesn't matter." },
-  { emoji: '📍', name: 'In-person (local team)', desc: 'I want to be in the same room as my collaborators.' },
-  { emoji: '🔀', name: 'Hybrid',                 desc: 'Mostly online with in-person days when it counts.' },
-  { emoji: '🏢', name: 'Co-working space',       desc: 'A shared physical workspace to build together.' },
-];
-
-const PROJECT_CARDS_FUNDING = [
-  { emoji: '💵', name: 'Bootstrapped',    desc: 'Self-funded, no outside money.' },
-  { emoji: '🤝', name: 'Pre-revenue',     desc: 'Not funded yet, looking for partners.' },
-  { emoji: '💡', name: 'Seeking funding', desc: 'Actively looking for investors or grants.' },
-  { emoji: '💰', name: 'Already funded',  desc: 'We have capital to work with.' },
-  { emoji: '🎓', name: 'Academic project', desc: 'School or research, no funding needed.' },
-];
+// These 13 are rebuilt from collabVocabulary.js (Prompt 76) — same constant
+// names, same values, now derived from stable keys instead of being the
+// source of truth themselves. See server/src/checks/collabVocabulary.check.mjs.
+const PROJECT_CHIPS_TYPES = asChips(PROJECT_TYPES);
+const PROJECT_CARDS_PATH = asCards(PROJECT_PATHS);
+const PROJECT_CARDS_PRIMARY_GOAL = asCards(PROJECT_PRIMARY_GOALS);
+const PROJECT_CARDS_STAGE = asCards(PROJECT_STAGES);
+const PROJECT_CHIPS_INDUSTRY = asChips(PROJECT_INDUSTRIES);
+const PROJECT_CARDS_EXPERIENCE = asCards(EXPERIENCE_LEVELS);
+const PROJECT_CHIPS_OFFER = asChips(COMPENSATION);
+const PROJECT_CHIPS_PREF_STAGE = asChips(PROJECT_PREF_STAGES);
+const PROJECT_CARDS_WORKSTYLE = asCards(WORK_STYLES);
+const PROJECT_CARDS_TIME = asCards(COMMITMENTS);
+const PROJECT_CHIPS_TIMELINE = asChips(PROJECT_TIMELINES);
+const PROJECT_CARDS_LOCATION = asCards(COLLAB_FORMATS);
+const PROJECT_CARDS_FUNDING = asCards(FUNDING);
 
 // ── Event Buddies content data ────────────────────────────────
 

@@ -84,7 +84,7 @@ export const SKILL_CATS = [
 // different full strings silently inflates match scores and defeats the custom-
 // entry dedup from Part 2. Throws at module load time in the Vite dev server so
 // the error is impossible to miss. Tree-shaken from production builds.
-if (import.meta.env.DEV) {
+if (import.meta.env?.DEV) {
   const seen = new Map(); // normalised label → first full chip string
   for (const cat of SKILL_CATS) {
     for (const chip of cat.chips) {
