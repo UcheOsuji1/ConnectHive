@@ -175,6 +175,13 @@ const hiveJoinLimiter = rateLimit({
   keyGenerator: (req) => req.userId,
   message: { error: 'Too many join attempts — slow down and try again later.' },
 });
+const hiveCollabWriteLimiter = rateLimit({
+  ...LIMITS.hiveCollabWrite,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.userId,
+  message: { error: 'Too many collab updates — slow down and try again later.' },
+});
 
 // ── Static paths (must come before /:id) ─────────────────────────────────────
 router.post('/match',         requireAuth, matchHives);
@@ -231,7 +238,7 @@ router.post('/:id/welcome-seen',         requireAuth, markWelcomeSeen);
 router.get('/:id/overview',              requireAuth, getHiveOverview);
 router.get('/:id/analytics',             requireAuth, getHiveAnalytics);
 router.get('/:id/collab',                  requireAuth, getHiveCollab);
-router.put('/:id/collab',                  requireAuth, updateHiveCollab);
+router.put('/:id/collab',                  requireAuth, hiveCollabWriteLimiter, updateHiveCollab);
 router.get('/:id/members',                requireAuth, getHiveMembers);
 router.patch('/:id/members/:userId/role',   requireAuth, updateMemberRole);
 router.patch('/:id/members/:userId/collab-role', requireAuth, updateMemberCollabRole);

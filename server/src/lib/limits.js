@@ -8,4 +8,5 @@ export const LIMITS = {
   hiveCreation: { windowMs: 24 * 60 * 60 * 1000, max: 5  }, // 5 per day
   reports:      { windowMs: 60 * 60 * 1000,      max: 10 }, // 10 per hour
   profileCollab: { windowMs: 60 * 60 * 1000,     max: 30 }, // 30 per hour
+  hiveCollabWrite: { windowMs: 60 * 60 * 1000,   max: 30 }, // 30 per hour — PUT /api/hives/:id/collab
 };

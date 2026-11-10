@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Manage Hive: Project and Open Roles</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f0e8}
+a{color:#8a6510}a:hover{color:#c49a28}
+*{box-sizing:border-box}
+.root{background:#f5f0e8;font-family:'DM Sans',sans-serif;color:#1a1508;min-height:100%}
+.nav{height:60px;background:#fff;border-bottom:0.5px solid #e8e0d0;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav-logo{display:flex;align-items:center;gap:9px;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:#1a1508;text-decoration:none}
+.nav-links{display:flex;gap:22px;font-size:13px;color:#4a3a18}
+.nav-links a{color:#4a3a18;text-decoration:none}
+.ch-page{max-width:680px;margin:0 auto;padding:36px 24px 120px}
+.ch-eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ch-eyebrow-line{width:22px;height:0.5px;background:#c49a28}
+.ch-eyebrow-text{font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#a07a14}
+.ch-header-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:500;margin:0 0 8px;line-height:1.2}
+.ch-header-sub{font-size:13px;color:#6f6656;margin:0 0 20px;line-height:1.5}
+.ch-banner{background:#fdf6e4;border:0.5px solid #e8d8a4;border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.ch-banner-text{font-size:13px;color:#5e4d20;line-height:1.55;margin:0}
+.ch-prefill-note{font-size:12px;color:#6f6656;margin:0 0 24px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ch-pretag{display:inline-flex;font-size:8.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;background:#fdf0d0;color:#7a5a0c;border-radius:4px;padding:3px 6px}
+.ch-section{background:#fff;border:0.5px solid #e8e0d0;border-radius:16px;padding:24px;margin-bottom:14px}
+.ch-section.new{box-shadow:0 0 0 1.5px #c49a28}
+.ch-section-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:22px}
+.ch-section-num{width:28px;height:28px;border-radius:8px;background:#c49a28;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#1a1508;flex-shrink:0}
+.ch-section-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;font-style:italic;margin:0 0 3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ch-section-desc{font-size:11.5px;color:#7d7158;margin:0}
+.ch-collapsed{display:flex;align-items:center;gap:14px;background:#fff;border:0.5px solid #e8e0d0;border-radius:16px;padding:16px 24px;margin-bottom:14px}
+.ch-collapsed .ch-section-num{background:#efe7d4;color:#6f6656}
+.ch-collapsed-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;flex:1}
+.ch-collapsed-note{font-size:11px;color:#7d7158}
+.ch-field{margin-bottom:20px}
+.ch-field:last-child{margin-bottom:0}
+.ch-field-label{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:500;color:#4a3a18;flex-wrap:wrap}
+.req{color:#b4462c;font-weight:600}
+.opt{font-size:11px;font-weight:400;color:#8f8566}
+.ch-field-sub{font-size:11.5px;color:#7d7158;margin:-4px 0 10px}
+.ch-input{width:100%;padding:10px 14px;border:0.5px solid #d8d0bc;border-radius:10px;font-family:inherit;font-size:13.5px;color:#1a1508;background:#fff}
+.ch-textarea{width:100%;padding:10px 14px;border:0.5px solid #d8d0bc;border-radius:10px;font-family:inherit;font-size:13.5px;line-height:1.55;color:#1a1508;background:#fff;min-height:68px;resize:vertical}
+.ch-locked{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:0.5px solid #e8e0d0;border-radius:10px;background:#faf8f4;font-size:13.5px}
+.ch-locked button{border:0;background:#fdf0d0;color:#7a5a0c;font-family:inherit;font-size:11px;font-weight:600;border-radius:6px;padding:5px 10px;cursor:pointer}
+.ch-chips-row{display:flex;flex-wrap:wrap;gap:7px}
+.ch-chip{padding:7px 14px;border:0.5px solid #d8d0bc;border-radius:20px;font-family:inherit;font-size:12.5px;color:#4a3a18;background:#faf8f4;cursor:pointer;min-height:34px}
+.ch-chip.selected{border-color:#c49a28;background:#fdf8ec;color:#7a5a0c;font-weight:500;box-shadow:inset 0 0 0 0.5px #c49a28}
+.ch-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ch-cards.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ch-card{padding:12px;background:#faf8f4;border:0.5px solid #d8d0bc;border-radius:10px;cursor:pointer;text-align:left;font-family:inherit}
+.ch-card.selected{border-color:#c49a28;background:#fdf8ec;box-shadow:inset 0 0 0 0.5px #c49a28}
+.ch-card-label{font-size:12.5px;font-weight:500;color:#1a1508;margin-bottom:3px}
+.ch-card.selected .ch-card-label{color:#7a5a0c}
+.ch-card-sub{font-size:11px;color:#7d7158;line-height:1.4}
+.ch-size-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ch-size-card{padding:12px 8px;background:#faf8f4;border:0.5px solid #d8d0bc;border-radius:10px;text-align:center;font-family:inherit;cursor:pointer}
+.ch-size-card.selected{border-color:#c49a28;background:#fdf8ec}
+.ch-size-card-label{font-size:12.5px;font-weight:500;margin-bottom:3px}
+.ch-size-card-range{font-size:11px;color:#7d7158}
+.ch-field-error{font-size:11.5px;color:#b4462c;margin:8px 0 0;line-height:1.45}
+.notice{margin-top:10px;padding:11px 14px;border-radius:10px;font-size:12px;line-height:1.5;display:flex;gap:10px;align-items:flex-start}
+.notice-warn{background:#fdf0ea;border:0.5px solid #e6b8a4;color:#7a3218}
+.notice-ok{background:#f3f6ee;border:0.5px solid #c9d6b4;color:#3d5222}
+.notice-info{background:#fdf6e4;border:0.5px solid #e8d8a4;color:#5e4d20}
+.notice b{font-weight:600}
+.subhead{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#a07a14;margin:26px 0 14px;display:flex;align-items:center;gap:10px}
+.subhead span{flex:1;height:0.5px;background:#e8dcc0}
+.role{border:0.5px solid #d8d0bc;border-radius:12px;background:#fffdf9;padding:14px 16px;margin-bottom:10px}
+.role-top{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.field-label{display:block;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#6f6656;margin-bottom:5px}
+.role-name{flex:1 1 220px}
+.role-name input{width:100%;height:40px;border:0.5px solid #d8d0bc;border-radius:8px;padding:0 12px;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:#1a1508;background:#fff}
+.stepper{display:flex;align-items:center;border:0.5px solid #d8d0bc;border-radius:8px;height:40px;overflow:hidden;background:#fff}
+.stepper button{width:34px;height:40px;border:none;background:#faf8f4;font-size:16px;color:#4a3a18;cursor:pointer}
+.stepper input{width:46px;height:40px;border:none;border-left:0.5px solid #e8e0d0;border-right:0.5px solid #e8e0d0;text-align:center;font-family:inherit;font-size:14px;font-weight:600;color:#1a1508}
+.icon-btn{width:40px;height:40px;border:0.5px solid #e2dacb;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6f6656}
+.role-row{margin-top:12px}
+.mini-chip{padding:5px 11px;border:0.5px solid #d8d0bc;border-radius:20px;background:#fff;font-size:11.5px;color:#4a3a18;font-family:inherit;cursor:pointer;min-height:30px}
+.mini-chip.selected{background:#1a1508;border-color:#1a1508;color:#f5f0e8}
+.mini-chip.dashed{border-style:dashed;border-color:#c49a28;color:#7a5a0c;background:#fffdf7}
+.skill-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 7px 5px 11px;border-radius:20px;background:#fdf0cf;border:0.5px solid #e2c56e;font-size:11.5px;color:#4a3608}
+.skill-tag button{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:none;border-radius:50%;background:rgba(74,54,8,.12);padding:0;cursor:pointer;color:#4a3608}
+.add-role{width:100%;height:46px;border:0.5px dashed #c49a28;border-radius:12px;background:#fffdf7;font-family:inherit;font-size:13px;font-weight:500;color:#7a5a0c;cursor:pointer}
+.suggest{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.suggest-label{font-size:11.5px;color:#7d7158}
+.dashed-chip{padding:6px 13px;border:0.5px dashed #c49a28;border-radius:20px;background:#fffdf7;font-family:inherit;font-size:12px;color:#7a5a0c;cursor:pointer;min-height:32px}
+.spots-total{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#4a3a18;margin-top:12px;padding:10px 14px;background:#faf8f4;border-radius:10px}
+.spots-total b{font-weight:600}
+.fill-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:0.5px solid #efe8da}
+.bar{flex:0 0 120px;height:6px;border-radius:6px;background:#efe7d4;overflow:hidden}
+.bar i{display:block;height:100%;background:#c49a28}
+.fill-text{font-size:12px;font-weight:500}
+.avatar{width:26px;height:26px;border-radius:50%;background:#8a6510;color:#fff;font-size:10.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #fff}
+.person{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#4a3a18}
+.status{display:inline-flex;border:0.5px solid #d8d0bc;border-radius:8px;overflow:hidden;margin-left:auto}
+.status button{border:none;background:#fff;font-family:inherit;font-size:11.5px;padding:7px 12px;cursor:pointer;color:#4a3a18;min-height:32px}
+.status button.on{background:#1a1508;color:#f5f0e8}
+.pill{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:20px;padding:3px 9px}
+.pill-full{background:#e8eef6;color:#26446b}
+.pill-open{background:#fdf0cf;color:#7a5a0c}
+.pill-closed{background:#efe7d4;color:#5c5240}
+.ch-launch-bar{position:sticky;bottom:0;background:#fff;border-top:0.5px solid #e8e0d0;padding:13px 24px}
+.ch-launch-inner{max-width:680px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.ch-launch-meta{font-size:12px;color:#6f6656;margin:0}
+.ch-btn-launch{padding:12px 26px;border:none;border-radius:10px;background:#c49a28;font-family:inherit;font-size:13px;font-weight:600;color:#1a1508;cursor:pointer;min-height:44px}
+.tag-new{font-family:'DM Sans',sans-serif;font-style:normal;font-size:9px;font-weight:600;letter-spacing:.08em;border-radius:20px;padding:2px 8px;text-transform:uppercase;background:#1a1508;color:#f5f0e8}
+/* manage layout */
+.mg{display:flex;min-height:100%}
+.mg-side{flex:0 0 230px;background:#fff;border-right:0.5px solid #e8e0d0;padding:22px 14px}
+.mg-hive{display:flex;align-items:center;gap:10px;padding:0 8px 18px;border-bottom:0.5px solid #efe8da;margin-bottom:14px}
+.mg-hive-logo{width:34px;height:34px;border-radius:9px;background:#1a1508;color:#e8c84a;font-family:'Cormorant Garamond',serif;font-weight:600;display:flex;align-items:center;justify-content:center}
+.mg-hive-name{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.1}
+.mg-hive-cat{font-size:10.5px;color:#7d7158}
+.mg-group{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8f8566;padding:12px 8px 6px}
+.mg-link{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;font-size:12.5px;color:#4a3a18;text-decoration:none}
+.mg-link.on{background:#fdf6e4;color:#1a1508;font-weight:600;box-shadow:inset 2px 0 0 #c49a28}
+.mg-main{flex:1;min-width:0;padding:30px 36px 60px}
+.mg-inner{max-width:760px}
+.mg-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500;margin:0 0 4px}
+.mg-sub{font-size:12.5px;color:#6f6656;margin:0 0 20px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.stat{background:#fff;border:0.5px solid #e8e0d0;border-radius:12px;padding:14px 16px}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;line-height:1}
+.stat-lbl{font-size:11px;color:#7d7158;margin-top:5px}
+.save-row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.btn-ghost{padding:11px 20px;border:0.5px solid #d8d0bc;border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:#4a3a18;cursor:pointer;min-height:44px}
+@media (max-width:700px){.ch-cards,.ch-cards.four,.ch-size-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.mg{flex-wrap:wrap}.mg-side{flex:1 1 100%}.stats{grid-template-columns:minmax(0,1fr)}}
+</style>
+</helmet>
+<div class="root">
+<div class="mg"><nav class="mg-side" aria-label="Hive navigation"><div class="mg-hive"><div class="mg-hive-logo">W</div><div><div class="mg-hive-name">Weekend Short Film Crew</div><div class="mg-hive-cat">Project Collab</div></div></div>
+<a class="mg-link" href="#">Home</a><a class="mg-link" href="#">Chat</a><a class="mg-link" href="#">Plans</a><a class="mg-link" href="#">Members</a>
+<div class="mg-group">Manage Hive</div>
+<a class="mg-link" href="#">Overview</a><a class="mg-link" href="#">Join Requests <span class="pill pill-open">2</span></a><a class="mg-link" href="#">Members &amp; Roles</a><a class="mg-link on" href="#">Project &amp; Open Roles</a><a class="mg-link" href="#">Rooms</a><a class="mg-link" href="#">Reports</a><a class="mg-link" href="#">Tools</a><a class="mg-link" href="#">Appearance</a><a class="mg-link" href="#">Member Onboarding</a><a class="mg-link" href="#">Analytics</a><a class="mg-link" href="#">General Settings</a></nav><main class="mg-main"><div class="mg-inner"><h1 class="mg-title">Project &amp; Open Roles <span class="tag-new" style="vertical-align:middle">New</span></h1><p class="mg-sub">Only owners and admins can see this. Professional Hives get "Who it's for" here instead.</p><div class="stats"><div class="stat"><div class="stat-num">3</div><div class="stat-lbl">Open spots across 3 open roles</div></div><div class="stat"><div class="stat-num">3 of 7</div><div class="stat-lbl">Spots filled</div></div><div class="stat"><div class="stat-num">Visible</div><div class="stat-lbl">In discovery while any role has an open spot</div></div></div><div class="notice notice-info" style="margin:0 0 16px"><div><b>When every role is filled, your Hive is hidden from discovery.</b> Members, followers, your link and code keep working. Add a role or add spots to show it again. (This banner turns orange and says "Hidden from discovery" in that state.)</div></div><div class="ch-section"><div class="ch-field"><div class="ch-field-label">What kind of project? <span class="ch-pretag">Pre-filled</span></div><div class="ch-chips-row"><button type="button" class="ch-chip">📱 App / Software team</button><button type="button" class="ch-chip">🚀 Co-founding a startup</button><button type="button" class="ch-chip selected">🎬 Film / video crew</button><button type="button" class="ch-chip">🎵 Music production team</button><button type="button" class="ch-chip">📝 Content / media collective</button><button type="button" class="ch-chip">🎨 Creative studio / design team</button><button type="button" class="ch-chip">🛍️ Brand / e-commerce venture</button><button type="button" class="ch-chip">🤖 AI / ML research group</button><button type="button" class="ch-chip">📚 Research &amp; academic collab</button><button type="button" class="ch-chip">🏗️ Physical product / hardware</button><button type="button" class="ch-chip">🌿 Social impact project</button><button type="button" class="ch-chip">🎓 Student project group</button><button type="button" class="ch-chip">🎮 Game studio</button><button type="button" class="ch-chip">👕 Fashion / clothing brand</button><button type="button" class="ch-chip">🍳 Food / culinary venture</button><button type="button" class="ch-chip">🎭 Theater / live performance</button><button type="button" class="ch-chip">🎙️ Podcast / audio show</button><button type="button" class="ch-chip">📖 Book / publishing</button><button type="button" class="ch-chip">🎪 Event production</button></div><button type="button" class="dashed-chip" style="margin-top:8px">+ Something else</button></div><div class="ch-field"><div class="ch-field-label">Project stage <span class="ch-pretag">Pre-filled</span></div><div class="ch-cards"><button type="button" class="ch-card"><div class="ch-card-label">💡 Just an idea</div><div class="ch-card-sub">Concept, nothing made yet.</div></button><button type="button" class="ch-card selected"><div class="ch-card-label">🔧 In progress</div><div class="ch-card-sub">Making the first version.</div></button><button type="button" class="ch-card"><div class="ch-card-label">🚀 Launched and growing</div><div class="ch-card-sub">Out there, looking to scale.</div></button></div></div><div class="subhead">Open roles<span></span></div><div class="role">
+<div class="role-top">
+<div class="role-name"><label class="field-label" for="r1">Role</label><input id="r1" type="text" value="Cinematographer"></div>
+<div><label class="field-label" for="r1s">Spots</label><div class="stepper"><button type="button" aria-label="Fewer spots">−</button><input id="r1s" type="number" value="1" min="1" max="50"><button type="button" aria-label="More spots">+</button></div></div>
+<button type="button" class="icon-btn" aria-label="Remove role"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+<div class="role-row"><span class="field-label">Skills this role needs <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><span class="skill-tag">📸 Photography <button type="button" aria-label="Remove Photography"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.4"></path></svg></button></span><span class="skill-tag">📺 Documentary <button type="button" aria-label="Remove Documentary"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.4"></path></svg></button></span><button type="button" class="mini-chip dashed">+ Add skill</button></div></div>
+<div class="role-row"><span class="field-label">Experience <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><button type="button" class="mini-chip">Any level</button><button type="button" class="mini-chip">Still learning</button><button type="button" class="mini-chip selected">Some experience</button><button type="button" class="mini-chip">Experienced</button><button type="button" class="mini-chip">Expert</button></div></div>
+<div class="fill-row"><div class="bar"><i style="width: 100%"></i></div><span class="fill-text">1 of 1 filled</span><span class="pill pill-full">Filled</span><span class="person"><span class="avatar">M</span>Maya Lopez</span>
+<div class="status" role="group" aria-label="Role status"><button type="button" class="on">Open</button><button type="button" class="">Closed</button></div></div>
+</div>
+<div class="role">
+<div class="role-top">
+<div class="role-name"><label class="field-label" for="r2">Role</label><input id="r2" type="text" value="Sound mixer"></div>
+<div><label class="field-label" for="r2s">Spots</label><div class="stepper"><button type="button" aria-label="Fewer spots">−</button><input id="r2s" type="number" value="2" min="1" max="50"><button type="button" aria-label="More spots">+</button></div></div>
+<button type="button" class="icon-btn" aria-label="Remove role"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+<div class="role-row"><span class="field-label">Skills this role needs <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><span class="skill-tag">🎙️ Audio Engineering <button type="button" aria-label="Remove Audio Engineering"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.4"></path></svg></button></span><span class="skill-tag">🔊 Live Sound <button type="button" aria-label="Remove Live Sound"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.4"></path></svg></button></span><button type="button" class="mini-chip dashed">+ Add skill</button></div></div>
+<div class="role-row"><span class="field-label">Experience <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><button type="button" class="mini-chip selected">Any level</button><button type="button" class="mini-chip">Still learning</button><button type="button" class="mini-chip">Some experience</button><button type="button" class="mini-chip">Experienced</button><button type="button" class="mini-chip">Expert</button></div></div>
+<div class="fill-row"><div class="bar"><i style="width: 50%"></i></div><span class="fill-text">1 of 2 filled</span><span class="pill pill-open">Open</span><span class="person"><span class="avatar">J</span>Jordan Kim</span>
+<div class="status" role="group" aria-label="Role status"><button type="button" class="on">Open</button><button type="button" class="">Closed</button></div></div>
+</div>
+<div class="role">
+<div class="role-top">
+<div class="role-name"><label class="field-label" for="r3">Role</label><input id="r3" type="text" value="Lead actor"></div>
+<div><label class="field-label" for="r3s">Spots</label><div class="stepper"><button type="button" aria-label="Fewer spots">−</button><input id="r3s" type="number" value="3" min="1" max="50"><button type="button" aria-label="More spots">+</button></div></div>
+<button type="button" class="icon-btn" aria-label="Remove role"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+<div class="role-row"><span class="field-label">Skills this role needs <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><span class="skill-tag">🎬 Film / TV Acting <button type="button" aria-label="Remove Film / TV Acting"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.4"></path></svg></button></span><span class="skill-tag">🎭 Acting / Theater <button type="button" aria-label="Remove Acting / Theater"><svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.4"></path></svg></button></span><button type="button" class="mini-chip dashed">+ Add skill</button></div></div>
+<div class="role-row"><span class="field-label">Experience <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><button type="button" class="mini-chip">Any level</button><button type="button" class="mini-chip">Still learning</button><button type="button" class="mini-chip">Some experience</button><button type="button" class="mini-chip selected">Experienced</button><button type="button" class="mini-chip">Expert</button></div></div>
+<div class="fill-row"><div class="bar"><i style="width: 33%"></i></div><span class="fill-text">1 of 3 filled</span><span class="pill pill-open">Open</span><span class="person"><span class="avatar">D</span>David Reign</span>
+<div class="status" role="group" aria-label="Role status"><button type="button" class="on">Open</button><button type="button" class="">Closed</button></div></div>
+</div>
+<div class="role">
+<div class="role-top">
+<div class="role-name"><label class="field-label" for="r4">Role</label><input id="r4" type="text" value="Gaffer"></div>
+<div><label class="field-label" for="r4s">Spots</label><div class="stepper"><button type="button" aria-label="Fewer spots">−</button><input id="r4s" type="number" value="1" min="1" max="50"><button type="button" aria-label="More spots">+</button></div></div>
+<button type="button" class="icon-btn" aria-label="Remove role"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="1.5"></path></svg></button>
+</div>
+<div class="role-row"><span class="field-label">Skills this role needs <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><button type="button" class="mini-chip dashed">+ Add skill</button></div></div>
+<div class="role-row"><span class="field-label">Experience <span class="opt" style="text-transform:none;letter-spacing:0">(optional)</span></span><div class="ch-chips-row"><button type="button" class="mini-chip selected">Any level</button><button type="button" class="mini-chip">Still learning</button><button type="button" class="mini-chip">Some experience</button><button type="button" class="mini-chip">Experienced</button><button type="button" class="mini-chip">Expert</button></div></div>
+<div class="fill-row"><div class="bar"><i style="width: 0%"></i></div><span class="fill-text">0 of 1 filled</span><span class="pill pill-closed">Closed</span>
+<div class="status" role="group" aria-label="Role status"><button type="button" class="">Open</button><button type="button" class="on">Closed</button></div></div>
+</div>
+<button type="button" class="add-role">+ Add a role</button><div class="suggest"><span class="suggest-label">Suggested for Film / video crew:</span><button type="button" class="dashed-chip">+ Director</button><button type="button" class="dashed-chip">+ Producer</button><button type="button" class="dashed-chip">+ Editor</button><button type="button" class="dashed-chip">+ Screenwriter</button><button type="button" class="dashed-chip">+ Composer</button><button type="button" class="dashed-chip">+ Makeup artist</button></div><div class="spots-total"><span>Open spots: <b>3</b> · Filled: <b>3</b> of 7</span><span>Gaffer is closed, so it doesn't count.</span></div><p class="ch-field-sub" style="margin:10px 0 0">Type any role. Pick as many spots as you need: type a number or use − and +.</p><div class="subhead">What you offer<span></span></div><div class="ch-field"><div class="ch-field-label">What can you offer collaborators? <span class="req" aria-label="required">*</span> <span class="ch-pretag">Pre-filled</span></div><p class="ch-field-sub">Pick at least one. People joining pick from the same options, so you only meet people who want what you offer.</p><div class="ch-chips-row"><button type="button" class="ch-chip">💵 Paid</button><button type="button" class="ch-chip">📈 Equity</button><button type="button" class="ch-chip selected">🤝 Revenue share</button><button type="button" class="ch-chip selected">🏆 Portfolio / credit</button><button type="button" class="ch-chip">🌱 Unpaid / volunteer</button><button type="button" class="ch-chip">🎓 Academic credit</button></div></div><div class="ch-field"><div class="ch-field-label">Funding situation <span class="opt">(optional)</span> <span class="ch-pretag">Pre-filled</span></div><div class="ch-chips-row"><button type="button" class="ch-chip selected">💵 Bootstrapped</button><button type="button" class="ch-chip">🤝 Pre-revenue</button><button type="button" class="ch-chip">💡 Seeking funding</button><button type="button" class="ch-chip">💰 Already funded</button><button type="button" class="ch-chip">🎓 Academic project</button></div></div><div class="subhead">How you work<span></span></div><div class="ch-field"><div class="ch-field-label">Time commitment <span class="opt">(optional)</span> <span class="ch-pretag">Pre-filled</span></div><div class="ch-cards four"><button type="button" class="ch-card"><div class="ch-card-label">Full-time</div><div class="ch-card-sub">40+ hrs / week</div></button><button type="button" class="ch-card"><div class="ch-card-label">Part-time</div><div class="ch-card-sub">15–20 hrs / week</div></button><button type="button" class="ch-card selected"><div class="ch-card-label">Side project</div><div class="ch-card-sub">5–10 hrs / week</div></button><button type="button" class="ch-card"><div class="ch-card-label">Casual</div><div class="ch-card-sub">A few hours when I can</div></button></div></div><div class="ch-field"><div class="ch-field-label">Work style <span class="opt">(optional)</span> <span class="ch-pretag">Pre-filled</span></div><div class="ch-chips-row"><button type="button" class="ch-chip">💬 Async / remote</button><button type="button" class="ch-chip selected">📅 Weekly sync meetings</button><button type="button" class="ch-chip">🔥 Intensive sprints</button><button type="button" class="ch-chip">🔀 Flexible</button></div></div><div class="ch-field"><div class="ch-field-label">Timeline <span class="opt">(optional)</span> <span class="ch-pretag">Pre-filled</span></div><div class="ch-chips-row"><button type="button" class="ch-chip">⚡ Short sprint (days–weeks)</button><button type="button" class="ch-chip selected">📅 A few months</button><button type="button" class="ch-chip">🗓️ 6 months to a year</button><button type="button" class="ch-chip">🚀 Long-term / ongoing</button><button type="button" class="ch-chip">🔍 Not sure yet</button></div></div><div class="ch-field"><div class="ch-field-label">What industry is it in? <span class="opt">(optional)</span> <span class="ch-pretag">Pre-filled</span></div><div class="ch-chips-row"><button type="button" class="ch-chip selected">🎬 Film &amp; Entertainment</button><button type="button" class="ch-chip">🎵 Music &amp; Audio</button><button type="button" class="ch-chip">📱 Social media / Content</button><button type="button" class="ch-chip">🎨 Art &amp; Design</button></div><p class="ch-field-sub" style="margin:8px 0 0">Showing 4 of 20. <a href="#">Show all</a></p></div></div><div class="notice notice-warn" style="margin-top:0"><div>Example error: <b>"Sound mixer has 1 member, so it needs at least 1 spot."</b> Spots can't go below the people already in the role. Remove the person from the role in Members &amp; Roles first.</div></div><div class="save-row"><button type="button" class="btn-ghost">Discard changes</button><button type="button" class="ch-btn-launch">Save changes</button></div></div></main></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":3300}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

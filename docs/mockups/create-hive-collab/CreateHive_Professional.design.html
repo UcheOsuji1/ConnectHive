@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Create Hive: Professional</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&amp;family=DM+Sans:wght@300;400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f0e8}
+a{color:#8a6510}a:hover{color:#c49a28}
+*{box-sizing:border-box}
+.root{background:#f5f0e8;font-family:'DM Sans',sans-serif;color:#1a1508;min-height:100%}
+.nav{height:60px;background:#fff;border-bottom:0.5px solid #e8e0d0;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav-logo{display:flex;align-items:center;gap:9px;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:#1a1508;text-decoration:none}
+.nav-links{display:flex;gap:22px;font-size:13px;color:#4a3a18}
+.nav-links a{color:#4a3a18;text-decoration:none}
+.ch-page{max-width:680px;margin:0 auto;padding:36px 24px 120px}
+.ch-eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.ch-eyebrow-line{width:22px;height:0.5px;background:#c49a28}
+.ch-eyebrow-text{font-size:10px;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:#a07a14}
+.ch-header-title{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:500;margin:0 0 8px;line-height:1.2}
+.ch-header-sub{font-size:13px;color:#6f6656;margin:0 0 20px;line-height:1.5}
+.ch-banner{background:#fdf6e4;border:0.5px solid #e8d8a4;border-radius:14px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.ch-banner-text{font-size:13px;color:#5e4d20;line-height:1.55;margin:0}
+.ch-prefill-note{font-size:12px;color:#6f6656;margin:0 0 24px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ch-pretag{display:inline-flex;font-size:8.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;background:#fdf0d0;color:#7a5a0c;border-radius:4px;padding:3px 6px}
+.ch-section{background:#fff;border:0.5px solid #e8e0d0;border-radius:16px;padding:24px;margin-bottom:14px}
+.ch-section.new{box-shadow:0 0 0 1.5px #c49a28}
+.ch-section-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:22px}
+.ch-section-num{width:28px;height:28px;border-radius:8px;background:#c49a28;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#1a1508;flex-shrink:0}
+.ch-section-title{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;font-style:italic;margin:0 0 3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ch-section-desc{font-size:11.5px;color:#7d7158;margin:0}
+.ch-collapsed{display:flex;align-items:center;gap:14px;background:#fff;border:0.5px solid #e8e0d0;border-radius:16px;padding:16px 24px;margin-bottom:14px}
+.ch-collapsed .ch-section-num{background:#efe7d4;color:#6f6656}
+.ch-collapsed-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-style:italic;flex:1}
+.ch-collapsed-note{font-size:11px;color:#7d7158}
+.ch-field{margin-bottom:20px}
+.ch-field:last-child{margin-bottom:0}
+.ch-field-label{display:flex;align-items:center;gap:7px;margin-bottom:8px;font-size:12px;font-weight:500;color:#4a3a18;flex-wrap:wrap}
+.req{color:#b4462c;font-weight:600}
+.opt{font-size:11px;font-weight:400;color:#8f8566}
+.ch-field-sub{font-size:11.5px;color:#7d7158;margin:-4px 0 10px}
+.ch-input{width:100%;padding:10px 14px;border:0.5px solid #d8d0bc;border-radius:10px;font-family:inherit;font-size:13.5px;color:#1a1508;background:#fff}
+.ch-textarea{width:100%;padding:10px 14px;border:0.5px solid #d8d0bc;border-radius:10px;font-family:inherit;font-size:13.5px;line-height:1.55;color:#1a1508;background:#fff;min-height:68px;resize:vertical}
+.ch-locked{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:0.5px solid #e8e0d0;border-radius:10px;background:#faf8f4;font-size:13.5px}
+.ch-locked button{border:0;background:#fdf0d0;color:#7a5a0c;font-family:inherit;font-size:11px;font-weight:600;border-radius:6px;padding:5px 10px;cursor:pointer}
+.ch-chips-row{display:flex;flex-wrap:wrap;gap:7px}
+.ch-chip{padding:7px 14px;border:0.5px solid #d8d0bc;border-radius:20px;font-family:inherit;font-size:12.5px;color:#4a3a18;background:#faf8f4;cursor:pointer;min-height:34px}
+.ch-chip.selected{border-color:#c49a28;background:#fdf8ec;color:#7a5a0c;font-weight:500;box-shadow:inset 0 0 0 0.5px #c49a28}
+.ch-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ch-cards.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.ch-card{padding:12px;background:#faf8f4;border:0.5px solid #d8d0bc;border-radius:10px;cursor:pointer;text-align:left;font-family:inherit}
+.ch-card.selected{border-color:#c49a28;background:#fdf8ec;box-shadow:inset 0 0 0 0.5px #c49a28}
+.ch-card-label{font-size:12.5px;font-weight:500;color:#1a1508;margin-bottom:3px}
+.ch-card.selected .ch-card-label{color:#7a5a0c}
+.ch-card-sub{font-size:11px;color:#7d7158;line-height:1.4}
+.ch-size-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ch-size-card{padding:12px 8px;background:#faf8f4;border:0.5px solid #d8d0bc;border-radius:10px;text-align:center;font-family:inherit;cursor:pointer}
+.ch-size-card.selected{border-color:#c49a28;background:#fdf8ec}
+.ch-size-card-label{font-size:12.5px;font-weight:500;margin-bottom:3px}
+.ch-size-card-range{font-size:11px;color:#7d7158}
+.ch-field-error{font-size:11.5px;color:#b4462c;margin:8px 0 0;line-height:1.45}
+.notice{margin-top:10px;padding:11px 14px;border-radius:10px;font-size:12px;line-height:1.5;display:flex;gap:10px;align-items:flex-start}
+.notice-warn{background:#fdf0ea;border:0.5px solid #e6b8a4;color:#7a3218}
+.notice-ok{background:#f3f6ee;border:0.5px solid #c9d6b4;color:#3d5222}
+.notice-info{background:#fdf6e4;border:0.5px solid #e8d8a4;color:#5e4d20}
+.notice b{font-weight:600}
+.subhead{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#a07a14;margin:26px 0 14px;display:flex;align-items:center;gap:10px}
+.subhead span{flex:1;height:0.5px;background:#e8dcc0}
+.role{border:0.5px solid #d8d0bc;border-radius:12px;background:#fffdf9;padding:14px 16px;margin-bottom:10px}
+.role-top{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.field-label{display:block;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#6f6656;margin-bottom:5px}
+.role-name{flex:1 1 220px}
+.role-name input{width:100%;height:40px;border:0.5px solid #d8d0bc;border-radius:8px;padding:0 12px;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:#1a1508;background:#fff}
+.stepper{display:flex;align-items:center;border:0.5px solid #d8d0bc;border-radius:8px;height:40px;overflow:hidden;background:#fff}
+.stepper button{width:34px;height:40px;border:none;background:#faf8f4;font-size:16px;color:#4a3a18;cursor:pointer}
+.stepper input{width:46px;height:40px;border:none;border-left:0.5px solid #e8e0d0;border-right:0.5px solid #e8e0d0;text-align:center;font-family:inherit;font-size:14px;font-weight:600;color:#1a1508}
+.icon-btn{width:40px;height:40px;border:0.5px solid #e2dacb;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6f6656}
+.role-row{margin-top:12px}
+.mini-chip{padding:5px 11px;border:0.5px solid #d8d0bc;border-radius:20px;background:#fff;font-size:11.5px;color:#4a3a18;font-family:inherit;cursor:pointer;min-height:30px}
+.mini-chip.selected{background:#1a1508;border-color:#1a1508;color:#f5f0e8}
+.mini-chip.dashed{border-style:dashed;border-color:#c49a28;color:#7a5a0c;background:#fffdf7}
+.skill-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 7px 5px 11px;border-radius:20px;background:#fdf0cf;border:0.5px solid #e2c56e;font-size:11.5px;color:#4a3608}
+.skill-tag button{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:none;border-radius:50%;background:rgba(74,54,8,.12);padding:0;cursor:pointer;color:#4a3608}
+.add-role{width:100%;height:46px;border:0.5px dashed #c49a28;border-radius:12px;background:#fffdf7;font-family:inherit;font-size:13px;font-weight:500;color:#7a5a0c;cursor:pointer}
+.suggest{margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.suggest-label{font-size:11.5px;color:#7d7158}
+.dashed-chip{padding:6px 13px;border:0.5px dashed #c49a28;border-radius:20px;background:#fffdf7;font-family:inherit;font-size:12px;color:#7a5a0c;cursor:pointer;min-height:32px}
+.spots-total{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#4a3a18;margin-top:12px;padding:10px 14px;background:#faf8f4;border-radius:10px}
+.spots-total b{font-weight:600}
+.fill-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:0.5px solid #efe8da}
+.bar{flex:0 0 120px;height:6px;border-radius:6px;background:#efe7d4;overflow:hidden}
+.bar i{display:block;height:100%;background:#c49a28}
+.fill-text{font-size:12px;font-weight:500}
+.avatar{width:26px;height:26px;border-radius:50%;background:#8a6510;color:#fff;font-size:10.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;border:1.5px solid #fff}
+.person{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#4a3a18}
+.status{display:inline-flex;border:0.5px solid #d8d0bc;border-radius:8px;overflow:hidden;margin-left:auto}
+.status button{border:none;background:#fff;font-family:inherit;font-size:11.5px;padding:7px 12px;cursor:pointer;color:#4a3a18;min-height:32px}
+.status button.on{background:#1a1508;color:#f5f0e8}
+.pill{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;border-radius:20px;padding:3px 9px}
+.pill-full{background:#e8eef6;color:#26446b}
+.pill-open{background:#fdf0cf;color:#7a5a0c}
+.pill-closed{background:#efe7d4;color:#5c5240}
+.ch-launch-bar{position:sticky;bottom:0;background:#fff;border-top:0.5px solid #e8e0d0;padding:13px 24px}
+.ch-launch-inner{max-width:680px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.ch-launch-meta{font-size:12px;color:#6f6656;margin:0}
+.ch-btn-launch{padding:12px 26px;border:none;border-radius:10px;background:#c49a28;font-family:inherit;font-size:13px;font-weight:600;color:#1a1508;cursor:pointer;min-height:44px}
+.tag-new{font-family:'DM Sans',sans-serif;font-style:normal;font-size:9px;font-weight:600;letter-spacing:.08em;border-radius:20px;padding:2px 8px;text-transform:uppercase;background:#1a1508;color:#f5f0e8}
+/* manage layout */
+.mg{display:flex;min-height:100%}
+.mg-side{flex:0 0 230px;background:#fff;border-right:0.5px solid #e8e0d0;padding:22px 14px}
+.mg-hive{display:flex;align-items:center;gap:10px;padding:0 8px 18px;border-bottom:0.5px solid #efe8da;margin-bottom:14px}
+.mg-hive-logo{width:34px;height:34px;border-radius:9px;background:#1a1508;color:#e8c84a;font-family:'Cormorant Garamond',serif;font-weight:600;display:flex;align-items:center;justify-content:center}
+.mg-hive-name{font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;line-height:1.1}
+.mg-hive-cat{font-size:10.5px;color:#7d7158}
+.mg-group{font-size:10px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:#8f8566;padding:12px 8px 6px}
+.mg-link{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:8px;font-size:12.5px;color:#4a3a18;text-decoration:none}
+.mg-link.on{background:#fdf6e4;color:#1a1508;font-weight:600;box-shadow:inset 2px 0 0 #c49a28}
+.mg-main{flex:1;min-width:0;padding:30px 36px 60px}
+.mg-inner{max-width:760px}
+.mg-title{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500;margin:0 0 4px}
+.mg-sub{font-size:12.5px;color:#6f6656;margin:0 0 20px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:16px}
+.stat{background:#fff;border:0.5px solid #e8e0d0;border-radius:12px;padding:14px 16px}
+.stat-num{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;line-height:1}
+.stat-lbl{font-size:11px;color:#7d7158;margin-top:5px}
+.save-row{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.btn-ghost{padding:11px 20px;border:0.5px solid #d8d0bc;border-radius:10px;background:#fff;font-family:inherit;font-size:13px;color:#4a3a18;cursor:pointer;min-height:44px}
+@media (max-width:700px){.ch-cards,.ch-cards.four,.ch-size-cards{grid-template-columns:repeat(2,minmax(0,1fr))}.mg{flex-wrap:wrap}.mg-side{flex:1 1 100%}.stats{grid-template-columns:minmax(0,1fr)}}
+</style>
+</helmet>
+<div class="root">
+<div class="nav"><a href="#" class="nav-logo" aria-label="TrueHive home"><svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><path d="M7 2l5 3v6l-5 3-5-3V5z M19 2l5 3v6l-5 3-5-3V5z M13 10l5 3v6l-5 3-5-3v-6z" fill="none" stroke="#c49a28" stroke-width="1.6" stroke-linejoin="round"></path></svg> TrueHive</a><div class="nav-links"><a href="#">Home</a><a href="#">Find Your Hive</a><a href="#">My Hive</a><a href="#">Profile</a></div></div><div class="ch-page"><div class="ch-eyebrow"><div class="ch-eyebrow-line"></div><span class="ch-eyebrow-text">Build Your Community</span></div>
+<h1 class="ch-header-title">Create your Hive</h1>
+<p class="ch-header-sub">Most of this is already filled in from your preferences. Just review, name it, and launch.</p>
+<div class="ch-banner"><p class="ch-banner-text"><strong>You'd be the first to start a Professional Hive like this nearby. As people join, we'll match them straight to you.</strong></p></div>
+<p class="ch-prefill-note">Fields marked <span class="ch-pretag">Pre-filled</span> came from your deep-dive answers. Edit anything you like.</p>
+<div class="ch-section"><div class="ch-section-header"><div class="ch-section-num">1</div><div><h2 class="ch-section-title">Hive identity</h2><p class="ch-section-desc">What it is and who it's for</p></div></div>
+<div class="ch-field"><div class="ch-field-label"><label for="hn">Hive name</label></div><input id="hn" class="ch-input" type="text" value="LA Early-Career Engineers"></div>
+<div class="ch-field"><div class="ch-field-label">Category <span class="opt" style="letter-spacing:.1em;font-size:9.5px">SET FROM YOUR SEARCH</span></div><div class="ch-locked"><span>💼 Professional</span><button type="button">Change</button></div></div>
+<div class="ch-field"><div class="ch-field-label"><label for="hd">Description / purpose</label> <span class="ch-pretag">Pre-filled</span></div><textarea id="hd" class="ch-textarea">New grad and early-career engineers in LA sharing job leads, interview prep and honest feedback.</textarea></div>
+<div class="ch-field"><div class="ch-field-label"><label for="hw">Who this Hive is for</label> <span class="opt">(optional)</span></div><textarea id="hw" class="ch-textarea" placeholder="Anything else about your ideal member…"></textarea><p class="ch-field-sub" style="margin:8px 0 0">Optional now. "Who it's for" below does the matching.</p></div>
+<p class="ch-field-sub" style="margin:0">Tags stay as they are today.</p>
+</div>
+<div class="ch-section new"><div class="ch-section-header"><div class="ch-section-num">2</div><div><h2 class="ch-section-title">Who it's for <span class="tag-new">New</span></h2><p class="ch-section-desc">The people this Hive is built around. This is what we match people on.</p></div></div><div class="ch-field"><div class="ch-field-label">Same industry or cross-industry? <span class="opt">(optional)</span> <span class="ch-pretag">Pre-filled</span></div><div class="ch-cards"><button type="button" class="ch-card selected"><div class="ch-card-label">🎯 Same industry only</div><div class="ch-card-sub">Deep domain expertise</div></button><button type="button" class="ch-card"><div class="ch-card-label">🌍 Cross-industry</div><div class="ch-card-sub">Diverse perspectives</div></button><button type="button" class="ch-card"><div class="ch-card-label">🔀 No preference</div><div class="ch-card-sub">Industry doesn't matter</div></button></div></div><div class="ch-field"><div class="ch-field-label">Which industries is this Hive for? <span class="req" aria-label="required">*</span> <span class="ch-pretag">Pre-filled</span></div><p class="ch-field-sub">Pick 1 to 5. Optional when you pick Cross-industry above.</p><div class="ch-chips-row"><button type="button" class="ch-chip selected">💻 Tech / Software</button><button type="button" class="ch-chip">🎬 Film &amp; Media</button><button type="button" class="ch-chip">💰 Finance / Investing</button><button type="button" class="ch-chip selected">🚀 Startups</button><button type="button" class="ch-chip">🎨 Design &amp; Creative</button><button type="button" class="ch-chip">📢 Marketing</button><button type="button" class="ch-chip">⚕️ Healthcare</button><button type="button" class="ch-chip">⚖️ Law / Legal</button><button type="button" class="ch-chip">🏫 Education</button><button type="button" class="ch-chip">🏗️ Real Estate</button><button type="button" class="ch-chip">🎭 Entertainment</button><button type="button" class="ch-chip">📊 Consulting</button><button type="button" class="ch-chip">🛍️ Retail / E-commerce</button><button type="button" class="ch-chip">🌿 Wellness / Fitness</button><button type="button" class="ch-chip">🏛️ Government / Nonprofit</button><button type="button" class="ch-chip">🔬 Science / Research</button><button type="button" class="ch-chip">✈️ Hospitality / Travel</button><button type="button" class="ch-chip">🏭 Manufacturing</button><button type="button" class="ch-chip">🎮 Gaming / Esports</button><button type="button" class="ch-chip selected">🏦 Banking / Fintech</button><button type="button" class="ch-chip">🌍 International / Global</button><button type="button" class="ch-chip">👗 Fashion &amp; Apparel</button><button type="button" class="ch-chip">🍽️ Food &amp; Beverage</button><button type="button" class="ch-chip">🏟️ Sports</button><button type="button" class="ch-chip">💄 Beauty &amp; Personal care</button><button type="button" class="ch-chip">🎤 Performing Arts</button></div></div><div class="notice notice-info" style="margin:-8px 0 20px"><div>With <b>Cross-industry</b> selected, the asterisk goes away and this reads: "Optional. Leave empty to welcome every industry."</div></div><div class="ch-field"><div class="ch-field-label">Which career stages? <span class="opt">(optional)</span> <span class="ch-pretag">Pre-filled</span></div><p class="ch-field-sub">Pick all that fit. Leave empty for all stages.</p><div class="ch-cards four"><button type="button" class="ch-card selected"><div class="ch-card-label">🎓 Student</div><div class="ch-card-sub">Still in school</div></button><button type="button" class="ch-card selected"><div class="ch-card-label">🌱 Early career</div><div class="ch-card-sub">0–3 yrs</div></button><button type="button" class="ch-card"><div class="ch-card-label">📈 Mid-career</div><div class="ch-card-sub">3–8 yrs</div></button><button type="button" class="ch-card"><div class="ch-card-label">🏆 Senior / Leadership</div><div class="ch-card-sub">Experienced</div></button></div></div><div class="notice notice-info"><div>Matching uses these alongside each person's Deep Dive answers and skills. No open roles for Professional Hives.</div></div></div><div class="ch-collapsed"><div class="ch-section-num">3</div><div class="ch-collapsed-title">Membership &amp; size</div><span class="ch-collapsed-note">Unchanged</span></div><div class="ch-collapsed"><div class="ch-section-num">4</div><div class="ch-collapsed-title">Access &amp; privacy</div><span class="ch-collapsed-note">Unchanged</span></div><div class="ch-collapsed"><div class="ch-section-num">5</div><div class="ch-collapsed-title">Format &amp; logistics</div><span class="ch-collapsed-note">Unchanged</span></div><div class="ch-collapsed"><div class="ch-section-num">6</div><div class="ch-collapsed-title">Set the tone</div><span class="ch-collapsed-note">Unchanged</span></div><div class="ch-collapsed"><div class="ch-section-num">7</div><div class="ch-collapsed-title">Member onboarding</div><span class="ch-collapsed-note">Unchanged</span></div><div class="ch-collapsed"><div class="ch-section-num">8</div><div class="ch-collapsed-title">Monetization</div><span class="ch-collapsed-note">Unchanged</span></div></div><div class="ch-launch-bar"><div class="ch-launch-inner"><p class="ch-launch-meta">Be the first. Invites go out as people join.</p><button type="button" class="ch-btn-launch">Launch Hive &#8594;</button></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":2300}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

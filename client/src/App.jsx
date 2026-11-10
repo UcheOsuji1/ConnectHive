@@ -40,6 +40,7 @@ import HiveOnboardingPage from './pages/HiveOnboardingPage';
 import HiveManageOverviewPage from './pages/hive/HiveManageOverviewPage';
 import HiveManageMembersPage from './pages/hive/HiveManageMembersPage';
 import HiveManageRoomsPage from './pages/hive/HiveManageRoomsPage';
+import HiveManageCollabPage from './pages/hive/HiveManageCollabPage';
 import HiveManageReportsPage from './pages/hive/HiveManageReportsPage';
 import HiveManageAppearancePage from './pages/hive/HiveManageAppearancePage';
 import HiveManageToolsPage from './pages/hive/HiveManageToolsPage';
@@ -149,6 +150,7 @@ export default function App() {
           <Route path="tools/ideas" element={<HiveIdeasPage />} />
           <Route path="overview" element={<HiveManageOverviewPage />} />
           <Route path="members-roles" element={<HiveManageMembersPage />} />
+          <Route path="project-roles" element={<HiveManageCollabPage />} />
           <Route path="rooms" element={<HiveManageRoomsPage />} />
           <Route path="reports" element={<HiveManageReportsPage />} />
           <Route path="manage-tools" element={<HiveManageToolsPage />} />

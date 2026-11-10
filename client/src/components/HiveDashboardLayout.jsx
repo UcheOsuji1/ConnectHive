@@ -187,10 +187,14 @@ function HiveSidebar({
   // the nav — each needs a product decision from Uche first (what's
   // granular, which integrations, what's charged) — but their routes still
   // point at HiveSoonPage so a bookmarked/shared link doesn't 404.
+  const collabLabel = hive.category_name === 'Project Collaboration' ? 'Project & Open Roles'
+    : hive.category_name === 'Professional Networking' ? "Who It's For"
+    : null;
   const MANAGE_SECTIONS = [
     { label: 'Overview',             sub: 'overview' },
     { label: 'Join Requests',        sub: 'requests',      badge: requestCount },
     { label: 'Members & Roles',      sub: 'members-roles' },
+    ...(collabLabel ? [{ label: collabLabel, sub: 'project-roles' }] : []),
     { label: 'Rooms',                sub: 'rooms' },
     { label: 'Reports',              sub: 'reports',       badge: reportCount, badgeVariant: 'danger' },
     { label: 'Tools',                sub: 'manage-tools' },

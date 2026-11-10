@@ -11,6 +11,10 @@ import { SKILL_CATS } from '../data/skillTaxonomy.js';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
 import { MATTERS } from '../data/mattersTaxonomy.js';
 import AreaLocationInput from '../components/AreaLocationInput.jsx';
+import RoleBuilder from '../components/deep-dive/RoleBuilder.jsx';
+import ProjectDetailsFields, { PROJECT_DETAILS_DEFAULTS } from '../components/collab/ProjectDetailsFields.jsx';
+import ProfessionalAudienceFields from '../components/collab/ProfessionalAudienceFields.jsx';
+import { normalizeDeepDive, EXPERIENCE_LEVELS, COLLAB_LIMITS } from '../data/collabVocabulary.js';
 
 // Flat chip list shared with profile taxonomy — drives tag suggestions
 const ALL_TAXONOMY_CHIPS = [
@@ -167,6 +171,58 @@ function derivePrefills(category, prefillData) {
   return { tags, city, whoFor, descDefault, sizeKey, meetType, cadence, metroKey };
 }
 
+// Project/Professional Section 2 pre-fill — runs the client normalizeDeepDive
+// over the Deep Dive's raw chips/cards/textValues/roles (same shape
+// CategoryDeepDivePage's createPrefills() hands back) and maps the result
+// onto ProjectDetailsFields' / ProfessionalAudienceFields' key-based state.
+function collabFromDeepDive(category, prefillData) {
+  const empty = { fields: null, roles: [], preFilled: {}, trimmedIndustriesHint: false };
+  if (category !== 'project' && category !== 'professional') return empty;
+  if (!prefillData?.chips && !prefillData?.cards && !prefillData?.textValues && !prefillData?.roles) return empty;
+
+  const n = normalizeDeepDive(category, {
+    chips: prefillData.chips, cards: prefillData.cards,
+    textValues: prefillData.textValues, roles: prefillData.roles,
+  });
+  if (!n) return empty;
+
+  if (category === 'project') {
+    const preFilled = {};
+    const fields = { ...PROJECT_DETAILS_DEFAULTS };
+    if (n.types?.length)          { fields.project_types = n.types; preFilled.project_types = true; }
+    if (n.typesOther?.length)     fields.project_types_other = n.typesOther;
+    if (n.building?.stage)        { fields.project_stage = n.building.stage; preFilled.project_stage = true; }
+    if (n.building?.offer?.length) { fields.compensation = n.building.offer; preFilled.compensation = true; }
+    if (n.building?.funding)      { fields.funding = n.building.funding; preFilled.funding = true; }
+    if (n.commitment)             { fields.commitment = n.commitment; preFilled.commitment = true; }
+    if (n.workStyle)              { fields.work_style = n.workStyle; preFilled.work_style = true; }
+    if (n.timeline)                { fields.project_timeline = n.timeline; preFilled.project_timeline = true; }
+    if (n.industries?.length)     { fields.project_industries = n.industries; preFilled.project_industries = true; }
+
+    const roles = (n.building?.roles ?? []).map(r => ({
+      title: r.title, slots: r.slots, skills: r.skills,
+      experience: r.experience ? (EXPERIENCE_LEVELS.find(l => l.key === r.experience)?.label ?? 'Any level') : 'Any level',
+    }));
+
+    return { fields, roles, preFilled, trimmedIndustriesHint: false };
+  }
+
+  // Professional
+  const preFilled = {};
+  const fields = { audience_scope: null, pro_industries: [], career_stages: [] };
+  let industries = n.industries ?? [];
+  let trimmedIndustriesHint = false;
+  if (industries.length > COLLAB_LIMITS.maxProIndustries) {
+    industries = industries.slice(0, COLLAB_LIMITS.maxProIndustries);
+    trimmedIndustriesHint = true;
+  }
+  if (industries.length)  { fields.pro_industries = industries; preFilled.pro_industries = true; }
+  if (n.careerStage)      { fields.career_stages = [n.careerStage]; preFilled.career_stages = true; }
+  if (n.industryScope)    { fields.audience_scope = n.industryScope; preFilled.audience_scope = true; }
+
+  return { fields, roles: [], preFilled, trimmedIndustriesHint };
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function PreTag() {
@@ -222,6 +278,8 @@ export default function CreateHivePage() {
     metroKey:    prefillMetroKey,
   } = derivePrefills(category, prefillData);
 
+  const collabPrefill = collabFromDeepDive(category, prefillData);
+
   // ── Section 1 ──────────────────────────────────────────────────
   const [hiveName,     setHiveName]     = useState('');
   const [selectedCat,  setSelectedCat]  = useState(category);
@@ -233,7 +291,28 @@ export default function CreateHivePage() {
   const [tagInputOpen, setTagInputOpen] = useState(false);
   const [tagInputVal,  setTagInputVal]  = useState('');
 
-  // ── Section 2 ──────────────────────────────────────────────────
+  // ── Section 2 (Project / Professional only) ─────────────────────
+  const isProject      = selectedCat === 'project';
+  const isProfessional = selectedCat === 'professional';
+  const hasCollabSection = isProject || isProfessional;
+  const [projectFields, setProjectFields] = useState(collabPrefill.fields && isProject ? collabPrefill.fields : { ...PROJECT_DETAILS_DEFAULTS });
+  const [proFields,     setProFields]     = useState(collabPrefill.fields && isProfessional ? collabPrefill.fields : { audience_scope: null, pro_industries: [], career_stages: [] });
+  const [roles,         setRoles]         = useState(collabPrefill.roles ?? []);
+  const collabPreFilled = collabPrefill.preFilled ?? {};
+
+  // Section numbers are computed, not hardcoded — categories without the
+  // new section still go 1 Identity, 2 Membership & size, 3 Access, ...
+  let _secN = 1;
+  const numIdentity     = _secN++;
+  const numCollab       = hasCollabSection ? _secN++ : null;
+  const numMembership   = _secN++;
+  const numAccess       = _secN++;
+  const numFormat       = _secN++;
+  const numTone         = _secN++;
+  const numOnboarding   = _secN++;
+  const numMonetization = _secN++;
+
+  // ── Access & privacy ─────────────────────────────────────────────
   const [joinMode,     setJoinMode]     = useState('request');
   const [showInSearch, setShowInSearch] = useState(true);
 
@@ -249,6 +328,17 @@ export default function CreateHivePage() {
   const [sizeKey,    setSizeKey]    = useState(prefillSizeKey || 'medium');
   const [customMax,  setCustomMax]  = useState('');
   const [activateAt, setActivateAt] = useState(DEFAULT_ACTIVATE_AT);
+
+  // Spots-vs-size capacity check (Project only; decision 5 — the owner
+  // counts as 1 of the member limit at create).
+  const resolvedMaxMembers = sizeKey === 'custom' ? (Number(customMax) || null) : (MAX_MEMBERS_MAP[sizeKey] ?? null);
+  const totalRoleSpots = isProject
+    ? roles.filter(r => r.title.trim()).reduce((sum, r) => sum + (Number(r.slots) || 0), 0)
+    : 0;
+  const capacityRoom = resolvedMaxMembers != null ? resolvedMaxMembers - 1 : null;
+  const hasAnyRole = isProject && roles.some(r => r.title.trim());
+  const capacityOver = isProject && hasAnyRole && capacityRoom != null && totalRoleSpots > capacityRoom;
+  const sizeLabel = SIZE_OPTIONS.find(o => o.key === sizeKey)?.label ?? 'this';
 
   // ── Section 4 ──────────────────────────────────────────────────
   const [meetType,    setMeetType]    = useState(prefillMeetType || '');
@@ -275,9 +365,14 @@ export default function CreateHivePage() {
   const [submitError, setSubmitError] = useState(null);
 
   // ── Refs ───────────────────────────────────────────────────────
-  const hiveNameRef  = useRef(null);
-  const catFieldRef  = useRef(null);
-  const descRef      = useRef(null);
+  const hiveNameRef      = useRef(null);
+  const catFieldRef      = useRef(null);
+  const descRef          = useRef(null);
+  const compensationRef  = useRef(null);
+  const rolesRef         = useRef(null);
+  const capacityWarnRef  = useRef(null);
+  const proIndustriesRef = useRef(null);
+  const [validationBarMsg, setValidationBarMsg] = useState(null);
   const removeTag = (tag) => setTags(prev => prev.filter(t => t !== tag));
   const commitTag = () => {
     const val = tagInputVal.trim();
@@ -295,6 +390,15 @@ export default function CreateHivePage() {
   const toggleChip = (val, getter, setter) => setter(getter === val ? '' : val);
   const toggleValue = key =>
     setHiveValues(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]);
+
+  // Roles with a blank title are dropped silently (validate() already blocks
+  // launch for a blank title that still has skills attached).
+  const rolesForPayload = (roleList) => roleList
+    .filter(r => r.title.trim())
+    .map(r => ({
+      title: r.title.trim(), slots: r.slots, skills: r.skills,
+      experience_level: r.experience === 'Any level' ? null : r.experience,
+    }));
 
   const buildPayload = () => ({
     monetization: configPayload(monetization),
@@ -326,6 +430,28 @@ export default function CreateHivePage() {
       // 'blank' means skip default steps; otherwise lazy-seed on first load
       skip_default_steps: obTemplate === 'blank',
     },
+    // Project and Professional only — every other category sends no collab key.
+    ...(isProject ? {
+      collab: {
+        project_types:        projectFields.project_types,
+        project_types_other:  projectFields.project_types_other,
+        project_stage:        projectFields.project_stage,
+        compensation:         projectFields.compensation,
+        funding:              projectFields.funding,
+        commitment:           projectFields.commitment,
+        work_style:           projectFields.work_style,
+        project_timeline:     projectFields.project_timeline,
+        project_industries:   projectFields.project_industries,
+        roles:                rolesForPayload(roles),
+      },
+    } : {}),
+    ...(isProfessional ? {
+      collab: {
+        pro_industries: proFields.pro_industries,
+        career_stages:  proFields.career_stages,
+        audience_scope: proFields.audience_scope,
+      },
+    } : {}),
   });
 
   // Same wording the server returns for the same rule — see lib/policy.js's
@@ -347,6 +473,16 @@ export default function CreateHivePage() {
     if (!description.trim()) errs.description = 'Please add a description.';
     if (sizeKey === 'custom' && !customMax.trim()) errs.customMax = 'Please enter a max number of members.';
     if (customMaxError) errs.customMax = customMaxError;
+
+    if (isProject) {
+      if (!projectFields.compensation.length) errs.compensation = 'Choose at least one thing you can offer collaborators.';
+      if (roles.some(r => !r.title.trim() && r.skills.length > 0)) errs.roles = 'Give this role a name or remove it.';
+      if (capacityOver) errs.capacity = 'too many spots for your member limit';
+    }
+    if (isProfessional && !proFields.pro_industries.length && proFields.audience_scope !== 'cross') {
+      errs.proIndustries = 'Pick at least one industry, or choose Cross-industry.';
+    }
+
     return Object.keys(errs).length ? errs : null;
   };
 
@@ -354,19 +490,27 @@ export default function CreateHivePage() {
     const errs = validate();
     if (errs) {
       setErrors(errs);
-      const firstRef = errs.hiveName    ? hiveNameRef
-                     : errs.selectedCat ? catFieldRef
-                     : errs.description ? descRef
+      setValidationBarMsg(errs.capacity ? 'Fix 1 issue: too many spots for your member limit.' : null);
+      const firstRef = errs.hiveName       ? hiveNameRef
+                     : errs.selectedCat    ? catFieldRef
+                     : errs.description    ? descRef
+                     : errs.compensation   ? compensationRef
+                     : errs.roles          ? rolesRef
+                     : errs.capacity       ? capacityWarnRef
+                     : errs.proIndustries  ? proIndustriesRef
                      : null;
       firstRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     setErrors({});
+    setValidationBarMsg(null);
     setSubmitState('submitting');
     setSubmitError(null);
     try {
       const result = await createHive(buildPayload());
       const hiveId = result?.id;
+      const openRoles = isProject ? roles.filter(r => r.title.trim()).length : 0;
+      const hasCompensation = isProject && projectFields.compensation.length > 0;
       if (isPostHogEnabled) {
         posthog.capture('hive_created', {
           category: selectedCat,
@@ -375,6 +519,8 @@ export default function CreateHivePage() {
           discoverable: showInSearch,
           size_option: sizeKey,
           activation_threshold: Number(activateAt),
+          open_roles: openRoles,
+          has_compensation: hasCompensation,
         });
         posthogLog.info('hive creation completed', {
           category: selectedCat,
@@ -383,6 +529,8 @@ export default function CreateHivePage() {
           discoverable: showInSearch,
           size_option: sizeKey,
           activation_threshold: Number(activateAt),
+          open_roles: openRoles,
+          has_compensation: hasCompensation,
         });
       }
       navigate(hiveId ? (monetization.mode === 'paid' ? `/hive/${hiveId}/billing` : `/hive/${hiveId}`) : '/my-hive');
@@ -487,7 +635,7 @@ export default function CreateHivePage() {
         {/* ══════════════════════════════════════════════════════════
             Section 1 — Hive identity
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="1" title="Hive identity" desc="What it is and who it's for">
+        <SectionCard number={numIdentity} title="Hive identity" desc="What it is and who it's for">
 
           {/* Hive name */}
           <div className="ch-field">
@@ -611,18 +759,136 @@ export default function CreateHivePage() {
             <textarea
               className="ch-textarea"
               rows={2}
-              placeholder="Describe your ideal member — experience level, commitment, what they're working on..."
+              placeholder={hasCollabSection
+                ? 'Anything else about your ideal member…'
+                : "Describe your ideal member — experience level, commitment, what they're working on..."}
               value={whoFor}
               onChange={e => setWhoFor(e.target.value)}
             />
+            {isProject && (
+              <p className="ch-field-sub" style={{ margin: '8px 0 0' }}>
+                Optional now. Roles below do the matching; use this for anything they don't cover.
+              </p>
+            )}
+            {isProfessional && (
+              <p className="ch-field-sub" style={{ margin: '8px 0 0' }}>
+                Optional now. "Who it's for" below does the matching.
+              </p>
+            )}
           </div>
 
         </SectionCard>
 
         {/* ══════════════════════════════════════════════════════════
-            Section 2 — Access & privacy
+            Section 2 (Project / Professional only) — the new collab section
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="2" title="Access & privacy" desc="Who can join and how you'll appear">
+        {isProject && (
+          <SectionCard number={numCollab} title="Project & roles" desc="What you're making and who you need. This is what we match people on.">
+            <ProjectDetailsFields
+              value={projectFields}
+              onChange={setProjectFields}
+              preFilled={collabPreFilled}
+              compensationFieldRef={compensationRef}
+              roleBuilderSlot={
+                <div ref={rolesRef}>
+                  <RoleBuilder value={roles} onChange={setRoles} projectTypes={projectFields.project_types} />
+                  <div className="spots-total">
+                    <span>Total spots across roles: <b>{totalRoleSpots}</b></span>
+                    <span>Checked against your member limit in Section {numMembership}.</span>
+                  </div>
+                  {errors.roles && <p className="ch-field-error">{errors.roles}</p>}
+                </div>
+              }
+            />
+          </SectionCard>
+        )}
+        {isProfessional && (
+          <SectionCard number={numCollab} title="Who it's for" desc="The people this Hive is built around. This is what we match people on.">
+            <ProfessionalAudienceFields
+              value={proFields}
+              onChange={setProFields}
+              preFilled={collabPreFilled}
+              industriesFieldRef={proIndustriesRef}
+            />
+            {errors.proIndustries && <p className="ch-field-error">{errors.proIndustries}</p>}
+          </SectionCard>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            Section 3 — Membership & size
+        ════════════════════════════════════════════════════════════ */}
+        <SectionCard number={numMembership} title="Membership & size" desc="How many, and when does it go live">
+
+          <div className="ch-field">
+            <div className="ch-field-label">
+              Maximum members
+              {flagSize && <PreTag />}
+            </div>
+            <div className="ch-size-cards">
+              {SIZE_OPTIONS.map(opt => (
+                <div
+                  key={opt.key}
+                  className={`ch-size-card${sizeKey === opt.key ? ' selected' : ''}`}
+                  onClick={() => setSizeKey(opt.key)}
+                >
+                  <div className="ch-size-card-label">{opt.label}</div>
+                  <div className="ch-size-card-range">{opt.range}</div>
+                </div>
+              ))}
+            </div>
+            {sizeKey === 'custom' && (
+              <div className="ch-custom-input-wrap">
+                <input
+                  type="number"
+                  className="ch-narrow-input"
+                  placeholder="20"
+                  value={customMax}
+                  onChange={e => setCustomMax(e.target.value)}
+                  min={maxMembersMin}
+                  max={maxMembersCap}
+                  step={1}
+                />
+                <span className="ch-custom-unit">max members</span>
+              </div>
+            )}
+            {(customMaxError || errors.customMax) && <p className="ch-field-error">{customMaxError || errors.customMax}</p>}
+            {isProject && hasAnyRole && capacityRoom != null && (
+              capacityOver ? (
+                <div className="notice notice-warn" role="alert" ref={capacityWarnRef}>
+                  <div>
+                    <b>Your roles add {totalRoleSpots} open spots, but {sizeKey === 'custom' ? 'your member limit' : `a ${sizeLabel} Hive`} only has room for {capacityRoom} more member{capacityRoom === 1 ? '' : 's'}</b>{' '}
+                    ({resolvedMaxMembers}, minus you). Pick a bigger size, or reduce spots in Section {numCollab}.
+                  </div>
+                </div>
+              ) : (
+                <div className="notice notice-ok">
+                  <div>Room for {capacityRoom} more member{capacityRoom === 1 ? '' : 's'}. Your roles use {totalRoleSpots} of them.</div>
+                </div>
+              )
+            )}
+          </div>
+
+          <div className="ch-field">
+            <div className="ch-field-label">Activate this Hive once it reaches</div>
+            <div className="ch-activate-cards">
+              {ACTIVATE_OPTIONS.map(opt => (
+                <div
+                  key={opt.key}
+                  className={`ch-activate-card${activateAt === opt.key ? ' selected' : ''}`}
+                  onClick={() => setActivateAt(opt.key)}
+                >
+                  {opt.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </SectionCard>
+
+        {/* ══════════════════════════════════════════════════════════
+            Section — Access & privacy (moved after Membership & size)
+        ════════════════════════════════════════════════════════════ */}
+        <SectionCard number={numAccess} title="Access & privacy" desc="Who can join and how you'll appear">
 
           <div className="ch-field">
             <div className="ch-field-label">How do people join?</div>
@@ -671,66 +937,9 @@ export default function CreateHivePage() {
         </SectionCard>
 
         {/* ══════════════════════════════════════════════════════════
-            Section 3 — Membership & size
-        ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="3" title="Membership & size" desc="How many, and when does it go live">
-
-          <div className="ch-field">
-            <div className="ch-field-label">
-              Maximum members
-              {flagSize && <PreTag />}
-            </div>
-            <div className="ch-size-cards">
-              {SIZE_OPTIONS.map(opt => (
-                <div
-                  key={opt.key}
-                  className={`ch-size-card${sizeKey === opt.key ? ' selected' : ''}`}
-                  onClick={() => setSizeKey(opt.key)}
-                >
-                  <div className="ch-size-card-label">{opt.label}</div>
-                  <div className="ch-size-card-range">{opt.range}</div>
-                </div>
-              ))}
-            </div>
-            {sizeKey === 'custom' && (
-              <div className="ch-custom-input-wrap">
-                <input
-                  type="number"
-                  className="ch-narrow-input"
-                  placeholder="20"
-                  value={customMax}
-                  onChange={e => setCustomMax(e.target.value)}
-                  min={maxMembersMin}
-                  max={maxMembersCap}
-                  step={1}
-                />
-                <span className="ch-custom-unit">max members</span>
-              </div>
-            )}
-            {(customMaxError || errors.customMax) && <p className="ch-field-error">{customMaxError || errors.customMax}</p>}
-          </div>
-
-          <div className="ch-field">
-            <div className="ch-field-label">Activate this Hive once it reaches</div>
-            <div className="ch-activate-cards">
-              {ACTIVATE_OPTIONS.map(opt => (
-                <div
-                  key={opt.key}
-                  className={`ch-activate-card${activateAt === opt.key ? ' selected' : ''}`}
-                  onClick={() => setActivateAt(opt.key)}
-                >
-                  {opt.label}
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </SectionCard>
-
-        {/* ══════════════════════════════════════════════════════════
             Section 4 — Format & logistics
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="4" title="Format & logistics" desc="Where and how often you'll connect">
+        <SectionCard number={numFormat} title="Format & logistics" desc="Where and how often you'll connect">
 
           <div className="ch-field">
             <div className="ch-field-label">
@@ -790,7 +999,7 @@ export default function CreateHivePage() {
         {/* ══════════════════════════════════════════════════════════
             Section 5 — Set the tone (optional)
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="5" title="Set the tone" desc="Optional — gives your Hive a head start">
+        <SectionCard number={numTone} title="Set the tone" desc="Optional — gives your Hive a head start">
 
           {/* What matters most in this Hive */}
           <div className="ch-field">
@@ -846,7 +1055,7 @@ export default function CreateHivePage() {
         {/* ══════════════════════════════════════════════════════════
             Section 6 — Member onboarding
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="6" title="Member onboarding" desc="How new members get started in your Hive">
+        <SectionCard number={numOnboarding} title="Member onboarding" desc="How new members get started in your Hive">
 
           {/* Join experience */}
           <div className="ch-field">
@@ -929,7 +1138,7 @@ export default function CreateHivePage() {
         {/* ══════════════════════════════════════════════════════════
             Section 7 — Membership cost (Coming Soon)
         ════════════════════════════════════════════════════════════ */}
-        <SectionCard number="7" title="Monetization" desc="Free community or an owner-led monthly membership">
+        <SectionCard number={numMonetization} title="Monetization" desc="Free community or an owner-led monthly membership">
           <MonetizationForm value={monetization} onChange={setMonetization} plus={billingPlus}/>
         </SectionCard>
 
@@ -940,6 +1149,9 @@ export default function CreateHivePage() {
         <div className="ch-launch-bar-inner">
           <div className="ch-launch-bar-left">
             <p className="ch-launch-meta">{barMeta}</p>
+            {validationBarMsg && (
+              <p className="ch-launch-error">{validationBarMsg}</p>
+            )}
             {submitState === 'error' && (
               <p className="ch-launch-error">{submitError}</p>
             )}

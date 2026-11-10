@@ -782,6 +782,38 @@
 }
 .ch-matters-card.selected .ch-matters-name { color: #8a6510; }
 
+/* ── Shared collab fields (Prompt 80) — generic card grid + inline
+   notices + required/optional markers, used by ProjectDetailsFields,
+   ProfessionalAudienceFields and the Manage Hive collab page. ── */
+.req { color: #b4462c; font-weight: 600; }
+.opt { font-size: 11px; font-weight: 400; color: #8f8566; }
+.ch-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ch-cards.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ch-card { padding: 12px; background: #faf8f4; border: 0.5px solid #d8d0bc; border-radius: 10px; cursor: pointer; text-align: left; font-family: inherit; }
+.ch-card.selected { border-color: #c49a28; background: #fdf8ec; box-shadow: inset 0 0 0 0.5px #c49a28; }
+.ch-card-label { font-size: 12.5px; font-weight: 500; color: #1a1508; margin-bottom: 3px; }
+.ch-card.selected .ch-card-label { color: #7a5a0c; }
+.ch-card-sub { font-size: 11px; color: #7d7158; line-height: 1.4; }
+.subhead { font-size: 10px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: #a07a14; margin: 26px 0 14px; display: flex; align-items: center; gap: 10px; }
+.subhead span { flex: 1; height: 0.5px; background: #e8dcc0; }
+.spots-total { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #4a3a18; margin-top: 12px; padding: 10px 14px; background: #faf8f4; border-radius: 10px; flex-wrap: wrap; gap: 6px; }
+.spots-total b { font-weight: 600; }
+.notice { margin-top: 10px; padding: 11px 14px; border-radius: 10px; font-size: 12px; line-height: 1.5; display: flex; gap: 10px; align-items: flex-start; }
+.notice-warn { background: #fdf0ea; border: 0.5px solid #e6b8a4; color: #7a3218; }
+.notice-ok { background: #f3f6ee; border: 0.5px solid #c9d6b4; color: #3d5222; }
+.notice-info { background: #fdf6e4; border: 0.5px solid #e8d8a4; color: #5e4d20; }
+.notice b { font-weight: 600; }
+
+/* ── Manage Hive collab page (Prompt 80) ─────────────────────────── */
+.mg-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 500; margin: 0 0 4px; color: #1a1508; }
+.mg-sub { font-size: 12.5px; color: #6f6656; margin: 0 0 20px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+.stat { background: #fff; border: 0.5px solid #e8e0d0; border-radius: 12px; padding: 14px 16px; }
+.stat-num { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 600; line-height: 1; color: #1a1508; }
+.stat-lbl { font-size: 11px; color: #7d7158; margin-top: 5px; }
+.save-row { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.btn-ghost { padding: 11px 20px; border: 0.5px solid #d8d0bc; border-radius: 10px; background: #fff; font-family: inherit; font-size: 13px; color: #4a3a18; cursor: pointer; min-height: 44px; }
+
 /* ── Responsive ───────────────────────────────────────────────── */
 @media (max-width: 520px) {
   .ch-page           { padding-left: 16px; padding-right: 16px; }
@@ -791,6 +823,9 @@
   .ch-cat-grid       { grid-template-columns: repeat(2, 1fr); }
   .ch-cost-cards     { flex-direction: column; }
   .ch-activate-cards { flex-direction: column; }
+  .ch-cards          { grid-template-columns: repeat(2, 1fr); }
+  .ch-cards.four     { grid-template-columns: repeat(2, 1fr); }
+  .stats             { grid-template-columns: minmax(0, 1fr); }
   .ch-launch-bar-inner {
     flex-direction: column;
     align-items: stretch;

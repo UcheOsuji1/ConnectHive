@@ -911,6 +911,28 @@ export const createHive = async (req, res) => {
       return res.status(400).json({ error: maxMembersCheck.error });
     }
 
+    // Project/Professional basics + roles (Prompt 80) — validated up front,
+    // before anything is written. Project and Professional Hives always
+    // validate (even an empty body), so the "pay is required" / "pick an
+    // industry" rules apply at create too; any other category sending a
+    // `collab` key at all is a 400, matching validateCollab's own rule.
+    const createCategoryName = CATEGORY_NAME_MAP[category] ?? null;
+    const needsCollab = createCategoryName === PROJECT_CATEGORY || createCategoryName === PROFESSIONAL_CATEGORY;
+    let collabValue = null;
+    if (needsCollab || req.body.collab !== undefined) {
+      const collabResult = validateCollab(createCategoryName, req.body.collab ?? {});
+      if (collabResult.error) return res.status(400).json({ error: collabResult.error });
+      collabValue = collabResult.value;
+      if (collabValue.roles) {
+        const capacityError = roleCapacityError(
+          { max_members: maxMembersCheck.value },
+          collabValue.roles.map(r => ({ ...r, filled: 0 })),
+          1, // the owner, the only member that exists at create
+        );
+        if (capacityError) return res.status(400).json({ error: capacityError });
+      }
+    }
+
     // Invite-only promises "won't appear in search" on the create page's own
     // card — enforce that server-side too, so a client that skips the card's
     // disabling logic (or a future caller) can't create a discoverable
@@ -1070,6 +1092,35 @@ export const createHive = async (req, res) => {
             stepsSeeded,
           ],
         );
+      }
+
+      // Collab basics + roles (Prompt 80) — same transaction as the Hive,
+      // #general and the category rooms: a forced failure here leaves none
+      // of them behind either, same as every other piece of createHive.
+      if (collabValue) {
+        const basicsCols = createCategoryName === PROJECT_CATEGORY ? PROJECT_BASIC_COLS : PROFESSIONAL_BASIC_COLS;
+        const sets = basicsCols.map((c, i) => `${c} = $${i + 1}`);
+        const vals = basicsCols.map(c => {
+          const val = collabValue[c];
+          return Array.isArray(val) ? JSON.stringify(val) : val;
+        });
+        await client.query(
+          `UPDATE hives SET ${sets.join(', ')}, collab_updated_at = NOW() WHERE hive_id = $${basicsCols.length + 1}`,
+          [...vals, hive.hive_id],
+        );
+        for (const c of basicsCols) hive[c] = collabValue[c];
+        hive.collab_updated_at = new Date().toISOString();
+
+        if (collabValue.roles?.length) {
+          for (let i = 0; i < collabValue.roles.length; i++) {
+            const r = collabValue.roles[i];
+            await client.query(
+              `INSERT INTO hive_roles (hive_id, title, slots, skills, experience_level, status, position)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              [hive.hive_id, r.title, r.slots, JSON.stringify(r.skills), r.experience_level, r.status, i],
+            );
+          }
+        }
       }
 
       await client.query('COMMIT');

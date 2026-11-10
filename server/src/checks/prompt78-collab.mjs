@@ -47,6 +47,13 @@ async function makeHive(owner, category, overrides = {}) {
   const r = await call(createHive, owner, {
     name: `p78-${RUN}-${category}-${randomUUID().slice(0, 6)}`,
     category, meetingType: 'online', joinPolicy: 'open', discoverable: true,
+    // Prompt 80: compensation (Project) / an industry or Cross-industry
+    // (Professional) are now required at create too. Every pre-80 test here
+    // attaches its own roles/basics via a later PUT /collab, so a minimal
+    // default here keeps createHive itself happy without changing what any
+    // of those later PUTs actually test.
+    ...(category === 'project' && !overrides.collab ? { collab: { compensation: ['paid'] } } : {}),
+    ...(category === 'professional' && !overrides.collab ? { collab: { audience_scope: 'cross' } } : {}),
     ...overrides,
   });
   assert.equal(r.status, 201, JSON.stringify(r.data));
@@ -358,6 +365,105 @@ try {
   const othersView = (await call(getMemberProfile, stranger, {}, { id: owner })).data.profile;
   check('links' in othersView && !('deep_dive_answers' in othersView),
     'getMemberProfile: another user\'s profile response carries links but never deep_dive_answers');
+
+  // ── Prompt 80: create-with-collab, the industries rule, maxProIndustries,
+  // and the create-transaction rollback ────────────────────────────────────
+  const ownerCreateA = await seedUser('ownerCreateA');
+  const createProject = await call(createHive, ownerCreateA, {
+    name: `p78-${RUN}-create-project`, category: 'project', meetingType: 'online',
+    joinPolicy: 'open', maxMembers: 10,
+    collab: {
+      project_types: ['film_video'], compensation: ['paid'],
+      roles: [{ title: 'Director', slots: 1, skills: [] }, { title: 'Editor', slots: 2, skills: [] }],
+    },
+  });
+  check(createProject.status === 201, 'createHive: Project Hive with collab basics + roles succeeds');
+  hiveIds.push(createProject.data.hive.hive_id);
+  check(createProject.data.hive.project_types?.[0] === 'film_video' && createProject.data.hive.compensation?.[0] === 'paid',
+    'createHive: returned hive carries collab basics as keys');
+  const { rows: createdRoles } = await query(
+    'SELECT title, position FROM hive_roles WHERE hive_id=$1 ORDER BY position', [createProject.data.hive.hive_id],
+  );
+  check(createdRoles.length === 2 && createdRoles[0].title === 'Director' && createdRoles[1].title === 'Editor',
+    'createHive: roles inserted in order with position = array index');
+
+  const ownerCreateB = await seedUser('ownerCreateB');
+  const createNoComp = await call(createHive, ownerCreateB, {
+    name: `p78-${RUN}-create-nocomp`, category: 'project', meetingType: 'online', joinPolicy: 'open',
+    collab: { project_types: ['film_video'] },
+  });
+  check(createNoComp.status === 400 && /offer collaborators/.test(createNoComp.data.error),
+    'createHive: Project Hive with no compensation is rejected with the same message');
+
+  const ownerCreateC = await seedUser('ownerCreateC');
+  const createPro = await call(createHive, ownerCreateC, {
+    name: `p78-${RUN}-create-pro`, category: 'professional', meetingType: 'online', joinPolicy: 'open',
+    collab: { pro_industries: ['tech_software'], career_stages: ['mid'], audience_scope: 'same' },
+  });
+  check(createPro.status === 201, 'createHive: Professional Hive with collab basics succeeds');
+  hiveIds.push(createPro.data.hive.hive_id);
+
+  const ownerCreateD = await seedUser('ownerCreateD');
+  const createProNoInd = await call(createHive, ownerCreateD, {
+    name: `p78-${RUN}-create-pronoind`, category: 'professional', meetingType: 'online', joinPolicy: 'open',
+    collab: { audience_scope: 'same' },
+  });
+  check(createProNoInd.status === 400 && /Pick at least one industry/.test(createProNoInd.data.error),
+    'createHive: Professional Hive with no industries and scope "same" is rejected — the industries rule applies at create');
+
+  const ownerCreateE = await seedUser('ownerCreateE');
+  const createProCross = await call(createHive, ownerCreateE, {
+    name: `p78-${RUN}-create-procross`, category: 'professional', meetingType: 'online', joinPolicy: 'open',
+    collab: { audience_scope: 'cross' },
+  });
+  check(createProCross.status === 201, 'createHive: Professional Hive with Cross-industry and no industries succeeds');
+  hiveIds.push(createProCross.data.hive.hive_id);
+
+  const ownerCreateF = await seedUser('ownerCreateF');
+  const createProTooMany = await call(createHive, ownerCreateF, {
+    name: `p78-${RUN}-create-promax`, category: 'professional', meetingType: 'online', joinPolicy: 'open',
+    collab: {
+      audience_scope: 'same',
+      pro_industries: ['tech_software', 'finance_investing', 'startups', 'design_and_creative', 'marketing', 'healthcare'],
+    },
+  });
+  check(createProTooMany.status === 201 && createProTooMany.data.hive.pro_industries.length === 5,
+    'createHive: maxProIndustries caps a 6-industry Professional create at 5');
+  hiveIds.push(createProTooMany.data.hive.hive_id);
+
+  const ownerCreateG = await seedUser('ownerCreateG');
+  const createCrossCat = await call(createHive, ownerCreateG, {
+    name: `p78-${RUN}-create-crosscat`, category: 'social', meetingType: 'online', joinPolicy: 'open',
+    collab: { compensation: ['paid'] },
+  });
+  check(createCrossCat.status === 400, 'createHive: a collab key on a non-collab category is rejected with 400');
+
+  const ownerCreateH = await seedUser('ownerCreateH');
+  const createOverCap = await call(createHive, ownerCreateH, {
+    name: `p78-${RUN}-create-overcap`, category: 'project', meetingType: 'online', joinPolicy: 'open', maxMembers: 5,
+    collab: {
+      compensation: ['paid'],
+      roles: [{ title: 'A', slots: 3, skills: [] }, { title: 'B', slots: 3, skills: [] }],
+    },
+  });
+  check(createOverCap.status === 400 &&
+    createOverCap.data.error === 'These roles add 6 open spots, but your Hive only has room for 4 more members. Raise the member limit or reduce spots.',
+    'createHive: capacity error at create uses the exact message, owner counted as 1');
+
+  // Forced mid-transaction failure on create: a real Postgres NUL-byte error
+  // on the second role must leave no Hive, no rooms, no roles behind at all.
+  const ownerCreateI = await seedUser('ownerCreateI');
+  const failCreateName = `p78-${RUN}-create-fail`;
+  const createFail = await call(createHive, ownerCreateI, {
+    name: failCreateName, category: 'project', meetingType: 'online', joinPolicy: 'open',
+    collab: {
+      compensation: ['paid'],
+      roles: [{ title: 'Keep me', slots: 1, skills: [] }, { title: 'Bad\u0000Role', slots: 1, skills: [] }],
+    },
+  });
+  check(createFail.status === 500, 'createHive: the NUL-byte role write genuinely fails at the DB level');
+  const { rows: strayCreateHives } = await query('SELECT hive_id FROM hives WHERE hive_name = $1', [failCreateName]);
+  check(strayCreateHives.length === 0, 'createHive: a mid-transaction failure leaves no Hive row behind at all');
 
   log(`\n${checks} checks passed.`);
 } finally {

@@ -34,7 +34,9 @@ function dedupeBy(arr, keyFn, max) {
 // Multi-select of vocabulary items -> deduped array of keys. Unmatched
 // entries are dropped with a console.warn, not stored — only project_types
 // has an "_other" bucket at the Hive level (schema.sql's project_types_other).
-function multiKeys(list, values, field) {
+// `max`, when given, silently caps the result (the client-side chip picker
+// already disables past the cap; this is a defensive ceiling, not product UX).
+function multiKeys(list, values, field, max) {
   if (values === undefined) return [];
   const keys = [];
   for (const v of values ?? []) {
@@ -42,7 +44,8 @@ function multiKeys(list, values, field) {
     if (key) { keys.push(key); continue; }
     console.warn(`[collab] unknown value for ${field}, dropped:`, v);
   }
-  return [...new Set(keys)];
+  const deduped = [...new Set(keys)];
+  return max != null ? deduped.slice(0, max) : deduped;
 }
 
 function singleKeyOrError(list, value, label) {
@@ -139,10 +142,17 @@ function validateProject(body) {
 }
 
 function validateProfessional(body) {
-  const pro_industries = multiKeys(PRO_INDUSTRIES, body.pro_industries, 'pro_industries');
-  const career_stages = multiKeys(CAREER_STAGES, body.career_stages, 'career_stages');
   const scopeR = singleKeyOrError(INDUSTRY_SCOPES, body.audience_scope, 'Audience scope');
   if (scopeR.error) return scopeR;
+
+  const pro_industries = multiKeys(PRO_INDUSTRIES, body.pro_industries, 'pro_industries', COLLAB_LIMITS.maxProIndustries);
+  // Required unless the owner picked Cross-industry — same rule the client
+  // enforces in CreateHivePage's validate().
+  if (!pro_industries.length && scopeR.value !== 'cross') {
+    return { error: 'Pick at least one industry, or choose Cross-industry.' };
+  }
+
+  const career_stages = multiKeys(CAREER_STAGES, body.career_stages, 'career_stages');
 
   return {
     value: { pro_industries, career_stages, audience_scope: scopeR.value },

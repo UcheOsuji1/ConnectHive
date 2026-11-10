@@ -994,6 +994,7 @@ export const ROLE_SUGGESTIONS = {
 export const COLLAB_LIMITS = {
   maxRoles: 25, maxSlotsPerRole: 50, maxSkillsPerRole: 12, maxRoleTitle: 60,
   maxSkills: 30, maxWantRoles: 8, maxOther: 10, maxOtherLength: 60,
+  maxProIndustries: 5,
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
