@@ -252,6 +252,14 @@ CREATE TABLE IF NOT EXISTS compatibility_scores (
   UNIQUE (user_id, hive_id)
 );
 
+-- Prompt 81: the full collab (or purpose) factor object, plus the scorer
+-- version that produced it. A reader sees scorer_version < 2 (or missing)
+-- on a Project/Professional Hive and recomputes instead of trusting the old
+-- category_score/interest_score/... columns, which never carried roleFit,
+-- industry, careerStage, etc. No backfill — old rows just refresh on next read.
+ALTER TABLE compatibility_scores ADD COLUMN IF NOT EXISTS factors JSONB;
+ALTER TABLE compatibility_scores ADD COLUMN IF NOT EXISTS scorer_version INT;
+
 -- ─── Waitlist (cold-start / founder queue) ───────────────────────────────────
 CREATE TABLE IF NOT EXISTS waitlist (
   waitlist_id  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),

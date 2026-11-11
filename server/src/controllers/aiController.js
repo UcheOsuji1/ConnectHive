@@ -1,12 +1,36 @@
 import { query } from '../db/index.js';
-import { scorePurpose, buildReasons } from '../lib/compatibility.js';
+import { scorePurpose, buildReasons, mergeSkills } from '../lib/compatibility.js';
 import {
   aiEnabled,
   generateHiveFitAnalysis,
   generateDiscoveryExplanation,
 } from '../lib/aiExplain.js';
+import { CATEGORY_KEY_FOR_NAME, SCORER_VERSION, loadRolesByHive } from './hivesController.js';
 
 const CACHE_SQL = `AND generated_at > NOW() - INTERVAL '7 days'`;
+
+// Prompt 81 — the cached compatibility_scores row is only trustworthy as-is
+// for a Project/Professional Hive once it was written by scorer_version 2+
+// (the old columns never carried roleFit/industry/careerStage/...). Every
+// other category's cache was always correct and stays untouched.
+function cacheIsStale(cs, hiveCategoryKey) {
+  if (!cs) return true;
+  const isCollabCategory = hiveCategoryKey === 'project' || hiveCategoryKey === 'professional';
+  return isCollabCategory && (cs.scorer_version == null || Number(cs.scorer_version) < SCORER_VERSION);
+}
+
+// Builds the collabCtx scorePurpose needs for a single Hive/profile pair —
+// the candidate's (or caller's) OWN saved Deep Dive answers, never a live
+// request body (there is none at this endpoint).
+async function buildCollabCtx(hive, profile) {
+  const hiveCategoryKey = CATEGORY_KEY_FOR_NAME[hive.category_name] ?? null;
+  if (hiveCategoryKey !== 'project' && hiveCategoryKey !== 'professional') return {};
+  const answers = profile.deep_dive_answers?.[hiveCategoryKey] ?? null;
+  const seekerSkills = mergeSkills(answers?.skills, profile.skills);
+  const rolesByHive = await loadRolesByHive([hive.hive_id]);
+  const openRoles = (rolesByHive[hive.hive_id] ?? []).filter(r => r.status === 'open' && r.filled < r.slots);
+  return { answers, seekerSkills, openRoles };
+}
 
 // ── GET /api/hives/:id/ai-fit/:userId ────────────────────────────────────────
 export async function getAiFit(req, res) {
@@ -58,7 +82,8 @@ export async function getAiFit(req, res) {
       query('SELECT * FROM profiles WHERE user_id = $1', [candidateId]),
       query(
         `SELECT category_score, interest_score, goal_score, skill_score,
-                location_score, availability_score, personality_score, total_score
+                location_score, availability_score, personality_score, total_score,
+                scorer_version
          FROM compatibility_scores WHERE user_id = $1 AND hive_id = $2`,
         [candidateId, hiveId],
       ),
@@ -69,9 +94,14 @@ export async function getAiFit(req, res) {
       ),
     ]);
 
-    // 5. Build purposeFactors
-    let purposeFactors;
-    if (cs) {
+    // 5. Build purposeFactors — this is "the AI candidate path" (Prompt 81):
+    // a Project/Professional Hive with a stale or missing scorer_version
+    // recomputes via scoreCollab (through scorePurpose) using the candidate's
+    // own saved Deep Dive answers, instead of trusting the old columns, which
+    // never carried roleFit/industry/careerStage/... .
+    const hiveCategoryKey = hive ? (CATEGORY_KEY_FOR_NAME[hive.category_name] ?? null) : null;
+    let purposeFactors, details;
+    if (!cacheIsStale(cs, hiveCategoryKey) && hive) {
       purposeFactors = {
         category:     Number(cs.category_score),
         interests:    Number(cs.interest_score),
@@ -82,14 +112,15 @@ export async function getAiFit(req, res) {
         personality:  Number(cs.personality_score),
       };
     } else if (hive && candidateProfile) {
-      purposeFactors = scorePurpose(candidateProfile, hive, null).factors;
+      const collabCtx = await buildCollabCtx(hive, candidateProfile);
+      ({ factors: purposeFactors, details } = scorePurpose(candidateProfile, hive, null, collabCtx));
     } else {
       purposeFactors = { category: 0, interests: 0, goals: 0, skills: 0, location: 0, availability: 0, personality: 0 };
     }
 
     const peopleFit = uc ? Number(uc.total_score) : null;
     const topPairs  = peopleFit !== null ? [{ full_name: null, pair_score: peopleFit }] : [];
-    const reasons   = buildReasons(purposeFactors, peopleFit, topPairs);
+    const reasons   = buildReasons(purposeFactors, peopleFit, topPairs, details);
 
     // 6. Try AI generation
     if (aiEnabled() && hive && candidateProfile) {
@@ -173,15 +204,17 @@ export async function getAiMatch(req, res) {
       query('SELECT * FROM profiles WHERE user_id = $1', [req.userId]),
       query(
         `SELECT category_score, interest_score, goal_score, skill_score,
-                location_score, availability_score, personality_score, total_score
+                location_score, availability_score, personality_score, total_score,
+                scorer_version
          FROM compatibility_scores WHERE user_id = $1 AND hive_id = $2`,
         [req.userId, hiveId],
       ),
     ]);
 
-    // 5. Build purposeFactors
-    let purposeFactors;
-    if (cs) {
+    // 5. Build purposeFactors — same scorer_version-aware recompute as getAiFit.
+    const hiveCategoryKey = CATEGORY_KEY_FOR_NAME[hive.category_name] ?? null;
+    let purposeFactors, details;
+    if (!cacheIsStale(cs, hiveCategoryKey)) {
       purposeFactors = {
         category:     Number(cs.category_score),
         interests:    Number(cs.interest_score),
@@ -192,12 +225,13 @@ export async function getAiMatch(req, res) {
         personality:  Number(cs.personality_score),
       };
     } else if (userProfile) {
-      purposeFactors = scorePurpose(userProfile, hive, null).factors;
+      const collabCtx = await buildCollabCtx(hive, userProfile);
+      ({ factors: purposeFactors, details } = scorePurpose(userProfile, hive, null, collabCtx));
     } else {
       purposeFactors = { category: 0, interests: 0, goals: 0, skills: 0, location: 0, availability: 0, personality: 0 };
     }
 
-    const reasons = buildReasons(purposeFactors, null, []);
+    const reasons = buildReasons(purposeFactors, null, [], details);
 
     // 6. Try AI generation
     if (aiEnabled() && userProfile) {

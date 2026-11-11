@@ -8,6 +8,9 @@ import {
   buildReasons,
   norm,
   ageInBand,
+  mergeSkills,
+  scoreCollab,
+  hiveHasCollabData,
 } from '../lib/compatibility.js';
 import { createNotification } from './notificationsController.js';
 import { evictUserFromHive } from '../realtime/socket.js';
@@ -29,7 +32,7 @@ import { billingGuardError } from '../lib/billingGuardErrors.js';
 import { validateCollab, roleCapacityError, openRolesClause, PROJECT_CATEGORY, PROFESSIONAL_CATEGORY } from '../lib/collab.js';
 import { display, PROJECT_TYPES, PROJECT_STAGES, PROJECT_TIMELINES, COMMITMENTS, WORK_STYLES,
          FUNDING, COMPENSATION, PROJECT_INDUSTRIES, PRO_INDUSTRIES, CAREER_STAGES,
-         INDUSTRY_SCOPES, EXPERIENCE_LEVELS } from '../lib/collabVocabulary.js';
+         INDUSTRY_SCOPES, EXPERIENCE_LEVELS, normalizeDeepDive } from '../lib/collabVocabulary.js';
 import { validateUrl } from '../lib/validateUrl.js';
 
 export const CATEGORY_NAME_MAP = {
@@ -40,6 +43,92 @@ export const CATEGORY_NAME_MAP = {
   event:        'Event Buddies',
   specialized:  'Specialized Groups',
 };
+// Reverse of CATEGORY_NAME_MAP — a Hive's own category_name back to the short
+// key (mirrors CATEGORY_KEY_MAP in compatibility.js, which isn't exported).
+export const CATEGORY_KEY_FOR_NAME = Object.fromEntries(
+  Object.entries(CATEGORY_NAME_MAP).map(([key, name]) => [name, key]),
+);
+
+// Bump whenever scorePurpose/scoreCollab's factor set changes shape — a
+// reader sees a lower (or missing) scorer_version on a Project/Professional
+// Hive's cached row and recomputes instead of trusting the old columns.
+export const SCORER_VERSION = 2;
+
+// Prompt 81 — seeker side of collab matching. Resolution order: (1) live
+// Deep Dive answers in THIS request body — re-run through the server's own
+// normalizeDeepDive, never trust a client-normalized object; (2) the
+// profile's saved deep_dive_answers[categoryKey]; (3) none (scoreCollab's
+// neutral-60 handling covers that). Returns null for a non-collab category.
+export function resolveCollabAnswers(categoryKey, profile, body) {
+  if (categoryKey !== 'project' && categoryKey !== 'professional') return null;
+  const { chips, cards, roles, textValues } = body ?? {};
+  const hasLiveInput = chips !== undefined || cards !== undefined || roles !== undefined;
+  const answers = hasLiveInput
+    ? normalizeDeepDive(categoryKey, { chips, cards, textValues, roles })
+    : (profile.deep_dive_answers?.[categoryKey] ?? null);
+  const seekerSkills = mergeSkills(answers?.skills, profile.skills);
+  return { answers, seekerSkills };
+}
+
+// Every role (any status) for a batch of Hives, with its filled count —
+// Prompt 78's same filled-count subquery, loaded once for every candidate
+// instead of once per Hive. Keyed by hive_id; each Hive's array is already
+// ordered by position.
+export async function loadRolesByHive(hiveIds) {
+  if (!hiveIds.length) return {};
+  const { rows } = await query(
+    `SELECT hr.hive_id, hr.role_id, hr.title, hr.slots, hr.skills, hr.experience_level, hr.status, hr.position,
+            COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS filled
+       FROM hive_roles hr
+       LEFT JOIN hive_members hm ON hm.collab_role_id = hr.role_id
+      WHERE hr.hive_id = ANY($1)
+      GROUP BY hr.hive_id, hr.role_id, hr.title, hr.slots, hr.skills, hr.experience_level, hr.status, hr.position
+      ORDER BY hr.hive_id, hr.position`,
+    [hiveIds],
+  );
+  const byHive = {};
+  for (const r of rows) {
+    (byHive[r.hive_id] ??= []).push({
+      role_id: r.role_id, title: r.title, slots: r.slots, skills: r.skills,
+      experience_level: r.experience_level, status: r.status, position: r.position,
+      filled: Number(r.filled),
+    });
+  }
+  return byHive;
+}
+
+// collab card data for a discovery result (Prompt 81, Step 5 reads this).
+// Reuses buildCollabLabels (defined below) for "keys plus labels", same
+// convention as getHiveCollab's own response.
+function buildCollabCardData(hiveCategoryKey, hive, hiveRoles, collabDetails) {
+  const openRolesForGate = hiveRoles.filter(r => r.status === 'open' && r.filled < r.slots);
+  // Same gate as scorePurpose's own scoreCollab branch — a Project/
+  // Professional Hive that hasn't set up collab data yet gets no `collab`
+  // key at all, same as it gets no collab-shaped factors.
+  if (!hiveHasCollabData(hive, openRolesForGate)) return null;
+
+  if (hiveCategoryKey === 'project') {
+    const openRoles = openRolesForGate
+      .slice(0, 6)
+      .map(r => ({ role_id: r.role_id, title: r.title, open: r.slots - r.filled }));
+    const totalOpen = hiveRoles.reduce((sum, r) => (r.status === 'open' ? sum + Math.max(0, r.slots - r.filled) : sum), 0);
+    const basics = { project_stage: hive.project_stage, commitment: hive.commitment, compensation: hive.compensation };
+    return {
+      bestRole: collabDetails?.bestRole ?? null,
+      openRoles, totalOpen,
+      stage: hive.project_stage, commitment: hive.commitment, compensation: hive.compensation,
+      labels: buildCollabLabels(PROJECT_CATEGORY, basics, []),
+    };
+  }
+  if (hiveCategoryKey === 'professional') {
+    const basics = { pro_industries: hive.pro_industries, career_stages: hive.career_stages, audience_scope: hive.audience_scope };
+    return {
+      industries: hive.pro_industries, careerStages: hive.career_stages, audienceScope: hive.audience_scope,
+      labels: buildCollabLabels(PROFESSIONAL_CATEGORY, basics, []),
+    };
+  }
+  return null;
+}
 
 export const matchHives = async (req, res) => {
   try {
@@ -51,6 +140,10 @@ export const matchHives = async (req, res) => {
       [req.userId],
     );
     if (!profile) return res.json({ hives: [], waitingCount: 0, needsProfile: true });
+
+    // Resolved once per request, not per Hive — the seeker side of collab
+    // matching never depends on which Hive is being scored.
+    const collabAnswers = resolveCollabAnswers(category, profile, req.body);
 
     // Enrich profile location with search-form city if profile has none. The
     // search answer wins over a saved profile city — someone searching from
@@ -190,15 +283,20 @@ export const matchHives = async (req, res) => {
     // 4. Score each candidate
     const blockedIds = await blockedIdsFor(req.userId);
     const hasAgeBands = Array.isArray(ageBands) && ageBands.length > 0 && !ageBands.includes('Any age');
+    // Every candidate Hive's roles in one query (Prompt 81) — not one per Hive.
+    const rolesByHive = await loadRolesByHive(candidates.map(h => h.hive_id));
     const scored = [];
     for (const hive of candidates) {
-      const { factors: purposeFactors, total: purposeTotal } =
-        scorePurpose(enrichedProfile, hive, category || null);
+      const hiveCategoryKey = CATEGORY_KEY_FOR_NAME[hive.category_name] ?? null;
+      const hiveRoles = rolesByHive[hive.hive_id] ?? [];
+      const openRoles = hiveRoles.filter(r => r.status === 'open' && r.filled < r.slots);
 
       // Load active members' profiles (excluding caller, anyone blocked
       // either way — a blocked pair must never see each other's cards here —
       // and the is_system house account, which owns starter Hives but is not
       // a person to compute people-fit against or show as a chemistry match).
+      // Loaded BEFORE scoring (not after, as before Prompt 81) so Professional
+      // collab scoring's skills factor can reuse it — no extra query per Hive.
       const { rows: memberProfiles } = await query(
         `SELECT p.*
          FROM hive_members hm
@@ -208,6 +306,12 @@ export const matchHives = async (req, res) => {
            AND hm.user_id != ALL($3) AND NOT u.is_system`,
         [hive.hive_id, req.userId, blockedIds],
       );
+
+      const { factors: purposeFactors, total: purposeTotal, details: collabDetails } =
+        scorePurpose(enrichedProfile, hive, category || null, {
+          answers: collabAnswers?.answers, seekerSkills: collabAnswers?.seekerSkills,
+          openRoles, memberProfiles,
+        });
 
       // Pairwise scores via the shared 7-day cache (lib/pairScoreCache.js), so
       // Discovery, suggestions and the profile page cannot drift apart.
@@ -243,12 +347,19 @@ export const matchHives = async (req, res) => {
         }
       }
 
-      // Persist blended score to compatibility_scores
+      // Persist blended score to compatibility_scores. The old numeric
+      // columns don't all have a collab-scored equivalent (Project has no
+      // `goals`, Professional has no `cadence`, ...) — they're NOT NULL, so a
+      // missing key defaults to 0 rather than failing the insert; a collab
+      // Hive's own scorer_version tells a reader never to trust these for
+      // ranking, only `factors` (below).
+      const num = v => (typeof v === 'number' ? v : 0);
       await query(
         `INSERT INTO compatibility_scores
            (user_id, hive_id, category_score, interest_score, skill_score, goal_score,
-            location_score, availability_score, personality_score, total_score, calculated_at)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW())
+            location_score, availability_score, personality_score, total_score,
+            factors, scorer_version, calculated_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, NOW())
          ON CONFLICT (user_id, hive_id) DO UPDATE SET
            category_score     = EXCLUDED.category_score,
            interest_score     = EXCLUDED.interest_score,
@@ -258,23 +369,27 @@ export const matchHives = async (req, res) => {
            availability_score = EXCLUDED.availability_score,
            personality_score  = EXCLUDED.personality_score,
            total_score        = EXCLUDED.total_score,
+           factors            = EXCLUDED.factors,
+           scorer_version     = EXCLUDED.scorer_version,
            calculated_at      = NOW()`,
         [
           req.userId, hive.hive_id,
-          purposeFactors.category,    purposeFactors.interests,
-          purposeFactors.skills,      purposeFactors.goals,
+          num(purposeFactors.category),  num(purposeFactors.interests),
+          num(purposeFactors.skills ?? purposeFactors.roleFit), num(purposeFactors.goals),
           // scorePurpose returns `cadence`, never `availability` — that key
           // belongs to scorePair. Passing the missing key sent NULL into a
           // NOT NULL column and 500'd every Discovery request.
-          purposeFactors.location,    purposeFactors.cadence,
-          purposeFactors.personality, matchScore,
+          num(purposeFactors.location),  num(purposeFactors.cadence),
+          num(purposeFactors.personality), matchScore,
+          JSON.stringify(purposeFactors), SCORER_VERSION,
         ],
       );
 
       const member_matches = pairResults.sort((a, b) => b.pair_score - a.pair_score);
-      const reasons        = buildReasons(purposeFactors, peopleFit, member_matches);
+      const reasons        = buildReasons(purposeFactors, peopleFit, member_matches, collabDetails);
 
       const { distance_raw, ...hiveFields } = hive;
+      const collab = buildCollabCardData(hiveCategoryKey, hive, hiveRoles, collabDetails);
       scored.push({
         ...hiveFields,
         distance_miles:     formatDistance(distance_raw),
@@ -285,6 +400,7 @@ export const matchHives = async (req, res) => {
         ageShare,
         member_matches,
         reasons,
+        ...(collab ? { collab } : {}),
         _category_score:   purposeFactors.category,
       });
     }
@@ -492,11 +608,25 @@ export const getSuggestions = async (req, res) => {
       ? withDistance
       : withDistance.filter(hive => hive.location_type === 'online' || (hive._raw_miles != null && hive._raw_miles <= maxMiles));
 
+    // Resolved once per request (not per Hive) for each collab category —
+    // "Might suit you" has no single selected category, so either could show
+    // up among the candidates.
+    const projectAnswers      = resolveCollabAnswers('project', profile, req.body);
+    const professionalAnswers = resolveCollabAnswers('professional', profile, req.body);
+    const rolesByHive = await loadRolesByHive(distanceFiltered.map(h => h.hive_id));
+
     const filters = await readRefineFilters(req.query);
     const scored = distanceFiltered.filter(hive => matchesRefine(hive, filters))
       .map(hive => {
-        const { factors, total } = scorePurpose(profile, hive, null);
-        return { hive, factors, total };
+        const hiveCategoryKey = CATEGORY_KEY_FOR_NAME[hive.category_name] ?? null;
+        const hiveRoles = rolesByHive[hive.hive_id] ?? [];
+        const openRoles = hiveRoles.filter(r => r.status === 'open' && r.filled < r.slots);
+        const collabAnswers = hiveCategoryKey === 'project' ? projectAnswers
+          : hiveCategoryKey === 'professional' ? professionalAnswers : null;
+        const { factors, total, details } = scorePurpose(profile, hive, null, {
+          answers: collabAnswers?.answers, seekerSkills: collabAnswers?.seekerSkills, openRoles,
+        });
+        return { hive, factors, total, details, hiveCategoryKey, hiveRoles };
       })
       .sort((a, b) => b.total - a.total)
       .slice(0, 15);
@@ -512,7 +642,7 @@ export const getSuggestions = async (req, res) => {
 
     const blockedIds = await blockedIdsFor(req.userId);
     const results = [];
-    for (const { hive, factors, total } of picks) {
+    for (const { hive, hiveCategoryKey, hiveRoles } of picks) {
       // account_status = 'active' was missed in Prompt 68 Part D's sweep of
       // this exact pattern elsewhere (matchHives, getHiveMembers, etc.) —
       // fixed here alongside the block filter since it's the same query.
@@ -524,6 +654,18 @@ export const getSuggestions = async (req, res) => {
            AND hm.user_id != ALL($3) AND NOT u.is_system`,
         [hive.hive_id, req.userId, blockedIds],
       );
+
+      // Rescored with memberProfiles now loaded, so Professional collab's
+      // skills factor (vs current members) is accurate for what's displayed —
+      // the ranking pass above scored without it to avoid a query per Hive.
+      const openRoles = hiveRoles.filter(r => r.status === 'open' && r.filled < r.slots);
+      const collabAnswers = hiveCategoryKey === 'project' ? projectAnswers
+        : hiveCategoryKey === 'professional' ? professionalAnswers : null;
+      const { factors, total, details } = scorePurpose(profile, hive, null, {
+        answers: collabAnswers?.answers, seekerSkills: collabAnswers?.seekerSkills,
+        openRoles, memberProfiles,
+      });
+
       // Was scorePair() fresh on every request, which is exactly how this
       // surface drifted from Discovery and the profile page.
       const pairResults = [];
@@ -535,7 +677,8 @@ export const getSuggestions = async (req, res) => {
 
       const peopleFit  = aggregatePeopleFit(pairResults.map(p => p.pair_score));
       const matchScore = blendScores(total, peopleFit);
-      const reasons     = buildReasons(factors, peopleFit, pairResults);
+      const reasons     = buildReasons(factors, peopleFit, pairResults, details);
+      const collab      = buildCollabCardData(hiveCategoryKey, hive, hiveRoles, details);
 
       results.push({
         hive_id:       hive.hive_id,
@@ -549,6 +692,7 @@ export const getSuggestions = async (req, res) => {
         distance_miles: hive.distance_miles,
         match_score:   matchScore,
         reasons,
+        ...(collab ? { collab } : {}),
         is_seed:       hive.is_seed,
       });
     }
@@ -1649,6 +1793,7 @@ export const getHiveRequests = async (req, res) => {
       `SELECT jr.request_id, jr.user_id, jr.request_message, jr.status, jr.requested_at,
               jr.role_id, jr.portfolio_url, hr.title AS role_title,
               p.full_name, p.profile_photo_url, p.age, p.location, p.interests, p.skills,
+              p.deep_dive_answers,
               u.member_id,
               uc.total_score AS pair_score,
               cs.total_score AS hive_fit_score
@@ -1665,9 +1810,43 @@ export const getHiveRequests = async (req, res) => {
        ORDER BY cs.total_score DESC NULLS LAST, jr.requested_at ASC`,
       [hiveId, req.userId],
     );
-    const requestsWithRole = rows.map(({ role_id, role_title, ...r }) => ({
+
+    // A pending request naming a role_id gets THAT role's own fit (Prompt
+    // 81), even when it isn't the candidate's single best role — never the
+    // candidate's raw Deep Dive answers, only the computed numbers.
+    let roleFitByUser = {};
+    const namedRoleIds = [...new Set(rows.map(r => r.role_id).filter(Boolean))];
+    if (namedRoleIds.length) {
+      const { rows: [hiveRow] } = await query(
+        `SELECT h.*, c.category_name FROM hives h
+         LEFT JOIN categories c ON c.category_id = h.category_id
+         WHERE h.hive_id = $1`,
+        [hiveId],
+      );
+      const hiveCategoryKey = CATEGORY_KEY_FOR_NAME[hiveRow?.category_name] ?? null;
+      if (hiveCategoryKey === 'project') {
+        const rolesByHive = await loadRolesByHive([hiveId]);
+        // Every role, not just currently-open ones — a pending request can
+        // name a role that's since filled or closed, and the owner still
+        // benefits from seeing that candidate's fit for it.
+        const allRoles = rolesByHive[hiveId] ?? [];
+        for (const r of rows) {
+          if (!r.role_id) continue;
+          const answers = r.deep_dive_answers?.project ?? null;
+          const seekerSkills = mergeSkills(answers?.skills, r.skills);
+          const { details } = scoreCollab('project', answers, seekerSkills, { skills: r.skills }, hiveRow, allRoles);
+          const named = details.roleScores?.find(rs => rs.role_id === r.role_id);
+          if (named) {
+            roleFitByUser[r.user_id] = { title: named.title, matched: named.exact, total: named.total, partial: named.partial };
+          }
+        }
+      }
+    }
+
+    const requestsWithRole = rows.map(({ role_id, role_title, deep_dive_answers, ...r }) => ({
       ...r,
       role: role_id ? { role_id, title: role_title } : null,
+      ...(roleFitByUser[r.user_id] ? { roleFit: roleFitByUser[r.user_id] } : {}),
     }));
 
     const { rows: [cap] } = await query(

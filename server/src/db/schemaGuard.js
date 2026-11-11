@@ -37,6 +37,7 @@ const REQUIRED = {
   waitlist: ['metro_key'],
   hive_roles: [],
   hive_members: ['welcome_seen_at', 'onboarding_status', 'onboarding_screen', 'collab_role_id'],
+  compatibility_scores: ['factors', 'scorer_version'],
   join_requests: ['role_id', 'portfolio_url'],
   hive_posts: ['visibility', 'event_end_at', 'plan_type', 'cancelled_at', 'series_id', 'series_index',
                'hidden_at', 'hidden_reason'],
@@ -179,6 +180,8 @@ const IMPACT = {
   'hive_members.collab_role_id': 'role-aware membership — accepting a request into a specific role, and the capacity/spot math, fail',
   'join_requests.role_id':       'role-aware join requests — requesting/accepting a specific open role fails',
   'join_requests.portfolio_url': 'role-aware join requests — portfolio link on a request fails to save',
+  'compatibility_scores.factors':        'Project/Professional collab matching — role/pay/stage/industry/career-stage factors fail to cache, every read recomputes from scratch',
+  'compatibility_scores.scorer_version': 'Project/Professional collab matching — cached rows cannot be told apart from pre-collab scores, so stale factors may be served',
 };
 
 let state = { checked: false, ok: true, missing: [] };

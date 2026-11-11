@@ -13,7 +13,9 @@
     "db:backfill-coords": "node src/scripts/backfillCoordinates.js",
     "billing:worker": "node --import ./src/instrument.js src/jobs/billingWorker.js",
     "check:collab": "node src/checks/collabVocabulary.check.mjs",
-    "check:collab-api": "node src/checks/prompt78-collab.mjs"
+    "check:collab-api": "node src/checks/prompt78-collab.mjs",
+    "check:collab-match": "node src/checks/collabMatching.check.mjs",
+    "check:collab-match-integration": "node src/checks/prompt81-collab-match.integration.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
