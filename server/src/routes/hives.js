@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { query } from '../db/index.js';
+import { isUuid } from '../lib/isUuid.js';
 import {
   getHive,
   getHiveMembers,
@@ -207,6 +208,11 @@ router.post('/',   requireAuth, requireVerifiedEmail, hiveCreationLimiter, creat
 // following, requests/mine) have their own hive_status filters since they
 // never pass through a :id param at all.
 router.param('id', async (req, res, next, id) => {
+  // A malformed id is never a Hive — 404 before the id ever reaches a
+  // query, instead of letting Postgres's cast error through (see Prompt
+  // 80b: router.param runs before per-route requireAuth, so this must
+  // hold even for an unauthenticated request).
+  if (!isUuid(id)) return res.status(404).json({ error: 'Hive not found.' });
   try {
     const { rows: [hive] } = await query('SELECT hive_id, hive_status FROM hives WHERE hive_id = $1', [id]);
     if (!hive) return res.status(404).json({ error: 'Hive not found.' });
@@ -224,6 +230,25 @@ router.param('id', async (req, res, next, id) => {
     next(err);
   }
 });
+
+// Every other uuid-shaped path segment this router uses, across every
+// nested tool/sub-resource route — none of these had their own validator,
+// so a malformed value reached its controller's query and surfaced
+// Postgres's cast error. `key` (tool catalog key, e.g. 'find_time') and
+// `targetType` (a 'post'|'message' enum) are deliberately excluded — they
+// are never uuids.
+for (const param of [
+  'userId', 'requestId', 'messageId', 'pollId', 'channelId', 'groupId',
+  'expenseId', 'settlementId', 'listId', 'itemId', 'docId', 'revisionId',
+  'goalId', 'pairId', 'oppId', 'milestoneId', 'taskId', 'linkId',
+  'commentId', 'tripId', 'offerId', 'riderId', 'ideaId', 'stepId',
+  'uploadId', 'targetId', 'postId', 'sid',
+]) {
+  router.param(param, (req, res, next, value) => {
+    if (!isUuid(value)) return res.status(404).json({ error: 'Not found.' });
+    next();
+  });
+}
 
 // ── Single hive by id ─────────────────────────────────────────────────────────
 router.get('/:id',             requireAuth, getHive);

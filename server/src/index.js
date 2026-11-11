@@ -187,10 +187,24 @@ app.use((_req, res) => {
 Sentry.setupExpressErrorHandler(app);
 
 // ── Global error handler ──────────────────────────────────────────────────────
+// A deliberate 4xx's message is written for the person using the app (e.g.
+// "Hive name and category are required.") and is safe to send as-is. Anything
+// else — an uncaught exception, a Postgres error, a missing-column error —
+// was never written to be read by a client, and some of those (a column or
+// constraint name, a cast error quoting the raw input) are real information
+// disclosure. Those get a flat generic message; the original is still logged
+// here (and reported to Sentry just above, for 5xx) and, in dev only, echoed
+// back as `detail` so local debugging doesn't get worse.
 // eslint-disable-next-line no-unused-vars
 app.use((err, _req, res, _next) => {
   console.error('[Error]', err);
-  res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+  const status = err.status || 500;
+  if (status >= 400 && status < 500) {
+    return res.status(status).json({ error: err.message || 'Request failed.' });
+  }
+  const body = { error: 'Something went wrong. Please try again.' };
+  if (process.env.NODE_ENV !== 'production') body.detail = err.message;
+  res.status(status).json(body);
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

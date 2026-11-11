@@ -203,7 +203,14 @@ export function initSocket(httpServer, allowedOrigins) {
           ack({ ok: true, ...payload, your_status: myStatus });
         }
       } catch (err) {
-        if (typeof ack === 'function') ack({ error: err.message });
+        // Same rule as the HTTP error handler: a deliberate 4xx's message is
+        // safe to echo back; anything else (e.g. a DB error from a malformed
+        // hiveId) is never written for a client to read.
+        if (typeof ack === 'function') {
+          ack(err.status && err.status < 500
+            ? { error: err.message }
+            : { error: 'Something went wrong. Please try again.' });
+        }
         if (err.status !== 400 && err.status !== 403) {
           Sentry.captureException(err, { tags: { socketEvent: 'join_hive_room' } });
         }
@@ -235,7 +242,11 @@ export function initSocket(httpServer, allowedOrigins) {
         socket.join(`hive:${hiveId}:ch:${channelId}`);
         if (typeof ack === 'function') ack({ ok: true });
       } catch (err) {
-        if (typeof ack === 'function') ack({ error: err.message });
+        if (typeof ack === 'function') {
+          ack(err.status && err.status < 500
+            ? { error: err.message }
+            : { error: 'Something went wrong. Please try again.' });
+        }
         if (err.status !== 400 && err.status !== 403 && err.status !== 404) {
           Sentry.captureException(err, { tags: { socketEvent: 'join_channel' } });
         }

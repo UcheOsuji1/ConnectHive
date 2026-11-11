@@ -14,8 +14,18 @@ import {
 } from '../controllers/postsController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { LIMITS } from '../lib/limits.js';
+import { isUuid } from '../lib/isUuid.js';
 
 const router = Router();
+
+router.param('id', (req, res, next, value) => {
+  if (!isUuid(value)) return res.status(404).json({ error: 'Post not found.' });
+  next();
+});
+router.param('commentId', (req, res, next, value) => {
+  if (!isUuid(value)) return res.status(404).json({ error: 'Comment not found.' });
+  next();
+});
 
 // Keyed on the authenticated user, not IP — requireAuth runs first on every
 // route below, so req.userId is always set by the time these run.

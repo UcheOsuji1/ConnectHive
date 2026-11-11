@@ -4,6 +4,7 @@ import { getNewsletterStatus, testNewsletter, sendNewsletter } from '../controll
 import { getSignupFunnel } from '../controllers/funnelController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireSiteAdmin } from '../lib/siteAdmin.js';
+import { isUuid } from '../lib/isUuid.js';
 
 const router = Router();
 
@@ -11,6 +12,13 @@ const router = Router();
 // on SITE_ADMIN_EMAILS — the admin area must not confirm its own existence
 // to someone who isn't on the list.
 router.use(requireAuth, requireSiteAdmin);
+
+for (const param of ['id', 'targetId']) {
+  router.param(param, (req, res, next, value) => {
+    if (!isUuid(value)) return res.status(404).json({ error: 'Not found.' });
+    next();
+  });
+}
 
 router.get('/reports',                              getAdminReports);
 router.post('/reports/:targetType/:targetId/resolve', resolveAdminReport);

@@ -6,8 +6,14 @@ import {
   markAllRead,
 } from '../controllers/notificationsController.js';
 import { requireAuth } from '../middleware/auth.js';
+import { isUuid } from '../lib/isUuid.js';
 
 const router = Router();
+
+router.param('id', (req, res, next, value) => {
+  if (!isUuid(value)) return res.status(404).json({ error: 'Notification not found.' });
+  next();
+});
 
 // Static paths before /:id
 router.get('/',             requireAuth, getNotifications);

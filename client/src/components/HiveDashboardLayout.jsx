@@ -135,6 +135,15 @@ function HiveSidebar({
 }) {
   const { pathname } = useLocation();
 
+  // Mobile's nav row scrolls horizontally (see hive-dashboard-layout.css's
+  // ≤768px block) — on load/navigation, bring whichever item is active into
+  // view within it, same as desktop always shows it. `inline` only, so this
+  // never fights the page's own vertical scroll position.
+  useEffect(() => {
+    const activeLink = document.querySelector('.hdl-sidebar .hdl-nav-active');
+    activeLink?.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+  }, [pathname]);
+
   // "Finish setting up (N of M)" — the hive_onboarding_steps checklist stays
   // reachable from the rail until every required step is done, independent of
   // the one-time 5-screen welcome sequence.

@@ -346,7 +346,8 @@ export const getCompatibility = async (req, res) => {
     // TODO: compute and return compatibility score between user and hive
     res.json({ score: null, reasons: [], message: 'getCompatibility — not yet implemented' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[users/getCompatibility]', err);
+    res.status(500).json({ error: 'Failed to load compatibility.' });
   }
 };
 
