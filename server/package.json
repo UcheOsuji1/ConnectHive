@@ -15,7 +15,8 @@
     "check:collab": "node src/checks/collabVocabulary.check.mjs",
     "check:collab-api": "node src/checks/prompt78-collab.mjs",
     "check:collab-match": "node src/checks/collabMatching.check.mjs",
-    "check:collab-match-integration": "node src/checks/prompt81-collab-match.integration.mjs"
+    "check:collab-match-integration": "node src/checks/prompt81-collab-match.integration.mjs",
+    "check:open-roles": "node src/checks/prompt82-open-roles.integration.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",

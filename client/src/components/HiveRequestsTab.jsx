@@ -35,6 +35,17 @@ function dedupe(tags) {
   return [...new Map(tags.map(t => [String(t).toLowerCase().trim(), t])).values()];
 }
 
+// portfolio_url has no label of its own (profiles.links entries do) — guess
+// Reel vs Portfolio from the domain, same loose rule a human would use.
+function linkLabelForUrl(url) {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    if (/vimeo|youtube|youtu\.be|reel|castingnetworks|imdb/.test(host)) return 'Reel';
+    if (/behance|dribbble|portfolio/.test(host)) return 'Portfolio';
+  } catch { /* fall through */ }
+  return 'Link';
+}
+
 // ── Skeleton ──────────────────────────────────────────────────────────────────
 function SkeletonCards() {
   return [1, 2, 3].map(i => (
@@ -49,7 +60,7 @@ function SkeletonCards() {
 }
 
 // ── Candidate card ────────────────────────────────────────────────────────────
-function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
+function CandidateCard({ req, hiveId, isProject, roleStatusById, onAccepted, onDeclined }) {
   const [action,       setAction]       = useState(null);
   const [reviewError,  setReviewError]  = useState(null);
   const [tagsExpanded, setTagsExpanded] = useState(false);
@@ -73,20 +84,29 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
     req.member_id ?? null,
   ].filter(Boolean);
 
-  async function handleReview(act) {
+  // The role named at load time, already filled by the time the owner looks —
+  // show the mockup's warning instead of (or alongside) the normal strip.
+  const namedRoleStatus = req.role?.role_id ? roleStatusById?.[req.role.role_id] : null;
+  const namedRoleAlreadyFull = namedRoleStatus && (namedRoleStatus.status !== 'open' || namedRoleStatus.filled >= namedRoleStatus.slots);
+
+  const links = [
+    ...(req.portfolio_url ? [{ label: linkLabelForUrl(req.portfolio_url), url: req.portfolio_url }] : []),
+    ...(req.links ?? []),
+  ];
+
+  async function handleReview(act, roleIdOverride) {
     setAction(act);
     setReviewError(null);
     try {
-      const result = await api.post(
-        `/api/hives/${hiveId}/requests/${req.request_id}`,
-        { action: act === 'accepting' ? 'accept' : 'reject' },
-      );
+      const body = { action: act === 'accepting' ? 'accept' : 'reject' };
+      if (roleIdOverride !== undefined) body.role_id = roleIdOverride;
+      const result = await api.post(`/api/hives/${hiveId}/requests/${req.request_id}`, body);
       if (act === 'accepting') {
         const memberData = {
           ...(result.new_member ?? {}),
           profile_photo_url: result.new_member?.profile_photo_url ?? req.profile_photo_url ?? null,
         };
-        onAccepted(result.member_count, memberData);
+        onAccepted(result.member_count, memberData, result.roleFilled ? (req.role?.title ?? 'That role') : null);
       } else {
         onDeclined();
       }
@@ -120,6 +140,39 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
           )}
         </div>
       </div>
+
+      {/* Applying as (Project Hives only) */}
+      {isProject && (
+        <div className={`hrt-applying${req.role ? '' : ' hrt-applying--none'}`}>
+          <span className="hrt-applying-k">Applying as</span>
+          <span className="hrt-applying-role">{req.role ? req.role.title : 'No specific role'}</span>
+          {req.roleFit && <span className="hrt-applying-fit"><b>{req.roleFit.matched} of {req.roleFit.total}</b> skills</span>}
+          <span className="hrt-applying-spacer" />
+          {req.role && namedRoleStatus && !namedRoleAlreadyFull && (
+            <span className="hrt-applying-note">{namedRoleStatus.slots - namedRoleStatus.filled} of {namedRoleStatus.slots} spots open</span>
+          )}
+          {!req.role && req.bestRole && (
+            <span className="hrt-applying-note">Best match: {req.bestRole.title} · {req.bestRole.matched} of {req.bestRole.total} skills</span>
+          )}
+        </div>
+      )}
+      {isProject && req.role && namedRoleAlreadyFull && (
+        <p className="hrt-warn">
+          {req.role.title} is full now. Accept {(req.full_name ?? 'them').split(' ')[0]} as a member without a role, or add a spot in{' '}
+          <Link to={`/hive/${hiveId}/project-roles`}>Project &amp; Open Roles</Link>.
+        </p>
+      )}
+
+      {/* Links — portfolio first, then the applicant's own profile links */}
+      {links.length > 0 && (
+        <div className="hrt-links">
+          {links.map((l, i) => (
+            <a key={i} className="hrt-link" href={l.url} target="_blank" rel="noopener noreferrer">
+              🔗 {l.label}
+            </a>
+          ))}
+        </div>
+      )}
 
       {/* Message */}
       <div className="hrt-message">
@@ -212,14 +265,33 @@ function CandidateCard({ req, hiveId, onAccepted, onDeclined }) {
           >
             {action === 'declining' ? 'Declining…' : 'Decline'}
           </button>
-          <button
-            type="button"
-            className="hrt-btn hrt-btn-accept"
-            disabled={action !== null}
-            onClick={() => handleReview('accepting')}
-          >
-            {action === 'accepting' ? 'Accepting…' : 'Accept'}
-          </button>
+          {isProject && req.role && !namedRoleAlreadyFull ? (
+            <button type="button" className="hrt-btn hrt-btn-accept" disabled={action !== null}
+              onClick={() => handleReview('accepting')}>
+              {action === 'accepting' ? 'Accepting…' : `Accept as ${req.role.title}`}
+            </button>
+          ) : isProject && !req.role && req.bestRole ? (
+            <>
+              <button type="button" className="hrt-btn hrt-btn-accept-secondary" disabled={action !== null}
+                onClick={() => handleReview('accepting', req.bestRole.role_id)}>
+                {action === 'accepting' ? 'Accepting…' : `Accept as ${req.bestRole.title}`}
+              </button>
+              <button type="button" className="hrt-btn hrt-btn-accept" disabled={action !== null}
+                onClick={() => handleReview('accepting', null)}>
+                Accept as member
+              </button>
+            </>
+          ) : isProject && req.role && namedRoleAlreadyFull ? (
+            <button type="button" className="hrt-btn hrt-btn-accept" disabled={action !== null}
+              onClick={() => handleReview('accepting', null)}>
+              {action === 'accepting' ? 'Accepting…' : 'Accept as member'}
+            </button>
+          ) : (
+            <button type="button" className="hrt-btn hrt-btn-accept" disabled={action !== null}
+              onClick={() => handleReview('accepting')}>
+              {action === 'accepting' ? 'Accepting…' : 'Accept'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -245,7 +317,7 @@ function CollapsedRow({ req, onExpand }) {
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
-export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onMemberAccepted }) {
+export default function HiveRequestsTab({ hiveId, hive, onReviewed, onCountChange, onMemberAccepted }) {
   const [requests,    setRequests]    = useState([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState(null);
@@ -254,6 +326,11 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
   const [maxMembers,  setMaxMembers]  = useState(null);
   const [sortBy,      setSortBy]      = useState('fit');
   const [expandedIds, setExpandedIds] = useState(new Set());
+  const [roles,       setRoles]       = useState([]); // Prompt 82 — filter row + "already full" check
+  const [roleFilter,  setRoleFilter]  = useState('all'); // 'all' | 'none' | a role_id
+  const [toast,       setToast]       = useState(null);
+
+  const isProject = hive?.category_name === 'Project Collaboration';
 
   const load = useCallback(() => {
     setLoading(true);
@@ -280,6 +357,15 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
 
   useEffect(() => { load(); }, [load]);
 
+  useEffect(() => {
+    if (isProject) {
+      api.get(`/api/hives/${hiveId}/collab`).then(d => setRoles(d.roles ?? [])).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiveId, isProject]);
+
+  const roleStatusById = Object.fromEntries(roles.map(r => [r.role_id, { status: r.status, filled: r.filled, slots: r.slots }]));
+
   function removeRequest(requestId) {
     setRequests(prev => {
       const next = prev.filter(r => r.request_id !== requestId);
@@ -288,10 +374,20 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
     });
   }
 
-  const sorted = [...requests].sort((a, b) => {
+  const filtered = isProject
+    ? requests.filter(r => roleFilter === 'all' ? true : roleFilter === 'none' ? !r.role : r.role?.role_id === roleFilter)
+    : requests;
+  const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'newest') return new Date(b.requested_at) - new Date(a.requested_at);
     return (b.hive_fit_score ?? -1) - (a.hive_fit_score ?? -1);
   });
+
+  // Filter row counts — every role gets a chip, even at 0 pending (mockup
+  // shows "Sound mixer (0)"), counts are pending requests.
+  const roleCounts = isProject
+    ? roles.map(r => ({ role_id: r.role_id, title: r.title, count: requests.filter(req => req.role?.role_id === r.role_id).length }))
+    : [];
+  const noRoleCount = isProject ? requests.filter(r => !r.role).length : 0;
 
   if (loading) {
     return <div className="hrt-wrap"><SkeletonCards /></div>;
@@ -361,6 +457,25 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
         </div>
       </div>
 
+      {/* Role filter (Project Hives with roles only) */}
+      {isProject && roles.length > 0 && (
+        <div className="hrt-filter">
+          <button type="button" className={`hrt-fchip${roleFilter === 'all' ? ' on' : ''}`} onClick={() => setRoleFilter('all')}>
+            All ({requests.length})
+          </button>
+          {roleCounts.map(r => (
+            <button key={r.role_id} type="button" className={`hrt-fchip${roleFilter === r.role_id ? ' on' : ''}`} onClick={() => setRoleFilter(r.role_id)}>
+              {r.title} ({r.count})
+            </button>
+          ))}
+          <button type="button" className={`hrt-fchip${roleFilter === 'none' ? ' on' : ''}`} onClick={() => setRoleFilter('none')}>
+            No specific role ({noRoleCount})
+          </button>
+        </div>
+      )}
+
+      {toast && <div className="hrt-toast" role="status">{toast}</div>}
+
       {/* Candidate list */}
       {sorted.map((req, idx) => {
         const expanded = idx < AUTO_EXPAND || expandedIds.has(req.request_id);
@@ -370,9 +485,15 @@ export default function HiveRequestsTab({ hiveId, onReviewed, onCountChange, onM
               key={req.request_id}
               req={req}
               hiveId={hiveId}
-              onAccepted={(newCount, memberData) => {
+              isProject={isProject}
+              roleStatusById={roleStatusById}
+              onAccepted={(newCount, memberData, roleFilledTitle) => {
                 setMemberCount(newCount);
                 removeRequest(req.request_id);
+                if (roleFilledTitle) {
+                  setToast(`${roleFilledTitle} is full now. ${(memberData?.full_name ?? 'They').split(' ')[0]} was added as a member without a role.`);
+                  setTimeout(() => setToast(null), 5000);
+                }
                 if (onReviewed) onReviewed();
                 if (onMemberAccepted && memberData?.user_id) onMemberAccepted(memberData);
               }}

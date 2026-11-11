@@ -972,6 +972,58 @@
   padding: 16px 18px;
 }
 
+/* ── Open roles / The project / Who it's for (Prompt 82) ──────────────── */
+.dro-sec { padding: 20px 22px; margin-bottom: 16px; }
+.dro-sec-label {
+  font-size: 11px; font-weight: 700; color: #a89c84; text-transform: uppercase;
+  letter-spacing: 0.08em; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.dro-role {
+  border: 1px solid rgba(120, 100, 60, 0.4); border-radius: 12px; padding: 14px 16px;
+  margin-bottom: 10px; background: rgba(255, 255, 255, 0.02);
+}
+.dro-role:last-child { margin-bottom: 0; }
+.dro-role--full { opacity: 0.6; }
+.dro-role-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.dro-role-title {
+  font-family: 'Cormorant Garamond', serif; font-size: 19px; font-weight: 600; color: #f3ecdd;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.dro-role-meta { font-size: 12px; color: #a89c84; margin-top: 3px; }
+.dro-sk { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
+.dro-sk span {
+  font-size: 11px; border-radius: 20px; padding: 2px 9px;
+  border: 1px solid rgba(120, 100, 60, 0.45); color: #c2b79d;
+}
+.dro-sk span.dro-sk--have, .dro-sk .dro-sk--have {
+  border-color: #6f9a52; color: #b9dca0; background: rgba(111, 154, 82, 0.12);
+}
+.dro-apply-sm {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(196, 154, 40, 0.5);
+  background: rgba(196, 154, 40, 0.12); color: #e8c84a; font-family: 'DM Sans', sans-serif;
+  font-size: 12.5px; font-weight: 600; cursor: pointer; min-height: 36px;
+}
+.dro-fit-pill {
+  font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; border-radius: 20px; padding: 2px 8px;
+  background: #eaf7ee; color: #1a7a44; border: 0.5px solid #7dd3a4;
+}
+.dro-full-pill {
+  font-family: 'DM Sans', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+  text-transform: uppercase; border-radius: 20px; padding: 2px 8px;
+  background: #efe7d4; color: #5c5240;
+}
+.dro-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.dro-fact { border: 1px solid rgba(120, 100, 60, 0.35); border-radius: 10px; padding: 10px 12px; }
+.dro-fact-k { font-size: 10.5px; color: #a89c84; text-transform: uppercase; letter-spacing: 0.06em; }
+.dro-fact-v { font-size: 13.5px; color: #f0e8d8; margin-top: 3px; }
+.dro-side-row {
+  display: flex; justify-content: space-between; font-size: 12.5px; color: #c2b79d;
+  padding: 6px 0; border-bottom: 1px solid rgba(120, 100, 60, 0.2);
+}
+.dro-side-row b { color: #f3ecdd; font-weight: 600; }
+@media (max-width: 700px) { .dro-grid { grid-template-columns: minmax(0, 1fr); } }
+
 .dhp-sidebar-label {
   font-family: 'DM Sans', sans-serif;
   font-size: 10px;

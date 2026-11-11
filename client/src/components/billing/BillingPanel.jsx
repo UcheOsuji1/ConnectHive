@@ -65,7 +65,7 @@ export default function BillingPanel() {
       <p>{cancel?.kind==='plus' ? 'TrueHive Plus' : cancel?.hive_name} · {money(cancel?.price_cents)} / {cancel?.interval}</p><p>Access continues through {day(cancel?.paid_through)}. Future renewals stop. If you operate paid Hives, losing Plus pauses new subscriptions and schedules existing memberships to end at their paid-period boundaries.</p>
     </ConfirmDialog>
     <ConfirmDialog open={Boolean(refund)} title="Request a refund" busy={busy} cancelLabel="Back to billing" confirmLabel="Send refund request" onClose={()=>setRefund(null)} onConfirm={()=>act(`/api/billing/subscriptions/${refund.id}/refund-request`,{reason:refundReason})}>
-      <p>{refund?.hive_name} ? Your Hive owner handles refund requests, subject to applicable law and platform procedures. This sends a request for the latest payment that has not been fully refunded; it does not issue a refund automatically.</p><label>Reason for your request<textarea value={refundReason} onChange={e=>setRefundReason(e.target.value)} maxLength={2000}/></label>
+      <p>{refund?.hive_name} · Your Hive owner handles refund requests, subject to applicable law and platform procedures. This sends a request for the latest payment that has not been fully refunded; it does not issue a refund automatically.</p><label>Reason for your request<textarea value={refundReason} onChange={e=>setRefundReason(e.target.value)} maxLength={2000}/></label>
     </ConfirmDialog>
   </div>;
 }

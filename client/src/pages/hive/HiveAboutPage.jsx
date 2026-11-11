@@ -27,6 +27,10 @@ function parseRules(text) {
   return { items: lines.map(l => l.replace(/^(\d+[.)]\s*|[-*]\s*)/, '').trim()).filter(Boolean), paragraph: null };
 }
 
+const EXPERIENCE_LABELS = {
+  learning: 'Still learning', some: 'Some experience', experienced: 'Experienced', expert: 'Expert',
+};
+
 function AddPlaceholder({ hiveId, label }) {
   return (
     <Link to={`/hive/${hiveId}/settings`} className="hab-placeholder">
@@ -49,6 +53,7 @@ export default function HiveAboutPage() {
   const [featuredGoal, setFeaturedGoal] = useState(null);
   const [pinnedDocs, setPinnedDocs] = useState([]);
   const [toast,   setToast]   = useState(null);
+  const [collab,  setCollab]  = useState(null); // Prompt 82 — roles/labels, member view (no viewerFit buttons)
   const toastTimer = useRef(null);
 
   useEffect(() => {
@@ -71,6 +76,13 @@ export default function HiveAboutPage() {
       .then(d => setPinnedDocs((d.docs ?? []).filter(doc => doc.pinned)))
       .catch(() => {});
   }, [hiveId]);
+
+  useEffect(() => {
+    if (hive?.category_name === 'Project Collaboration' || hive?.category_name === 'Professional Networking') {
+      api.get(`/api/hives/${hiveId}/collab`).then(setCollab).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hiveId, hive?.category_name]);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -178,6 +190,64 @@ export default function HiveAboutPage() {
         <section className="hab-card">
           <div className="hab-card-label"><span aria-hidden="true">📝</span> About This Hive</div>
           <p className="hab-card-body">{hive.description}</p>
+        </section>
+      )}
+
+      {/* ── Open roles (Project Hives with collab data) ── */}
+      {collab && hive.category_name === 'Project Collaboration' && collab.roles?.length > 0 && (
+        <section className="hab-card">
+          <div className="hab-card-label-row">
+            <div className="hab-card-label"><span aria-hidden="true">🧩</span> Open roles</div>
+            {canEdit && <Link to={`/hive/${hiveId}/project-roles`} className="hab-edit-link hab-edit-link--dashed">Manage roles →</Link>}
+          </div>
+          {collab.roles.map(role => {
+            const open = role.slots - role.filled;
+            const full = role.status !== 'open' || open <= 0;
+            return (
+              <div key={role.role_id} className="hab-role-row">
+                <div className="hab-role-row-top">
+                  <b>{role.title}</b>
+                  <span className="hab-role-row-meta">
+                    {full ? 'Filled' : `${open} of ${role.slots} spots open`}
+                    {' · '}{EXPERIENCE_LABELS[role.experience_level] ?? 'Any level'}
+                  </span>
+                </div>
+                {role.skills?.length > 0 && (
+                  <div className="hab-chips">
+                    {role.skills.map(skill => (
+                      <span key={skill} className={`hab-chip${role.viewerFit?.have?.includes(skill) ? ' hab-chip--have' : ''}`}>{skill}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </section>
+      )}
+
+      {/* ── The project (Project Hives with collab data) ── */}
+      {collab && hive.category_name === 'Project Collaboration' && (collab.labels?.[hive.project_stage] || collab.labels?.[hive.commitment] || hive.compensation?.length > 0) && (
+        <section className="hab-card">
+          <div className="hab-card-label"><span aria-hidden="true">📋</span> The project</div>
+          <div className="hab-chips">
+            {collab.labels?.[hive.project_stage] && <span className="hab-chip">{collab.labels[hive.project_stage]}</span>}
+            {collab.labels?.[hive.commitment] && <span className="hab-chip">{collab.labels[hive.commitment]}</span>}
+            {hive.compensation?.map(k => <span key={k} className="hab-chip">{collab.labels?.[k] ?? k}</span>)}
+          </div>
+        </section>
+      )}
+
+      {/* ── Who it's for (Professional Hives with collab data) ── */}
+      {collab && hive.category_name === 'Professional Networking' && (hive.pro_industries?.length > 0 || hive.career_stages?.length > 0) && (
+        <section className="hab-card">
+          <div className="hab-card-label-row">
+            <div className="hab-card-label"><span aria-hidden="true">🎯</span> Who it's for</div>
+            {canEdit && <Link to={`/hive/${hiveId}/project-roles`} className="hab-edit-link hab-edit-link--dashed">Edit who it's for →</Link>}
+          </div>
+          <div className="hab-chips">
+            {hive.pro_industries?.map(k => <span key={k} className="hab-chip">{collab.labels?.[k] ?? k}</span>)}
+            {hive.career_stages?.map(k => <span key={k} className="hab-chip">{collab.labels?.[k] ?? k}</span>)}
+          </div>
         </section>
       )}
 

@@ -258,6 +258,7 @@ export default function ProductPage() {
                     <div className="fx-row" key={f.label}><b>{f.label}</b><span className="fx-bar"><i style={{ width: `${f.width}%` }} /></span><small>{f.note}</small></div>
                   ))}
                 </div>
+                <p style={{ margin: '18px 0 0', fontSize: 13, lineHeight: 1.55, color: '#a99884' }}>Project Collab and Professional Hives use their own factors: open roles, skills, pay, stage and hours for projects; industry and career stage for professional.</p>
               </div>
 
               <div className="mx-core">

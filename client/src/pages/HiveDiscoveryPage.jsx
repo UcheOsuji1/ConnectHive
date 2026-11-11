@@ -5,7 +5,19 @@ import { api } from '../lib/api';
 import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import StarterHiveBadge from '../components/StarterHiveBadge.jsx';
 import { DISTANCE_STOPS } from '../components/DistanceSlider.jsx';
+import ApplyForRoleSheet from '../components/collab/ApplyForRoleSheet.jsx';
 import '../styles/hive-discovery.css';
+
+// The six collab reasons buildReasons (Prompt 81) prepends — matched by
+// content, since the API sends plain reason strings, not tagged objects.
+function isCollabReason(text) {
+  return /^You fit the open .+ role$/.test(text)
+    || /^They offer .+, which you're looking for$/.test(text)
+    || text === 'Same project stage you want'
+    || text === 'Matches your weekly commitment'
+    || /^Built for /.test(text)
+    || /^For .+ people like you$/.test(text);
+}
 
 const CATEGORY_LABELS = {
   social:       'Social Groups',
@@ -117,8 +129,11 @@ function HiveMatchCard({ hive, autoFetch = false }) {
   const [joinError,   setJoinError]   = useState(null);
   const [aiStatus,    setAiStatus]    = useState('idle'); // 'idle' | 'loading' | 'done'
   const [aiData,      setAiData]      = useState(null);
+  const [applyOpen,   setApplyOpen]   = useState(false);
   const fetchedRef = useRef(false);
   const tags = Array.isArray(hive.tags) ? hive.tags : [];
+  const collab = hive.collab;
+  const hasOpenRoles = (collab?.openRolesCount ?? 0) > 0;
 
   async function fetchAiMatch() {
     if (fetchedRef.current) return;
@@ -168,6 +183,59 @@ function HiveMatchCard({ hive, autoFetch = false }) {
       {tags.length > 0 && (
         <div className="hmd-tags">
           {tags.map((tag, i) => <span key={i} className="hmd-tag">{tag}</span>)}
+        </div>
+      )}
+
+      {/* ── Open roles (Project Hives with collab data) ── */}
+      {collab && 'openRoles' in collab && (
+        <div>
+          <div className="hmd-sec-label">
+            Open roles{collab.totalOpen > 0 && <span className="hmd-sec-count"> · {collab.totalOpen} spot{collab.totalOpen === 1 ? '' : 's'} open</span>}
+          </div>
+          <div className="hmd-roles">
+            {collab.openRoles.map(role => (
+              <span
+                key={role.role_id}
+                className={`hmd-role-pill${collab.bestRole?.role_id === role.role_id ? ' hmd-role-pill--best' : ''}`}
+              >
+                {collab.bestRole?.role_id === role.role_id && <span className="hmd-role-fit">Your fit</span>}
+                <b>{role.title}</b>
+                <span className="hmd-role-open">· {role.open} open</span>
+              </span>
+            ))}
+            {collab.openRolesCount > collab.openRoles.length && (
+              <span className="hmd-role-pill hmd-role-pill--more">+{collab.openRolesCount - collab.openRoles.length} more</span>
+            )}
+          </div>
+        </div>
+      )}
+      {collab && 'stage' in collab && (collab.labels?.[collab.stage] || collab.labels?.[collab.commitment] || collab.compensation?.length > 0) && (
+        <div className="hmd-basics">
+          {collab.labels?.[collab.stage] && <span className="hmd-basic"><span className="hmd-basic-k">Stage</span> {collab.labels[collab.stage]}</span>}
+          {collab.labels?.[collab.commitment] && <span className="hmd-basic"><span className="hmd-basic-k">Time</span> {collab.labels[collab.commitment]}</span>}
+          {collab.compensation?.length > 0 && (
+            <span className="hmd-basic"><span className="hmd-basic-k">Offers</span> {collab.compensation.map(k => collab.labels?.[k] ?? k).join(' · ')}</span>
+          )}
+        </div>
+      )}
+
+      {/* ── Who it's for (Professional Hives with collab data) ── */}
+      {collab && 'industries' in collab && (collab.industries?.length > 0 || collab.careerStages?.length > 0 || collab.labels?.[collab.audienceScope]) && (
+        <div>
+          <div className="hmd-sec-label">Who it's for</div>
+          <div className="hmd-basics">
+            {collab.industries?.length > 0 && (
+              <span className="hmd-basic">
+                <span className="hmd-basic-k">Industries</span>{' '}
+                {collab.industries.slice(0, 3).map(k => collab.labels?.[k] ?? k).join(' · ')}
+                {collab.industries.length > 3 && ` +${collab.industries.length - 3}`}
+              </span>
+            )}
+            {collab.careerStages?.length > 0 && (
+              <span className="hmd-basic"><span className="hmd-basic-k">Stages</span> {collab.careerStages.map(k => collab.labels?.[k] ?? k).join(' · ')}</span>
+            )}
+            {collab.labels?.[collab.audienceScope] && <span className="hmd-basic">{collab.labels[collab.audienceScope]}</span>}
+          </div>
         </div>
       )}
 
@@ -221,7 +289,7 @@ function HiveMatchCard({ hive, autoFetch = false }) {
               ).map((r, i) => (
                 <span
                   key={i}
-                  className={`hmd-reason-chip${aiStatus === 'done' && aiData?.source === 'ai' ? ' hmd-reason-chip-ai' : ''}`}
+                  className={`hmd-reason-chip${aiStatus === 'done' && aiData?.source === 'ai' ? ' hmd-reason-chip-ai' : isCollabReason(r) ? ' hmd-reason-chip-collab' : ''}`}
                 >
                   {r}
                 </span>
@@ -277,12 +345,19 @@ function HiveMatchCard({ hive, autoFetch = false }) {
 
       {/* ── CTA ── */}
       <div className="hmd-cta">
-        {hive.paid_membership ? <a href={`/paid-hive/${hive.hive_id}`} className="hmd-btn">Paid ? ${(hive.paid_membership.monthly_price_cents/100).toFixed(2)} / month ? View membership</a> : joinState === 'joined' ? (
+        {hive.paid_membership ? <a href={`/paid-hive/${hive.hive_id}`} className="hmd-btn">Paid · ${(hive.paid_membership.monthly_price_cents/100).toFixed(2)} / month · View membership</a> : joinState === 'joined' ? (
           <a href={`/hive/${hive.hive_id}`} className="hmd-btn hmd-btn-joined">
             Joined — Open Hive →
           </a>
         ) : joinState === 'pending' ? (
           <button className="hmd-btn hmd-btn-pending" disabled>Request pending</button>
+        ) : hasOpenRoles ? (
+          <>
+            <button className="hmd-btn hmd-btn-request" onClick={() => setApplyOpen(true)}>
+              Apply for a role
+            </button>
+            {collab.bestRole && <span className="hmd-cta-note">You'll pick a role on the next step.</span>}
+          </>
         ) : (
           <button
             className="hmd-btn hmd-btn-request"
@@ -295,6 +370,19 @@ function HiveMatchCard({ hive, autoFetch = false }) {
         {joinError && <span className="hmd-join-error">{joinError}</span>}
         {hive.is_following && <span className="hmd-following-pill">Following</span>}
       </div>
+
+      {applyOpen && (
+        <ApplyForRoleSheet
+          hiveId={hive.hive_id}
+          hiveName={hive.hive_name}
+          preselectedRoleId={collab?.bestRole?.role_id ?? null}
+          onClose={() => setApplyOpen(false)}
+          onSuccess={result => {
+            setApplyOpen(false);
+            setJoinState(result.joined ? 'joined' : 'pending');
+          }}
+        />
+      )}
 
     </div>
   );

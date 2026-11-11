@@ -808,6 +808,72 @@
 }
 .hmd-ai-fetch-btn:hover { background: #fdf7e0; }
 
+/* ── Collab reasons (Prompt 81's six, gold chip) ──────────────── */
+.hmd-reason-chip-collab {
+  background: #fdf8ec;
+  border-color: #d9b654;
+  color: #6b4e10;
+  font-weight: 500;
+}
+
+/* ── Open roles / Who it's for (Prompt 82) ────────────────────── */
+.hmd-sec-label {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #8a7a4a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.hmd-sec-count { font-weight: 500; letter-spacing: 0; text-transform: none; color: #7a6a4a; font-size: 11.5px; }
+.hmd-roles { display: flex; flex-wrap: wrap; gap: 6px; }
+.hmd-role-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  color: #4a3a18;
+  background: #fffdf7;
+  border: 0.5px solid #d8c080;
+  border-radius: 20px;
+  padding: 4px 11px;
+}
+.hmd-role-pill b { font-weight: 600; }
+.hmd-role-open { color: #7a6a4a; }
+.hmd-role-pill--best { background: #1a1508; border-color: #1a1508; color: #f5f0e8; }
+.hmd-role-pill--best .hmd-role-open { color: #d8c89a; }
+.hmd-role-fit {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: #c49a28;
+  color: #1a1508;
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+.hmd-role-pill--more { color: #7a6a4a; background: transparent; border-style: dashed; }
+.hmd-basics { display: flex; flex-wrap: wrap; gap: 6px; }
+.hmd-basic {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11.5px;
+  color: #5a4e3c;
+  background: #f5f0e2;
+  border: 0.5px solid #e0d8c8;
+  border-radius: 8px;
+  padding: 3px 9px;
+}
+.hmd-basic-k { color: #7a6a4a; }
+.hmd-cta-note { font-family: 'DM Sans', sans-serif; font-size: 11.5px; color: #7a6a4a; }
+
 /* ── New hive notice ────────────────────────────────────────── */
 .hmd-new-hive {
   font-family: 'DM Sans', sans-serif;

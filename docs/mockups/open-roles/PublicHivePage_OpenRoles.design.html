@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Public Hive page with open roles</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400&amp;family=DM+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f0e8}
+a{color:#8a6510}a:hover{color:#c49a28}
+*{box-sizing:border-box}
+.root{background:#f5f0e8;font-family:'DM Sans',sans-serif;color:#1a1508;min-height:100%}
+.nav{height:60px;background:#fff;border-bottom:0.5px solid #e8e0d0;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav-logo{display:flex;align-items:center;gap:9px;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:#1a1508;text-decoration:none}
+.nav-links{display:flex;gap:22px;font-size:13px}
+.nav-links a{color:#4a3a18;text-decoration:none}
+.wrap{max-width:760px;margin:0 auto;padding:32px 20px 60px}
+.eyebrow{display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:8px}
+.eyebrow-line{width:20px;height:0.5px;background:#c49a28}
+.eyebrow-text{font-size:10px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;color:#a07a14}
+.headline{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:300;text-align:center;margin:0 0 24px}
+.headline em{font-style:italic;color:#c49a28}
+.cards{display:flex;flex-direction:column;gap:16px}
+.hmd-card{background:#fff;border:0.5px solid #d8d0bc;border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:12px}
+.hmd-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.hmd-title-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1}
+.hmd-hive-name{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;line-height:1.1}
+.hmd-cat-badge{font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#8a6510;background:#fdf3d6;border:0.5px solid #d8c080;border-radius:6px;padding:2px 7px}
+.hmd-score-pill{flex-shrink:0;font-size:13px;font-weight:700;color:#1a7a44;background:#eaf7ee;border:0.5px solid #7dd3a4;border-radius:20px;padding:4px 12px;white-space:nowrap}
+.hmd-description{font-size:13.5px;color:#5a4e3c;line-height:1.55;margin:0}
+.hmd-tags{display:flex;flex-wrap:wrap;gap:6px}
+.hmd-tag{font-size:11.5px;color:#7a6a4a;background:#f7f2e8;border:0.5px solid #e0d8c8;border-radius:20px;padding:3px 10px}
+.hmd-stats{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hmd-stat{display:flex;align-items:center;gap:4px;font-size:12px;color:#7a6a4a}
+.loc{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;border-radius:20px;padding:3px 10px;color:#8a6510;background:#fdf3d6;border:0.5px solid #d8c080}
+.loc.online{color:#1a5c9a;background:#e8f1fb;border-color:#a8c8e8}
+.sec-label{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#8a7a4a;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.sec-label .count{font-weight:500;letter-spacing:0;text-transform:none;color:#7a6a4a;font-size:11.5px}
+.roles{display:flex;flex-wrap:wrap;gap:6px}
+.role-pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#4a3a18;background:#fffdf7;border:0.5px solid #d8c080;border-radius:20px;padding:4px 11px}
+.role-pill b{font-weight:600}
+.role-pill .open{color:#7a6a4a}
+.role-pill.best{background:#1a1508;border-color:#1a1508;color:#f5f0e8}
+.role-pill.best .open{color:#d8c89a}
+.role-pill .fit{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:#c49a28;color:#1a1508;border-radius:20px;padding:1px 7px}
+.basics{display:flex;flex-wrap:wrap;gap:6px}
+.basic{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:#5a4e3c;background:#f5f0e2;border:0.5px solid #e0d8c8;border-radius:8px;padding:3px 9px}
+.basic .k{color:#7a6a4a}
+.hmd-reasons-list{display:flex;flex-wrap:wrap;gap:6px}
+.hmd-reason-chip{font-size:12px;color:#5a4e3c;background:#f5f0e2;border:0.5px solid #d8ceb0;border-radius:20px;padding:4px 12px}
+.hmd-reason-chip.collab{background:#fdf8ec;border-color:#d9b654;color:#6b4e10;font-weight:500}
+.hmd-cta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;font-family:inherit;font-size:13px;font-weight:600;border-radius:8px;padding:10px 18px;cursor:pointer;border:none;min-height:40px}
+.btn-gold{background:#c49a28;color:#1a1508}
+.btn-ghost{background:#fff;color:#4a3a18;border:0.5px solid #d8d0bc;font-weight:500}
+.cta-note{font-size:11.5px;color:#7a6a4a}
+.hmd-new-hive{font-size:12.5px;color:#a07a14;font-weight:500;margin:0}
+/* sheet */
+.dim{background:rgba(26,21,8,.45);min-height:100%;padding:40px 20px;display:flex;justify-content:center;align-items:flex-start}
+.sheet{width:100%;max-width:560px;background:#fffdf8;border-radius:18px;box-shadow:0 20px 60px rgba(26,21,8,.25);padding:24px}
+.sheet-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:6px}
+.sheet-title{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:500;margin:0;line-height:1.2}
+.sheet-sub{font-size:12.5px;color:#6f6656;margin:0 0 18px}
+.close{width:36px;height:36px;border-radius:50%;border:0.5px solid #e2dacb;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6f6656;flex-shrink:0}
+.lbl{display:block;font-size:12px;font-weight:500;color:#4a3a18;margin:18px 0 8px}
+.lbl .opt{font-weight:400;color:#8f8566;font-size:11px}
+.pick{display:flex;flex-direction:column;gap:8px}
+.pick-row{display:flex;align-items:flex-start;gap:12px;width:100%;text-align:left;padding:12px 14px;border:0.5px solid #d8d0bc;border-radius:12px;background:#fff;font-family:inherit;cursor:pointer}
+.pick-row.selected{border-color:#c49a28;background:#fdf8ec;box-shadow:inset 0 0 0 0.5px #c49a28}
+.pick-row.disabled{background:#f7f3ea;cursor:not-allowed;opacity:.75}
+.radio{width:18px;height:18px;border-radius:50%;border:1.5px solid #c4b896;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center}
+.pick-row.selected .radio{border-color:#c49a28}
+.pick-row.selected .radio i{width:9px;height:9px;border-radius:50%;background:#c49a28}
+.pick-main{flex:1;min-width:0}
+.pick-title{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;line-height:1.2;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pick-meta{font-size:11.5px;color:#7a6a4a;margin-top:3px}
+.pick-skills{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+.sk{font-size:11px;border-radius:20px;padding:2px 9px;border:0.5px solid #e0d8c8;background:#f7f2e8;color:#5a4e3c}
+.sk.have{background:#eaf3e3;border-color:#a9c98f;color:#2f5317}
+.sk.near{background:#fdf3d6;border-color:#d8c080;color:#7a5a0c}
+.fit-pill{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;border-radius:20px;padding:2px 8px;background:#eaf7ee;color:#1a7a44;border:0.5px solid #7dd3a4}
+.full-pill{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:20px;padding:2px 8px;background:#efe7d4;color:#5c5240}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:#6f6656;margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.ta{width:100%;min-height:90px;border:0.5px solid #d8d0bc;border-radius:10px;padding:10px 13px;font-family:inherit;font-size:13px;line-height:1.5;resize:vertical;background:#fff;color:#1a1508}
+.inp{width:100%;height:42px;border:0.5px solid #d8d0bc;border-radius:10px;padding:0 13px;font-family:inherit;font-size:13px;background:#fff;color:#1a1508}
+.hint{font-size:11.5px;color:#7a6a4a;margin:6px 0 0}
+.sheet-foot{display:flex;justify-content:flex-end;gap:10px;margin-top:22px;padding-top:16px;border-top:0.5px solid #efe8da;flex-wrap:wrap}
+/* public hive dark */
+.hive-page{background:#f5f0e8;padding:24px 0 60px}
+.hive-inner{max-width:1080px;margin:0 auto;padding:0 20px}
+.crumb{font-size:12px;color:#7a6a4a;margin-bottom:12px}
+.dark{background:#17120a;border:1px solid rgba(51,41,21,.5);border-radius:16px;box-shadow:0 5px 18px #1a15081f}
+.dhp-head{padding:24px 26px 20px;margin-bottom:16px;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+.hex{width:56px;height:56px;border-radius:12px;background:#2a2112;display:flex;align-items:center;justify-content:center;color:#e8c84a;font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:600;flex-shrink:0}
+.dhp-content{flex:1;min-width:240px}
+.dhp-name{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:#f3ecdd;line-height:1.15}
+.dhp-meta{font-size:13px;color:#a89c84;margin:4px 0 10px}
+.dhp-desc{font-size:14px;color:#c2b79d;line-height:1.6;margin:0 0 12px}
+.dchips{display:flex;flex-wrap:wrap;gap:6px}
+.dchip{font-size:12px;font-weight:500;color:#c2b79d;background:rgba(255,255,255,.05);border:1px solid rgba(120,100,60,.45);border-radius:999px;padding:3px 10px}
+.dchip.gold{color:#e8c84a;background:rgba(196,154,40,.12);border-color:rgba(196,154,40,.35)}
+.dhp-actions{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.join{display:inline-flex;align-items:center;padding:10px 18px;background:linear-gradient(120deg,#e8c84a 0%,#c49a28 100%);color:#1a1508;font-family:inherit;font-size:13px;font-weight:700;border-radius:9px;border:none;cursor:pointer;min-height:42px}
+.follow{display:inline-flex;align-items:center;padding:8px 16px;background:transparent;color:#e8c84a;border:1px solid rgba(196,154,40,.45);border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;min-height:38px}
+.tabs{display:flex;border-bottom:1px solid rgba(51,41,21,.25);margin-bottom:20px}
+.tab{padding:10px 22px;font-family:inherit;font-size:14px;font-weight:500;color:#6b6057;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer}
+.tab.on{color:#1a1508;border-bottom-color:#c49a28}
+.body{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;align-items:start}
+.dsec{padding:20px 22px}
+.dsec-label{font-size:11px;font-weight:700;color:#a89c84;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.drole{border:1px solid rgba(120,100,60,.4);border-radius:12px;padding:14px 16px;margin-bottom:10px;background:rgba(255,255,255,.02)}
+.drole-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.drole-title{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:600;color:#f3ecdd;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.drole-meta{font-size:12px;color:#a89c84;margin-top:3px}
+.dsk{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.dsk span{font-size:11px;border-radius:20px;padding:2px 9px;border:1px solid rgba(120,100,60,.45);color:#c2b79d}
+.dsk span.have{border-color:#6f9a52;color:#b9dca0;background:rgba(111,154,82,.12)}
+.apply-sm{padding:8px 14px;border-radius:8px;border:1px solid rgba(196,154,40,.5);background:rgba(196,154,40,.12);color:#e8c84a;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;min-height:36px}
+.drole.full{opacity:.6}
+.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dfact{border:1px solid rgba(120,100,60,.35);border-radius:10px;padding:10px 12px}
+.dfact-k{font-size:10.5px;color:#a89c84;text-transform:uppercase;letter-spacing:.06em}
+.dfact-v{font-size:13.5px;color:#f0e8d8;margin-top:3px}
+.side-row{display:flex;justify-content:space-between;font-size:12.5px;color:#c2b79d;padding:6px 0;border-bottom:1px solid rgba(120,100,60,.2)}
+.side-row b{color:#f3ecdd;font-weight:600}
+/* requests */
+.page{max-width:820px;margin:0 auto;padding:28px 24px 60px}
+.ptitle{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500;margin:0 0 4px}
+.psub{font-size:12.5px;color:#6f6656;margin:0 0 16px}
+.filter{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center}
+.fchip{padding:6px 13px;border-radius:20px;border:0.5px solid #d8d0bc;background:#fff;font-family:inherit;font-size:12px;color:#4a3a18;cursor:pointer;min-height:32px}
+.fchip.on{background:#1a1508;border-color:#1a1508;color:#f5f0e8}
+.hrt-card{background:#fffdf8;border:1.5px solid #e9dfcf;border-radius:16px;box-shadow:0 8px 30px rgba(54,42,25,.05);padding:20px 22px;display:flex;flex-direction:column;gap:14px;margin-bottom:14px}
+.hrt-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.hrt-id{display:flex;align-items:center;gap:12px;min-width:0}
+.av{width:48px;height:48px;border-radius:50%;background:#8a6510;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.hrt-name{font-family:'Cormorant Garamond',serif;font-size:19px;font-weight:700}
+.hrt-meta{font-size:12px;color:#665e53;margin-top:3px}
+.hrt-scores{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.pfit{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(52,122,97,.08);color:#347a61}
+.ppair{padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;background:#f6ecd1;color:#78580f}
+.applying{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:#fdf8ec;border:0.5px solid #e2c56e}
+.applying-k{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8a6510}
+.applying-role{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:600}
+.applying-fit{font-size:12px;color:#4a3a18}
+.applying-fit b{font-weight:700}
+.applying .spacer{flex:1}
+.hrt-msg{font-size:13.5px;color:#3a3028;font-style:italic;line-height:1.55;padding:10px 14px;background:#f5f0e8;border-radius:10px}
+.links{display:flex;flex-wrap:wrap;gap:8px}
+.lnk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:6px 12px;border-radius:8px;background:#fff;border:0.5px solid #d8d0bc;color:#4a3a18;text-decoration:none}
+.hrt-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding-top:14px;border-top:1px solid #e9dfcf}
+.acc{background:linear-gradient(120deg,#d9b654 0%,#c49a28 100%);color:#17120a;border:none;border-radius:9px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;min-height:40px}
+.dec{background:transparent;color:#6b5c3e;border:1.5px solid #e9dfcf;border-radius:9px;padding:9px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;min-height:40px}
+.foot-meta{font-size:12px;color:#7a6a4a}
+.warn{font-size:12px;color:#7a3218;background:#fdf0ea;border:0.5px solid #e6b8a4;border-radius:10px;padding:10px 12px}
+.tag-new{font-family:'DM Sans',sans-serif;font-style:normal;font-size:9px;font-weight:600;letter-spacing:.08em;border-radius:20px;padding:2px 8px;text-transform:uppercase;background:#1a1508;color:#f5f0e8}
+.tag-new.light{background:#e8c84a;color:#1a1508}
+@media (max-width:700px){.body{grid-template-columns:minmax(0,1fr)}.dgrid{grid-template-columns:minmax(0,1fr)}.dhp-actions{align-items:flex-start}}
+</style>
+</helmet>
+<div class="root">
+<div class="nav"><a href="#" class="nav-logo" aria-label="TrueHive home"><svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><path d="M7 2l5 3v6l-5 3-5-3V5z M19 2l5 3v6l-5 3-5-3V5z M13 10l5 3v6l-5 3-5-3v-6z" fill="none" stroke="#c49a28" stroke-width="1.6" stroke-linejoin="round"></path></svg> TrueHive</a><div class="nav-links"><a href="#">Home</a><a href="#">Find Your Hive</a><a href="#">My Hive</a><a href="#">Profile</a></div></div><div class="hive-page"><div class="hive-inner"><div class="crumb">My Hives › Weekend Short Film Crew</div><div class="dark dhp-head"><div class="hex">W</div><div class="dhp-content"><div class="dhp-name">Weekend Short Film Crew</div><div class="dhp-meta">Project Collaboration · Los Angeles · Hybrid · 4 members</div><p class="dhp-desc">Shooting a 12-minute short in LA this spring. Script is done, we shoot weekends in March.</p><div class="dchips"><span class="dchip gold">4 spots open</span><span class="dchip">In progress</span><span class="dchip">5–10 hrs / week</span><span class="dchip">Revenue share</span><span class="dchip">Portfolio / credit</span></div></div>
+<div class="dhp-actions"><button type="button" class="follow">Follow</button><button type="button" class="join">Apply for a role</button></div></div><div class="tabs" role="tablist"><button type="button" class="tab" role="tab" aria-selected="false">Posts</button><button type="button" class="tab" role="tab" aria-selected="false">Members</button><button type="button" class="tab on" role="tab" aria-selected="true">About</button></div><div class="body"><div><div class="dark dsec" style="margin-bottom:16px"><div class="dsec-label">Open roles <span class="tag-new light">New</span></div><div class="drole"><div class="drole-top"><div><div class="drole-title">Lead actor <span class="fit-pill">Your fit</span></div><div class="drole-meta">2 of 3 spots open · Experienced</div></div><button type="button" class="apply-sm">Apply</button></div><div class=dsk><span class="have">🎬 Film / TV Acting</span><span class="have">🎭 Acting / Theater</span></div></div><div class="drole"><div class="drole-top"><div><div class="drole-title">Sound mixer </div><div class="drole-meta">1 of 2 spots open · Any level</div></div><button type="button" class="apply-sm">Apply</button></div><div class=dsk><span class="">🎙️ Audio Engineering</span><span class="">🔊 Live Sound</span></div></div><div class="drole full"><div class="drole-top"><div><div class="drole-title">Cinematographer <span class="full-pill">Filled</span></div><div class="drole-meta">1 of 1 filled</div></div></div><div class=dsk><span class="">📸 Photography</span><span class="">📺 Documentary</span></div></div></div><div class="dark dsec"><div class="dsec-label">The project</div><div class="dgrid">
+<div class="dfact"><div class="dfact-k">Type</div><div class="dfact-v">Film / video crew</div></div>
+<div class="dfact"><div class="dfact-k">Stage</div><div class="dfact-v">In progress</div></div>
+<div class="dfact"><div class="dfact-k">Time</div><div class="dfact-v">Side project · 5–10 hrs / week</div></div>
+<div class="dfact"><div class="dfact-k">Timeline</div><div class="dfact-v">A few months</div></div>
+<div class="dfact"><div class="dfact-k">Offers</div><div class="dfact-v">Revenue share, Portfolio / credit</div></div>
+<div class="dfact"><div class="dfact-k">Work style</div><div class="dfact-v">Weekly sync meetings</div></div>
+</div><p class="hint" style="color:#a89c84;margin-top:12px">Pinned goal, ground rules and icebreaker show below, as they do today.</p></div></div><div><div class="dark dsec"><div class="dsec-label">Roles at a glance</div><div class="side-row"><span>Lead actor</span><b>2 open</b></div><div class="side-row"><span>Sound mixer</span><b>1 open</b></div><div class="side-row"><span>Cinematographer</span><b>Filled</b></div><p class="hint" style="color:#a89c84">Members list stays below, as today.</p></div></div></div></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1500}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

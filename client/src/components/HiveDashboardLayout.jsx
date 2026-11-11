@@ -11,6 +11,7 @@ import HiveNotificationPrefsBell from './HiveNotificationPrefsBell.jsx';
 import OwnerCelebrationTakeover from './OwnerCelebrationTakeover.jsx';
 import ReportModal from './ReportModal.jsx';
 import StarterHiveBadge from './StarterHiveBadge.jsx';
+import ApplyForRoleSheet from './collab/ApplyForRoleSheet.jsx';
 import { hiddenPlaceholderText } from './HiddenPlaceholder.jsx';
 import '../styles/safety.css';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -367,9 +368,10 @@ function safeTags(val) {
   try { return JSON.parse(val) || []; } catch { return []; }
 }
 
-function JoinBtn({ hiveId, initialPending, paid }) {
+function JoinBtn({ hiveId, hiveName, initialPending, paid, hasOpenRoles, bestRoleId }) {
   const [state, setState] = useState(initialPending ? 'pending' : 'idle');
   const [err, setErr] = useState(null);
+  const [applyOpen, setApplyOpen] = useState(false);
 
   async function handle() {
     if (state !== 'idle') return;
@@ -388,9 +390,25 @@ function JoinBtn({ hiveId, initialPending, paid }) {
     }
   }
 
-  if (paid) return <Link className="dhp-join-btn" to={`/paid-hive/${hiveId}`}>View paid membership ? ${(paid.monthly_price_cents/100).toFixed(2)} / month</Link>;
+  if (paid) return <Link className="dhp-join-btn" to={`/paid-hive/${hiveId}`}>View paid membership · ${(paid.monthly_price_cents/100).toFixed(2)} / month</Link>;
   if (state === 'joined')  return <div className="dhp-join-joined">Joined ✓</div>;
   if (state === 'pending') return <div className="dhp-join-disabled">Request pending</div>;
+  if (hasOpenRoles) {
+    return (
+      <div>
+        <button type="button" className="dhp-join-btn" onClick={() => setApplyOpen(true)}>Apply for a role</button>
+        {applyOpen && (
+          <ApplyForRoleSheet
+            hiveId={hiveId}
+            hiveName={hiveName}
+            preselectedRoleId={bestRoleId}
+            onClose={() => setApplyOpen(false)}
+            onSuccess={r => { setApplyOpen(false); setState(r.joined ? 'joined' : 'pending'); }}
+          />
+        )}
+      </div>
+    );
+  }
   return (
     <div>
       <button type="button" className="dhp-join-btn" disabled={state === 'loading'} onClick={handle}>
@@ -401,6 +419,10 @@ function JoinBtn({ hiveId, initialPending, paid }) {
   );
 }
 
+const EXPERIENCE_LABELS = {
+  learning: 'Still learning', some: 'Some experience', experienced: 'Experienced', expert: 'Expert',
+};
+
 function PublicHiveView({ hive, hiveId }) {
   const [posts,  setPosts]  = useState([]);
   const [postsL, setPostsL] = useState(true);
@@ -408,12 +430,22 @@ function PublicHiveView({ hive, hiveId }) {
   const [memsL,  setMemsL]  = useState(true);
   const [tab,    setTab]    = useState('Posts');
   const [showReport, setShowReport] = useState(false); // R1 — "Report this Hive"
+  const [collab, setCollab] = useState(null); // Prompt 82 — roles/labels/viewerFit
+  const [applyRoleId, setApplyRoleId] = useState(null); // non-null while the per-role Apply sheet is open
+  const openApplySheet = roleId => setApplyRoleId(roleId);
 
   useEffect(() => {
     if (hive.private) { setPostsL(false); setMemsL(false); return; }
     api.get(`/api/hives/${hiveId}/posts`).then(d => setPosts(d.posts ?? [])).catch(() => {}).finally(() => setPostsL(false));
     api.get(`/api/hives/${hiveId}/members`).then(d => setMems(d.members ?? [])).catch(() => {}).finally(() => setMemsL(false));
+    if (hive.category_name === 'Project Collaboration' || hive.category_name === 'Professional Networking') {
+      api.get(`/api/hives/${hiveId}/collab`).then(setCollab).catch(() => {});
+    }
   }, [hiveId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openRoles = (collab?.roles ?? []).filter(r => r.status === 'open' && r.filled < r.slots);
+  const hasOpenRoles = openRoles.length > 0;
+  const isProfessional = hive.category_name === 'Professional Networking';
 
   const tags = safeTags(hive.tags);
   const isZeroSeed = hive.is_seed && Number(hive.member_count) === 0;
@@ -492,8 +524,12 @@ function PublicHiveView({ hive, hiveId }) {
                 <div className="dhp-meta dhp-meta-nocap" style={{ marginTop: 4 }}>Hosted by TrueHive</div>
               )}
               {hive.description && <div className="dhp-description">{hive.description}</div>}
-              {tags.length > 0 && (
+              {(tags.length > 0 || hasOpenRoles || collab?.labels?.[hive.project_stage] || collab?.labels?.[hive.commitment] || hive.compensation?.length > 0) && (
                 <div className="dhp-tags">
+                  {hasOpenRoles && <span className="dhp-policy-chip">{openRoles.reduce((s, r) => s + (r.slots - r.filled), 0)} spots open</span>}
+                  {collab?.labels?.[hive.project_stage] && <span className="dhp-tag-chip">{collab.labels[hive.project_stage]}</span>}
+                  {collab?.labels?.[hive.commitment] && <span className="dhp-tag-chip">{collab.labels[hive.commitment]}</span>}
+                  {hive.compensation?.map(k => <span key={k} className="dhp-tag-chip">{collab?.labels?.[k] ?? k}</span>)}
                   {tags.map((t, i) => <span key={i} className="dhp-tag-chip">{t}</span>)}
                   {hive.join_policy && <span className="dhp-policy-chip">{hive.join_policy}</span>}
                 </div>
@@ -501,7 +537,11 @@ function PublicHiveView({ hive, hiveId }) {
             </div>
             <div className="dhp-header-actions">
               <FollowButton hiveId={hive.hive_id} initialFollowing={hive.is_following} />
-              <JoinBtn paid={hive.paid_membership} hiveId={hive.hive_id} initialPending={Boolean(hive.request_pending)} />
+              <JoinBtn
+                paid={hive.paid_membership} hiveId={hive.hive_id} hiveName={hive.hive_name}
+                initialPending={Boolean(hive.request_pending)}
+                hasOpenRoles={hasOpenRoles} bestRoleId={collab?.viewerBestRoleId ?? null}
+              />
               <button type="button" onClick={() => setShowReport(true)}
                 style={{ background: 'none', border: 'none', color: '#8a8070', fontSize: '0.78rem',
                          textDecoration: 'underline', cursor: 'pointer' }}>
@@ -547,18 +587,104 @@ function PublicHiveView({ hive, hiveId }) {
               </div>
             )}
             {tab === 'About' && (
-              <div className="hive-dark-card" style={{ padding: 20 }}>
-                {[{ label: 'Pinned Goal', value: hive.pinned_goal }, { label: 'Ground Rules', value: hive.ground_rules }, { label: 'Icebreaker', value: hive.icebreaker }]
-                  .filter(s => s.value).map(s => (
-                    <div key={s.label} style={{ marginBottom: 16 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#8a8070', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{s.label}</div>
-                      <div style={{ fontSize: '0.9rem', color: '#f0e8d8' }}>{s.value}</div>
+              <>
+                {collab && !isProfessional && collab.roles?.length > 0 && (
+                  <div className="hive-dark-card dro-sec">
+                    <div className="dro-sec-label">Open roles</div>
+                    {collab.roles.map(role => {
+                      const open = role.slots - role.filled;
+                      const full = role.status !== 'open' || open <= 0;
+                      return (
+                        <div key={role.role_id} className={`dro-role${full ? ' dro-role--full' : ''}`}>
+                          <div className="dro-role-top">
+                            <div>
+                              <div className="dro-role-title">
+                                {role.title}
+                                {full
+                                  ? <span className="dro-full-pill">Filled</span>
+                                  : collab.viewerBestRoleId === role.role_id && <span className="dro-fit-pill">Your fit</span>}
+                              </div>
+                              <div className="dro-role-meta">
+                                {full ? `${role.filled} of ${role.slots} filled` : `${open} of ${role.slots} spots open`}
+                                {' · '}{EXPERIENCE_LABELS[role.experience_level] ?? 'Any level'}
+                              </div>
+                            </div>
+                            {!full && (
+                              <button type="button" className="dro-apply-sm" onClick={() => openApplySheet(role.role_id)}>Apply</button>
+                            )}
+                          </div>
+                          {role.skills?.length > 0 && (
+                            <div className="dro-sk">
+                              {role.skills.map(skill => (
+                                <span key={skill} className={role.viewerFit?.have?.includes(skill) ? 'dro-sk--have' : ''}>{skill}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {collab && !isProfessional && (collab.labels?.[hive.project_stage] || collab.labels?.[hive.commitment] || collab.labels?.[hive.project_timeline] || hive.compensation?.length > 0 || collab.labels?.[hive.work_style] || hive.project_types?.length > 0) && (
+                  <div className="hive-dark-card dro-sec">
+                    <div className="dro-sec-label">The project</div>
+                    <div className="dro-grid">
+                      {hive.project_types?.length > 0 && <div className="dro-fact"><div className="dro-fact-k">Type</div><div className="dro-fact-v">{hive.project_types.map(k => collab.labels?.[k] ?? k).join(', ')}</div></div>}
+                      {collab.labels?.[hive.project_stage] && <div className="dro-fact"><div className="dro-fact-k">Stage</div><div className="dro-fact-v">{collab.labels[hive.project_stage]}</div></div>}
+                      {collab.labels?.[hive.commitment] && <div className="dro-fact"><div className="dro-fact-k">Time</div><div className="dro-fact-v">{collab.labels[hive.commitment]}</div></div>}
+                      {collab.labels?.[hive.project_timeline] && <div className="dro-fact"><div className="dro-fact-k">Timeline</div><div className="dro-fact-v">{collab.labels[hive.project_timeline]}</div></div>}
+                      {hive.compensation?.length > 0 && <div className="dro-fact"><div className="dro-fact-k">Offers</div><div className="dro-fact-v">{hive.compensation.map(k => collab.labels?.[k] ?? k).join(', ')}</div></div>}
+                      {collab.labels?.[hive.work_style] && <div className="dro-fact"><div className="dro-fact-k">Work style</div><div className="dro-fact-v">{collab.labels[hive.work_style]}</div></div>}
                     </div>
-                  ))}
-              </div>
+                  </div>
+                )}
+                {collab && isProfessional && (hive.pro_industries?.length > 0 || hive.career_stages?.length > 0 || collab.labels?.[hive.audience_scope]) && (
+                  <div className="hive-dark-card dro-sec">
+                    <div className="dro-sec-label">Who it's for</div>
+                    <div className="dro-grid">
+                      {hive.pro_industries?.length > 0 && <div className="dro-fact"><div className="dro-fact-k">Industries</div><div className="dro-fact-v">{hive.pro_industries.map(k => collab.labels?.[k] ?? k).join(', ')}</div></div>}
+                      {hive.career_stages?.length > 0 && <div className="dro-fact"><div className="dro-fact-k">Career stages</div><div className="dro-fact-v">{hive.career_stages.map(k => collab.labels?.[k] ?? k).join(', ')}</div></div>}
+                      {collab.labels?.[hive.audience_scope] && <div className="dro-fact"><div className="dro-fact-k">Scope</div><div className="dro-fact-v">{collab.labels[hive.audience_scope]}</div></div>}
+                    </div>
+                  </div>
+                )}
+                <div className="hive-dark-card" style={{ padding: 20 }}>
+                  {[{ label: 'Pinned Goal', value: hive.pinned_goal }, { label: 'Ground Rules', value: hive.ground_rules }, { label: 'Icebreaker', value: hive.icebreaker }]
+                    .filter(s => s.value).map(s => (
+                      <div key={s.label} style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#8a8070', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{s.label}</div>
+                        <div style={{ fontSize: '0.9rem', color: '#f0e8d8' }}>{s.value}</div>
+                      </div>
+                    ))}
+                </div>
+                {applyRoleId !== null && (
+                  <ApplyForRoleSheet
+                    hiveId={hive.hive_id}
+                    hiveName={hive.hive_name}
+                    preselectedRoleId={applyRoleId}
+                    onClose={() => setApplyRoleId(null)}
+                    onSuccess={() => setApplyRoleId(null)}
+                  />
+                )}
+              </>
             )}
           </div>
           <div className="dhp-sidebar">
+            {collab && !isProfessional && collab.roles?.length > 0 && (
+              <div className="hive-dark-card dhp-sidebar-card">
+                <div className="dhp-sidebar-label">Roles at a glance</div>
+                {collab.roles.map(role => {
+                  const open = role.slots - role.filled;
+                  const full = role.status !== 'open' || open <= 0;
+                  return (
+                    <div key={role.role_id} className="dro-side-row">
+                      <span>{role.title}</span>
+                      <b>{full ? 'Filled' : `${open} open`}</b>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
             <div className="hive-dark-card dhp-sidebar-card">
               <div className="dhp-sidebar-label">Members · {Number(hive.member_count ?? 0)}</div>
               {memsL ? null : members.slice(0, 5).map(m => (

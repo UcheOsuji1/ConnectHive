@@ -10,6 +10,7 @@ import {
   ageInBand,
   mergeSkills,
   scoreCollab,
+  scoreRoleForSeeker,
   hiveHasCollabData,
 } from '../lib/compatibility.js';
 import { createNotification } from './notificationsController.js';
@@ -108,14 +109,20 @@ function buildCollabCardData(hiveCategoryKey, hive, hiveRoles, collabDetails) {
   if (!hiveHasCollabData(hive, openRolesForGate)) return null;
 
   if (hiveCategoryKey === 'project') {
-    const openRoles = openRolesForGate
-      .slice(0, 6)
-      .map(r => ({ role_id: r.role_id, title: r.title, open: r.slots - r.filled }));
+    const bestRole = collabDetails?.bestRole ?? null;
+    // bestRole first, in its own "Your fit" slot — the other open roles fill
+    // the rest of the 6-pill cap, in position order.
+    const rest = openRolesForGate.filter(r => r.role_id !== bestRole?.role_id);
+    const openRoles = [
+      ...(bestRole ? [{ role_id: bestRole.role_id, title: bestRole.title, open: (openRolesForGate.find(r => r.role_id === bestRole.role_id)?.slots ?? 0) - (openRolesForGate.find(r => r.role_id === bestRole.role_id)?.filled ?? 0) }] : []),
+      ...rest.map(r => ({ role_id: r.role_id, title: r.title, open: r.slots - r.filled })),
+    ].slice(0, 6);
+    const openRolesCount = openRolesForGate.length;
     const totalOpen = hiveRoles.reduce((sum, r) => (r.status === 'open' ? sum + Math.max(0, r.slots - r.filled) : sum), 0);
     const basics = { project_stage: hive.project_stage, commitment: hive.commitment, compensation: hive.compensation };
     return {
-      bestRole: collabDetails?.bestRole ?? null,
-      openRoles, totalOpen,
+      bestRole,
+      openRoles, openRolesCount, totalOpen,
       stage: hive.project_stage, commitment: hive.commitment, compensation: hive.compensation,
       labels: buildCollabLabels(PROJECT_CATEGORY, basics, []),
     };
@@ -1481,20 +1488,22 @@ export const requestToJoin = async (req, res) => {
     // three instant-join branches and the request-flow insert) agrees.
     const { role_id: requestedRoleId, portfolioUrl: portfolioUrlRaw } = req.body;
     let validatedRoleId = null;
+    let validatedRoleTitle = null;
     if (requestedRoleId) {
       const { rows: [role] } = await query(
-        `SELECT hr.role_id, hr.slots,
+        `SELECT hr.role_id, hr.title, hr.slots,
                 COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS filled
            FROM hive_roles hr
            LEFT JOIN hive_members hm ON hm.collab_role_id = hr.role_id
           WHERE hr.role_id = $1 AND hr.hive_id = $2 AND hr.status = 'open'
-          GROUP BY hr.role_id, hr.slots`,
+          GROUP BY hr.role_id, hr.title, hr.slots`,
         [requestedRoleId, hiveId],
       );
       if (!role || Number(role.filled) >= Number(role.slots)) {
         return res.status(400).json({ error: 'That role is no longer open.' });
       }
       validatedRoleId = role.role_id;
+      validatedRoleTitle = role.title;
     }
     const { url: portfolioUrl, error: portfolioUrlError } = validateUrl(portfolioUrlRaw);
     if (portfolioUrlError) return res.status(400).json({ error: portfolioUrlError });
@@ -1532,7 +1541,7 @@ export const requestToJoin = async (req, res) => {
     // the existing join-button UI — which only checks that flag — keeps
     // working unchanged) so any future consumer of either path agrees.
     if (hive.is_seed) {
-      const { roleFilled: seedRoleFilled } = await joinWithRole(validatedRoleId, (client, assignedRoleId) => client.query(
+      const { roleFilled: seedRoleFilled, assignedRoleId: seedAssignedRoleId } = await joinWithRole(validatedRoleId, (client, assignedRoleId) => client.query(
         `INSERT INTO hive_members
            (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at, collab_role_id)
          VALUES ($1, $2, 'member', 'active', 'completed', NULL, $3)
@@ -1576,7 +1585,9 @@ export const requestToJoin = async (req, res) => {
 
         await createNotification({
           userId: req.userId, type: 'request_accepted', category: 'system',
-          title: `You're in! Welcome to ${hive.hive_name}`,
+          title: seedAssignedRoleId && validatedRoleTitle
+            ? `You're in ${hive.hive_name} as ${validatedRoleTitle}`
+            : `You're in! Welcome to ${hive.hive_name}`,
           body: 'Open your Hive to see your welcome.',
           hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
         });
@@ -1614,7 +1625,7 @@ export const requestToJoin = async (req, res) => {
     // still go through approval — skipping it here let anyone with the link
     // into a Hive whose owner chose to review members first.
     if (joinExp === 'simple' && hive.join_policy === 'open') {
-      const { roleFilled: simpleRoleFilled } = await joinWithRole(validatedRoleId, (client, assignedRoleId) => client.query(
+      const { roleFilled: simpleRoleFilled, assignedRoleId: simpleAssignedRoleId } = await joinWithRole(validatedRoleId, (client, assignedRoleId) => client.query(
         `INSERT INTO hive_members
            (hive_id, user_id, role, membership_status, onboarding_status, welcome_seen_at, collab_role_id)
          VALUES ($1, $2, 'member', 'active', 'completed', NULL, $3)
@@ -1640,7 +1651,9 @@ export const requestToJoin = async (req, res) => {
         const memberName = profile?.full_name ?? 'A new member';
         await createNotification({
           userId: req.userId, type: 'request_accepted', category: 'system',
-          title: `You're in! Welcome to ${hive.hive_name}`,
+          title: simpleAssignedRoleId && validatedRoleTitle
+            ? `You're in ${hive.hive_name} as ${validatedRoleTitle}`
+            : `You're in! Welcome to ${hive.hive_name}`,
           body: 'Open your Hive to see your welcome.',
           hiveId, actorUserId: req.userId, link: `/hive/${hiveId}`,
         });
@@ -1744,7 +1757,7 @@ export const requestToJoin = async (req, res) => {
         await createNotification({
           userId: m.user_id,
           type: 'join_request', category: 'system',
-          title: `${name} requested to join ${hive.hive_name}`,
+          title: validatedRoleTitle ? `${name} applied for ${validatedRoleTitle}` : `${name} requested to join ${hive.hive_name}`,
           hiveId,
           actorUserId: req.userId,
           link: `/hive/${hiveId}`,
@@ -1793,7 +1806,7 @@ export const getHiveRequests = async (req, res) => {
       `SELECT jr.request_id, jr.user_id, jr.request_message, jr.status, jr.requested_at,
               jr.role_id, jr.portfolio_url, hr.title AS role_title,
               p.full_name, p.profile_photo_url, p.age, p.location, p.interests, p.skills,
-              p.deep_dive_answers,
+              p.deep_dive_answers, p.links,
               u.member_id,
               uc.total_score AS pair_score,
               cs.total_score AS hive_fit_score
@@ -1812,11 +1825,12 @@ export const getHiveRequests = async (req, res) => {
     );
 
     // A pending request naming a role_id gets THAT role's own fit (Prompt
-    // 81), even when it isn't the candidate's single best role — never the
-    // candidate's raw Deep Dive answers, only the computed numbers.
+    // 81); one with no role_id gets its best OPEN role instead, when it
+    // scores >= 50 (Prompt 82) — never the candidate's raw Deep Dive
+    // answers, only the computed numbers.
     let roleFitByUser = {};
-    const namedRoleIds = [...new Set(rows.map(r => r.role_id).filter(Boolean))];
-    if (namedRoleIds.length) {
+    let bestRoleByUser = {};
+    if (rows.length) {
       const { rows: [hiveRow] } = await query(
         `SELECT h.*, c.category_name FROM hives h
          LEFT JOIN categories c ON c.category_id = h.category_id
@@ -1826,18 +1840,25 @@ export const getHiveRequests = async (req, res) => {
       const hiveCategoryKey = CATEGORY_KEY_FOR_NAME[hiveRow?.category_name] ?? null;
       if (hiveCategoryKey === 'project') {
         const rolesByHive = await loadRolesByHive([hiveId]);
-        // Every role, not just currently-open ones — a pending request can
-        // name a role that's since filled or closed, and the owner still
-        // benefits from seeing that candidate's fit for it.
         const allRoles = rolesByHive[hiveId] ?? [];
+        const openRoles = allRoles.filter(r => r.status === 'open' && r.filled < r.slots);
         for (const r of rows) {
-          if (!r.role_id) continue;
           const answers = r.deep_dive_answers?.project ?? null;
           const seekerSkills = mergeSkills(answers?.skills, r.skills);
-          const { details } = scoreCollab('project', answers, seekerSkills, { skills: r.skills }, hiveRow, allRoles);
-          const named = details.roleScores?.find(rs => rs.role_id === r.role_id);
-          if (named) {
-            roleFitByUser[r.user_id] = { title: named.title, matched: named.exact, total: named.total, partial: named.partial };
+          if (r.role_id) {
+            // Every role, not just currently-open ones — a pending request
+            // can name a role that's since filled or closed, and the owner
+            // still benefits from seeing that candidate's fit for it.
+            const { details } = scoreCollab('project', answers, seekerSkills, { skills: r.skills }, hiveRow, allRoles);
+            const named = details.roleScores?.find(rs => rs.role_id === r.role_id);
+            if (named) {
+              roleFitByUser[r.user_id] = { title: named.title, matched: named.exact, total: named.total, partial: named.partial };
+            }
+          } else if (openRoles.length) {
+            const { details } = scoreCollab('project', answers, seekerSkills, { skills: r.skills }, hiveRow, openRoles);
+            if (details.bestRole && details.roleScores.find(rs => rs.role_id === details.bestRole.role_id)?.score >= 50) {
+              bestRoleByUser[r.user_id] = details.bestRole;
+            }
           }
         }
       }
@@ -1847,6 +1868,7 @@ export const getHiveRequests = async (req, res) => {
       ...r,
       role: role_id ? { role_id, title: role_title } : null,
       ...(roleFitByUser[r.user_id] ? { roleFit: roleFitByUser[r.user_id] } : {}),
+      ...(bestRoleByUser[r.user_id] ? { bestRole: bestRoleByUser[r.user_id] } : (role_id ? {} : { bestRole: null })),
     }));
 
     const { rows: [cap] } = await query(
@@ -1903,6 +1925,14 @@ export const reviewRequest = async (req, res) => {
     // leave the request accepted with no member row. SELECT ... FOR UPDATE
     // locks the Hive row so two concurrent accepts can't both pass the
     // capacity check and overshoot max_members.
+    // Prompt 82 — the owner can accept into a different role than the one
+    // requested: omitted uses the request's own role_id (today); explicit
+    // null accepts as a member with no role; an explicit role_id must be an
+    // open role of THIS Hive with a free spot, checked below with the same
+    // lock-and-recheck as the requested role already got.
+    const hasRoleOverride = Object.prototype.hasOwnProperty.call(req.body, 'role_id');
+    const targetRoleId = hasRoleOverride ? req.body.role_id : request.role_id;
+
     let joinExp = null;
     let roleFilled = false;
     let assignedRoleId = null;
@@ -1933,19 +1963,23 @@ export const reviewRequest = async (req, res) => {
         // role row so two concurrent accepts for the last spot can't both
         // pass. If it filled up in the meantime, accept the person into the
         // Hive anyway (collab_role_id stays NULL) rather than fail the whole
-        // acceptance over a race on one role.
-        if (request.role_id) {
+        // acceptance over a race on one role. targetRoleId null (explicit or
+        // the request's own) skips this block entirely — member, no role.
+        if (targetRoleId) {
           // FOR UPDATE can't combine with an aggregate in the same query —
           // lock the role row first, then count filled spots separately.
+          // hive_id = $2 scopes an owner-chosen override to THIS Hive's own
+          // roles — the request's own role_id is already guaranteed to be,
+          // but an override must be checked the same way requestToJoin does.
           const { rows: [roleLock] } = await client.query(
-            `SELECT role_id, slots, status FROM hive_roles WHERE role_id = $1 FOR UPDATE`,
-            [request.role_id],
+            `SELECT role_id, slots, status FROM hive_roles WHERE role_id = $1 AND hive_id = $2 FOR UPDATE`,
+            [targetRoleId, hiveId],
           );
           if (roleLock) {
             const { rows: [{ filled }] } = await client.query(
               `SELECT COUNT(*)::int AS filled FROM hive_members hm
                 WHERE hm.collab_role_id = $1 AND hm.membership_status = 'active' AND ${excludeSystemClause('hm')}`,
-              [request.role_id],
+              [targetRoleId],
             );
             if (roleLock.status === 'open' && Number(filled) < Number(roleLock.slots)) {
               assignedRoleId = roleLock.role_id;
@@ -2015,7 +2049,7 @@ export const reviewRequest = async (req, res) => {
     let newMember = null;
     if (action === 'accept') {
       try {
-        const [{ rows: [requester] }, { rows: [hiveRow] }, { rows: existingMembers }, { rows: [memberRow] }, { rows: [ownerProfile] }] = await Promise.all([
+        const [{ rows: [requester] }, { rows: [hiveRow] }, { rows: existingMembers }, { rows: [memberRow] }, { rows: [ownerProfile] }, { rows: [assignedRoleRow] }] = await Promise.all([
           query(
             `SELECT p.full_name, p.profile_photo_url, u.member_id
              FROM profiles p JOIN users u ON u.user_id = p.user_id
@@ -2042,10 +2076,14 @@ export const reviewRequest = async (req, res) => {
               WHERE hm.hive_id = $1 AND hm.role = 'owner' AND hm.membership_status = 'active'`,
             [hiveId],
           ),
+          assignedRoleId
+            ? query(`SELECT title FROM hive_roles WHERE role_id = $1`, [assignedRoleId])
+            : Promise.resolve({ rows: [] }),
         ]);
 
         const requesterName = requester?.full_name ?? 'A new member';
         const hiveName = hiveRow?.hive_name ?? 'the Hive';
+        const assignedRoleTitle = assignedRoleRow?.title ?? null;
         newMember = {
           user_id:           request.user_id,
           full_name:         requesterName,
@@ -2058,7 +2096,7 @@ export const reviewRequest = async (req, res) => {
         await createNotification({
           userId: request.user_id,
           type: 'request_accepted', category: 'system',
-          title: `You're in! Welcome to ${hiveName}`,
+          title: assignedRoleTitle ? `You're in ${hiveName} as ${assignedRoleTitle}` : `You're in! Welcome to ${hiveName}`,
           body: `Open your Hive to see your welcome.`,
           hiveId,
           actorUserId: req.userId,
@@ -3006,6 +3044,38 @@ export const getHiveCollab = async (req, res) => {
       }
     }
 
+    // Prompt 82 — the signed-in viewer's own fit for each role, never
+    // another user's. Project Hives only (Professional has no roles at
+    // all); unauthenticated/no-profile viewers get no viewerFit.
+    let viewerFitByRole = {};
+    let viewerBestRoleId = null;
+    if (row.category_name === PROJECT_CATEGORY && roleRows.length && req.userId) {
+      const { rows: [viewerProfile] } = await query(
+        'SELECT skills, deep_dive_answers FROM profiles WHERE user_id = $1', [req.userId],
+      );
+      if (viewerProfile) {
+        const answers = viewerProfile.deep_dive_answers?.project ?? null;
+        const seekerSkills = mergeSkills(answers?.skills, viewerProfile.skills);
+        const wantRoles = answers?.joining?.wantRoles ?? [];
+        let bestOpenScore = -1;
+        for (const r of roleRows) {
+          const scored = scoreRoleForSeeker(
+            { role_id: r.role_id, title: r.title, skills: r.skills },
+            seekerSkills, wantRoles,
+          );
+          viewerFitByRole[r.role_id] = {
+            matched: scored.exact, total: scored.total, partial: scored.partial,
+            have: scored.haveSkills, near: scored.nearSkills,
+          };
+          const isOpen = r.status === 'open' && Number(r.filled) < Number(r.slots);
+          if (isOpen && scored.score >= 70 && scored.score > bestOpenScore) {
+            bestOpenScore = scored.score;
+            viewerBestRoleId = r.role_id;
+          }
+        }
+      }
+    }
+
     const roles = roleRows.map(r => ({
       role_id: r.role_id,
       title: r.title,
@@ -3015,6 +3085,7 @@ export const getHiveCollab = async (req, res) => {
       skills: r.skills,
       experience_level: r.experience_level,
       status: r.status,
+      ...(viewerFitByRole[r.role_id] ? { viewerFit: viewerFitByRole[r.role_id] } : {}),
       ...(isOwnerAdmin ? { members: membersByRole[r.role_id] ?? [] } : {}),
     }));
     const allRolesFilled = roles.length > 0 && !roles.some(r => r.status === 'open' && r.filled < r.slots);
@@ -3036,6 +3107,7 @@ export const getHiveCollab = async (req, res) => {
       labels: buildCollabLabels(row.category_name, basics, roles),
       roles,
       allRolesFilled,
+      viewerBestRoleId,
     });
   } catch (err) {
     console.error('[hives/getHiveCollab]', err);
