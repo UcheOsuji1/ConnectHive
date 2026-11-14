@@ -1350,7 +1350,9 @@ export default function CategoryDeepDivePage() {
   }, [category]);
 
   // Pre-fill "Company or school" from the profile the same way, when there's
-  // no saved answer yet.
+  // no saved answer yet. prefilledOrg tracks what was actually pre-filled, so
+  // the "(from your profile)" label can hide once the person edits it away.
+  const [prefilledOrg, setPrefilledOrg] = useState(null);
   useEffect(() => {
     if (category !== 'professional') return;
     if (location.state?.textValues?.['prof-org']) return;
@@ -1359,6 +1361,7 @@ export default function CategoryDeepDivePage() {
       .then(({ profile }) => {
         if (profile?.school_company) {
           setTextValues(prev => (prev['prof-org'] ? prev : { ...prev, 'prof-org': profile.school_company }));
+          setPrefilledOrg(profile.school_company);
         }
       })
       .catch(() => {});
@@ -1808,25 +1811,36 @@ export default function CategoryDeepDivePage() {
                   className="cdd-text-input"
                   type="text"
                   maxLength={80}
+                  placeholder="e.g. Product Designer"
                   value={textValues['prof-title'] || ''}
                   onChange={e => setTextValues(prev => ({ ...prev, 'prof-title': e.target.value }))}
                 />
               </div>
               <div>
                 <label className="field-label" htmlFor="prof-org">
-                  Company or school <span className="cdd-optional">(from your profile)</span>
+                  Company or school
+                  {prefilledOrg && textValues['prof-org'] === prefilledOrg && (
+                    <span className="cdd-optional"> (from your profile)</span>
+                  )}
                 </label>
                 <input
                   id="prof-org"
                   className="cdd-text-input"
                   type="text"
                   maxLength={120}
+                  placeholder="e.g. your company or school"
                   value={textValues['prof-org'] || ''}
                   onChange={e => setTextValues(prev => ({ ...prev, 'prof-org': e.target.value }))}
                 />
               </div>
             </div>
-            <p className="cdd-hint">Shows on your card in Professional Hives, e.g. "Software Engineer · CSUN". Saves to your profile.</p>
+            <p className="cdd-hint">
+              {textValues['prof-title'] && textValues['prof-org']
+                ? `Shows on your card as "${textValues['prof-title']} · ${textValues['prof-org']}". Saves to your profile.`
+                : textValues['prof-title'] || textValues['prof-org']
+                ? `Shows on your card as "${textValues['prof-title'] || textValues['prof-org']}". Saves to your profile.`
+                : 'Shows on your card in Professional Hives. Saves to your profile.'}
+            </p>
           </div>
 
           <div className="cdd-section">
@@ -1927,7 +1941,7 @@ export default function CategoryDeepDivePage() {
             <textarea
               className="cdd-textarea"
               style={{ height: '80px', resize: 'none' }}
-              placeholder="e.g. I'm a software engineer at an early-stage startup looking to connect with other founders, engineers, and potential investors in the LA tech scene. Open to advising smaller teams in exchange for access to a strong senior network..."
+              placeholder="e.g. Early in my career and looking for mentors, honest feedback, and people to trade job leads with."
               value={textValues['prof-notes'] || ''}
               onChange={e => setTextValues(prev => ({ ...prev, 'prof-notes': e.target.value }))}
             />
