@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useState, useRef } from 'react';
 import { api } from '../lib/api.js';
 
 function DateTile({ eventAt, outlined }) {
@@ -57,12 +58,13 @@ function MyEventRow({ event, onToggle }) {
       role="button"
       tabIndex={0}
       onClick={() => navigate(`/hive/${event.hive_id}`)}
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/hive/${event.hive_id}`); } }}
     >
       <DateTile eventAt={event.event_at} />
       <div className="uec-row-mid">
         <div className="uec-headline">{event.headline}</div>
         <div className="uec-meta">
-          {event.hive_name} · {formatWeekday(event.event_at)} · {formatTime(event.event_at)}
+          {event.event_location || event.hive_location || event.hive_name} · {formatWeekday(event.event_at)} · {formatTime(event.event_at)}
         </div>
       </div>
       <GoingToggle event={event} onToggle={onToggle} />
@@ -78,6 +80,7 @@ function SuggestedEventRow({ event }) {
       role="button"
       tabIndex={0}
       onClick={() => navigate(`/hive/${event.hive_id}`)}
+      onKeyDown={e => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/hive/${event.hive_id}`); } }}
     >
       <DateTile eventAt={event.event_at} outlined />
       <div className="uec-row-mid">
@@ -92,11 +95,19 @@ function SuggestedEventRow({ event }) {
 }
 
 export default function UpcomingEventsCard({ data, setData }) {
+  const [error, setError] = useState('');
+  const pending = useRef(new Set());
   if (!data) return null;
 
-  const { myEvents, suggestedEvents } = data;
+  const weekEnd = Date.now() + 7 * 86400000;
+  const upcoming = e => new Date(e.event_at).getTime() > Date.now() && new Date(e.event_at).getTime() <= weekEnd;
+  const myEvents = data.myEvents.filter(upcoming);
+  const suggestedEvents = data.suggestedEvents.filter(upcoming);
 
   function handleToggle(event) {
+    if (pending.current.has(event.post_id)) return;
+    pending.current.add(event.post_id);
+    setError('');
     const wasGoing = event.viewer_going;
     const optimistic = {
       viewer_going: !wasGoing,
@@ -119,6 +130,7 @@ export default function UpcomingEventsCard({ data, setData }) {
         }));
       })
       .catch(() => {
+        setError('Your RSVP could not be saved. Please try again.');
         setData(prev => ({
           ...prev,
           myEvents: prev.myEvents.map(e => e.post_id === event.post_id
@@ -126,7 +138,7 @@ export default function UpcomingEventsCard({ data, setData }) {
           suggestedEvents: prev.suggestedEvents.map(e => e.post_id === event.post_id
             ? { ...e, viewer_going: wasGoing, going_count: event.going_count } : e),
         }));
-      });
+      }).finally(() => pending.current.delete(event.post_id));
   }
 
   const noMyEvents = myEvents.length === 0;
@@ -135,17 +147,20 @@ export default function UpcomingEventsCard({ data, setData }) {
   if (noMyEvents && noSuggested) {
     return (
       <div className="home-card-shell">
-        <div className="home-card-label">Upcoming Events</div>
+        <div className="home-card-label">Happening This Week</div>
         <p className="uec-empty">
-          No upcoming events yet. Hive owners can post one from "New Post → Event."
+          Your next shared plan starts here. Create an event or explore a Hive.
         </p>
+        <Link to="/find-your-hive" className="th-empty-link">Discover Hives →</Link>
       </div>
     );
   }
 
   return (
     <div className="home-card-shell">
-      <div className="home-card-label">Upcoming Events</div>
+      <div className="home-card-label">Happening This Week</div>
+      <Link to="/my-hive" className="th-calendar-link">View Hive calendars →</Link>
+      {error && <p role="alert">{error}</p>}
 
       {!noMyEvents && (
         <div className="uec-group">

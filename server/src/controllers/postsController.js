@@ -2,6 +2,7 @@ import { query } from '../db/index.js';
 import { createNotification } from './notificationsController.js';
 import { getMembership } from '../lib/hiveMembership.js';
 import { excludeSystemClause } from '../lib/systemUser.js';
+import { homeFeedOptions } from '../lib/homeFeed.js';
 
 // Post-creation fan-out for Prompt 70 Part B #2: every active member except
 // the author, category 'posts' (default on). No groupKey — Hive posts are
@@ -43,6 +44,7 @@ export const FEED_SELECT = `
     CASE WHEN p.hidden_at IS NOT NULL THEN NULL ELSE p.media_url  END AS media_url,
     p.hidden_reason AS hidden,
     p.event_at, p.event_location, p.created_at,
+    EXISTS(SELECT 1 FROM saved_home_posts WHERE post_id=p.post_id AND user_id=$1) AS is_saved,
     h.hive_name, h.creator_user_id, h.banner_url, h.logo_url,
     c.category_name,
     (SELECT COUNT(*) FROM hive_members  WHERE hive_id = h.hive_id AND membership_status = 'active' AND ${excludeSystemClause()})::int AS member_count,
@@ -228,8 +230,7 @@ export const createPost = async (req, res) => {
 // Followers see only public posts from Hives they follow (but are not members of).
 export const getFeed = async (req, res) => {
   try {
-    const limit  = Math.min(Number(req.query.limit)  || 20, 50);
-    const offset = Number(req.query.offset) || 0;
+    const { limit, offset, filter, order } = homeFeedOptions(req.query);
     const { rows: posts } = await query(
       `${FEED_SELECT}
        WHERE (
@@ -239,7 +240,8 @@ export const getFeed = async (req, res) => {
            AND p.visibility = 'public'
          )
        )
-       ORDER BY p.created_at DESC
+       ${filter}
+       ORDER BY ${order}
        LIMIT $2 OFFSET $3`,
       [req.userId, limit, offset],
     );
@@ -322,6 +324,29 @@ export const deletePost = async (req, res) => {
     console.error('[posts/deletePost]', err);
     res.status(500).json({ error: 'Failed to delete post.' });
   }
+};
+
+export const savePost = async (req, res) => {
+  try {
+    if (!await _assertCanRead(await _getPostInfo(req.params.id), req.userId, res)) return;
+    if (typeof req.body.saved !== 'boolean') return res.status(400).json({ error: 'saved must be a boolean.' });
+    if (req.body.saved) await query('INSERT INTO saved_home_posts(user_id,post_id) VALUES($1,$2) ON CONFLICT DO NOTHING', [req.userId,req.params.id]);
+    else await query('DELETE FROM saved_home_posts WHERE user_id=$1 AND post_id=$2', [req.userId,req.params.id]);
+    res.json({ saved: req.body.saved });
+  } catch { res.status(500).json({ error: 'Could not save this post.' }); }
+};
+
+export const editPost = async (req, res) => {
+  try {
+    const { rows: [post] } = await query('SELECT hive_id,author_user_id FROM hive_posts WHERE post_id=$1',[req.params.id]);
+    if (!post) return res.status(404).json({ error: 'Post not found.' });
+    if (!await _assertMemberForHive(post.hive_id, req.userId, res)) return;
+    if (post.author_user_id !== req.userId) return res.status(403).json({ error: 'Not authorised.' });
+    const { headline, body } = req.body;
+    if (typeof headline !== 'string' || !headline.trim() || headline.length > 120 || (body != null && (typeof body !== 'string' || body.length > 10000))) return res.status(400).json({ error: 'Enter a headline up to 120 characters and details up to 10,000 characters.' });
+    await query('UPDATE hive_posts SET headline=$1,body=$2 WHERE post_id=$3', [headline.trim(),body?.trim() || null,req.params.id]);
+    res.json({ headline: headline.trim(), body: body?.trim() || null });
+  } catch { res.status(500).json({ error: 'Could not edit this post.' }); }
 };
 
 // ── toggleReaction ────────────────────────────────────────────────────────────

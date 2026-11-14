@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { getInitials } from '../lib/initials.js';
 
 function HiveAvatar({ hive }) {
   if (hive.logo_url) {
-    return <img src={hive.logo_url} alt={hive.hive_name} className="shc-avatar-img" />;
+    return <img src={hive.logo_url} alt={hive.hive_name} className="shc-avatar-img" loading="lazy" />;
   }
   return (
     <div className="shc-avatar-fallback">
@@ -15,7 +15,6 @@ function HiveAvatar({ hive }) {
 }
 
 function HiveRow({ hive }) {
-  const navigate = useNavigate();
   const [joinState, setJoinState] = useState(hive.request_pending ? 'pending' : 'idle');
   const [joinError, setJoinError] = useState(null);
 
@@ -36,15 +35,17 @@ function HiveRow({ hive }) {
   const fit = Number.isFinite(hive.match_score) ? Math.round(hive.match_score) : null;
 
   return (
-    <div className="shc-row" role="button" tabIndex={0} onClick={() => navigate(`/hive/${hive.hive_id}`)}>
+    <div className="shc-row">
       <HiveAvatar hive={hive} />
       <div className="shc-row-mid">
-        <div className="shc-hive-name">{hive.hive_name}</div>
+        <Link to={`/hive/${hive.hive_id}`} className="shc-hive-name">{hive.hive_name}</Link>
         <div className="shc-meta">
-          {hive.category_name}{fit !== null ? ` · ${fit}% fit` : ''}
+          {hive.category_name}
         </div>
+        <div className="shc-meta">{hive.member_count != null ? `${hive.member_count} members` : ''}{hive.location ? ` · ${hive.location}` : ''}</div>
         {joinError && <div className="shc-join-error">{joinError}</div>}
       </div>
+      {fit !== null && <div className="th-match-ring" style={{ '--match': `${Math.max(0, Math.min(100, fit))}%` }} aria-label={`${fit}% compatibility`}><strong>{fit}%</strong><small>match</small></div>}
       {joinState === 'joined' ? (
         <button type="button" className="shc-join-btn shc-join-btn--done" disabled>Joined</button>
       ) : joinState === 'pending' ? (
@@ -56,7 +57,7 @@ function HiveRow({ hive }) {
           disabled={joinState === 'loading'}
           onClick={handleJoin}
         >
-          {joinState === 'loading' ? '…' : 'Join'}
+          {joinState === 'loading' ? '…' : hive.join_policy === 'request' ? 'Request' : 'Join →'}
         </button>
       )}
     </div>
@@ -65,23 +66,23 @@ function HiveRow({ hive }) {
 
 export default function SuggestedHivesCard() {
   const [hives, setHives] = useState(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     api.post('/api/hives/match', {})
-      .then(d => setHives((d.hives ?? []).slice(0, 2)))
-      .catch(() => setHives([]));
+      .then(d => setHives((d.hives ?? []).slice(0, 3)))
+      .catch(() => { setHives([]); setError(true); });
   }, []);
 
-  if (!hives || hives.length === 0) return null;
 
   return (
     <div className="home-card-shell">
       <div className="shc-header-row">
-        <div className="home-card-label" style={{ marginBottom: 0 }}>You May Like</div>
+        <div className="home-card-label" style={{ marginBottom: 0 }}>Recommended Hives for You</div>
         <Link to="/hive-discovery" className="shc-discover-link">Discover more →</Link>
       </div>
       <div className="shc-rows">
-        {hives.map(hive => <HiveRow key={hive.hive_id} hive={hive} />)}
+        {hives === null ? <p role="status">Finding your matches…</p> : hives.length ? hives.map(hive => <HiveRow key={hive.hive_id} hive={hive} />) : <p>{error ? 'Recommendations could not load. Please refresh to try again.' : 'Complete your profile to discover Hives that fit your interests.'}</p>}
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ import {
   getComments,
   deleteComment,
   updatePostVisibility,
+  savePost,
+  editPost,
 } from '../controllers/postsController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { LIMITS } from '../lib/limits.js';
@@ -52,6 +54,8 @@ router.delete('/comments/:commentId',  requireAuth, deleteComment);
 // Single post
 router.get('/:id',                     requireAuth, getPost);
 router.delete('/:id',                  requireAuth, deletePost);
+router.patch('/:id',                   requireAuth, postLimiter, editPost);
+router.put('/:id/save',                requireAuth, savePost);
 router.patch('/:id/visibility',        requireAuth, updatePostVisibility);
 
 // Post actions

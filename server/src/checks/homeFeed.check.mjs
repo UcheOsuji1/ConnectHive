@@ -1,0 +1,12 @@
+﻿import assert from 'node:assert/strict';
+import { homeFeedOptions } from '../lib/homeFeed.js';
+assert.equal(homeFeedOptions({limit:-7,offset:-10}).limit,1);
+assert.equal(homeFeedOptions({limit:500,offset:-10}).offset,0);
+assert.equal(homeFeedOptions({limit:500}).limit,50);
+assert.match(homeFeedOptions({tab:'Following'}).filter,/hive_followers/);
+assert.match(homeFeedOptions({tab:'Nearby'}).filter,/viewer.location/);
+assert.match(homeFeedOptions({tab:'Nearby'}).filter,/online/);
+assert.match(homeFeedOptions({tab:'Trending'}).order,/post_reactions/);
+assert.match(homeFeedOptions({tab:'Saved'}).filter,/user_id=\$1/);
+assert.equal(homeFeedOptions({tab:"'; DROP TABLE hives;--"}).filter,'');
+console.log('PASS: bounded pagination, parameter isolation, Following, Nearby, Trending, Saved filters.');

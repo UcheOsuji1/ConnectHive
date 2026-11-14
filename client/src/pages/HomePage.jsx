@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
+import Navbar from '../components/Navbar.jsx';
 import Avatar from '../components/Avatar.jsx';
+import HomeIcon from '../components/HomeIcon.jsx';
+import TrueHiveMark from '../components/TrueHiveMark.jsx';
 import PostCard from '../components/PostCard.jsx';
 import CreatePostModal from '../components/CreatePostModal.jsx';
 import UpcomingEventsCard from '../components/UpcomingEventsCard.jsx';
@@ -11,532 +13,124 @@ import { api } from '../lib/api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import '../styles/home.css';
 import '../styles/post.css';
-
-// ── Helpers (same checks as ProfilePage.computeCompleteness) ─────────────────
-
-function arr(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val;
-  try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
-}
-
-function obj(val) {
-  if (!val) return {};
-  if (typeof val === 'object' && !Array.isArray(val)) return val;
-  try { return JSON.parse(val) || {}; } catch { return {}; }
-}
-
-function computeCompleteness(profile) {
-  const sp = obj(profile.social_preferences);
-  const checks = [
-    Boolean(profile.full_name),
-    Boolean(profile.bio),
-    arr(profile.connection_purposes).length > 0,
-    arr(profile.interests).length > 0,
-    arr(profile.skills).length > 0,
-    Boolean(sp.socialEnergy),
-    arr(profile.availability).length > 0,
-    Boolean(profile.group_size_preference),
-  ];
-  return Math.round(checks.filter(Boolean).length / checks.length * 100);
-}
-
-// ── Category hex tiles ────────────────────────────────────────────────────────
-
-const CAT_CONFIG = {
-  'Social Groups':           { color: '#5dcaa5', icon: '👥' },
-  'Professional Networking': { color: '#c49a28', icon: '💼' },
-  'Travel Buddies':          { color: '#4db6c4', icon: '✈️' },
-  'Project Collaboration':   { color: '#f08a4b', icon: '🚀' },
-  'Event Buddies':           { color: '#e86a7c', icon: '🎟️' },
-  'Specialized Groups':      { color: '#a59ae8', icon: '⭐' },
-};
-
-function HexTile({ categoryName }) {
-  const cfg = CAT_CONFIG[categoryName] ?? { color: '#8a8070', icon: '✦' };
-  return (
-    <div style={{ position: 'relative', width: 36, height: 36, flexShrink: 0 }}>
-      <svg viewBox="0 0 36 36" width={36} height={36} style={{ position: 'absolute', inset: 0 }}>
-        <polygon
-          points="18,2 33,10 33,26 18,34 3,26 3,10"
-          fill={cfg.color}
-          fillOpacity="0.18"
-          stroke={cfg.color}
-          strokeWidth="1.5"
-          strokeLinejoin="round"
-        />
-      </svg>
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '0.78rem',
-      }}>
-        {cfg.icon}
-      </div>
-    </div>
-  );
-}
-
-// ── JoinRequestCard (Part 5) — dark, hides at 0 ───────────────────────────────
-function JoinRequestCard({ incoming, hives }) {
-  const n = incoming.length;
-  if (n === 0) return null;
-
-  const topHiveId  = incoming[0]?.hive_id;
-  const topHive    = hives.find(h => h.hive_id === topHiveId) ?? incoming[0] ?? {};
-  const hiveName   = topHive.hive_name    ?? '';
-  const category   = topHive.category_name ?? '';
-
-  return (
-    <div className="home-jrc">
-      <div className="home-jrc-header">
-        <span className="home-jrc-chip">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-            <circle cx="9" cy="7" r="4" />
-            <line x1="19" y1="8" x2="19" y2="14" />
-            <line x1="22" y1="11" x2="16" y2="11" />
-          </svg>
-        </span>
-        <span className="home-jrc-label">JOIN REQUEST</span>
-      </div>
-      <div className="home-jrc-count">
-        {n} {n === 1 ? 'person wants' : 'people want'} to join
-      </div>
-      {(hiveName || category) && (
-        <div className="home-jrc-sub">
-          {hiveName}{category ? ` · ${category}` : ''}
-        </div>
-      )}
-      <Link to={`/hive/${topHiveId}`} className="home-jrc-btn">Review →</Link>
-    </div>
-  );
-}
-
-// ── HiveSummaryCard ────────────────────────────────────────────────────────
-function SummaryTile({ icon, value, label }) {
-  return (
-    <div className="hsum-tile">
-      <span className="hsum-tile-icon">{icon}</span>
-      <span className="hsum-tile-value">{value}</span>
-      <span className="hsum-tile-label">{label}</span>
-    </div>
-  );
-}
-
-function HiveSummaryCard({ hives, pendingCount, eventsTotal }) {
-  const hiveCount     = hives.length;
-  const totalNewPosts = hives.reduce((sum, h) => sum + Number(h.new_posts ?? 0), 0);
-
-  return (
-    <div className="home-card-shell">
-      <div className="hsum-header-row">
-        <div className="home-card-label" style={{ marginBottom: 0 }}>Your Hive Summary</div>
-        <Link to="/my-hive" className="hsum-link">View all →</Link>
-      </div>
-      <div className="hsum-grid">
-        <SummaryTile
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" />
-            </svg>
-          }
-          value={hiveCount}
-          label={`Hive${hiveCount !== 1 ? 's' : ''}`}
-        />
-        <SummaryTile
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          }
-          value={totalNewPosts}
-          label={`New Post${totalNewPosts !== 1 ? 's' : ''}`}
-        />
-        <SummaryTile
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
-          }
-          value={pendingCount}
-          label={`Request${pendingCount !== 1 ? 's' : ''}`}
-        />
-        <SummaryTile
-          icon={
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c49a28" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-          }
-          value={eventsTotal}
-          label={`Upcoming Event${eventsTotal !== 1 ? 's' : ''}`}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── Post feed skeleton ────────────────────────────────────────────────────────
-
-function FeedSkeleton() {
-  return (
-    <div className="post-feed--light">
-      {[1, 2, 3].map(i => (
-        <div key={i} className="post-skeleton--light">
-          <div className="post-skel-line--light" style={{ width: '40%' }} />
-          <div className="post-skel-line--light" style={{ width: '70%' }} />
-          <div className="post-skel-line--light" style={{ width: '55%' }} />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
+import '../styles/home-redesign.css';
 
 const TABS = ['For You', 'Following', 'Trending', 'Nearby'];
+const quickActions = [['people', 'Meet People', 'social'], ['calendar', 'Find an Event', 'event'], ['hive', 'Build a Project', 'project'], ['work', 'Network', 'professional']];
+function values(value) { if (Array.isArray(value)) return value; try { return JSON.parse(value || '[]'); } catch { return []; } }
+function Panel({ title, children, id }) { return <section className="th-panel" id={id}><h2>{title}</h2>{children}</section>; }
 
+function LeftSidebar({ user, profile, hives, requests, loading, onSaved }) {
+  const name = profile?.full_name || user?.fullName || 'Your profile';
+  const requestLink = requests[0] ? `/hive/${requests[0].hive_id}/requests` : '/my-hive';
+  return <aside className="th-left" aria-label="Your profile and shortcuts">
+    <section className="th-profile th-panel">
+      <div className="th-profile-cover" aria-hidden="true"><TrueHiveMark size={88} className="th-profile-cover-mark" /></div>
+      <div className="th-profile-avatar"><Avatar name={name} src={profile?.profile_photo_url || user?.profilePhotoUrl} size={88} /></div>
+      <h2>{name}</h2><p>{profile?.location || 'Add your city to find local Hives'}</p>
+      <p className="th-profile-bio">{profile?.headline || profile?.bio || 'Make room for meaningful connections.'}</p>
+      <div className="th-tags">{values(profile?.connection_purposes).slice(0, 3).map(p => <span key={p}>{p}</span>)}</div>
+      <div className="th-profile-stats"><div><strong>{loading ? '—' : hives.length}</strong><span>Hives</span></div><div><strong>{values(profile?.interests).length}</strong><span>Interests</span></div></div>
+      <Link className="th-outline" to="/profile">View Profile <span>→</span></Link>
+    </section>
+    <Panel title="Quick Access"><nav className="th-shortcuts" aria-label="Quick access">
+      {[['home','Home','/home'],['hive','Find Your Hive','/find-your-hive'],['work','My Hives','/my-hive'],['calendar','Events','#upcoming'],['people','Join Requests',requestLink],['message','Messages','/my-hive']].map(([icon,label,to]) => <Link key={label} to={to} className={label === 'Home' ? 'active' : ''}><HomeIcon name={icon} />{label}{label === 'My Hives' && hives.length > 0 && <b>{hives.length}</b>}{label === 'Join Requests' && requests.length > 0 && <b>{requests.length}</b>}</Link>)}
+      <button className="th-saved-link" onClick={onSaved}><HomeIcon name="save" />Saved Posts</button>
+    </nav><div className="th-network"><h3>Your Network</h3><p>Find people who share your interests through your Hives.</p><Link to="/find-your-hive">Explore connections →</Link></div></Panel>
+    <Panel title="Your Hives">{hives.length ? hives.map(h => <Link className="th-mine-row" key={h.hive_id} to={`/hive/${h.hive_id}`}><HomeIcon name="hive" /><span>{h.hive_name}<small>{h.category_name}</small></span></Link>) : <p>Join your first Hive to start connecting.</p>}</Panel>
+  </aside>;
+}
+function NearbyActivities({ events, location }) {
+  return <Panel title="Nearby Activities"><p className="th-location"><HomeIcon name="pin" size={16} />{location || 'Set your city in your profile'} <Link to="/profile/edit">Change</Link></p>
+    {events.length ? <div className="th-activities">{events.slice(0, 6).map(e => <Link className="th-activity" key={e.post_id} to={`/hive/${e.hive_id}`}>
+      {e.banner_url || e.media_url ? <img src={e.media_url || e.banner_url} alt="" loading="lazy" /> : <div className="th-activity-art"><HomeIcon name="calendar" size={38} /></div>}
+      <strong>{e.headline}</strong><small>{new Date(e.event_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</small><small>{e.event_location || e.hive_location}</small>
+    </Link>)}</div> : <div className="th-nearby-empty"><HomeIcon name="pin" size={28} /><div><p>Find your next shared experience.</p><Link className="th-empty-link" to="/find-your-hive">Explore nearby Hives →</Link></div></div>}</Panel>;
+}
 export default function HomePage() {
+  const { hash } = useLocation();
+  useEffect(() => { if (hash === '#upcoming') document.getElementById('upcoming')?.scrollIntoView(); }, [hash]);
+  const [params] = useSearchParams();
+  const [sharedPost, setSharedPost] = useState(null);
+  const [sharedError, setSharedError] = useState('');
+  const sharedId = params.get('post');
+  useEffect(() => { let cancelled = false; setSharedPost(null); setSharedError(''); if (sharedId) api.get(`/api/posts/${encodeURIComponent(sharedId)}`).then(d => { if (!cancelled) setSharedPost(d.post); }).catch(() => { if (!cancelled) setSharedError('This post is unavailable or you do not have permission to view it.'); }); return () => { cancelled = true; }; }, [sharedId]);
   const { user } = useAuth();
-  const navigate  = useNavigate();
-  const firstName = user?.fullName?.trim().split(/\s+/)[0] || 'there';
-
-  const [profile,        setProfile]        = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [hives,          setHives]          = useState([]);
-  const [hivesLoading,   setHivesLoading]   = useState(true);
-  const [nudgeDismissed, setNudgeDismissed] = useState(false);
-  const [activeTab,      setActiveTab]      = useState('For You');
-
-  // Incoming join requests (lifted from old RequestsPanel)
-  const [incomingReqs, setIncomingReqs] = useState([]);
-  const [reqsLoading,  setReqsLoading]  = useState(true);
-
-  // Feed state
-  const [posts,        setPosts]        = useState([]);
-  const [postsLoading, setPostsLoading] = useState(true);
-
-  // Upcoming events (shared between HiveSummaryCard and UpcomingEventsCard)
-  const [eventsData, setEventsData] = useState(null);
-
-  // Create dropdown + modal
-  const [dropdownOpen,  setDropdownOpen]  = useState(false);
-  const [postModalOpen, setPostModalOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  // Close dropdown on outside click
+  const [profile, setProfile] = useState(null);
+  const [hives, setHives] = useState([]);
+  const [hivesUnavailable, setHivesUnavailable] = useState(false);
+  const [requestsUnavailable, setRequestsUnavailable] = useState(false);
+  const [requests, setRequests] = useState([]);
+  const [unread, setUnread] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [dataError, setDataError] = useState('');
+  const [events, setEvents] = useState(null);
+  const [tab, setTab] = useState('For You');
+  const [posts, setPosts] = useState([]);
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [feedError, setFeedError] = useState('');
+  const [hasMore, setHasMore] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const [retry, setRetry] = useState(0);
+  const [composer, setComposer] = useState(null);
+  const [notice, setNotice] = useState('');
+  const generation = useRef(0);
   useEffect(() => {
-    function handleClick(e) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    let cancelled = false;
+    Promise.allSettled([api.get('/api/users/profile'), api.get('/api/hives/mine'), api.get('/api/events/upcoming')]).then(async results => {
+      if (cancelled) return;
+      const [p,h,e] = results;
+      if (p.status === 'fulfilled') setProfile(p.value.profile);
+      const mine = h.status === 'fulfilled' ? h.value.hives ?? [] : [];
+      setHivesUnavailable(h.status !== 'fulfilled');
+      setRequestsUnavailable(h.status !== 'fulfilled');
+      setHives(mine);
+      if (e.status === 'fulfilled') setEvents({ ...e.value, myEvents: (e.value.myEvents ?? []).filter(v => new Date(v.event_at) > new Date()), suggestedEvents: (e.value.suggestedEvents ?? []).filter(v => new Date(v.event_at) > new Date()) });
+      if (results.some(r => r.status === 'rejected')) setDataError('Some of your activity could not load. Refresh to try again.');
+      setLoading(false);
+      const counts = await Promise.allSettled(mine.map(v => api.get(`/api/hives/${v.hive_id}/messages/unread-count`)));
+      if (!cancelled && h.status === 'fulfilled' && counts.every(r => r.status === 'fulfilled')) setUnread(counts.reduce((n,r) => n + Number(r.value.unreadCount ?? r.value.count ?? 0), 0));
+      const pending = await Promise.allSettled(mine.filter(v => ['owner','admin'].includes(v.role)).map(v => api.get(`/api/hives/${v.hive_id}/requests`).then(d => (d.requests ?? []).map(r => ({ ...r, hive_id: v.hive_id })))));
+      if (!cancelled) { setRequests(pending.flatMap(r => r.status === 'fulfilled' ? r.value : [])); if (pending.some(r => r.status === 'rejected')) { setRequestsUnavailable(true); setDataError('Some join requests could not load. Refresh to try again.'); } }
+    });
+    return () => { cancelled = true; };
   }, []);
-
-  // Initial data fetch
   useEffect(() => {
-    api.get('/api/users/profile')
-      .then(data => setProfile(data.profile ?? null))
-      .catch(() => setProfile(null))
-      .finally(() => setProfileLoading(false));
-
-    api.get('/api/hives/mine')
-      .then(data => setHives(data.hives ?? []))
-      .catch(() => setHives([]))
-      .finally(() => setHivesLoading(false));
-
-    api.get('/api/events/upcoming')
-      .then(d => setEventsData({
-        myEvents:        d.myEvents ?? [],
-        suggestedEvents: d.suggestedEvents ?? [],
-        myEventsTotal:   Number(d.myEventsTotal ?? 0),
-      }))
-      .catch(() => setEventsData({ myEvents: [], suggestedEvents: [], myEventsTotal: 0 }));
-  }, []);
-
-  // Fetch incoming join requests for owned/admin hives after hives load
-  useEffect(() => {
-    if (hivesLoading) return;
-    const adminHives = hives.filter(h => ['owner', 'admin'].includes(h.role));
-    if (!adminHives.length) { setReqsLoading(false); setIncomingReqs([]); return; }
-    setReqsLoading(true);
-    Promise.all(
-      adminHives.map(h =>
-        api.get(`/api/hives/${h.hive_id}/requests`)
-          .then(d => (d.requests ?? []).map(r => ({
-            ...r, hive_id: h.hive_id, hive_name: h.hive_name, category_name: h.category_name,
-          })))
-          .catch(() => []),
-      ),
-    )
-      .then(groups => setIncomingReqs(groups.flat()))
-      .catch(() => setIncomingReqs([]))
-      .finally(() => setReqsLoading(false));
-  }, [hives, hivesLoading]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fetch feed whenever tab changes
-  useEffect(() => {
-    setPostsLoading(true);
-    api.get(`/api/posts/feed?tab=${encodeURIComponent(activeTab)}`)
-      .then(data => setPosts(data.posts ?? []))
-      .catch(() => setPosts([]))
-      .finally(() => setPostsLoading(false));
-  }, [activeTab]);
-
-  function handlePostCreated(newPost) {
-    setPosts(prev => [newPost, ...prev]);
-  }
-
-  const completeness = profile ? computeCompleteness(profile) : 0;
-  const showNudge = !profileLoading && !nudgeDismissed && profile && completeness < 100;
-
-  return (
-    <>
-      <Navbar />
-      <div className="home-page">
-        <div className="home-inner">
-
-          {/* ── 1. Action bar ── */}
-          <div className="home-action-bar">
-            <div className="home-search-wrap">
-              <span className="home-search-icon">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8" />
-                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-              </span>
-              <input
-                className="home-search-input"
-                placeholder="Search Hives, people, categories"
-                readOnly
-              />
-            </div>
-
-            {/* Create dropdown */}
-            <div className="home-create-wrap" ref={dropdownRef}>
-              <button
-                type="button"
-                className="home-create-btn"
-                onClick={() => setDropdownOpen(v => !v)}
-              >
-                <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>+</span>
-                <span className="home-create-label"> Create</span>
-              </button>
-
-              {dropdownOpen && (
-                <div className="home-create-dropdown">
-                  <button
-                    type="button"
-                    className="home-create-option"
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      setPostModalOpen(true);
-                    }}
-                  >
-                    📝 New Post
-                  </button>
-                  <button
-                    type="button"
-                    className="home-create-option"
-                    onClick={() => {
-                      setDropdownOpen(false);
-                      navigate('/create-hive');
-                    }}
-                  >
-                    🐝 New Hive
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── 2. Welcome header ── */}
-          <div className="home-welcome">
-            <Avatar
-              name={user?.fullName}
-              email={user?.email}
-              src={user?.profilePhotoUrl}
-              size={40}
-            />
-            <div>
-              <div className="home-welcome-name">Welcome back, {firstName}.</div>
-              <div className="home-welcome-sub">Here&apos;s what&apos;s happening in your Hives today.</div>
-            </div>
-          </div>
-
-          {/* ── 3. Profile nudge (conditional) ── */}
-          {showNudge && (
-            <div className="home-nudge">
-              <div className="home-nudge-left">
-                <div className="home-nudge-pct">{completeness}%</div>
-                <div className="home-nudge-text">
-                  Complete your profile to improve your matches.
-                  <Link to="/profile/edit" className="home-nudge-link">Finish profile →</Link>
-                </div>
-              </div>
-              <button
-                className="home-nudge-dismiss"
-                type="button"
-                onClick={() => setNudgeDismissed(true)}
-                aria-label="Dismiss"
-              >
-                ×
-              </button>
-            </div>
-          )}
-
-          {/* ── 4. Feed tabs ── */}
-          <div className="home-tabs" role="tablist">
-            {TABS.map(tab => (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab}
-                className={`home-tab${activeTab === tab ? ' active' : ''}`}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* ── 5. Two-column body ── */}
-          <div className="home-body">
-
-            {/* ── Feed column ── */}
-            <div className="home-feed-col">
-              {postsLoading ? (
-                <FeedSkeleton />
-              ) : posts.length === 0 ? (
-                <div className="home-feed-empty" style={{ background: '#fffdf9', border: '1px solid #e4dccb', borderRadius: 16 }}>
-                  <div className="home-feed-empty-icon">
-                    <svg viewBox="0 0 56 56" width={52} height={52} xmlns="http://www.w3.org/2000/svg">
-                      <polygon
-                        points="28,4 50,16 50,40 28,52 6,40 6,16"
-                        fill="none"
-                        stroke="#d8cdb4"
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                      />
-                      <polygon
-                        points="28,10 46,20 46,38 28,48 10,38 10,20"
-                        fill="rgba(196,154,40,0.07)"
-                        stroke="#c49a28"
-                        strokeWidth="1.5"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                  <div className="home-feed-empty-title" style={{ color: '#17120a' }}>Your feed is quiet — for now.</div>
-                  <div className="home-feed-empty-sub" style={{ color: '#8a7d5e' }}>
-                    Follow Hives and their updates, events, and milestones will show up here.
-                  </div>
-                  <Link to="/find-your-hive" className="home-feed-discover-btn">
-                    Discover Hives →
-                  </Link>
-                </div>
-              ) : (
-                <div className="post-feed post-feed--light">
-                  {posts.map(post => (
-                    <PostCard key={post.post_id} post={post} variant="light" />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* ── Right sidebar ── */}
-            <div className="home-sidebar">
-
-              {/* Your Hive Summary */}
-              {!hivesLoading && (
-                <HiveSummaryCard
-                  hives={hives}
-                  pendingCount={reqsLoading ? 0 : incomingReqs.length}
-                  eventsTotal={eventsData ? eventsData.myEventsTotal : 0}
-                />
-              )}
-
-              {/* Join request card (Part 5) — dark, hidden at 0 pending */}
-              {!reqsLoading && (
-                <JoinRequestCard incoming={incomingReqs} hives={hives} />
-              )}
-
-              {/* Your Hives */}
-              <div className="home-light-card home-sidebar-card">
-                <div className="home-sidebar-label">Your Hives</div>
-                {hivesLoading ? (
-                  <>
-                    <div className="post-skel-line--light" style={{ width: '75%', marginBottom: 8 }} />
-                    <div className="post-skel-line--light" style={{ width: '55%' }} />
-                  </>
-                ) : hives.length === 0 ? (
-                  <div className="home-sidebar-empty">
-                    No Hives yet.
-                    <br />
-                    <Link to="/find-your-hive" className="home-sidebar-empty-link">Find a Hive →</Link>
-                  </div>
-                ) : (
-                  <div className="home-hive-list">
-                    {hives.map(hive => {
-                      const unread = Number(hive.new_posts ?? 0) + Number(hive.new_members ?? 0);
-                      return (
-                        <Link
-                          key={hive.hive_id}
-                          to={`/hive/${hive.hive_id}`}
-                          className="home-hive-row"
-                        >
-                          <div className="home-hive-tile-wrap">
-                            <HexTile categoryName={hive.category_name} />
-                            {unread > 0 && <span className="home-hive-unread-dot" />}
-                          </div>
-                          <div className="home-hive-info">
-                            <div className="home-hive-name-row">
-                              <span className="home-hive-name">{hive.hive_name}</span>
-                              {unread > 0 && (
-                                <span className="home-hive-unread-badge">{unread} new</span>
-                              )}
-                            </div>
-                            <div className="home-hive-meta">
-                              {hive.member_count ?? 1} member{Number(hive.member_count) !== 1 ? 's' : ''} · {hive.role}
-                            </div>
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Upcoming Events */}
-              <UpcomingEventsCard data={eventsData} setData={setEventsData} />
-
-              {/* You May Like */}
-              <SuggestedHivesCard />
-
-              {/* Trending Categories */}
-              <TrendingCategoriesCard />
-
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Create Post modal */}
-      {postModalOpen && (
-        <CreatePostModal
-          hives={hives}
-          onClose={() => setPostModalOpen(false)}
-          onCreated={handlePostCreated}
-        />
-      )}
-    </>
-  );
+    const id = ++generation.current;
+    setFeedLoading(true); setFeedError('');
+    api.get(`/api/posts/feed?tab=${encodeURIComponent(tab)}&limit=20&offset=${offset}`).then(d => {
+      if (generation.current !== id) return;
+      setPosts(prev => { const combined = offset ? [...prev, ...(d.posts ?? [])] : d.posts ?? []; return [...new Map(combined.map(p => [p.post_id,p])).values()]; });
+      setHasMore((d.posts ?? []).length === 20);
+    }).catch(() => { if (generation.current === id) setFeedError('Your feed could not load. Please try again.'); }).finally(() => { if (generation.current === id) setFeedLoading(false); });
+    return () => { generation.current++; };
+  }, [tab, offset, retry]);
+  const firstName = (profile?.full_name || user?.fullName || 'there').split(' ')[0];
+  return <><Navbar /><main className="th-home"><div className="th-home-grid">
+    <LeftSidebar user={user} profile={profile} hives={hives} requests={requests} loading={loading || hivesUnavailable} onSaved={() => { setTab('Saved'); setOffset(0); setPosts([]); }} />
+    <div className="th-main">
+      <header className="th-welcome"><h1>Welcome back, {firstName} <span>👋</span></h1><p>What's your vibe today?</p></header>
+      <div className="th-quick-actions">{quickActions.map(([icon,label,category]) => <Link key={label} to={`/category-deep-dive?category=${category}`}><HomeIcon name={icon} />{label}</Link>)}</div>
+      {dataError && <p role="alert" className="th-feedback">{dataError}</p>}
+      <section className="th-panel th-composer" aria-label="Create a post"><div className="th-composer-input"><Avatar name={user?.fullName} src={user?.profilePhotoUrl} size={42} /><button onClick={() => setComposer('update')}>Share something with your Hives…</button></div><div className="th-composer-actions"><button onClick={() => setComposer('update')}><HomeIcon name="post" />Post</button><button onClick={() => setComposer('event')}><HomeIcon name="calendar" />Event</button><Link to="/category-deep-dive?category=social"><HomeIcon name="people" />Find People</Link><Link className="th-outline" to="/create-hive">＋ Create Hive</Link></div></section>
+      {notice && <p role="status" className="th-feedback">{notice}</p>}
+      {profile && (!profile.bio || !values(profile.interests).length) && <p className="th-feedback">Complete your profile to improve your matches. <Link to="/profile/edit">Finish profile →</Link></p>}
+      <div className="th-tabs" role="tablist" aria-label="Feed categories">{[...TABS, ...(tab === 'Saved' ? ['Saved'] : [])].map(t => <button key={t} role="tab" aria-selected={tab === t} aria-controls="home-feed" id={`tab-${t.replaceAll(' ','-')}`} onClick={() => { setTab(t); setOffset(0); setPosts([]); }} className={tab === t ? 'active' : ''}>{t}</button>)}</div>
+      <section id="home-feed" role="tabpanel" aria-labelledby={`tab-${tab.replaceAll(' ','-')}`} aria-busy={feedLoading} className="th-feed">
+        {sharedError && <p role="alert" className="th-feedback">{sharedError}</p>}
+        {sharedPost && <section aria-label="Shared post"><h2>Shared with you</h2><PostCard key={`shared-${sharedPost.post_id}`} post={sharedPost} variant="light" homeLayout /></section>}
+        {posts.map(post => <PostCard key={post.post_id} post={post} variant="light" homeLayout />)}
+        {feedLoading && <div className="th-panel th-skeleton" role="status" aria-label="Loading feed"><i /><i /><i /></div>}
+        {feedError && <div className="th-panel" role="alert"><p>{feedError}</p><button className="th-outline" onClick={() => setRetry(v => v+1)}>Try again</button></div>}
+        {!feedLoading && !feedError && !posts.length && <section className="th-panel th-empty"><HomeIcon name="hive" size={54} /><h2>{tab === 'Nearby' ? 'Connections closer to home' : 'Your next connection starts here'}</h2><p>{tab === 'Nearby' ? 'No posts match your saved city yet. Add your location or explore local Hives.' : 'Join or follow a Hive to bring conversations, shared interests, and plans into your feed.'}</p><Link className="th-outline" to="/find-your-hive">Find Your Hive →</Link></section>}
+        {hasMore && !feedLoading && <button className="th-outline th-load-more" onClick={() => setOffset(v => v+20)}>Load more</button>}
+      </section>
+    </div>
+    <aside className="th-right" aria-label="Activity and discovery"><Panel title="Your Hive Pulse"><div className="th-pulse">{[['message', unread, 'Unread Messages', '/my-hive'],['calendar', events?.myEventsTotal, 'Upcoming Plans', '#upcoming'],['people', loading || requestsUnavailable ? null : requests.length, 'Join Requests', requests[0] ? `/hive/${requests[0].hive_id}/requests` : '/my-hive'],['hive', loading || hivesUnavailable ? null : hives.length, 'Active Hives', '/my-hive']].map(([icon,count,label,to]) => <Link to={to} key={label}><HomeIcon name={icon} /><div><strong>{count ?? '—'}</strong><span>{label}</span></div></Link>)}</div></Panel>
+      <SuggestedHivesCard />
+      <div id="upcoming"><UpcomingEventsCard data={events} setData={setEvents} /></div>
+      <NearbyActivities events={events?.suggestedEvents ?? []} location={profile?.location} />
+      <TrendingCategoriesCard />
+    </aside>
+  </div></main>{composer && <CreatePostModal hives={hives} initialPostType={composer} onClose={() => setComposer(null)} onCreated={p => { setTab('For You'); setOffset(0); setPosts(prev => [p,...prev.filter(v => v.post_id !== p.post_id)]); setNotice('Your post was published.'); }} />}</>;
 }

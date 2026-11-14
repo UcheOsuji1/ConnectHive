@@ -8,6 +8,8 @@ import ScrollToTop from './components/ScrollToTop';
 import TrueHiveMark from './components/TrueHiveMark.jsx';
 import './lib/posthog';
 import './styles/globals.css';
+import { ThemeProvider } from './context/ThemeContext.jsx';
+import './styles/home-redesign.css';
 
 // Network blips, not real bugs — don't page anyone over these. Query strings
 // are stripped because verify/reset/unsubscribe links carry a bearer token.
@@ -76,7 +78,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <ScrollToTop />
       <AuthProvider>
         <Sentry.ErrorBoundary fallback={<ErrorFallback />}>
-          <App />
+          <ThemeProvider><App /></ThemeProvider>
         </Sentry.ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>

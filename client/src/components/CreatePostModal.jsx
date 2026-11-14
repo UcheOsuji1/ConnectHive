@@ -1,14 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api';
 import posthog, { isPostHogEnabled, posthogLog } from '../lib/posthog';
 import '../styles/post.css';
 
-export default function CreatePostModal({ hives: allHives, defaultHiveId, onClose, onCreated }) {
+export default function CreatePostModal({ hives: allHives, defaultHiveId, initialPostType = 'update', onClose, onCreated }) {
+  const modalRef = useRef(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    const dialog = modalRef.current;
+    dialog?.querySelector('button')?.focus();
+    function onKey(e) {
+      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Tab') return;
+      const controls = [...dialog.querySelectorAll('button:not(:disabled), input, select, textarea, a[href]')].filter(el => el.offsetParent !== null);
+      const first = controls[0], last = controls.at(-1);
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    }
+    dialog.addEventListener('keydown', onKey);
+    return () => { dialog.removeEventListener('keydown', onKey); previous?.focus(); };
+  }, [onClose]);
   const hives = allHives.filter(h => h.role === 'owner' || h.role === 'admin');
   const [hiveId, setHiveId] = useState(defaultHiveId || hives[0]?.hive_id || '');
-  const [postType,      setPostType]      = useState('update');
+  const [postType,      setPostType]      = useState(initialPostType);
   const [headline,      setHeadline]      = useState('');
   const [body,          setBody]          = useState('');
+  const [photo, setPhoto] = useState(null);
   const [eventAt,       setEventAt]       = useState('');
   const [eventLocation, setEventLocation] = useState('');
   // Visibility defaults to 'hive' every time the modal opens — never sticky.
@@ -26,13 +43,25 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
     setSaving(true);
     setError(null);
     try {
+      let mediaUrl = null;
+      if (photo) {
+        const sig = await api.post(`/api/hives/${hiveId}/uploads/signature`, {});
+        const form = new FormData();
+        form.append('file', photo);
+        for (const key of ['api_key', 'timestamp', 'signature', 'folder']) form.append(key, String(sig[key]));
+        const upload = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`, { method: 'POST', body: form });
+        const result = await upload.json();
+        if (!upload.ok) throw new Error(result.error?.message || 'Photo upload failed.');
+        mediaUrl = result.secure_url;
+      }
       const data = await api.post('/api/posts', {
+        mediaUrl,
         hiveId,
         headline: headline.trim(),
         body: body.trim() || null,
         postType,
         visibility,
-        eventAt: postType === 'event' && eventAt ? eventAt : null,
+        eventAt: postType === 'event' && eventAt ? new Date(eventAt).toISOString() : null,
         eventLocation: postType === 'event' && eventLocation.trim() ? eventLocation.trim() : null,
       });
       if (isPostHogEnabled) {
@@ -48,7 +77,7 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
       onCreated?.(data.post);
       onClose();
     } catch (err) {
-      setError(err.data?.error ?? 'Failed to create post. Try again.');
+      setError(err.data?.error ?? err.message ?? 'Failed to create post. Try again.');
     } finally {
       setSaving(false);
     }
@@ -56,9 +85,9 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
 
   return (
     <div className="cpm-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="cpm-modal">
+      <div className="cpm-modal" ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="composer-title">
         <div className="cpm-header">
-          <div className="cpm-title">New Post</div>
+          <div className="cpm-title" id="composer-title">New Post</div>
           <button type="button" className="cpm-close" onClick={onClose} aria-label="Close">×</button>
         </div>
 
@@ -131,6 +160,7 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
           </div>
 
           {/* Event fields */}
+          <div className="cpm-field"><label className="cpm-label" htmlFor="post-photo">Photo (optional, up to 10 MB)</label><input id="post-photo" type="file" accept="image/jpeg,image/png,image/webp" disabled={saving || !hives.length} onChange={e => { const file = e.target.files?.[0]; if (file && (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024)) { setError('Choose a JPG, PNG, or WebP image smaller than 10 MB.'); e.target.value = ''; setPhoto(null); } else { setPhoto(file || null); setError(null); } }} />{photo && <button type="button" onClick={() => { setPhoto(null); const input = document.getElementById('post-photo'); if (input) input.value = ''; }}>Remove photo</button>}</div>
           {postType === 'event' && (
             <>
               <div className="cpm-field">
@@ -138,9 +168,9 @@ export default function CreatePostModal({ hives: allHives, defaultHiveId, onClos
                 <input
                   className="cpm-input"
                   type="datetime-local"
+                  required
                   value={eventAt}
                   onChange={e => setEventAt(e.target.value)}
-                  style={{ colorScheme: 'dark' }}
                 />
               </div>
               <div className="cpm-field">

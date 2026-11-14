@@ -7,6 +7,8 @@ import ReactionPicker from './ReactionPicker';
 import EmojiPicker from './EmojiPicker';
 import FollowButton from './FollowButton';
 import Avatar from './Avatar.jsx';
+import HomeIcon from './HomeIcon.jsx';
+import PostOverflowMenu from './PostOverflowMenu.jsx';
 import BlockModal from './BlockModal.jsx';
 import ReportModal from './ReportModal.jsx';
 import HiddenPlaceholder from './HiddenPlaceholder.jsx';
@@ -69,6 +71,7 @@ function BannerStrip({ url }) {
           src={url}
           alt=""
           className="post-banner-img"
+          loading="lazy"
           onError={() => setFailed(true)}
         />
       )}
@@ -147,9 +150,38 @@ function ReplyBox({ onSubmit, onCancel, submitting }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function PostCard({ post: initialPost, variant }) {
+export default function PostCard({ post: initialPost, variant, homeLayout = false }) {
   const { user } = useAuth();
   const [post, setPost] = useState(initialPost);
+  const [deleted, setDeleted] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editHeadline, setEditHeadline] = useState(initialPost.headline || '');
+  const [editBody, setEditBody] = useState(initialPost.body || '');
+  const [actionError, setActionError] = useState('');
+  const [actionBusy, setActionBusy] = useState(false);
+  const [shareStatus, setShareStatus] = useState('');
+  async function runAction(action) {
+    if (actionBusy) return;
+    setActionBusy(true); setActionError('');
+    try { await action(); } catch (e) { setActionError(e.data?.error || e.message || 'Please try again.'); }
+    finally { setActionBusy(false); }
+  }
+
+  const savePost = () => runAction(async () => {
+    const data = await api.put(`/api/posts/${post.post_id}/save`, { saved: !post.is_saved });
+    setPost(p => ({ ...p, is_saved: data.saved }));
+  });
+  const copyLink = () => runAction(async () => {
+    await navigator.clipboard.writeText(`${window.location.origin}/home?post=${post.post_id}`);
+    setShareStatus('Post link copied.');
+  });
+  const sharePost = () => runAction(async () => {
+    const url = `${window.location.origin}/home?post=${post.post_id}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: post.headline, url }); }
+      catch (e) { if (e.name !== 'AbortError') throw e; }
+    } else { await navigator.clipboard.writeText(url); setShareStatus('Post link copied.'); }
+  });
 
   // Reaction picker
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -244,6 +276,7 @@ export default function PostCard({ post: initialPost, variant }) {
         reaction_summary: data.reaction_summary,
       }));
     } catch {
+      setActionError('Your reaction could not be saved. Please try again.');
       setPost(p => ({ ...p, ...prev }));
     } finally {
       setReacting(false);
@@ -292,7 +325,7 @@ export default function PostCard({ post: initialPost, variant }) {
       setComments(prev => [...(prev ?? []), { ...data.comment, replies: [] }]);
       setPost(p => ({ ...p, comment_count: Number(p.comment_count) + 1 }));
       setCommentText('');
-    } catch { /* swallow */ }
+    } catch { setActionError('Your comment could not be posted. Please try again.'); }
     finally { setSubmittingTop(false); }
   }
 
@@ -344,6 +377,7 @@ export default function PostCard({ post: initialPost, variant }) {
   const myR            = post.my_reaction ? reactionByKey(post.my_reaction) : null;
 
   // ── Special card types (after all hooks) ───────────────────────────────────
+  if (deleted) return null;
   if (post.post_type === 'milestone') {
     const count    = Number(post.member_count ?? 0);
     const cardCls  = `post-card post-card--milestone${variant === 'light' ? ' post-card--light' : ''}`;
@@ -464,7 +498,37 @@ export default function PostCard({ post: initialPost, variant }) {
 
   return (
     <div className={`post-card${variant === 'light' ? ' post-card--light' : ''}${hasBanner ? ' post-card--banner' : ''}`}>
+      {actionError && <p role="alert" className="th-feedback">{actionError}</p>}
+      {shareStatus && <p role="status">{shareStatus}</p>}
+      {!homeLayout && <div className="th-post-tools">
+        <button type="button" disabled={actionBusy} aria-pressed={!!post.is_saved} onClick={() => runAction(async () => { const d = await api.put(`/api/posts/${post.post_id}/save`, { saved: !post.is_saved }); setPost(p => ({ ...p, is_saved: d.saved })); })}>{post.is_saved ? 'Saved ✓' : 'Save'}</button>
+        <button type="button" onClick={() => runAction(async () => { const url = `${window.location.origin}/home?post=${post.post_id}`; if (navigator.share) { try { await navigator.share({ title: post.headline, url }); } catch (e) { if (e.name !== 'AbortError') throw e; } } else { await navigator.clipboard.writeText(url); setShareStatus('Post link copied.'); } })}>Share ↗</button>
+        {post.author_user_id === user?.userId && <><button type="button" disabled={actionBusy} onClick={() => setEditing(v => !v)}>Edit</button><button type="button" disabled={actionBusy} onClick={() => { if (window.confirm('Delete this post? This cannot be undone.')) runAction(async () => { await api.delete(`/api/posts/${post.post_id}`); setDeleted(true); }); }}>Delete</button></>}
+      </div>}
+      {editing && <form className="th-edit-post" onSubmit={e => { e.preventDefault(); runAction(async () => { const d = await api.patch(`/api/posts/${post.post_id}`, { headline: editHeadline, body: editBody }); setPost(p => ({ ...p, ...d })); setEditing(false); }); }}><label>Headline<input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} maxLength={120} required /></label><label>Details<textarea value={editBody} onChange={e => setEditBody(e.target.value)} maxLength={10000} /></label><button type="submit" disabled={actionBusy}>Save changes</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></form>}
 
+      {homeLayout ? <header className="th-post-header">
+        <Avatar name={post.author_name} src={post.author_photo} size={42} />
+        <div className="th-post-identity">
+          {post.author_deleted || !post.author_user_id ? <strong>{post.author_deleted ? 'Deleted member' : 'Hive Member'}</strong> : <Link className="th-post-author" to={`/profile/${post.author_user_id}`}>{post.author_name || 'Hive Member'}</Link>}
+          <div><span>in </span><Link to={`/hive/${post.hive_id}`}>{post.hive_name}</Link></div>
+          {post.category_name && <span className="th-post-category">{post.category_name}</span>}
+        </div>
+        <time className="th-post-time" dateTime={post.created_at}>{relativeTime(post.created_at)}</time>
+        <PostOverflowMenu>
+          {post.author_user_id === user?.userId && <>
+            <button type="button" disabled={actionBusy} onClick={() => setEditing(v => !v)}>Edit post</button>
+            <button type="button" disabled={actionBusy} onClick={() => {
+              if (window.confirm('Delete this post? This cannot be undone.')) runAction(async () => {
+                await api.delete(`/api/posts/${post.post_id}`); setDeleted(true);
+              });
+            }}>Delete post</button>
+          </>}
+          <button type="button" disabled={actionBusy} onClick={copyLink}>Copy link</button>
+          {post.author_user_id && post.author_user_id !== user?.userId && !isPostHidden && <button type="button" onClick={() => setReportTarget({ targetType: 'post', targetId: post.post_id, personName: post.author_deleted ? null : post.author_name?.split(' ')[0] })}>Report post</button>}
+          {post.author_user_id && post.author_user_id !== user?.userId && !post.author_deleted && <button type="button" onClick={() => setBlockTarget({ userId: post.author_user_id, name: post.author_name?.split(' ')[0] || 'this member' })}>Block member</button>}
+        </PostOverflowMenu>
+      </header> : <>
       {hasBanner ? (
         <>
           {/* ── Hive banner ── */}
@@ -523,6 +587,8 @@ export default function PostCard({ post: initialPost, variant }) {
       </div>
 
       {/* ── Event badge ── */}
+      </>}
+      {homeLayout && followBtn && <div className="th-post-follow">{followBtn}</div>}
       {post.post_type === 'event' && <div className="post-event-badge">🗓 Event</div>}
 
       {/* ── Content ── */}
@@ -532,6 +598,7 @@ export default function PostCard({ post: initialPost, variant }) {
         <>
           <div className="post-headline">{post.headline}</div>
           {post.body && <div className="post-body">{post.body}</div>}
+          {post.media_url && <img className="th-post-photo" src={post.media_url} alt="Post attachment" loading="lazy" />}
         </>
       )}
 
@@ -551,7 +618,7 @@ export default function PostCard({ post: initialPost, variant }) {
       )}
 
       {/* ── Reaction summary ── */}
-      {reactionCount > 0 && (
+      {!homeLayout && reactionCount > 0 && (
         <div className="post-reaction-summary">
           <div className="post-summary-faces">
             {topReactions.map(r => (
@@ -573,7 +640,11 @@ export default function PostCard({ post: initialPost, variant }) {
       )}
 
       {/* ── Footer ── */}
-      <div className="post-footer">
+      {homeLayout && (reactionCount > 0 || commentCount > 0) && <div className="th-engagement-info">
+        {reactionCount > 0 && <button type="button" onClick={handleOpenReactors}><HomeIcon name="like" size={15} />{reactionCount} {reactionCount === 1 ? 'reaction' : 'reactions'}</button>}
+        {commentCount > 0 && <button type="button" onClick={handleToggleComments}>{commentCount} {commentCount === 1 ? 'comment' : 'comments'}</button>}
+      </div>}
+      <div className={`post-footer${homeLayout ? ' th-social-actions' : ''}`}>
         {/* Reaction button + hover picker */}
         <div
           className="post-reaction-wrap"
@@ -589,7 +660,7 @@ export default function PostCard({ post: initialPost, variant }) {
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           >
-            <span className="post-react-icon">{myR ? myR.emoji : '👍'}</span>
+            <span className="post-react-icon">{homeLayout && !myR ? <HomeIcon name="like" size={20} /> : myR ? myR.emoji : '👍'}</span>
             <span>{myR ? myR.label : 'Like'}</span>
           </button>
           {pickerVisible && (
@@ -601,14 +672,18 @@ export default function PostCard({ post: initialPost, variant }) {
         </div>
 
         <button type="button" className="post-comment-btn" onClick={handleToggleComments}>
-          <span>💬</span>
+          <span>{homeLayout ? <HomeIcon name="message" size={20} /> : '💬'}</span>
           <span>
-            {commentCount > 0
+            {homeLayout ? 'Comment' : commentCount > 0
               ? `${commentCount} Comment${commentCount !== 1 ? 's' : ''}`
               : 'Comment'}
             {showComments ? ' ▲' : ''}
           </span>
         </button>
+        {homeLayout && <>
+          <button type="button" className="th-social-button" disabled={actionBusy} onClick={sharePost}><HomeIcon name="share" size={20} /><span>Share</span></button>
+          <button type="button" className="th-social-button" disabled={actionBusy} aria-pressed={!!post.is_saved} onClick={savePost}><HomeIcon name="save" size={20} /><span>{post.is_saved ? 'Saved' : 'Save'}</span></button>
+        </>}
       </div>
 
       {/* ── Comments panel ── */}

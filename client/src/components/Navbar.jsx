@@ -7,15 +7,20 @@ import TrueHiveMark from './TrueHiveMark.jsx';
 import TrueHiveWordmark from './TrueHiveWordmark.jsx';
 import VerifyStrip from './VerifyStrip.jsx';
 import PublicHeader from './PublicHeader.jsx';
+import { useTheme } from '../context/ThemeContext.jsx';
+import HomeIcon from './HomeIcon.jsx';
 
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
   { to: '/find-your-hive', label: 'Find Your Hive' },
   { to: '/my-hive',        label: 'My Hives' },
-  { to: '/profile',        label: 'Profile' },
+  { to: '/home#upcoming', label: 'Events' },
+  { to: '/my-hive', label: 'Messages' },
 ];
 
 export default function Navbar() {
+  const { theme, setTheme } = useTheme();
+  const [search, setSearch] = useState('');
   const [scrolled,     setScrolled]     = useState(false);
   const [menuOpen,     setMenuOpen]     = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -40,8 +45,7 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const isActive = (to) =>
-    location.pathname === to || location.pathname.startsWith(to + '/');
+  const isActive = (to, label) => label !== 'Messages' && (to.includes('#') ? location.pathname + location.hash === to : !location.hash && (location.pathname === to || location.pathname.startsWith(to + '/')));
 
   const firstName = user?.fullName?.trim().split(/\s+/)[0]
     || user?.email?.split('@')[0]
@@ -58,7 +62,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`navbar${scrolled ? ' scrolled' : ''}`} role="navigation" aria-label="Main navigation">
+      <nav className={`navbar app-navbar${scrolled ? ' scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="navbar-inner">
 
           <Link to={user ? '/home' : '/'} className="nav-logo" aria-label="TrueHive home">
@@ -68,10 +72,12 @@ export default function Navbar() {
 
           {loading ? null : user ? (
             <>
+              <form className="app-nav-search" role="search" onSubmit={e => { e.preventDefault(); if (search.trim().length > 1) navigate(`/search?q=${encodeURIComponent(search.trim())}`); }}><HomeIcon name="search" size={19} /><input aria-label="Search Hives" placeholder="Search TrueHive…" value={search} onChange={e => setSearch(e.target.value)} minLength={2} /></form>
               <ul className="nav-links" role="list">
-                {AUTH_NAV.map(({ to, label }) => (
-                  <li key={to}>
-                    <Link to={to} style={isActive(to) ? { color: '#c49a28' } : undefined}>
+                {AUTH_NAV.map(({ to, label }, index) => (
+                  <li key={label}>
+                    <Link to={to} className={isActive(to, label) ? 'app-nav-active' : undefined} aria-current={isActive(to, label) ? 'page' : undefined}>
+                      <HomeIcon name={['home', 'hive', 'people', 'calendar', 'message'][index]} />
                       {label}
                     </Link>
                   </li>
@@ -79,7 +85,7 @@ export default function Navbar() {
               </ul>
               <div className="nav-right">
                 <NotificationBell />
-                <div className="nav-user" ref={menuRef}>
+                <div className="nav-user" ref={menuRef} onKeyDown={e => { if (e.key === 'Escape') { setUserMenuOpen(false); menuRef.current?.querySelector('button')?.focus(); } }}>
                   <button
                     className="nav-user-btn"
                     aria-haspopup="menu"
@@ -102,6 +108,7 @@ export default function Navbar() {
                       <div className="nav-user-menu-divider" />
                       <Link to="/profile"  className="nav-user-menu-item" role="menuitem">Profile</Link>
                       <Link to="/settings" className="nav-user-menu-item" role="menuitem">Settings</Link>
+                      <label className="app-theme-control">Appearance<select aria-label="Appearance" value={theme} onChange={e => setTheme(e.target.value)}><option value="system">System default</option><option value="light">Light</option><option value="dark">Dark</option></select></label>
                       <button className="nav-user-menu-item nav-user-menu-logout" role="menuitem" onClick={handleLogout}>Log out</button>
                     </div>
                   )}
@@ -138,7 +145,7 @@ export default function Navbar() {
         <VerifyStrip email={user.email} />
       )}
 
-      <div className={`mobile-menu${menuOpen ? ' open' : ''}`} role="dialog" aria-label="Mobile navigation">
+      <div className={`mobile-menu app-mobile-menu${menuOpen ? ' open' : ''}`} role="dialog" aria-label="Mobile navigation" aria-hidden={!menuOpen} inert={menuOpen ? undefined : ''} onKeyDown={e => { if (e.key === 'Escape') { setMenuOpen(false); document.querySelector('.app-navbar .hamburger')?.focus(); } }}>
         {loading ? null : user ? (
           <>
             <div className="mobile-user-header">
@@ -150,8 +157,8 @@ export default function Navbar() {
             </div>
             <ul>
               {AUTH_NAV.map(({ to, label }) => (
-                <li key={to}>
-                  <Link to={to} style={isActive(to) ? { color: '#c49a28' } : undefined}>
+                  <li key={label}>
+                  <Link to={to} className={isActive(to, label) ? 'app-nav-active' : undefined} aria-current={isActive(to, label) ? 'page' : undefined}>
                     {label}
                   </Link>
                 </li>
