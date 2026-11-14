@@ -67,6 +67,15 @@ export async function assertNoHorizontalOverflow(page) {
   // nothing visible or reachable. That parent's clip box must itself fit the
   // viewport for the clip to count — otherwise the "clip" is just as
   // overflowing as the element inside it.
+  //
+  // The same reasoning covers overflow-x: auto/scroll, not just hidden/clip —
+  // a deliberately horizontally-scrollable container (a mobile tab bar, a
+  // card carousel) reaches its off-screen content by scroll, same as a
+  // clipped one reaches nothing. Prompt 84 traced .ic-card and .hdl-nav-item
+  // (named in three straight reports) to exactly this: both sit inside an
+  // ancestor with overflow-x: auto whose own box fits the viewport, per the
+  // "horizontal scroll strip, next card peeking" / "Nav becomes a scrollable
+  // tab row" comments already in their stylesheets. Not a layout bug.
   const overflowing = await page.evaluate(() => {
     const vw = document.documentElement.clientWidth;
     const bad = [];
@@ -77,7 +86,9 @@ export async function assertNoHorizontalOverflow(page) {
       let clipped = false;
       for (let a = el.parentElement; a; a = a.parentElement) {
         const cs = getComputedStyle(a);
-        if (cs.overflowX === 'hidden' || cs.overflowX === 'clip' || cs.overflow === 'hidden') {
+        const containsOverflow = cs.overflowX === 'hidden' || cs.overflowX === 'clip' || cs.overflow === 'hidden'
+          || cs.overflowX === 'auto' || cs.overflowX === 'scroll';
+        if (containsOverflow) {
           const ar = a.getBoundingClientRect();
           if (ar.right <= vw + 1) { clipped = true; break; }
         }

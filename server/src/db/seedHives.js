@@ -47,19 +47,24 @@ const SEED_HIVES = [
   // ── Professional Networking ────────────────────────────────────────────
   { name: 'LA Design Critique Circle', category: 'Professional Networking', location: 'Los Angeles, CA',
     description: 'Designers sharing portfolio work for honest, constructive feedback in a monthly critique session.',
-    tags: ['UX design', 'product design', 'portfolio'] },
+    tags: ['UX design', 'product design', 'portfolio'],
+    collab: { pro_industries: ['design_and_creative'], career_stages: ['early', 'mid'], audience_scope: 'same' } },
   { name: 'Black Women Founders LA', category: 'Professional Networking', location: 'Los Angeles, CA',
     description: 'Black women running businesses, sharing vendor contacts, grant leads, and marketing tips.',
-    tags: ['entrepreneurship', 'small business', 'marketing'] },
+    tags: ['entrepreneurship', 'small business', 'marketing'],
+    collab: { pro_industries: ['startups'], career_stages: [], audience_scope: 'cross' } },
   { name: 'New Grad SWE Accountability', category: 'Professional Networking', location: 'Los Angeles, CA',
     description: 'New grads job hunting in software: weekly LeetCode sessions, mock interviews, and a shared referral board.',
-    tags: ['software engineering', 'interviews', 'career'] },
+    tags: ['software engineering', 'interviews', 'career'],
+    collab: { pro_industries: ['tech_software'], career_stages: ['student', 'early'], audience_scope: 'same' } },
   { name: 'Clinical to Corporate', category: 'Professional Networking', location: 'Los Angeles, CA',
     description: 'Healthcare workers moving from clinical roles into admin, operations, and health tech.',
-    tags: ['healthcare', 'career change', 'management'] },
+    tags: ['healthcare', 'career change', 'management'],
+    collab: { pro_industries: ['healthcare', 'consulting'], career_stages: ['mid', 'senior'], audience_scope: 'cross' } },
   { name: 'Indie Post-Production Network', category: 'Professional Networking', location: 'Burbank, CA',
     description: 'Freelance editors, colorists, and sound designers referring overflow work to each other.',
-    tags: ['video editing', 'film', 'freelancing'] },
+    tags: ['video editing', 'film', 'freelancing'],
+    collab: { pro_industries: ['film_and_media', 'entertainment'], career_stages: ['early', 'mid'], audience_scope: 'same' } },
 
   // ── Travel Buddies ──────────────────────────────────────────────────────
   { name: 'Tokyo Cherry Blossom Trip 2027', category: 'Travel Buddies', location: 'Los Angeles, CA',
@@ -81,19 +86,69 @@ const SEED_HIVES = [
   // ── Project Collaboration ───────────────────────────────────────────────
   { name: 'Build a Fitness App MVP in 90 Days', category: 'Project Collaboration', location: 'Los Angeles, CA',
     description: 'A developer-led team building a fitness app MVP. Looking for a designer and a marketer.',
-    tags: ['app development', 'fitness', 'startups'] },
+    tags: ['app development', 'fitness', 'startups'],
+    collab: {
+      project_types: ['app_software'], project_stage: 'in_progress', commitment: 'side_project',
+      work_style: 'weekly_sync', project_timeline: 'few_months',
+      compensation: ['equity', 'portfolio'], project_industries: ['tech_software', 'health_wellness'],
+      roles: [
+        { title: 'UI/UX designer', slots: 1, skills: ['🖥️ UI / UX Design'] },
+        { title: 'Marketer', slots: 1, skills: ['📱 Social Media Marketing'] },
+        { title: 'Backend developer', slots: 1, skills: ['🗄️ Backend / APIs'] },
+      ],
+    } },
   { name: 'Indie Short Film — Crew Wanted', category: 'Project Collaboration', location: 'Los Angeles, CA',
     description: 'A finished short film script looking for a DP, editor, and actors to bring it to life.',
-    tags: ['filmmaking', 'acting', 'screenwriting'] },
+    tags: ['filmmaking', 'acting', 'screenwriting'],
+    collab: {
+      project_types: ['film_video'], project_stage: 'in_progress', commitment: 'side_project',
+      work_style: 'weekly_sync', project_timeline: 'few_months',
+      compensation: ['portfolio', 'revenue_share'], project_industries: ['film_entertainment'],
+      roles: [
+        { title: 'Cinematographer', slots: 1, skills: ['📸 Photography'], experience_level: 'some' },
+        { title: 'Editor', slots: 1, skills: ['📹 Video Editing'] },
+        { title: 'Actor', slots: 2, skills: ['🎭 Acting / Theater', '🎬 Film / TV Acting'] },
+        { title: 'Sound mixer', slots: 1, skills: ['🎚️ Mixing / Mastering'] },
+      ],
+    } },
   { name: 'South LA Community Garden Project', category: 'Project Collaboration', location: 'South Los Angeles, CA',
     description: 'Volunteers planning, fundraising for, and building a neighborhood community garden.',
-    tags: ['gardening', 'volunteering', 'community'] },
+    tags: ['gardening', 'volunteering', 'community'],
+    collab: {
+      project_types: ['social_impact'], project_stage: 'idea', commitment: 'casual',
+      work_style: 'flexible', project_timeline: 'long_term',
+      compensation: ['unpaid'], project_industries: ['social_impact_nonprofit'],
+      roles: [
+        { title: 'Community organizer', slots: 2, skills: ['📣 Advocacy / Community Organizing'] },
+        { title: 'Fundraiser', slots: 1, skills: ['📝 Grant Writing'] },
+        { title: 'Volunteer coordinator', slots: 1, skills: ['🤝 Social Work'] },
+      ],
+    } },
   { name: 'True Crime Podcast Co-Hosts', category: 'Project Collaboration', location: 'Los Angeles, CA',
     description: 'Launching a weekly true crime podcast. Looking for a co-host and an audio editor.',
-    tags: ['podcasting', 'true crime', 'audio editing'] },
+    tags: ['podcasting', 'true crime', 'audio editing'],
+    collab: {
+      project_types: ['podcast'], project_stage: 'idea', commitment: 'side_project',
+      work_style: 'weekly_sync', project_timeline: 'long_term',
+      compensation: ['revenue_share', 'portfolio'], project_industries: ['social_media_content'],
+      roles: [
+        { title: 'Co-host', slots: 1, skills: ['🎙️ Podcasting'] },
+        { title: 'Audio editor', slots: 1, skills: ['🎙️ Audio Engineering'] },
+      ],
+    } },
   { name: '48-Hour Game Jam Team', category: 'Project Collaboration', location: 'Los Angeles, CA',
     description: 'Building a team for the next Global Game Jam: programmers, artists, and sound designers.',
-    tags: ['game development', 'programming', 'pixel art'] },
+    tags: ['game development', 'programming', 'pixel art'],
+    collab: {
+      project_types: ['game_studio'], project_stage: 'idea', commitment: 'part_time',
+      work_style: 'sprints', project_timeline: 'sprint',
+      compensation: ['portfolio'], project_industries: ['gaming_interactive'],
+      roles: [
+        { title: 'Game developer', slots: 2, skills: ['🎮 Game Dev'] },
+        { title: '2D / pixel artist', slots: 1, skills: ['🖼️ Illustration'] },
+        { title: 'Sound designer', slots: 1, skills: ['🎙️ Audio Engineering'] },
+      ],
+    } },
 
   // ── Event Buddies ───────────────────────────────────────────────────────
   { name: 'Hollywood Bowl Concert Crew', category: 'Event Buddies', location: 'Hollywood, CA',
@@ -234,6 +289,39 @@ async function run() {
            role = 'owner', membership_status = 'active'`,
         [hiveId, ownerId],
       );
+
+      // Collab data (Prompt 84) — present on both create and update, same as
+      // every other field above. Roles are the one child row here, so they
+      // get their own existence guard (by hive_id + lower(title)) instead of
+      // relying on the create/update branch split, which only protects
+      // #general.
+      if (h.collab) {
+        const c = h.collab;
+        if (h.category === 'Project Collaboration') {
+          await client.query(
+            `UPDATE hives SET project_types = $1, project_stage = $2, commitment = $3,
+               work_style = $4, project_timeline = $5, compensation = $6, project_industries = $7
+             WHERE hive_id = $8`,
+            [JSON.stringify(c.project_types ?? []), c.project_stage ?? null, c.commitment ?? null,
+             c.work_style ?? null, c.project_timeline ?? null, JSON.stringify(c.compensation ?? []),
+             JSON.stringify(c.project_industries ?? []), hiveId],
+          );
+          for (let i = 0; i < (c.roles ?? []).length; i++) {
+            const r = c.roles[i];
+            await client.query(
+              `INSERT INTO hive_roles (hive_id, title, slots, skills, experience_level, position)
+               SELECT $1, $2, $3, $4::jsonb, $5, $6
+               WHERE NOT EXISTS (SELECT 1 FROM hive_roles WHERE hive_id = $1 AND lower(title) = lower($2))`,
+              [hiveId, r.title, r.slots, JSON.stringify(r.skills ?? []), r.experience_level ?? null, i],
+            );
+          }
+        } else if (h.category === 'Professional Networking') {
+          await client.query(
+            `UPDATE hives SET pro_industries = $1, career_stages = $2, audience_scope = $3 WHERE hive_id = $4`,
+            [JSON.stringify(c.pro_industries ?? []), JSON.stringify(c.career_stages ?? []), c.audience_scope ?? null, hiveId],
+          );
+        }
+      }
     }
 
     await client.query('COMMIT');
