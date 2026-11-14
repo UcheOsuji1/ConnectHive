@@ -15,7 +15,7 @@ import {
 } from '../lib/compatibility.js';
 import { createNotification } from './notificationsController.js';
 import { evictUserFromHive } from '../realtime/socket.js';
-import { getCategoryConfig } from '../lib/categoryConfig.js';
+import { getCategoryConfig, getProjectRooms } from '../lib/categoryConfig.js';
 import { PLAN_END } from './eventsController.js';
 import { getAttendanceRate } from './checkinsController.js';
 import { blockedIdsFor, isBlockedEitherWay } from '../lib/blocks.js';
@@ -853,6 +853,8 @@ export const getHiveMembers = async (req, res) => {
       `SELECT hm.role, hm.joined_at, hm.onboarding_status,
               u.user_id, u.presence_status,
               p.full_name, p.profile_photo_url, p.bio, p.location, p.interests, p.skills,
+              p.headline, hr.title AS collab_role_title,
+              jsonb_array_length(COALESCE(p.links, '[]'::jsonb)) AS link_count,
               CASE WHEN p.bio IS NOT NULL
                     AND p.profile_photo_url IS NOT NULL
                     AND p.interests IS NOT NULL
@@ -864,6 +866,7 @@ export const getHiveMembers = async (req, res) => {
        FROM hive_members hm
        JOIN  users    u ON u.user_id  = hm.user_id
        LEFT JOIN profiles p ON p.user_id = hm.user_id
+       LEFT JOIN hive_roles hr ON hr.role_id = hm.collab_role_id
        LEFT JOIN hive_last_seen hls
               ON hls.user_id = hm.user_id AND hls.hive_id = hm.hive_id
        LEFT JOIN member_onboarding_progress mop
@@ -873,6 +876,7 @@ export const getHiveMembers = async (req, res) => {
        GROUP BY hm.hive_id, hm.role, hm.joined_at, hm.onboarding_status,
                 u.user_id, u.presence_status,
                 p.full_name, p.profile_photo_url, p.bio, p.location, p.interests, p.skills,
+                p.headline, hr.title, p.links,
                 hls.last_seen_at
        ORDER BY
          CASE hm.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
@@ -1204,7 +1208,12 @@ export const createHive = async (req, res) => {
       // #general, so a Hive can never exist with only some of its starting
       // rooms. #general itself is skipped: every category's list leads with
       // it, and it's already inserted above as the one TRUE is_default room.
-      const extraRooms = (catConfig?.defaultRooms ?? []).filter(r => r !== 'general');
+      // Project Hives (Prompt 83, Step 8) key off their first selected
+      // project type instead of the category's fixed list; every other
+      // category keeps its defaultRooms exactly as before.
+      const extraRooms = createCategoryName === PROJECT_CATEGORY
+        ? getProjectRooms(collabValue?.project_types).filter(r => r !== 'general')
+        : (catConfig?.defaultRooms ?? []).filter(r => r !== 'general');
       for (let i = 0; i < extraRooms.length; i++) {
         await client.query(
           `INSERT INTO hive_channels (hive_id, name, channel_type, is_default, position)
@@ -1806,7 +1815,7 @@ export const getHiveRequests = async (req, res) => {
       `SELECT jr.request_id, jr.user_id, jr.request_message, jr.status, jr.requested_at,
               jr.role_id, jr.portfolio_url, hr.title AS role_title,
               p.full_name, p.profile_photo_url, p.age, p.location, p.interests, p.skills,
-              p.deep_dive_answers, p.links,
+              p.headline, p.deep_dive_answers, p.links,
               u.member_id,
               uc.total_score AS pair_score,
               cs.total_score AS hive_fit_score

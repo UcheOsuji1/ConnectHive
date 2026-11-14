@@ -2,12 +2,40 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
+import ProfileLinkButtons from '../components/ProfileLinkButtons.jsx';
 import { getInitials } from '../lib/initials.js';
 import { api } from '../lib/api.js';
+import { validateUrl } from '../lib/validateUrl.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
 import HoneycombBg from '../components/HoneycombBg.jsx';
 import '../styles/profile.css';
+
+const LINK_LABELS = ['LinkedIn', 'Portfolio', 'GitHub', 'Website', 'Other'];
+
+// Same two messages for every invalid row, regardless of cause: a missing
+// scheme (the common "linkedin.com/x" mistake) gets the actionable hint,
+// anything else just reads as not a valid link. Empty rows are never errors
+// — they're silently dropped on save.
+function computeLinkErrors(links) {
+  const errors = {};
+  const seen = new Set();
+  links.forEach((l, idx) => {
+    const trimmed = l.url.trim();
+    if (!trimmed) return;
+    const { error } = validateUrl(trimmed);
+    if (error) {
+      errors[idx] = /^https?:\/\//i.test(trimmed)
+        ? "That doesn't look like a valid link."
+        : 'Add https:// at the start, e.g. https://linkedin.com/in/you';
+      return;
+    }
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) { errors[idx] = "You've already added this link."; return; }
+    seen.add(key);
+  });
+  return errors;
+}
 
 // ── Reverse lookup: chip string → INTEREST_CAT ───────────────────────────────
 const chipToCat = {};
@@ -268,10 +296,22 @@ export default function ProfilePage() {
       school_company:      profile.school_company || '',
       bio:                 profile.bio || '',
       connection_purposes: arr(profile.connection_purposes),
+      headline:            profile.headline || '',
+      links:               arr(profile.links).map(l => ({ label: l.label, url: l.url })),
     });
     setSaveError(null);
     setNameInvalid(false);
     setEditing(true);
+  }
+
+  function updateLink(idx, patch) {
+    setDraft(d => ({ ...d, links: d.links.map((l, i) => (i === idx ? { ...l, ...patch } : l)) }));
+  }
+  function removeLink(idx) {
+    setDraft(d => ({ ...d, links: d.links.filter((_, i) => i !== idx) }));
+  }
+  function addLink() {
+    setDraft(d => (d.links.length >= 3 ? d : { ...d, links: [...d.links, { label: 'LinkedIn', url: '' }] }));
   }
 
   function cancelEdit() {
@@ -296,13 +336,16 @@ export default function ProfilePage() {
     const trimmedName = draft.full_name.trim();
     if (!trimmedName) { setNameInvalid(true); return; }
     setNameInvalid(false);
+    if (Object.keys(computeLinkErrors(draft.links)).length) return; // already shown inline
     setSaving(true);
     setSaveError(null);
 
     // The save endpoint overwrites the whole profile row, so every field it
     // accepts has to be present — not just the ones this page lets you edit.
     // Everything below the first five lines is passed through unchanged from
-    // the profile already loaded on this page, exactly as received.
+    // the profile already loaded on this page, exactly as received. Headline
+    // and links are NOT in this payload — profile/setup never touches the
+    // payment handles or collab fields, so they go through profile/collab.
     const payload = {
       full_name:             trimmedName,
       location:              draft.location.trim() || null,
@@ -319,10 +362,17 @@ export default function ProfilePage() {
       connection_preference:   profile.connection_preference,
       social_preferences:      profile.social_preferences,
     };
+    const trimmedHeadline = draft.headline.trim();
+    const cleanedLinks = draft.links
+      .map(l => ({ label: l.label, url: l.url.trim() }))
+      .filter(l => l.url);
 
     try {
-      await api.post('/api/users/profile/setup', payload);
-      setProfile(prev => ({ ...prev, ...payload }));
+      await Promise.all([
+        api.post('/api/users/profile/setup', payload),
+        api.patch('/api/users/profile/collab', { headline: trimmedHeadline, links: cleanedLinks }),
+      ]);
+      setProfile(prev => ({ ...prev, ...payload, headline: trimmedHeadline || null, links: cleanedLinks }));
       await refreshUser();
       setDraft(null);
       setEditing(false);
@@ -395,7 +445,9 @@ export default function ProfilePage() {
   const skillArr      = arr(profile?.skills);
   const goalArr       = arr(profile?.goals);
   const availArr      = arr(profile?.availability);
-  const locationLine  = [profile?.location, profile?.school_company].filter(Boolean).join(' · ');
+  // Company/school now shows on the headline line instead (never both places).
+  const locationLine  = profile?.location || '';
+  const headlineParts = [profile?.headline, profile?.school_company].filter(Boolean);
   const interestGroups = groupInterests(interestArr);
   const topInterests   = interestGroups.slice(0, 5);
   const tiles = journeyTiles(hives, profile, interestArr.length);
@@ -521,6 +573,26 @@ export default function ProfilePage() {
                     )}
 
                     {editing ? (
+                      <>
+                        <input
+                          className="prof-edit-underline prof-edit-underline--block prof-headline-input"
+                          value={draft.headline}
+                          onChange={e => setDraft(d => ({ ...d, headline: e.target.value }))}
+                          placeholder="Role or title, e.g. Product Designer"
+                          maxLength={80}
+                          aria-label="Headline"
+                        />
+                        <p className="prof-field-hint">Shows under your name and on your member cards in Professional and Project Hives. Up to 80 characters.</p>
+                      </>
+                    ) : headlineParts.length > 0 && (
+                      <p className="prof-headline">
+                        {headlineParts[0]}
+                        {headlineParts.length > 1 && <span className="prof-headline-sep">·</span>}
+                        {headlineParts.length > 1 && headlineParts[1]}
+                      </p>
+                    )}
+
+                    {editing ? (
                       <div className="prof-hero-loc">
                         <div className="prof-loc-dot" aria-hidden="true" />
                         <input
@@ -540,13 +612,55 @@ export default function ProfilePage() {
                           placeholder="School / Company"
                           aria-label="School or company"
                         />
-                        <span>· TrueHive</span>
                       </div>
                     ) : locationLine && (
                       <div className="prof-hero-loc">
                         <div className="prof-loc-dot" aria-hidden="true" />
-                        <span>{locationLine} · TrueHive</span>
+                        <span>{locationLine}</span>
                       </div>
+                    )}
+
+                    {editing ? (
+                      <>
+                        <div className="prof-links-edit-label">
+                          Links <span className="prof-links-count">{draft.links.length} of 3</span>
+                        </div>
+                        {(() => {
+                          const linkErrors = computeLinkErrors(draft.links);
+                          return draft.links.map((l, idx) => (
+                            <div className="prof-link-row" key={idx}>
+                              <select
+                                className="prof-link-select"
+                                value={l.label}
+                                onChange={e => updateLink(idx, { label: e.target.value })}
+                                aria-label="Link type"
+                              >
+                                {LINK_LABELS.map(lab => <option key={lab} value={lab}>{lab}</option>)}
+                              </select>
+                              <input
+                                className={`prof-link-input${linkErrors[idx] ? ' prof-link-input--error' : ''}`}
+                                value={l.url}
+                                onChange={e => updateLink(idx, { url: e.target.value })}
+                                placeholder="https://…"
+                                aria-label={`${l.label} URL`}
+                                aria-invalid={Boolean(linkErrors[idx])}
+                              />
+                              <button type="button" className="prof-link-remove" aria-label="Remove link" onClick={() => removeLink(idx)}>
+                                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+                                  <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5"/>
+                                </svg>
+                              </button>
+                              {linkErrors[idx] && <p className="prof-link-error">{linkErrors[idx]}</p>}
+                            </div>
+                          ));
+                        })()}
+                        {draft.links.length < 3 && (
+                          <button type="button" className="prof-link-add" onClick={addLink}>+ Add a link</button>
+                        )}
+                        <p className="prof-field-hint" style={{ marginTop: 8 }}>The first link is used as your portfolio when you apply for a role.</p>
+                      </>
+                    ) : (
+                      <ProfileLinkButtons links={profile.links} />
                     )}
 
                     {/* Badges */}

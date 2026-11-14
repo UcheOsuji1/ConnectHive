@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
 import HoneycombBg from '../components/HoneycombBg.jsx';
+import ProfileLinkButtons from '../components/ProfileLinkButtons.jsx';
 import BlockModal from '../components/BlockModal.jsx';
 import ReportModal from '../components/ReportModal.jsx';
 import { api } from '../lib/api.js';
@@ -299,6 +300,7 @@ export default function MemberProfilePage() {
   const social    = obj(p.social_preferences);
   const lastSeen  = timeAgo(p.last_login);
   const firstName = p.full_name?.split(' ')[0] ?? 'This member';
+  const headlineParts = [p.headline, p.school_company].filter(Boolean);
 
   return (
     <>
@@ -317,11 +319,18 @@ export default function MemberProfilePage() {
             <div className="prof-hero-body">
               <ProfileMenu userId={id} name={firstName} onBlocked={handleBlocked} />
               <h1 className="prof-name">{p.full_name ?? 'Member'}</h1>
+              {headlineParts.length > 0 && (
+                <p className="prof-headline">
+                  {headlineParts[0]}
+                  {headlineParts.length > 1 && <span className="prof-headline-sep">·</span>}
+                  {headlineParts.length > 1 && headlineParts[1]}
+                </p>
+              )}
               <div className="mp-meta">
                 {p.location && <span><PinIcon /> {p.location}</span>}
-                {p.school_company && <span>{p.school_company}</span>}
                 {lastSeen && <span><ClockIcon /> Active {lastSeen}</span>}
               </div>
+              <ProfileLinkButtons links={p.links} />
               {p.bio && <p className="prof-bio">{p.bio}</p>}
 
               {interests.length > 0 && (

@@ -221,6 +221,25 @@
 .hmv2-rolechip--admin  { background: rgba(52,122,97,0.1); color: #347a61; border: 1px solid rgba(52,122,97,0.3); }
 .hmv2-rolechip--member { background: #f5f0e8; color: #6b5c3e; border: 1px solid #e9dfcf; }
 
+/* Dark pill for the Hive role a member holds (collab_role_title) — a
+   distinct shape from .hmv2-rolechip above, which is the owner/admin/member
+   chip. Project Hives only. */
+.hmv2-collab-rolechip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: #1a1508;
+  color: #f5f0e8;
+  font-size: 0.66rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hmv2-headline { font-size: 0.78rem; color: #3a3028; font-weight: 500; margin: 2px 0 0; }
+
+.hmv2-linkcount { font-size: 0.72rem; color: #685e54; }
+
 .hmv2-presence { display: inline-flex; align-items: center; gap: 5px; font-size: 0.76rem; color: #6b5c3e; white-space: nowrap; }
 .hmv2-presence-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .hmv2-presence-dot--corner {

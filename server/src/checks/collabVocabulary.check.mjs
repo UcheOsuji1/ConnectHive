@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import * as serverVocab from '../lib/collabVocabulary.js';
 import { SKILL_CATS as serverSkillCats } from '../lib/skillCatalog.js';
+import { PROJECT_ROOMS_BY_TYPE } from '../lib/categoryConfig.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_SRC = path.resolve(HERE, '../../../client/src');
@@ -336,6 +337,22 @@ check('COLLAB_LIMITS: server and client are deep-equal', () => {
     assert.equal(typeof v, 'number', `${k} should be a number`);
     assert.ok(v > 0, `${k} should be positive`);
   }
+});
+
+check('PROJECT_ROOMS_BY_TYPE: every PROJECT_TYPES key has an entry, 1-4 rooms, no repeats, valid names', () => {
+  for (const { key } of serverVocab.PROJECT_TYPES) {
+    assert.ok(PROJECT_ROOMS_BY_TYPE[key], `missing an entry for project type "${key}"`);
+  }
+  for (const [typeKey, rooms] of Object.entries(PROJECT_ROOMS_BY_TYPE)) {
+    assert.ok(rooms.length >= 1 && rooms.length <= 4, `${typeKey}: must have 1-4 rooms, has ${rooms.length}`);
+    assert.equal(new Set(rooms).size, rooms.length, `${typeKey}: repeats a room name`);
+    for (const name of rooms) {
+      assert.ok(name.trim() === name && name.length > 0, `${typeKey}: "${name}" must be non-empty and untrimmed-equal`);
+      // Same cap channelsController.js's createChannel enforces.
+      assert.ok(name.length <= 32, `${typeKey}: "${name}" exceeds the 32-character room-name cap`);
+    }
+  }
+  assert.ok(PROJECT_ROOMS_BY_TYPE._fallback, 'missing the _fallback entry');
 });
 
 console.log(`\n${total - failures}/${total} checks passed.`);

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hive member cards with headline and role</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&amp;family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f0e8}
+a{color:#8a6510}a:hover{color:#c49a28}
+*{box-sizing:border-box}
+.root{background:#f5f0e8;font-family:'DM Sans',sans-serif;color:#1e1b18;min-height:100%}
+.nav{height:60px;background:#fff;border-bottom:0.5px solid #e8e0d0;display:flex;align-items:center;justify-content:space-between;padding:0 28px}
+.nav-logo{display:flex;align-items:center;gap:9px;font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;color:#1a1508;text-decoration:none}
+.nav-links{display:flex;gap:22px;font-size:13px}
+.nav-links a{color:#4a3a18;text-decoration:none}
+.content{max-width:1000px;margin:0 auto;padding:24px 24px 60px}
+.hero{background:#fff;border:0.5px solid #e8e0d0;border-radius:18px;overflow:hidden}
+.cover{height:150px;background:linear-gradient(135deg,#2d2415 0%,#1e1b18 55%,#3a2a10 100%);position:relative}
+.edit-btn{position:absolute;right:18px;top:18px;background:#c49a28;color:#1a1508;border:none;border-radius:50px;padding:8px 16px;font-family:inherit;font-size:12.5px;font-weight:600;min-height:36px;cursor:pointer}
+.hero-body{padding:0 32px 28px;display:flex;gap:24px;align-items:flex-start}
+.avatar{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#e8c84a 0%,#c49a28 55%,#8a6510 100%);border:4px solid #fff;margin-top:-48px;display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:600;flex-shrink:0}
+.main{flex:1;min-width:0;padding-top:16px}
+.name{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;line-height:1.1;margin:0 0 4px}
+.headline{font-size:15px;color:#3a3028;font-weight:500;margin:0 0 6px}
+.headline .sep{color:#b8a888;margin:0 4px}
+.loc{display:flex;align-items:center;gap:6px;font-size:13px;color:#6b5e44;margin-bottom:12px}
+.dot{width:5px;height:5px;border-radius:50%;background:#c49a28}
+.links{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.lnk{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:7px 12px;border-radius:50px;background:#fdf8ec;border:0.5px solid #e2c56e;color:#4a3608;text-decoration:none;min-height:34px}
+.lnk .dom{color:#7a6a4a}
+.badges{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.badge{display:inline-flex;align-items:center;height:28px;padding:0 10px;border-radius:50px;font-size:11.5px;font-weight:600;background:#f5f0e8;color:#6b5e44;border:0.5px solid #e8e0d0}
+.bio{font-size:13.5px;color:#4a4036;line-height:1.65;margin:0 0 6px}
+.u{background:transparent;border:none;border-bottom:1px dashed #c49a28;padding:2px 0;outline:none;font-family:inherit;color:inherit}
+.u-name{font-family:'Cormorant Garamond',serif;font-size:34px;font-weight:600;width:100%;display:block;margin-bottom:6px}
+.u-head{font-size:15px;font-weight:500;width:100%;display:block;margin-bottom:4px}
+.fhint{font-size:11.5px;color:#7a6a4a;margin:0 0 10px}
+.edit-row{display:flex;align-items:center;gap:6px;font-size:13px;color:#6b5e44;margin-bottom:14px;flex-wrap:wrap}
+.lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#a07a14;margin:16px 0 8px;display:flex;align-items:center;gap:8px}
+.lrow{display:grid;grid-template-columns:150px minmax(0,1fr) 40px;gap:8px;margin-bottom:8px;align-items:center}
+.sel{height:40px;border:0.5px solid #d8d0bc;border-radius:8px;background:#fff;font-family:inherit;font-size:13px;color:#1a1508;padding:0 10px}
+.inp{height:40px;border:0.5px solid #d8d0bc;border-radius:8px;background:#fff;font-family:inherit;font-size:13px;color:#1a1508;padding:0 12px;width:100%}
+.inp.err{border-color:#b4462c}
+.err-t{grid-column:2 / 4;font-size:11.5px;color:#b4462c;margin:-4px 0 6px}
+.icon-btn{width:40px;height:40px;border:0.5px solid #e2dacb;border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6f6656}
+.add{height:40px;border:0.5px dashed #c49a28;border-radius:8px;background:#fffdf7;font-family:inherit;font-size:12.5px;font-weight:500;color:#7a5a0c;padding:0 14px;cursor:pointer}
+.savebar{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:0.5px solid #efe8da}
+.btn{height:42px;padding:0 20px;border-radius:50px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.btn-gold{background:#c49a28;border:none;color:#1a1508}
+.btn-ghost{background:#fff;border:0.5px solid #d8d0bc;color:#4a3a18;font-weight:500}
+.tag-new{font-family:'DM Sans',sans-serif;font-size:9px;font-weight:600;letter-spacing:.08em;border-radius:20px;padding:2px 8px;text-transform:uppercase;background:#1a1508;color:#f5f0e8}
+.fix{font-size:11.5px;color:#7a3218;background:#fdf0ea;border:0.5px solid #e6b8a4;border-radius:8px;padding:8px 10px;margin:0 0 12px}
+/* members */
+.mwrap{max-width:1000px;margin:0 auto;padding:28px 24px 60px}
+.mtitle{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:500;margin:0 0 4px}
+.msub{font-size:12.5px;color:#6f6656;margin:0 0 18px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{display:flex;flex-direction:column;gap:8px;padding:16px;background:#fffdf8;border:1.5px solid #e9dfcf;border-radius:14px;text-decoration:none;color:inherit}
+.ctop{display:flex;align-items:center;gap:10px}
+.cav{width:44px;height:44px;border-radius:50%;background:#8a6510;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center}
+.cname{font-size:15px;font-weight:700;color:#17120a}
+.chead{font-size:12.5px;color:#3a3028;font-weight:500}
+.crole{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:#665e53}
+.rchip{display:inline-flex;align-items:center;font-size:11.5px;font-weight:600;border-radius:20px;padding:2px 9px;background:#1a1508;color:#f5f0e8}
+.cbio{font-size:12.5px;color:#6b5c3e;line-height:1.5;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{padding:3px 10px;border-radius:20px;background:#f5f0e8;border:1px solid #e9dfcf;font-size:11.5px;font-weight:500;color:#6b5c3e}
+.cfoot{margin-top:auto;padding-top:8px;border-top:1px solid #f0ebe0;font-size:11.5px;color:#685e54;display:flex;justify-content:space-between;gap:8px}
+.lc{display:inline-flex;align-items:center;gap:4px;color:#7a5a0c}
+@media (max-width:760px){.grid{grid-template-columns:minmax(0,1fr)}.hero-body{flex-direction:column;padding:0 18px 22px}.lrow{grid-template-columns:minmax(0,1fr) 40px}.lrow .sel{grid-column:1 / 3}.err-t{grid-column:1 / 3}}
+</style>
+</helmet>
+<div class="root">
+<div class="nav"><a href="#" class="nav-logo" aria-label="TrueHive home"><svg width="26" height="24" viewBox="0 0 26 24" aria-hidden="true"><path d="M7 2l5 3v6l-5 3-5-3V5z M19 2l5 3v6l-5 3-5-3V5z M13 10l5 3v6l-5 3-5-3v-6z" fill="none" stroke="#c49a28" stroke-width="1.6" stroke-linejoin="round"></path></svg> TrueHive</a><div class="nav-links"><a href="#">Home</a><a href="#">Find Your Hive</a><a href="#">My Hive</a><a href="#">Profile</a></div></div><div class="mwrap"><h1 class="mtitle">Members (4)</h1><p class="msub">Weekend Short Film Crew · Project Collaboration</p><div class="grid"><a href="#" class="card"><div class="ctop"><div class="cav">D</div><div><div class="cname">Dana Ruiz</div><div class=chead>Sound Designer · Echo Park Audio</div></div></div><div class="crole">👤 Member <span class="rchip">Sound mixer</span></div><p class="cbio">Sound designer for short films and indie games.</p><div class="chips"><span class="chip">🎙️ Audio Engineering</span><span class="chip">🔊 Live Sound</span></div><div class="cfoot"><span>Joined Nov 2026</span><span class="lc"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg> 2 links</span></div></a><a href="#" class="card"><div class="ctop"><div class="cav">J</div><div><div class="cname">Jordan Lee</div><div class=chead>Actor</div></div></div><div class="crole">👤 Member <span class="rchip">Lead actor</span></div><p class="cbio">Stage and screen actor, two shorts this year.</p><div class="chips"><span class="chip">🎬 Film / TV Acting</span><span class="chip">🎭 Acting / Theater</span></div><div class="cfoot"><span>Joined Nov 2026</span><span class="lc"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6.5 9.5l3-3M7 4.5l1.2-1.2a2.8 2.8 0 014 4L11 8.5M9 11.5l-1.2 1.2a2.8 2.8 0 01-4-4L5 7.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg> 1 link</span></div></a><a href="#" class="card"><div class="ctop"><div class="cav">S</div><div><div class="cname">Sam Okafor</div></div></div><div class="crole">👤 Member </div><p class="cbio">Here to help where needed.</p><div class="chips"><span class="chip">📸 Photography</span></div><div class="cfoot"><span>Joined Nov 2026</span><span></span></div></a></div><p class="fhint" style="margin-top:16px">Cards stay one link to the profile, so links are counted here and opened from the profile. The dark role chip shows the Hive role a member holds (Project Hives only). The headline shows in Project and Professional Hives only; other categories are unchanged.</p></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":720}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

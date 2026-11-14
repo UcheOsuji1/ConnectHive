@@ -269,7 +269,7 @@ function PresenceTag({ status }) {
 }
 
 // ── Founder card ───────────────────────────────────────────────────────────────
-function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps, status, onPromote, onDemote, onRemove, onNotify, onBlock, onReport }) {
+function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps, status, isCollabCategory, isProjectCategory, onPromote, onDemote, onRemove, onNotify, onBlock, onReport }) {
   const isMe = member.user_id === viewerId;
   const bioLines = (member.bio ?? '').split('\n').map(s => s.trim()).filter(Boolean);
   const subtitle = bioLines.length > 1 ? bioLines[0] : null;
@@ -295,8 +295,12 @@ function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps,
             <span className="hmv2-founder-name">{member.full_name ?? 'Member'}</span>
             {isMe && <span className="hmv2-you-chip">You</span>}
           </div>
+          {isCollabCategory && member.headline && <p className="hmv2-headline">{member.headline}</p>}
           <div className="hmv2-founder-metarow">
             <RoleChip role={member.role} />
+            {isProjectCategory && member.role === 'admin' && member.collab_role_title && (
+              <span className="hmv2-collab-rolechip">{member.collab_role_title}</span>
+            )}
             {status && <PresenceTag status={status} />}
           </div>
         </div>
@@ -318,6 +322,9 @@ function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps,
 
       <div className="hmv2-card-foot">
         <span className="hmv2-joined">Joined {monthYear(member.joined_at)}</span>
+        {isCollabCategory && member.link_count > 0 && (
+          <span className="hmv2-linkcount">{member.link_count} link{member.link_count !== 1 ? 's' : ''}</span>
+        )}
         {canSeeOps && <OpsInfo member={member} />}
       </div>
     </Link>
@@ -341,7 +348,7 @@ function OpsInfo({ member }) {
 }
 
 // ── Member card ──────────────────────────────────────────────────────────────
-function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills, canSeeOps, status, onPromote, onDemote, onRemove, onNotify, onBlock, onReport }) {
+function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills, canSeeOps, status, isCollabCategory, isProjectCategory, onPromote, onDemote, onRemove, onNotify, onBlock, onReport }) {
   const isMe = member.user_id === viewerId;
   const interestChips = dedupe(flattenRaw(member.interests));
   const skillChips    = showSkills ? dedupe(flattenRaw(member.skills)) : [];
@@ -367,8 +374,12 @@ function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills,
         <span className="hmv2-member-name">{member.full_name ?? 'Member'}</span>
         {isMe && <span className="hmv2-you-chip">You</span>}
       </div>
+      {isCollabCategory && member.headline && <p className="hmv2-headline">{member.headline}</p>}
       <div className="hmv2-member-rolerow">
         <span className="hmv2-member-role-icon" aria-hidden="true">👤</span> Member
+        {isProjectCategory && member.collab_role_title && (
+          <span className="hmv2-collab-rolechip">{member.collab_role_title}</span>
+        )}
         {status && <PresenceTag status={status} />}
       </div>
 
@@ -386,6 +397,9 @@ function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills,
 
       <div className="hmv2-card-foot">
         <span className="hmv2-joined">Joined {monthYear(member.joined_at)}</span>
+        {isCollabCategory && member.link_count > 0 && (
+          <span className="hmv2-linkcount">{member.link_count} link{member.link_count !== 1 ? 's' : ''}</span>
+        )}
         {canSeeOps && <OpsInfo member={member} />}
       </div>
     </Link>
@@ -584,6 +598,8 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
   const statusMap = useMemo(() => Object.fromEntries(presenceList.map(p => [p.user_id, p.status])), [presenceList]);
   const canSeeOps = myRole === 'owner' || myRole === 'admin';
   const showSkills = SKILL_CATEGORIES.has(hive?.category_name);
+  const isCollabCategory = SKILL_CATEGORIES.has(hive?.category_name);
+  const isProjectCategory = hive?.category_name === 'Project Collaboration';
   const viewerMember = members.find(m => m.user_id === myUserId);
   const viewerInterests = viewerMember?.interests ?? [];
 
@@ -736,6 +752,8 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
                     viewerInterests={viewerInterests}
                     canSeeOps={canSeeOps}
                     status={presenceFor(m, statusMap, onlineSet)}
+                    isCollabCategory={isCollabCategory}
+                    isProjectCategory={isProjectCategory}
                     onPromote={m2 => handleRoleChange(m2, 'admin')}
                     onDemote={m2 => handleRoleChange(m2, 'member')}
                     onRemove={handleRemove}
@@ -762,6 +780,8 @@ export default function HiveMembersView({ hive, hiveId, isOwner, myRole, myUserI
                     showSkills={showSkills}
                     canSeeOps={canSeeOps}
                     status={presenceFor(m, statusMap, onlineSet)}
+                    isCollabCategory={isCollabCategory}
+                    isProjectCategory={isProjectCategory}
                     onPromote={m2 => handleRoleChange(m2, 'admin')}
                     onDemote={m2 => handleRoleChange(m2, 'member')}
                     onRemove={handleRemove}

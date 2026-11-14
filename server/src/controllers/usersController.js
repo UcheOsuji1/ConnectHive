@@ -75,10 +75,10 @@ export const updateCollabProfile = async (req, res) => {
     const vals = [];
     let i = 1;
 
-    if (typeof headline === 'string' && headline.trim()) {
-      const h = headline.trim();
+    if (headline !== undefined) {
+      const h = typeof headline === 'string' ? headline.trim() : '';
       if (h.length > 80) return res.status(400).json({ error: 'Headline must be 80 characters or fewer.' });
-      sets.push(`headline = $${i++}`); vals.push(h);
+      sets.push(`headline = $${i++}`); vals.push(h || null);
     }
     if (typeof schoolCompany === 'string' && schoolCompany.trim()) {
       const s = schoolCompany.trim();
@@ -510,6 +510,7 @@ export const getMemberProfile = async (req, res) => {
       profile: {
         user_id: target.user_id,
         full_name: target.full_name,
+        headline: target.headline,
         location: target.location,
         school_company: target.school_company,
         bio: target.bio,

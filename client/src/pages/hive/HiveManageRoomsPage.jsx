@@ -10,6 +10,7 @@ export default function HiveManageRoomsPage() {
   const [rooms, setRooms] = useState(null);
   const [error, setError] = useState(null);
   const [suggested, setSuggested] = useState([]);
+  const [suggestedLabel, setSuggestedLabel] = useState(null);
   const [addingSuggested, setAddingSuggested] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -32,7 +33,7 @@ export default function HiveManageRoomsPage() {
 
   const loadSuggested = useCallback(() => {
     api.get(`/api/hives/${hiveId}/channels/suggested`)
-      .then(d => setSuggested(d.suggested ?? []))
+      .then(d => { setSuggested(d.suggested ?? []); setSuggestedLabel(d.label ?? null); })
       .catch(() => {});
   }, [hiveId]);
 
@@ -166,7 +167,7 @@ export default function HiveManageRoomsPage() {
       {suggested.length > 0 && (
         <div className="hmr-suggest-card">
           <div>
-            <div className="hw-card-label">Suggested rooms</div>
+            <div className="hw-card-label">{suggestedLabel ? `Add suggested rooms for ${suggestedLabel}` : 'Suggested rooms'}</div>
             <p className="hw-overview-sub" style={{ margin: '4px 0 0' }}>
               {suggested.map(s => `#${s}`).join(', ')}
             </p>

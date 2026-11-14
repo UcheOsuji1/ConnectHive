@@ -72,6 +72,34 @@ export const CATEGORY_CONFIG = {
   },
 };
 
+// Starter rooms for a Project Collaboration Hive, by its first selected
+// project type (Prompt 83, Step 8) — #general is always created first (as
+// today, see createHive), these are the extra rooms after it. Keyed by the
+// PROJECT_TYPES keys in collabVocabulary.js; `_fallback` covers no type, the
+// "building"/"either" paths with nothing selected, or only "Something else".
+export const PROJECT_ROOMS_BY_TYPE = {
+  app_software:      ['frontend', 'backend', 'design', 'ideas'], // today's set
+  startup:            ['product', 'growth', 'fundraising', 'ideas'],
+  film_video:         ['script', 'pre-production', 'shoot-days', 'editing'],
+  music:              ['demos', 'recording', 'mixing', 'release'],
+  content_media:      ['content-ideas', 'editing', 'publishing', 'analytics'],
+  creative_studio:    ['briefs', 'work-in-progress', 'feedback', 'inspiration'],
+  brand_ecommerce:    ['product', 'marketing', 'operations', 'ideas'],
+  ai_research:        ['papers', 'experiments', 'data', 'ideas'],
+  academic_research:  ['reading', 'methods', 'data', 'writing'],
+  hardware:           ['design', 'prototyping', 'sourcing', 'testing'],
+  social_impact:      ['outreach', 'events', 'fundraising', 'ideas'],
+  student:            ['assignments', 'research', 'presentation', 'ideas'],
+  game_studio:        ['design-doc', 'art', 'code', 'playtesting'],
+  fashion:            ['designs', 'samples', 'photoshoots', 'launch'],
+  food:               ['menu', 'sourcing', 'events', 'ideas'],
+  theater:            ['script', 'rehearsals', 'tech', 'promo'],
+  podcast:            ['episode-ideas', 'guests', 'editing', 'promo'],
+  publishing:         ['drafts', 'editing', 'cover-art', 'launch'],
+  event_production:   ['planning', 'vendors', 'promo', 'day-of'],
+  _fallback:          ['ideas', 'updates'],
+};
+
 // Slug <-> real category_name, mirrors CATEGORY_NAME_MAP in hivesController.js
 // (not re-exported from there to avoid a controller importing into a lib and
 // back; the slugs themselves are a client-facing convention, not DB data).
@@ -86,4 +114,12 @@ export const CATEGORY_SLUGS = {
 
 export function getCategoryConfig(categoryName) {
   return CATEGORY_CONFIG[categoryName] ?? null;
+}
+
+// #general first, then the extra rooms for the Hive's first project type (or
+// the fallback set when there's no type to key off of).
+export function getProjectRooms(projectTypes) {
+  const key = Array.isArray(projectTypes) && projectTypes.length ? projectTypes[0] : null;
+  const extra = (key && PROJECT_ROOMS_BY_TYPE[key]) ?? PROJECT_ROOMS_BY_TYPE._fallback;
+  return ['general', ...extra];
 }

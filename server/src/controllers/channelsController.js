@@ -1,6 +1,16 @@
 import { query } from '../db/index.js';
 import { getMembership, requireMembership } from '../lib/hiveMembership.js';
-import { getCategoryConfig } from '../lib/categoryConfig.js';
+import { getCategoryConfig, getProjectRooms } from '../lib/categoryConfig.js';
+import { PROJECT_TYPES } from '../lib/collabVocabulary.js';
+
+// First selected project type's starter rooms + its label — label is null
+// for the fallback bucket (no type to name), in which case the card keeps
+// its plain, category-less title, same as every other category today.
+function projectRoomsAndLabel(projectTypes) {
+  const key = Array.isArray(projectTypes) && projectTypes.length ? projectTypes[0] : null;
+  const label = key ? (PROJECT_TYPES.find(t => t.key === key)?.label ?? null) : null;
+  return { rooms: getProjectRooms(projectTypes), label };
+}
 
 export const listChannels = async (req, res) => {
   try {
@@ -236,14 +246,20 @@ export const getSuggestedRooms = async (req, res) => {
     }
 
     const { rows: [hive] } = await query(
-      `SELECT c.category_name FROM hives h
+      `SELECT c.category_name, h.project_types FROM hives h
        LEFT JOIN categories c ON c.category_id = h.category_id
        WHERE h.hive_id = $1`,
       [hiveId],
     );
-    const catConfig = hive?.category_name ? getCategoryConfig(hive.category_name) : null;
-    const defaultRooms = catConfig?.defaultRooms ?? [];
-    if (defaultRooms.length === 0) return res.json({ suggested: [] });
+    const isProject = hive?.category_name === 'Project Collaboration';
+    let defaultRooms, label = null;
+    if (isProject) {
+      ({ rooms: defaultRooms, label } = projectRoomsAndLabel(hive.project_types));
+    } else {
+      const catConfig = hive?.category_name ? getCategoryConfig(hive.category_name) : null;
+      defaultRooms = catConfig?.defaultRooms ?? [];
+    }
+    if (defaultRooms.length === 0) return res.json({ suggested: [], label: null });
 
     const { rows: existing } = await query(
       `SELECT LOWER(name) AS name FROM hive_channels WHERE hive_id = $1 AND kind = 'room'`,
@@ -251,7 +267,7 @@ export const getSuggestedRooms = async (req, res) => {
     );
     const existingNames = new Set(existing.map(r => r.name));
     const suggested = defaultRooms.filter(r => !existingNames.has(r.toLowerCase()));
-    res.json({ suggested });
+    res.json({ suggested, label });
   } catch (err) {
     if (err.status) return res.status(err.status).json({ error: err.message });
     console.error('[channels/getSuggestedRooms]', err);
@@ -271,13 +287,15 @@ export const addSuggestedRooms = async (req, res) => {
     }
 
     const { rows: [hive] } = await query(
-      `SELECT c.category_name FROM hives h
+      `SELECT c.category_name, h.project_types FROM hives h
        LEFT JOIN categories c ON c.category_id = h.category_id
        WHERE h.hive_id = $1`,
       [hiveId],
     );
-    const catConfig = hive?.category_name ? getCategoryConfig(hive.category_name) : null;
-    const defaultRooms = catConfig?.defaultRooms ?? [];
+    const isProject = hive?.category_name === 'Project Collaboration';
+    const defaultRooms = isProject
+      ? projectRoomsAndLabel(hive.project_types).rooms
+      : (hive?.category_name ? getCategoryConfig(hive.category_name)?.defaultRooms : null) ?? [];
 
     const { rows: existing } = await query(
       `SELECT LOWER(name) AS name FROM hive_channels WHERE hive_id = $1 AND kind = 'room'`,

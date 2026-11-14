@@ -60,7 +60,7 @@ function SkeletonCards() {
 }
 
 // ── Candidate card ────────────────────────────────────────────────────────────
-function CandidateCard({ req, hiveId, isProject, roleStatusById, onAccepted, onDeclined }) {
+function CandidateCard({ req, hiveId, isProject, isCollabCategory, roleStatusById, onAccepted, onDeclined }) {
   const [action,       setAction]       = useState(null);
   const [reviewError,  setReviewError]  = useState(null);
   const [tagsExpanded, setTagsExpanded] = useState(false);
@@ -79,6 +79,7 @@ function CandidateCard({ req, hiveId, isProject, roleStatusById, onAccepted, onD
   const hiddenCount   = allInterests.length - TAG_CAP;
 
   const identityParts = [
+    isCollabCategory ? (req.headline ?? null) : null,
     req.age       ? `${req.age}`  : null,
     req.location  ?? null,
     req.member_id ?? null,
@@ -331,6 +332,7 @@ export default function HiveRequestsTab({ hiveId, hive, onReviewed, onCountChang
   const [toast,       setToast]       = useState(null);
 
   const isProject = hive?.category_name === 'Project Collaboration';
+  const isCollabCategory = isProject || hive?.category_name === 'Professional Networking';
 
   const load = useCallback(() => {
     setLoading(true);
@@ -486,6 +488,7 @@ export default function HiveRequestsTab({ hiveId, hive, onReviewed, onCountChang
               req={req}
               hiveId={hiveId}
               isProject={isProject}
+              isCollabCategory={isCollabCategory}
               roleStatusById={roleStatusById}
               onAccepted={(newCount, memberData, roleFilledTitle) => {
                 setMemberCount(newCount);
