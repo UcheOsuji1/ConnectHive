@@ -153,6 +153,7 @@ function ReplyBox({ onSubmit, onCancel, submitting }) {
 export default function PostCard({ post: initialPost, variant, homeLayout = false }) {
   const { user } = useAuth();
   const [post, setPost] = useState(initialPost);
+  const authorHref = post.author_user_id === user?.userId ? '/profile' : `/profile/${post.author_user_id}`;
   const [deleted, setDeleted] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editHeadline, setEditHeadline] = useState(initialPost.headline || '');
@@ -436,7 +437,7 @@ export default function PostCard({ post: initialPost, variant, homeLayout = fals
           {waveCount > 0 && (
             <span className="pc-wl-wave-count">{waveCount} wave{waveCount !== 1 ? 's' : ''}</span>
           )}
-          <Link to={`/profile/${post.author_user_id}`} className="pc-wl-profile-link">
+          <Link to={authorHref} className="pc-wl-profile-link">
             View profile →
           </Link>
         </div>
@@ -467,7 +468,7 @@ export default function PostCard({ post: initialPost, variant, homeLayout = fals
             {' '}joined{' '}
             <strong className="pc-nm-hive">{post.hive_name}</strong>
           </span>
-          <Link to={`/profile/${post.author_user_id}`} className="pc-nm-say-hi">Say hi</Link>
+          <Link to={authorHref} className="pc-nm-say-hi">Say hi</Link>
         </div>
       </div>
     );
@@ -510,7 +511,7 @@ export default function PostCard({ post: initialPost, variant, homeLayout = fals
       {homeLayout ? <header className="th-post-header">
         <Avatar name={post.author_name} src={post.author_photo} size={42} />
         <div className="th-post-identity">
-          {post.author_deleted || !post.author_user_id ? <strong>{post.author_deleted ? 'Deleted member' : 'Hive Member'}</strong> : <Link className="th-post-author" to={`/profile/${post.author_user_id}`}>{post.author_name || 'Hive Member'}</Link>}
+          {post.author_deleted || !post.author_user_id ? <strong>{post.author_deleted ? 'Deleted member' : 'Hive Member'}</strong> : <Link className="th-post-author" to={authorHref}>{post.author_name || 'Hive Member'}</Link>}
           <div><span>in </span><Link to={`/hive/${post.hive_id}`}>{post.hive_name}</Link></div>
           {post.category_name && <span className="th-post-category">{post.category_name}</span>}
         </div>

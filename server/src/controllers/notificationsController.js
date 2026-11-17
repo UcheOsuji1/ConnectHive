@@ -1,5 +1,30 @@
 import { query, getClient } from '../db/index.js';
 import { isBlockedEitherWay } from '../lib/blocks.js';
+import { getIO } from '../realtime/socket.js';
+
+async function readUnreadCount(userId) {
+  const { rows: [{ unread_count }] } = await query(
+    `SELECT COUNT(*)::int AS unread_count FROM notifications WHERE user_id = $1 AND read = false`,
+    [userId],
+  );
+  return unread_count;
+}
+
+// Pushes the bell count to every open tab of this person. Fire-and-forget:
+// callers use `void pushUnreadCount(id)` so a socket problem never fails or
+// slows the write that triggered it. getIO() throws when Socket.IO isn't
+// initialised (seed scripts, checks) — that's the expected case there, so
+// it's skipped without a log.
+export async function pushUnreadCount(userId) {
+  let io;
+  try { io = getIO(); } catch { return; }
+  try {
+    const unread_count = await readUnreadCount(userId);
+    io.to(`user:${userId}`).emit('notifications_changed', { unread_count });
+  } catch (err) {
+    console.error('[notifications/pushUnreadCount]', err);
+  }
+}
 
 // ── Noise control (spec §14) ───────────────────────────────────────────────────
 // No row for (hive, user) = every default below applies. A column left NULL
@@ -111,6 +136,7 @@ export async function createNotification({
         );
       }
       await client.query('COMMIT');
+      void pushUnreadCount(userId);
       return row.notification_id;
     } catch (err) {
       await client.query('ROLLBACK');
@@ -126,6 +152,7 @@ export async function createNotification({
      RETURNING notification_id`,
     [userId, type, title, body, hiveId, actorUserId, link],
   );
+  void pushUnreadCount(userId);
   return row.notification_id;
 }
 
@@ -159,10 +186,7 @@ export const getNotifications = async (req, res) => {
 
 export const getUnreadCount = async (req, res) => {
   try {
-    const { rows: [{ unread_count }] } = await query(
-      `SELECT COUNT(*)::int AS unread_count FROM notifications WHERE user_id = $1 AND read = false`,
-      [req.userId],
-    );
+    const unread_count = await readUnreadCount(req.userId);
     res.json({ unread_count });
   } catch (err) {
     res.status(500).json({ error: 'Failed to load count.' });
@@ -176,6 +200,7 @@ export const markRead = async (req, res) => {
       [req.params.id, req.userId],
     );
     res.json({ ok: true });
+    void pushUnreadCount(req.userId);
   } catch (err) {
     res.status(500).json({ error: 'Failed to mark read.' });
   }
@@ -188,6 +213,7 @@ export const markAllRead = async (req, res) => {
       [req.userId],
     );
     res.json({ ok: true });
+    void pushUnreadCount(req.userId);
   } catch (err) {
     res.status(500).json({ error: 'Failed to mark all read.' });
   }

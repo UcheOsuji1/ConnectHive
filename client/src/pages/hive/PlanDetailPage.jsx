@@ -155,7 +155,7 @@ export default function PlanDetailPage() {
                     </div>
                     <div className="pd-attendee-row">
                       {attendees[key].map(p => (
-                        <Link key={p.user_id} to={`/profile/${p.user_id}`} className="pd-attendee" title={p.full_name}>
+                        <Link key={p.user_id} to={p.user_id === viewerId ? '/profile' : `/profile/${p.user_id}`} className="pd-attendee" title={p.full_name}>
                           <Avatar name={p.full_name} src={p.profile_photo_url} size={30} />
                         </Link>
                       ))}

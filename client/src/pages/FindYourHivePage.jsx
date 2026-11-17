@@ -94,7 +94,7 @@ const CONN_LABELS = { online: 'Online', 'in-person': 'In-person', hybrid: 'Hybri
 function HexCell({ cat, index, isSelected, onToggle }) {
   return (
     <div className="cellw" style={{ '--i': index }}>
-      <div className="hexpad">
+      <div className={`hexpad${isSelected ? ' on' : ''}`}>
         <button
           type="button"
           className={`hexout${isSelected ? ' on' : ''}`}
@@ -102,11 +102,17 @@ function HexCell({ cat, index, isSelected, onToggle }) {
           aria-pressed={isSelected}
         >
           <div className="hexin">
+            {isSelected && (
+              <span className="hex-check" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M6 12.5l4 4L18 8" /></svg>
+              </span>
+            )}
             {cat.photoUrl && <img className="hex-photo" src={cat.photoUrl} alt="" decoding="async" draggable="false" style={{ objectPosition: cat.photoPos }} />}
             {cat.photoUrl && <div className="hex-scrim" aria-hidden="true" />}
             <svg className="ic" viewBox="0 0 24 24" aria-hidden="true">{cat.icon}</svg>
             <div className="nm">{cat.name}</div>
             <div className="ds">{cat.desc}</div>
+            {isSelected && <div className="hex-sel-lb" aria-hidden="true">SELECTED</div>}
           </div>
         </button>
       </div>
@@ -121,7 +127,7 @@ function HexCell({ cat, index, isSelected, onToggle }) {
 // unclipped so its focus ring stays visible; only the inner spans are clipped.
 function HexBannerList({ selected, onToggle }) {
   return (
-    <div className="fyh-hexlist fyh-mobile-only" role="group" aria-label="Categories">
+    <div className={`fyh-hexlist fyh-mobile-only${selected ? ' has-selection' : ''}`} role="group" aria-label="Categories">
       {CATEGORIES.map((cat, i) => {
         const isSelected = selected === cat.name;
         return (
@@ -573,12 +579,12 @@ export default function FindYourHivePage() {
             </p>
           </div>
 
-          <div className="comb fyh-desktop-only">
+          <div className={`comb fyh-desktop-only${selected ? ' has-selection' : ''}`}>
             <Honeycomb rows={desktopRows} selected={selected} onToggle={toggleHex} />
           </div>
           <HexBannerList selected={selected} onToggle={toggleHex} />
 
-          <div className="selbar" ref={selbarRef}>
+          <div className={`selbar${selected ? ' has-selection' : ''}`} ref={selbarRef}>
             <div>
               <div className="lb">YOUR SELECTED CATEGORY</div>
               {!selected

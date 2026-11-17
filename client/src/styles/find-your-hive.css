@@ -187,6 +187,35 @@
   max-height: 0; opacity: 0; overflow: hidden; transition: max-height .25s ease, opacity .25s ease; position: relative; z-index: 2;
 }
 .cellw:hover .hexin .ds, .hexout.on .hexin .ds { max-height: 50px; opacity: 1; }
+
+/* ── Selected vs hover ─────────────────────────────────────────────────────────
+   Hover and selected used to share the same frame and scrim, so a choice
+   vanished once the mouse moved away. Everything below goes on .hexpad, not
+   .cellw: .cellw's entry animation holds opacity and scale with
+   fill-mode both, which would override them. A drop-shadow on the unclipped
+   .hexpad follows the clipped hexagon; a box-shadow would not. */
+.hexpad { transition: translate .22s ease, scale .22s ease, opacity .22s ease, filter .22s ease; }
+.hexout.on, .cellw:hover .hexout.on {
+  padding: 3px;
+  background: linear-gradient(160deg, #e8c84a 0%, #c49a28 50%, #8a6510 100%);
+}
+.hexpad.on { scale: 1.04; filter: drop-shadow(0 0 14px rgba(196,154,40,.55)); }
+
+.comb.has-selection .hexpad:not(.on) { opacity: .55; filter: saturate(.6); }
+.comb.has-selection .cellw:hover .hexpad:not(.on),
+.comb.has-selection .cellw:focus-within .hexpad:not(.on) { opacity: 1; filter: none; }
+
+.hex-check {
+  position: absolute; top: 12%; left: 50%; translate: -50% 0; z-index: 3;
+  width: 24px; height: 24px; border-radius: 50%; background: #c49a28;
+  box-shadow: 0 0 0 2px #fff; display: flex; align-items: center; justify-content: center;
+}
+.hex-check svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.hex-sel-lb {
+  position: relative; z-index: 2; color: #e8c84a;
+  font: 700 10px 'DM Sans', sans-serif; letter-spacing: .18em;
+  text-shadow: 0 1px 4px rgba(0,0,0,.85);
+}
 /* Hive counts are intentionally hidden on the category hexes. */
 .hexin .ct { display: none; }
 
@@ -199,6 +228,9 @@
 .chip { background: var(--beige); color: var(--text-main); font: 500 12.5px 'DM Sans', sans-serif; padding: 5px 11px; border-radius: 99px; display: inline-flex; align-items: center; gap: 6px; }
 .fyh-sel-none { font: 400 12.5px 'DM Sans', sans-serif; font-style: italic; color: #b0a89a; }
 .fyh-sel-x { background: none; border: none; padding: 0; color: var(--gold-dark); font-size: 15px; cursor: pointer; line-height: 1; }
+.selbar.has-selection { border: 1.5px solid #c49a28; }
+.selbar.has-selection .chip { background: #c49a28; color: #fff; }
+.selbar.has-selection .fyh-sel-x { color: #fff; }
 .go {
   margin-left: auto; height: 46px; padding: 0 24px; border: none; border-radius: 99px; background: var(--gold);
   color: var(--charcoal); font: 700 13px 'DM Sans', sans-serif; letter-spacing: .06em; display: flex;
@@ -281,8 +313,13 @@
     display: block;
     clip-path: polygon(var(--tip) 0, calc(100% - var(--tip)) 0, 100% 50%, calc(100% - var(--tip)) 100%, var(--tip) 100%, 0 50%);
   }
-  .hexbar-frame { padding: 2px; background: rgba(201,162,74,.38); transition: background .22s ease, scale .15s ease; }
-  .hexbar.on .hexbar-frame { background: var(--gold); }
+  .hexbar-frame { padding: 2px; background: rgba(201,162,74,.38); transition: background .22s ease, scale .15s ease, opacity .22s ease; }
+  .hexbar.on .hexbar-frame { padding: 3px; background: var(--gold); }
+  /* The glow sits on the unclipped button so it follows the clipped frame. */
+  .hexbar { transition: opacity .22s ease, filter .22s ease; }
+  .hexbar.on { filter: drop-shadow(0 0 14px rgba(196,154,40,.55)); }
+  .fyh-hexlist.has-selection .hexbar:not(.on) { filter: saturate(.6); }
+  .fyh-hexlist.has-selection .hexbar:not(.on) .hexbar-frame { opacity: .55; }
   .hexbar:active .hexbar-frame { scale: .985; }
   .hexbar-in {
     position: relative; overflow: hidden; height: 64px; display: flex; align-items: center; gap: 12px;
@@ -331,4 +368,6 @@
   .hexbar-frame, .hexbar-scrim, .hexbar-check { transition: none !important; }
   .hexbar:active .hexbar-frame { scale: 1; }
   .fyh-dock { animation: none !important; }
+  .hexpad, .hexbar { transition: none !important; }
+  .hexpad.on { scale: 1; }
 }

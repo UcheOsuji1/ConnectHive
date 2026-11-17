@@ -95,7 +95,7 @@ function renderWithMentions(text, mentions, meId) {
     out.push(
       <Link
         key={`mention-${key++}`}
-        to={`/profile/${hit.m.user_id}`}
+        to={hit.m.user_id === meId ? '/profile' : `/profile/${hit.m.user_id}`}
         className={`hc-mention${hit.m.user_id === meId ? ' hc-mention--me' : ''}`}
       >
         @{hit.m.full_name}

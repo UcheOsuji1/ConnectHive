@@ -1,9 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../lib/api.js';
+import { socket } from '../lib/socket.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import Avatar from './Avatar.jsx';
 
-const POLL_MS = 30_000;
+// Fallback only: the server pushes `notifications_changed` over the socket.
+const POLL_MS = 60_000;
+
+// Whose cookie the shared socket last authenticated as (see the
+// account-switch effect below).
+let socketUserId = null;
 
 const TYPE_ICON = {
   member_joined:    '👋',
@@ -78,20 +85,74 @@ export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
   const [loadingList,   setLoadingList]   = useState(false);
   const ref = useRef(null);
+  const openRef = useRef(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const userId = user?.userId;
 
-  // Poll unread count
-  useEffect(() => {
-    let cancelled = false;
-    function poll() {
-      api.get('/api/notifications/unread-count')
-        .then(d => { if (!cancelled) setUnreadCount(d.unread_count ?? 0); })
-        .catch(() => {});
-    }
-    poll();
-    const timer = setInterval(poll, POLL_MS);
-    return () => { cancelled = true; clearInterval(timer); };
+  const refreshCount = useCallback(() => {
+    api.get('/api/notifications/unread-count')
+      .then(d => setUnreadCount(d.unread_count ?? 0))
+      .catch(() => {});
   }, []);
+
+  const loadList = useCallback(() => {
+    return api.get('/api/notifications')
+      .then(d => {
+        setNotifications(d.notifications ?? []);
+        setUnreadCount(d.unread_count ?? 0);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { openRef.current = open; }, [open]);
+
+  // Live count over the shared socket. Every page that shows the bell needs
+  // the socket, not just Hive pages, so connect it here if nothing has yet.
+  useEffect(() => {
+    if (!socket.connected) socket.connect();
+    function onChanged(payload) {
+      setUnreadCount(payload?.unread_count ?? 0);
+      if (openRef.current) loadList();
+    }
+    socket.on('notifications_changed', onChanged);
+    socket.on('connect', refreshCount); // reconnect after sleep / server restart
+    return () => {
+      socket.off('notifications_changed', onChanged);
+      socket.off('connect', refreshCount);
+    };
+  }, [loadList, refreshCount]);
+
+  // Switching accounts without a reload: the socket may still be authed as
+  // the previous person and sit in their `user:` room. Tracked at module
+  // level because signing out unmounts the bell, so a ref would start fresh
+  // at the new id and never see the change. Reconnecting makes the server
+  // re-authenticate with the new cookie; lib/socket.js rejoins Hive rooms.
+  useEffect(() => {
+    if (!userId || socketUserId === userId) return;
+    const switched = socketUserId !== null;
+    socketUserId = userId;
+    if (!switched) return; // first sign-in: the route effect below fetches
+    if (socket.connected) { socket.disconnect(); socket.connect(); }
+    refreshCount();
+  }, [userId, refreshCount]);
+
+  // Fallback poll, plus a refetch whenever the person comes back to the tab.
+  useEffect(() => {
+    const timer = setInterval(refreshCount, POLL_MS);
+    function onVisible() { if (document.visibilityState === 'visible') refreshCount(); }
+    window.addEventListener('focus', refreshCount);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('focus', refreshCount);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [refreshCount]);
+
+  // Mount and every route change
+  useEffect(() => { refreshCount(); }, [location.pathname, refreshCount]);
 
   // Close on outside click
   useEffect(() => {
@@ -108,13 +169,7 @@ export default function NotificationBell() {
     setOpen(next);
     if (next) {
       setLoadingList(true);
-      api.get('/api/notifications')
-        .then(d => {
-          setNotifications(d.notifications ?? []);
-          setUnreadCount(d.unread_count ?? 0);
-        })
-        .catch(() => {})
-        .finally(() => setLoadingList(false));
+      loadList().finally(() => setLoadingList(false));
     }
   }
 

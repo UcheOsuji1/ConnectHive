@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.jsx';
 import Navbar from '../components/Navbar';
 import Avatar from '../components/Avatar.jsx';
 import HoneycombBg from '../components/HoneycombBg.jsx';
@@ -232,8 +233,20 @@ function ProfileMenu({ userId, name, onBlocked }) {
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
+// Your own id goes to your own (editable) profile. The other-member API
+// answers 400 for yourself, so this has to be decided before any fetch —
+// which is why it's a wrapper and not an early return inside the page.
 export default function MemberProfilePage() {
   const { id } = useParams();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (<><Navbar /><div className="mp-state"><p>Loading…</p></div></>);
+  }
+  if (user?.userId && id === user.userId) return <Navigate to="/profile" replace />;
+  return <MemberProfileView id={id} />;
+}
+
+function MemberProfileView({ id }) {
   const navigate = useNavigate();
   const [data,     setData]     = useState(undefined);
   const [activity, setActivity] = useState([]);

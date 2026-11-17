@@ -279,7 +279,7 @@ function FounderCard({ member, viewerRole, viewerId, viewerInterests, canSeeOps,
   const actions = canManage(viewerRole, viewerId, member);
 
   return (
-    <Link to={`/profile/${member.user_id}`} className="hmv2-founder-card">
+    <Link to={isMe ? '/profile' : `/profile/${member.user_id}`} className="hmv2-founder-card">
       <div className="hmv2-founder-top">
         <div className="hmv2-founder-avatar-wrap">
           <Avatar name={member.full_name} src={member.profile_photo_url} size={72} />
@@ -357,7 +357,7 @@ function MemberCard({ member, viewerRole, viewerId, viewerInterests, showSkills,
   const actions = canManage(viewerRole, viewerId, member);
 
   return (
-    <Link to={`/profile/${member.user_id}`} className="hmv2-member-card">
+    <Link to={isMe ? '/profile' : `/profile/${member.user_id}`} className="hmv2-member-card">
       <div className="hmv2-member-top">
         <div className="hmv2-member-avatar-wrap">
           <Avatar name={member.full_name} src={member.profile_photo_url} size={52} />
