@@ -39,6 +39,10 @@ function banner(msg) {
 
 async function migrate() {
   const client = await pool.connect();
+  // A one-time migration reports what it changed with RAISE NOTICE (e.g. the
+  // Prompt 86 connections backfill count); without this the deploy log
+  // would show only "APPLY", and a backfill's effect would be invisible.
+  client.on('notice', (n) => console.log(`              NOTICE: ${n.message}`));
   try {
     banner('TrueHive — database migration');
     const { rows: [{ now }] } = await client.query('SELECT NOW() AS now');

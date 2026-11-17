@@ -68,6 +68,13 @@ const ClockIcon = ({ size = 14 }) => (
     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
   </svg>
 );
+const LinkIcon = ({ size = 14 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+  </svg>
+);
 const LockIcon = ({ size = 13 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
        strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -175,7 +182,7 @@ function CompatibilityCard({ compat, name }) {
 }
 
 // ── Profile ⋯ menu (R4) ─────────────────────────────────────────────────────
-function ProfileMenu({ userId, name, onBlocked }) {
+function ProfileMenu({ userId, name, connected, onBlocked, onConnectionRemoved }) {
   const [open, setOpen]             = useState(false);
   const [showBlock, setShowBlock]   = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -193,6 +200,25 @@ function ProfileMenu({ userId, name, onBlocked }) {
       <button type="button" className="mp-menu-btn" onClick={() => setOpen(o => !o)} aria-label="Profile actions">⋯</button>
       {open && (
         <div className="mp-menu-dropdown">
+          {connected && (
+            <>
+              <button
+                type="button"
+                className="mp-menu-item"
+                onClick={async () => {
+                  setOpen(false);
+                  if (!window.confirm(`Remove your connection with ${name}? They won't be notified.`)) return;
+                  try {
+                    await api.delete(`/api/users/${userId}/connection`);
+                    onConnectionRemoved();
+                  } catch { /* the label stays; nothing changed */ }
+                }}
+              >
+                Remove connection
+              </button>
+              <div className="sf-menu-divider" />
+            </>
+          )}
           <button
             type="button"
             className="mp-menu-item sf-menu-item--danger"
@@ -330,7 +356,13 @@ function MemberProfileView({ id }) {
               <Avatar name={p.full_name} src={p.profile_photo_url} size={130} className="prof-avatar" />
             </div>
             <div className="prof-hero-body">
-              <ProfileMenu userId={id} name={firstName} onBlocked={handleBlocked} />
+              <ProfileMenu
+                userId={id}
+                name={firstName}
+                connected={!!data.connection?.connected}
+                onBlocked={handleBlocked}
+                onConnectionRemoved={() => setData(d => ({ ...d, connection: { connected: false, via: null } }))}
+              />
               <h1 className="prof-name">{p.full_name ?? 'Member'}</h1>
               {headlineParts.length > 0 && (
                 <p className="prof-headline">
@@ -342,6 +374,11 @@ function MemberProfileView({ id }) {
               <div className="mp-meta">
                 {p.location && <span><PinIcon /> {p.location}</span>}
                 {lastSeen && <span><ClockIcon /> Active {lastSeen}</span>}
+                {data.connection?.connected && (
+                  <span className="mp-connected">
+                    <LinkIcon /> {data.connection.via ? `Connected · via ${data.connection.via}` : 'Connected'}
+                  </span>
+                )}
               </div>
               <ProfileLinkButtons links={p.links} />
               {p.bio && <p className="prof-bio">{p.bio}</p>}
@@ -354,12 +391,20 @@ function MemberProfileView({ id }) {
                 </div>
               )}
 
-              {/* Action is a real destination only — no Message button, because
-                  no direct-message system exists. */}
-              {sharedHives.length > 0 && (
-                <Link to={`/hive/${sharedHives[0].hive_id}`} className="mp-cta">
-                  View shared Hive →
-                </Link>
+              {/* Follow arrives with Prompt 87; Message is the outlined
+                  button from the mockup. Hidden across a block (the profile
+                  404s then anyway). */}
+              {(data.dm_mode !== 'blocked' || sharedHives.length > 0) && (
+                <div className="mp-actions">
+                  {data.dm_mode && data.dm_mode !== 'blocked' && (
+                    <Link to={`/messages?to=${id}`} className="mp-msg-btn">Message</Link>
+                  )}
+                  {sharedHives.length > 0 && (
+                    <Link to={`/hive/${sharedHives[0].hive_id}`} className="mp-cta">
+                      View shared Hive →
+                    </Link>
+                  )}
+                </div>
               )}
             </div>
           </div>

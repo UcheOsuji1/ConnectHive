@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Avatar from './Avatar.jsx';
 import { Icon } from './home/HomeBits.jsx';
 import { api } from '../lib/api.js';
@@ -155,6 +155,7 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
   const [text, setText]   = useState('');
   const [busy, setBusy]   = useState(false);
   const wrapRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!open) return;
@@ -164,9 +165,11 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
   }, [open]);
 
   const hasManageActions = actions.promote || actions.demote || actions.remove || actions.notify;
-  // Block is a personal safety action, available to anyone viewing someone
-  // else's card — not gated by the owner/admin management permissions above.
-  if (!hasManageActions && (isMe || (!onBlock && !onReport))) return null;
+  // Message, Block and Report are personal actions, available to anyone
+  // viewing someone else's card — not gated by the owner/admin management
+  // permissions above. So the menu renders whenever the card isn't yours.
+  if (isMe && !hasManageActions) return null;
+  const first = member.full_name?.split(' ')[0] ?? 'this member';
 
   function trigger(e) {
     e.preventDefault();
@@ -190,6 +193,12 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
       <button type="button" className="hmv2-cardmenu-btn" onClick={trigger} aria-label="Member actions">⋯</button>
       {open && mode === null && (
         <div className="hmv2-cardmenu-dropdown">
+          {!isMe && (
+            <button type="button" className="hmv2-cardmenu-item hmv2-cardmenu-item--primary"
+              onClick={() => { setOpen(false); navigate(`/messages?to=${member.user_id}`); }}>
+              Message {first}
+            </button>
+          )}
           {actions.promote && (
             <button type="button" className="hmv2-cardmenu-item"
               onClick={() => { setOpen(false); onPromote(member); }}>Promote to Admin</button>
@@ -200,7 +209,7 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
           )}
           {actions.notify && (
             <button type="button" className="hmv2-cardmenu-item"
-              onClick={() => setMode('notify')}>Send a message</button>
+              onClick={() => setMode('notify')}>Send a Hive notice</button>
           )}
           {actions.remove && (
             <button type="button" className="hmv2-cardmenu-item hmv2-cardmenu-item--danger"
@@ -208,17 +217,17 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
           )}
           {!isMe && (onBlock || onReport) && (
             <>
-              {hasManageActions && <div className="sf-menu-divider" />}
+              <div className="sf-menu-divider" />
               {onBlock && (
                 <button type="button" className="hmv2-cardmenu-item sf-menu-item--danger"
                   onClick={() => { setOpen(false); onBlock(member); }}>
-                  Block {member.full_name?.split(' ')[0] ?? 'this member'}
+                  Block {first}
                 </button>
               )}
               {onReport && (
                 <button type="button" className="hmv2-cardmenu-item"
                   onClick={() => { setOpen(false); onReport(member); }}>
-                  Report {member.full_name?.split(' ')[0] ?? 'this member'}
+                  Report {first}
                 </button>
               )}
             </>
@@ -241,7 +250,7 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
             className="hmv2-cardmenu-textarea"
             rows={3}
             autoFocus
-            placeholder={`Message ${member.full_name?.split(' ')[0] ?? 'this member'}…`}
+            placeholder={`Hive notice to ${first}…`}
             value={text}
             onChange={e => setText(e.target.value)}
           />

@@ -12,6 +12,7 @@ import {
   getSuggestions,
   getMemberProfile,
   getMemberActivity,
+  deleteConnection,
 } from '../controllers/usersController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { LIMITS } from '../lib/limits.js';
@@ -49,5 +50,6 @@ router.get('/suggestions',           requireAuth, getSuggestions);
 // Static paths above must stay ahead of these parameterised ones.
 router.get('/:id/profile',           requireAuth, getMemberProfile);
 router.get('/:id/activity',          requireAuth, getMemberActivity);
+router.delete('/:id/connection',     requireAuth, deleteConnection);
 
 export default router;

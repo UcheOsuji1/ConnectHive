@@ -424,6 +424,7 @@
 }
 .hmv2-cardmenu-item:last-child { border-bottom: none; }
 .hmv2-cardmenu-item:hover { background: #f5f0e8; }
+.hmv2-cardmenu-item--primary { font-weight: 600; color: var(--text-main, #1e1b18); }
 .hmv2-cardmenu-item--danger { color: #b93636; }
 .hmv2-cardmenu-item--danger:hover { background: #fef2f2; }
 

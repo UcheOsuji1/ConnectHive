@@ -9,4 +9,8 @@ export const LIMITS = {
   reports:      { windowMs: 60 * 60 * 1000,      max: 10 }, // 10 per hour
   profileCollab: { windowMs: 60 * 60 * 1000,     max: 30 }, // 30 per hour
   hiveCollabWrite: { windowMs: 60 * 60 * 1000,   max: 30 }, // 30 per hour — PUT /api/hives/:id/collab
+  dmMessages:   { windowMs: 60 * 1000,           max: 30 }, // 30 direct messages per minute
+  // Counted in the database (dm_conversations.created_at), not by
+  // express-rate-limit, so it holds across restarts and instances.
+  dmRequestsPerDay: { windowMs: 24 * 60 * 60 * 1000, max: 10 }, // 10 new message requests per day
 };

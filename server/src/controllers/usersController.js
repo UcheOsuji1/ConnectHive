@@ -3,6 +3,7 @@ import { MIN_AGE } from '../lib/policy.js';
 import { flatten, norm } from '../lib/compatibility.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
 import { isBlockedEitherWay } from '../lib/blocks.js';
+import { contextFor, removeConnection } from '../lib/connections.js';
 import { geocode, reverseGeocode } from '../services/geocode.js';
 import { validateUrl } from '../lib/validateUrl.js';
 import { normalizeDeepDive } from '../lib/collabVocabulary.js';
@@ -506,7 +507,14 @@ export const getMemberProfile = async (req, res) => {
       };
     }
 
+    // Blocked pairs 404 above, so the mode here is 'direct' or 'request'.
+    const ctx = (await contextFor(viewerId, [targetId])).get(targetId);
+    const connection = { connected: !!ctx?.connected, via: ctx?.via ?? null };
+    const dm_mode = ctx && (ctx.sharedHive || ctx.connected) ? 'direct' : 'request';
+
     return res.json({
+      connection,
+      dm_mode,
       profile: {
         user_id: target.user_id,
         full_name: target.full_name,
@@ -534,6 +542,19 @@ export const getMemberProfile = async (req, res) => {
   } catch (err) {
     console.error('[users/getMemberProfile]', err);
     return res.status(500).json({ error: 'Failed to load member profile.' });
+  }
+};
+
+// DELETE /api/users/:id/connection — silent; the other person isn't told.
+export const deleteConnection = async (req, res) => {
+  try {
+    if (req.params.id === req.userId) return res.status(400).json({ error: "That's you." });
+    const removed = await removeConnection(req.userId, req.params.id);
+    if (!removed) return res.status(404).json({ error: 'You are not connected.' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[users/deleteConnection]', err);
+    res.status(500).json({ error: 'Failed to remove the connection.' });
   }
 };
 

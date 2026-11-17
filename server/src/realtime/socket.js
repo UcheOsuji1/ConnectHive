@@ -7,6 +7,9 @@ import { requireMembership } from '../lib/hiveMembership.js';
 import { requireChannelAccess } from '../lib/hiveChannels.js';
 import { dbTokenVersion } from '../middleware/auth.js';
 import { touchLastActive } from '../lib/activity.js';
+import { relayTyping } from '../controllers/dmController.js';
+
+const DM_TYPING_INTERVAL_MS = 2000;
 
 let io = null;
 
@@ -326,6 +329,18 @@ export function initSocket(httpServer, allowedOrigins) {
       } catch (err) {
         Sentry.captureException(err, { tags: { socketEvent: 'typing_stop' } });
       }
+    });
+
+    // ── Direct-message typing (Prompt 86) ────────────────────────────────────
+    // At most one relay per 2 s per socket; relayTyping checks membership and
+    // blocks before telling the other person.
+    socket.on('dm_typing', ({ conversationId } = {}) => {
+      const now = Date.now();
+      if (now - (socket.data.lastDmTypingAt ?? 0) < DM_TYPING_INTERVAL_MS) return;
+      socket.data.lastDmTypingAt = now;
+      relayTyping(userId, conversationId).catch((err) => {
+        Sentry.captureException(err, { tags: { socketEvent: 'dm_typing' } });
+      });
     });
 
     // ── disconnect ───────────────────────────────────────────────────────────

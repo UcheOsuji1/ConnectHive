@@ -9,13 +9,14 @@ import VerifyStrip from './VerifyStrip.jsx';
 import PublicHeader from './PublicHeader.jsx';
 import { useTheme } from '../context/ThemeContext.jsx';
 import HomeIcon from './HomeIcon.jsx';
+import { useDmUnread } from '../lib/useDmUnread.js';
 
 const AUTH_NAV = [
   { to: '/home',           label: 'Home' },
   { to: '/find-your-hive', label: 'Find Your Hive' },
   { to: '/my-hive',        label: 'My Hives' },
   { to: '/home#upcoming', label: 'Events' },
-  { to: '/my-hive', label: 'Messages' },
+  { to: '/messages',       label: 'Messages' },
 ];
 
 export default function Navbar() {
@@ -28,6 +29,8 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { user, loading, logout } = useAuth();
   const menuRef = useRef(null);
+  const dmCounts = useDmUnread(!loading && !!user);
+  const dmTotal = dmCounts.inbox + dmCounts.requests;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -45,7 +48,10 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
-  const isActive = (to, label) => label !== 'Messages' && (to.includes('#') ? location.pathname + location.hash === to : !location.hash && (location.pathname === to || location.pathname.startsWith(to + '/')));
+  const isActive = (to) => (to.includes('#') ? location.pathname + location.hash === to : !location.hash && (location.pathname === to || location.pathname.startsWith(to + '/')));
+  const countBadge = (label) => (label === 'Messages' && dmTotal > 0
+    ? <span className="app-nav-count" aria-label={`${dmTotal} unread`}>{dmTotal > 99 ? '99+' : dmTotal}</span>
+    : null);
 
   const firstName = user?.fullName?.trim().split(/\s+/)[0]
     || user?.email?.split('@')[0]
@@ -78,7 +84,7 @@ export default function Navbar() {
                   <li key={label}>
                     <Link to={to} className={isActive(to, label) ? 'app-nav-active' : undefined} aria-current={isActive(to, label) ? 'page' : undefined}>
                       <HomeIcon name={['home', 'hive', 'people', 'calendar', 'message'][index]} />
-                      {label}
+                      <span className="app-nav-label">{label}{countBadge(label)}</span>
                     </Link>
                   </li>
                 ))}
@@ -159,7 +165,7 @@ export default function Navbar() {
               {AUTH_NAV.map(({ to, label }) => (
                   <li key={label}>
                   <Link to={to} className={isActive(to, label) ? 'app-nav-active' : undefined} aria-current={isActive(to, label) ? 'page' : undefined}>
-                    {label}
+                    {label}{countBadge(label)}
                   </Link>
                 </li>
               ))}

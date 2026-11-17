@@ -16,6 +16,7 @@ import categoryRoutes     from './routes/categories.js';
 import toolRoutes         from './routes/tools.js';
 import accountRoutes      from './routes/account.js';
 import blockRoutes        from './routes/blocks.js';
+import dmRoutes           from './routes/dm.js';
 import reportRoutes       from './routes/reports.js';
 import adminRoutes        from './routes/admin.js';
 import emailRoutes        from './routes/email.js';
@@ -174,6 +175,7 @@ app.use('/api/reports',       reportRoutes);
 app.use('/api/admin',         adminRoutes);
 app.use('/api/metros',        metroRoutes);
 app.use('/api/billing',       billingRoutes);
+app.use('/api/dm',            dmRoutes);
 
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((_req, res) => {

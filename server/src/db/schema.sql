@@ -1743,3 +1743,188 @@ CREATE TABLE IF NOT EXISTS saved_home_posts (
   saved_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (user_id, post_id)
 );
+
+-- ─── Connections and Direct Messages (Prompt 86) ─────────────────────────────
+-- A connection is automatic: two people are connected once they are both
+-- active members of the same Hive at the same time. Canonical ordering
+-- (user_a < user_b), same as user_compatibility, so a pair has one row.
+-- lib/connections.js is the single source of truth for these tables;
+-- nothing else should query them directly.
+CREATE TABLE IF NOT EXISTS user_connections (
+  user_a     UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_b     UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_a, user_b),
+  CHECK (user_a < user_b)
+);
+-- The primary key already serves lookups by user_a.
+CREATE INDEX IF NOT EXISTS idx_user_connections_b ON user_connections(user_b);
+
+-- Which Hive(s) a connection came from. hive_id goes NULL when a Hive is
+-- hard-deleted; the connection survives that, and a NULL row still counts as
+-- a source when an owner removes someone (see hive_members_connect below).
+CREATE TABLE IF NOT EXISTS user_connection_sources (
+  source_id  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_a     UUID        NOT NULL,
+  user_b     UUID        NOT NULL,
+  hive_id    UUID        REFERENCES hives(hive_id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (user_a, user_b) REFERENCES user_connections(user_a, user_b) ON DELETE CASCADE,
+  UNIQUE (user_a, user_b, hive_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_connection_sources_hive ON user_connection_sources(hive_id);
+CREATE INDEX IF NOT EXISTS idx_user_connection_sources_b    ON user_connection_sources(user_b);
+
+-- "Remove connection" is permanent for auto-connect: a pair with a row here,
+-- in either direction, is never re-connected by a later shared Hive.
+CREATE TABLE IF NOT EXISTS user_connection_removals (
+  remover_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  other_id   UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (remover_id, other_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_connection_removals_other ON user_connection_removals(other_id);
+
+-- AFTER trigger, so it only ever sees a membership row the BEFORE billing
+-- guard (billing.sql, billing_membership_limit) has already let through: a
+-- join the guard rejects raises before this runs, and nothing is connected.
+-- Set-based: one INSERT … SELECT per statement, not a loop per member.
+-- Skips system accounts (the house account that owns starter Hives), blocked
+-- pairs and removed pairs, in either direction.
+CREATE OR REPLACE FUNCTION hive_members_connect() RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.membership_status = 'active'
+     AND (TG_OP = 'INSERT' OR OLD.membership_status IS DISTINCT FROM 'active') THEN
+    IF EXISTS (SELECT 1 FROM users WHERE user_id = NEW.user_id AND is_system) THEN
+      RETURN NULL;
+    END IF;
+
+    INSERT INTO user_connections (user_a, user_b)
+    SELECT LEAST(NEW.user_id, hm.user_id), GREATEST(NEW.user_id, hm.user_id)
+      FROM hive_members hm
+      JOIN users u ON u.user_id = hm.user_id AND NOT u.is_system
+     WHERE hm.hive_id = NEW.hive_id
+       AND hm.membership_status = 'active'
+       AND hm.user_id <> NEW.user_id
+       AND NOT EXISTS (SELECT 1 FROM user_blocks b
+                        WHERE (b.blocker_id = NEW.user_id AND b.blocked_id = hm.user_id)
+                           OR (b.blocker_id = hm.user_id AND b.blocked_id = NEW.user_id))
+       AND NOT EXISTS (SELECT 1 FROM user_connection_removals r
+                        WHERE (r.remover_id = NEW.user_id AND r.other_id = hm.user_id)
+                           OR (r.remover_id = hm.user_id AND r.other_id = NEW.user_id))
+    ON CONFLICT DO NOTHING;
+
+    -- Same peer set, joined to the connections that now exist: a pair the
+    -- filters above skipped has no connection row, so it gets no source.
+    INSERT INTO user_connection_sources (user_a, user_b, hive_id)
+    SELECT c.user_a, c.user_b, NEW.hive_id
+      FROM hive_members hm
+      JOIN user_connections c
+        ON c.user_a = LEAST(NEW.user_id, hm.user_id)
+       AND c.user_b = GREATEST(NEW.user_id, hm.user_id)
+     WHERE hm.hive_id = NEW.hive_id
+       AND hm.membership_status = 'active'
+       AND hm.user_id <> NEW.user_id
+    ON CONFLICT DO NOTHING;
+
+  ELSIF TG_OP = 'UPDATE'
+        AND OLD.membership_status = 'active'
+        AND NEW.membership_status = 'removed' THEN
+    -- Removed by an owner/admin: drop only what this Hive gave them. A
+    -- connection that also came from another Hive (or from a since-deleted
+    -- one, hive_id NULL) keeps its other source rows and survives.
+    DELETE FROM user_connection_sources s
+     WHERE s.hive_id = NEW.hive_id
+       AND (s.user_a = NEW.user_id OR s.user_b = NEW.user_id);
+
+    DELETE FROM user_connections c
+     WHERE (c.user_a = NEW.user_id OR c.user_b = NEW.user_id)
+       AND NOT EXISTS (SELECT 1 FROM user_connection_sources s
+                        WHERE s.user_a = c.user_a AND s.user_b = c.user_b);
+  END IF;
+  -- 'left' and every other status: connections stay as they are.
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS hive_members_connect ON hive_members;
+CREATE TRIGGER hive_members_connect
+  AFTER INSERT OR UPDATE OF membership_status ON hive_members
+  FOR EACH ROW EXECUTE FUNCTION hive_members_connect();
+
+-- One-time flags for data work that must never repeat. The connections
+-- backfill itself lives in migrations/016_backfill_connections.sql (data
+-- writes don't belong in this re-runnable file, see CLAUDE.md); the flag is
+-- a second guard on top of schema_migrations.
+CREATE TABLE IF NOT EXISTS app_flags (
+  key    TEXT        PRIMARY KEY,
+  set_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Direct messages. One conversation per pair (canonical order). status
+-- 'request' = started by someone who could not message directly; the
+-- recipient's first reply flips it to 'active'.
+CREATE TABLE IF NOT EXISTS dm_conversations (
+  conversation_id UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_a          UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  user_b          UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  status          TEXT        NOT NULL DEFAULT 'active' CHECK (status IN ('active','request')),
+  requested_by    UUID        REFERENCES users(user_id) ON DELETE SET NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_message_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (user_a, user_b),
+  CHECK (user_a < user_b)
+);
+CREATE INDEX IF NOT EXISTS idx_dm_conversations_b ON dm_conversations(user_b);
+
+-- Per-person state. hidden_at: Ignore on a request, or "Delete conversation"
+-- on your own side; a new message clears it for the recipient.
+CREATE TABLE IF NOT EXISTS dm_members (
+  conversation_id UUID        NOT NULL REFERENCES dm_conversations(conversation_id) ON DELETE CASCADE,
+  user_id         UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  last_read_at    TIMESTAMPTZ,
+  hidden_at       TIMESTAMPTZ,
+  muted           BOOLEAN     NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (conversation_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_dm_members_user ON dm_members(user_id);
+
+CREATE TABLE IF NOT EXISTS dm_messages (
+  message_id      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID        NOT NULL REFERENCES dm_conversations(conversation_id) ON DELETE CASCADE,
+  sender_id       UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  body            TEXT        CHECK (body IS NULL OR char_length(body) <= 4000),
+  image_url       TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  edited_at       TIMESTAMPTZ,
+  deleted_at      TIMESTAMPTZ,
+  CHECK (body IS NOT NULL OR image_url IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_dm_messages_conv_created ON dm_messages(conversation_id, created_at DESC);
+
+-- reports.target_type gains 'dm_message'. The original CHECK is inline in
+-- CREATE TABLE reports, so Postgres named it (reports_target_type_check by
+-- default). It's found by definition in pg_constraint rather than assumed by
+-- name, so a differently named constraint can't make this fail or leave a
+-- stale duplicate behind. Re-running finds only the widened one: no-op.
+DO $$
+DECLARE c RECORD;
+BEGIN
+  FOR c IN
+    SELECT con.conname
+      FROM pg_constraint con
+     WHERE con.conrelid = 'reports'::regclass
+       AND con.contype = 'c'
+       AND pg_get_constraintdef(con.oid) LIKE '%target_type%'
+       AND pg_get_constraintdef(con.oid) NOT LIKE '%dm_message%'
+  LOOP
+    EXECUTE format('ALTER TABLE reports DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'reports'::regclass AND conname = 'reports_target_type_check'
+  ) THEN
+    ALTER TABLE reports ADD CONSTRAINT reports_target_type_check
+      CHECK (target_type IN ('message','post','comment','user','hive','dm_message'));
+  END IF;
+END $$;

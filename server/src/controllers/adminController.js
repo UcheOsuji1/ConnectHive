@@ -79,10 +79,10 @@ async function listAdminReportGroups(status) {
     return new Date(b.created_at) - new Date(a.created_at);
   });
 
-  const idsByType = { message: [], post: [], comment: [], user: [], hive: [] };
+  const idsByType = { message: [], post: [], comment: [], user: [], hive: [], dm_message: [] };
   for (const r of rows) idsByType[r.target_type].push(r.target_id);
 
-  const [messages, posts, comments, users, hives] = await Promise.all([
+  const [messages, posts, comments, users, hives, dmMessages] = await Promise.all([
     idsByType.message.length ? query(
       `SELECT m.message_id AS id, m.hidden_at, m.hidden_reason, m.channel_id, m.hive_id,
               p.full_name AS author_name
@@ -116,6 +116,13 @@ async function listAdminReportGroups(status) {
          LEFT JOIN profiles op ON op.user_id = om.user_id
         WHERE h.hive_id = ANY($1)`, [idsByType.hive],
     ) : { rows: [] },
+    // Direct messages (Prompt 86): no Hive, never auto-hidden; the snapshot
+    // on the report row is the evidence even if the sender deletes it.
+    idsByType.dm_message.length ? query(
+      `SELECT dm.message_id AS id, p.full_name AS author_name
+         FROM dm_messages dm LEFT JOIN profiles p ON p.user_id = dm.sender_id
+        WHERE dm.message_id = ANY($1)`, [idsByType.dm_message],
+    ) : { rows: [] },
   ]);
 
   const detailsByKey = new Map();
@@ -124,6 +131,7 @@ async function listAdminReportGroups(status) {
   for (const r of comments.rows) detailsByKey.set(`comment:${r.id}`, r);
   for (const r of users.rows)    detailsByKey.set(`user:${r.id}`, r);
   for (const r of hives.rows)    detailsByKey.set(`hive:${r.id}`, r);
+  for (const r of dmMessages.rows) detailsByKey.set(`dm_message:${r.id}`, r);
 
   // Reporters (names + their details text) — the whole point of the admin view.
   const { rows: reporterRows } = await query(
@@ -235,7 +243,7 @@ export const resolveAdminReport = async (req, res) => {
     const { targetType, targetId } = req.params;
     const { action, note } = req.body ?? {};
 
-    if (!['message', 'post', 'comment', 'user', 'hive'].includes(targetType)) {
+    if (!['message', 'post', 'comment', 'user', 'hive', 'dm_message'].includes(targetType)) {
       return res.status(400).json({ error: 'Invalid target type.' });
     }
     if (!['remove', 'remove_and_suspend', 'dismiss', 'suspend_owner'].includes(action)) {

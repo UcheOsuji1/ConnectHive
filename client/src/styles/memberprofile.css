@@ -53,6 +53,21 @@
   text-decoration: none;
 }
 .mp-cta:hover { opacity: .88; }
+
+/* Message (outlined, per Profile_Connect_Follow mockup) sits before the
+   shared-Hive CTA. The Follow button joins this row in Prompt 87. */
+.mp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; }
+.mp-actions .mp-cta { margin-top: 0; }
+.mp-msg-btn {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+  padding: 0 24px; border-radius: 999px; border: 1px solid #e3d6bd; background: #fffdf8;
+  color: #1e1b18; font-family: 'DM Sans', sans-serif; font-size: .88rem; font-weight: 600;
+  text-decoration: none;
+}
+.mp-msg-btn:hover { background: #f5f0e8; }
+.mp-msg-btn:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+.mp-connected { color: #7a6f60; }
+.mp-connected svg { color: #a08a5c; }
 .mp-cta:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
 
 /* ── Layout ───────────────────────────────────────────────────────────────── */

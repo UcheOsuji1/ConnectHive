@@ -2,6 +2,7 @@ import { query } from '../db/index.js';
 import { requireMembership, getMembership } from '../lib/hiveMembership.js';
 import { requireChannelAccess } from '../lib/hiveChannels.js';
 import { isBlockedEitherWay } from '../lib/blocks.js';
+import { blockAndDisconnect } from '../lib/connections.js';
 import { getEnrichedMessage } from './messagesController.js';
 import { removeMemberCore } from './hivesController.js';
 import { createNotification } from './notificationsController.js';
@@ -9,7 +10,7 @@ import { getIO } from '../realtime/socket.js';
 import { sendReportAlert, REASON_LABELS } from '../lib/email.js';
 import { siteAdminEmails } from '../lib/siteAdmin.js';
 
-const TARGET_TYPES    = ['message', 'post', 'comment', 'user', 'hive'];
+const TARGET_TYPES    = ['message', 'post', 'comment', 'user', 'hive', 'dm_message'];
 const REASONS         = ['harassment', 'safety', 'spam', 'sexual', 'hate', 'fake_or_minor', 'other'];
 const AUTO_HIDE_AFTER = 2;
 
@@ -55,6 +56,27 @@ async function resolveTarget(targetType, targetId, reporterId) {
       targetUserId:    m.sender_user_id,
       contentSnapshot: clip(m.message_text, SNAPSHOT_MAX),
       hiveName:        await hiveNameFor(m.hive_id),
+    };
+  }
+
+  // Direct message (Prompt 86): only the two people in the conversation can
+  // see it, so only they can report it. Private, no Hive, and never
+  // auto-hidden; the snapshot keeps the evidence if the sender deletes it.
+  if (targetType === 'dm_message') {
+    const { rows: [m] } = await query(
+      `SELECT dm.sender_id, dm.body, dm.image_url, dm.deleted_at
+         FROM dm_messages dm
+         JOIN dm_members mem ON mem.conversation_id = dm.conversation_id AND mem.user_id = $2
+        WHERE dm.message_id = $1`,
+      [targetId, reporterId],
+    );
+    if (!m || m.deleted_at) throw notFound();
+    return {
+      hiveId:          null,
+      isPrivate:       true,
+      targetUserId:    m.sender_id,
+      contentSnapshot: clip([m.body, m.image_url].filter(Boolean).join('\n\n'), SNAPSHOT_MAX),
+      hiveName:        null,
     };
   }
 
@@ -199,11 +221,7 @@ export const createReport = async (req, res) => {
     const isNewReport = !!inserted;
 
     if (alsoBlock === true && target.targetUserId && target.targetUserId !== req.userId) {
-      await query(
-        `INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1, $2)
-         ON CONFLICT (blocker_id, blocked_id) DO NOTHING`,
-        [req.userId, target.targetUserId],
-      );
+      await blockAndDisconnect(req.userId, target.targetUserId);
     }
 
     let hidden = false;

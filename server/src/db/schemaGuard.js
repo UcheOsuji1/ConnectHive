@@ -80,6 +80,14 @@ const REQUIRED = {
   billing_worker_heartbeats: [],
   billing_audit: [],
   metro_places: [],
+  // Prompt 86 — connections and direct messages.
+  user_connections: [],
+  user_connection_sources: [],
+  user_connection_removals: [],
+  app_flags: [],
+  dm_conversations: [],
+  dm_members: [],
+  dm_messages: [],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -182,6 +190,13 @@ const IMPACT = {
   'join_requests.portfolio_url': 'role-aware join requests — portfolio link on a request fails to save',
   'compatibility_scores.factors':        'Project/Professional collab matching — role/pay/stage/industry/career-stage factors fail to cache, every read recomputes from scratch',
   'compatibility_scores.scorer_version': 'Project/Professional collab matching — cached rows cannot be told apart from pre-collab scores, so stale factors may be served',
+  'user_connections (table absent)':         'connections — every Hive join fails (the hive_members trigger writes here), and profile/Messages connection checks 500',
+  'user_connection_sources (table absent)':  'connections — every Hive join fails (the hive_members trigger writes here), and "Connected · via {Hive}" fails',
+  'user_connection_removals (table absent)': 'connections — every Hive join fails (the hive_members trigger reads here), and Remove connection fails',
+  'app_flags (table absent)':                'the one-time connections backfill (migration 016) cannot run or record that it ran',
+  'dm_conversations (table absent)':         'Direct Messages — the Messages page, nav badge and every send fail',
+  'dm_members (table absent)':               'Direct Messages — the Messages page, nav badge and every send fail',
+  'dm_messages (table absent)':              'Direct Messages — the Messages page, nav badge and every send fail',
 };
 
 let state = { checked: false, ok: true, missing: [] };

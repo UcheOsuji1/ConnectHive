@@ -199,3 +199,8 @@ html[data-home="true"] body { background:var(--th-bg); }
   .th-home .uec-headline,.th-home .uec-meta { white-space:normal; overflow:visible; text-overflow:clip; }
   .th-home .uec-going-wrap,.th-home .uec-view-chip { grid-column:2; justify-self:start; }
 }
+
+/* Messages unread count (Prompt 86): gold pill beside the label, desktop and mobile menu. */
+.app-nav-label { display:inline-flex; align-items:center; gap:5px; }
+.app-nav-count { display:inline-flex; align-items:center; justify-content:center; min-width:17px; height:17px; padding:0 5px; border-radius:99px; background:#c89b2c; color:#fff; font-size:10.5px; font-weight:700; line-height:1; }
+.app-mobile-menu .app-nav-count { margin-left:8px; }

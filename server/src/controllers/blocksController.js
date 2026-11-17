@@ -1,4 +1,5 @@
 import { query } from '../db/index.js';
+import { blockAndDisconnect } from '../lib/connections.js';
 
 export const createBlock = async (req, res) => {
   try {
@@ -9,11 +10,8 @@ export const createBlock = async (req, res) => {
     const { rows: [target] } = await query('SELECT user_id FROM users WHERE user_id = $1', [blockedId]);
     if (!target) return res.status(404).json({ error: 'User not found.' });
 
-    await query(
-      `INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1, $2)
-       ON CONFLICT (blocker_id, blocked_id) DO NOTHING`,
-      [req.userId, blockedId],
-    );
+    // Also drops the pair's connection, in the same statement (Prompt 86).
+    await blockAndDisconnect(req.userId, blockedId);
     res.json({ blocked: true });
   } catch (err) {
     console.error('[blocks/createBlock]', err);
