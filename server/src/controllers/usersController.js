@@ -8,6 +8,7 @@ import { contextFor, removeConnection, connectionCount, connectionList, newConne
 import { follow, unfollow, followCounts, followState, followList, recentlyNotifiedFollow } from '../lib/follows.js';
 import { createNotification } from './notificationsController.js';
 import { excludeSystemClause } from '../lib/systemUser.js';
+import { GENDERS, genderVisibleClause } from '../lib/genderPolicy.js';
 import { geocode, reverseGeocode } from '../services/geocode.js';
 import { validateUrl } from '../lib/validateUrl.js';
 import { normalizeDeepDive } from '../lib/collabVocabulary.js';
@@ -474,6 +475,7 @@ export const getMemberProfile = async (req, res) => {
         WHERE hm.user_id = $2
           AND hm.membership_status = 'active'
           AND h.hive_status <> 'deleted'
+          AND ${genderVisibleClause('h', '$1')}
           AND (
             h.discoverable = TRUE
             OR EXISTS(SELECT 1 FROM hive_members v
@@ -547,6 +549,7 @@ export const getMemberProfile = async (req, res) => {
            LEFT JOIN categories c ON c.category_id = h.category_id
           WHERE hm.user_id = $1 AND hm.membership_status = 'active'
             AND h.discoverable = TRUE AND h.hive_status = 'active' AND h.deleted_at IS NULL
+            AND ${genderVisibleClause('h', '$2')}
           ORDER BY hm.joined_at DESC
           LIMIT 12`,
         [targetId, viewerId],
@@ -674,6 +677,28 @@ export const getMyNetwork = async (req, res) => {
   } catch (err) {
     console.error('[users/getMyNetwork]', err);
     res.status(500).json({ error: 'Failed to load your network.' });
+  }
+};
+
+// PUT /api/users/profile/gender { gender } — the only write path for a
+// member's private gender (Prompt 88). One of GENDERS or null (Not set).
+// Changing it never removes you from Hives you're already in; it only
+// decides what you can find and join from now on.
+export const updateGender = async (req, res) => {
+  try {
+    const { gender } = req.body ?? {};
+    if (gender !== null && !GENDERS.includes(gender)) {
+      return res.status(400).json({ error: 'Choose Woman, Man, Non-binary, Prefer not to say, or Not set.' });
+    }
+    const { rows: [row] } = await query(
+      `UPDATE profiles SET gender = $1, updated_at = NOW() WHERE user_id = $2 RETURNING gender`,
+      [gender, req.userId],
+    );
+    if (!row) return res.status(404).json({ error: 'Profile not found.' });
+    res.json({ gender: row.gender });
+  } catch (err) {
+    console.error('[users/updateGender]', err);
+    res.status(500).json({ error: 'Failed to save.' });
   }
 };
 

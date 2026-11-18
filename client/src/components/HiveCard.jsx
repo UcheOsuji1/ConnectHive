@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { GenderBadge, NotForYouButton } from './GenderPolicyBits.jsx';
 import { Link } from 'react-router-dom';
 import HoneycombBg from './HoneycombBg.jsx';
 import StarterHiveBadge from './StarterHiveBadge.jsx';
@@ -146,6 +147,7 @@ export default function HiveCard({ hive, index = 0 }) {
           <div className="hc-head">
             <h3 className="hc-name">
               {hive.hive_name}
+              <GenderBadge policy={hive.gender_policy} />
               {/* An admin leads the Hive but is not its owner. Labelling them
                   Owner would be wrong; labelling them Member was the bug. */}
               <span className={`hc-pill${canReview ? ' hc-pill--owner' : ''}`}>

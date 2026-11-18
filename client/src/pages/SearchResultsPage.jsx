@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { GenderBadge, NotForYouButton } from '../components/GenderPolicyBits.jsx';
+import { forText } from '../lib/genderPolicy.js';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api.js';
@@ -116,7 +118,8 @@ export default function SearchResultsPage() {
                             : initials(h.hive_name)}
                         </span>
                         <span className="sr-body">
-                          <span className="sr-name">{h.hive_name}</span>
+                          <span className="sr-name">{h.hive_name} <GenderBadge policy={h.gender_policy} /></span>
+                          {h.viewer_fits === false && <span className="gp-notfor gp-notfor--inline">{forText(h.gender_policy)}</span>}
                           {meta && <span className="sr-meta">{meta}</span>}
                           <StarterHiveBadge hive={h} />
                           {h.description && <span className="sr-desc">{h.description}</span>}

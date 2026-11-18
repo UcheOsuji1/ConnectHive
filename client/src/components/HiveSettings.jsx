@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { WhoCanJoinCard } from './GenderPolicyBits.jsx';
+import { fits, saveMyGender } from '../lib/genderPolicy.js';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../lib/api.js';
@@ -163,6 +165,16 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState(null);
   const [success,  setSuccess]  = useState(false);
+  // Who can join (Prompt 88) — owner only. Current members always stay; a
+  // change to a restricted option closes pending requests that don't fit.
+  const [genderPolicy, setGenderPolicy] = useState(hive.gender_policy ?? 'open');
+  const [myGender, setMyGender] = useState(undefined);
+  const [pendingGender, setPendingGender] = useState(null);
+  const [closedNote, setClosedNote] = useState(null);
+  useEffect(() => {
+    if (hive.my_role !== 'owner') return;
+    api.get('/api/users/profile').then(d => setMyGender(d.profile?.gender ?? null)).catch(() => setMyGender(null));
+  }, [hive.my_role]);
 
   // Location autocomplete (same source as Find Your Hive's Q3)
   const [metroKey, setMetroKey] = useState(hive.metro_key ?? null);
@@ -221,10 +233,24 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
     if (maxMembersError) {
       return setError(maxMembersError);
     }
+    const policyChanged = isOwner && genderPolicy !== (hive.gender_policy ?? 'open');
+    if (policyChanged && genderPolicy !== 'open') {
+      const g = myGender || pendingGender;
+      if (!g) return setError('Choose your gender (private) to use this option.');
+      if (!fits(genderPolicy, g)) return setError('You can only choose options you fit.');
+    }
     setSaving(true);
     setError(null);
     setSuccess(false);
+    setClosedNote(null);
     try {
+      if (policyChanged && genderPolicy !== 'open') {
+        if (!myGender && pendingGender) setMyGender(await saveMyGender(api, pendingGender));
+        const dry = await api.patch(`/api/hives/${hiveId}`, { gender_policy: genderPolicy, dry_run: true });
+        const n = dry.would_close ?? 0;
+        const msg = `Current members stay. New members must fit. ${n} pending request${n === 1 ? '' : 's'} from people who don't fit will be closed.`;
+        if (!window.confirm(msg)) { setSaving(false); return; }
+      }
       const payload = {
         description:   fields.description  || null,
         join_policy:   fields.join_policy,
@@ -237,8 +263,10 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
         tagline:       tagline || null,
         purpose:       fields.purpose.trim()      || null,
         founder_note:  fields.founder_note.trim() || null,
+        ...(policyChanged ? { gender_policy: genderPolicy } : {}),
       };
       const result = await api.patch(`/api/hives/${hiveId}`, payload);
+      if (result.closed_requests) setClosedNote(`${result.closed_requests} pending request${result.closed_requests === 1 ? '' : 's'} closed.`);
       setMetroKey(result.hive?.metro_key ?? null);
       setSuccess(true);
       if (onSaved) onSaved(result.hive);
@@ -388,6 +416,17 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
           </div>
         </div>
 
+        {/* Who can join (Prompt 88) — owner only */}
+        {isOwner && (
+          <WhoCanJoinCard
+            value={genderPolicy}
+            onChange={setGenderPolicy}
+            myGender={myGender}
+            pendingGender={pendingGender}
+            onPendingGender={setPendingGender}
+          />
+        )}
+
         {/* Access */}
         <div className="hw-settings-card">
           <div className="hw-card-label">Access</div>
@@ -490,7 +529,7 @@ export default function HiveSettings({ hive, hiveId, onSaved }) {
         {/* Save row */}
         <div className="hw-settings-footer">
           {error && <div className="hw-settings-error">{error}</div>}
-          {success && <div className="hw-settings-success">Changes saved.</div>}
+          {success && <div className="hw-settings-success">Changes saved.{closedNote ? ` ${closedNote}` : ''}</div>}
           <button type="submit" className="hw-settings-save-btn" disabled={saving || !!maxMembersError}>
             {saving ? 'Saving…' : 'Save changes'}
           </button>

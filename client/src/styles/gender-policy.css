@@ -1,0 +1,52 @@
+/* Prompt 88 — "Who can join?", the private gender field, the badge and the
+   disabled "This Hive is for women" button. Built to CreateHive_WhoCanJoin
+   and DeepDive_Gender. */
+.gp-card { background: #fffdf8; border: 1px solid #ece3d3; border-radius: 16px; padding: 24px 26px; margin-bottom: 18px; font-family: 'DM Sans', sans-serif; }
+.gp-title { font: 600 30px/1.15 'Cormorant Garamond', serif; color: #1e1b18; margin: 0 0 6px; }
+.gp-sub { margin: 0 0 18px; font-size: 14.5px; color: #5c554d; }
+.gp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.gp-opt { display: flex; align-items: flex-start; gap: 14px; padding: 18px 20px; border: 1px solid #e8dfcd; border-radius: 12px; background: #fffdf8; cursor: pointer; }
+.gp-opt input { margin-top: 4px; accent-color: #8a6510; width: 16px; height: 16px; flex: none; }
+.gp-opt.on { background: #faf1dc; border: 1.5px solid #c49a28; }
+.gp-opt.off { opacity: .55; cursor: not-allowed; }
+.gp-opt:focus-within { outline: 2px solid #c49a28; outline-offset: 2px; }
+.gp-opt-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gp-opt-text strong { font-size: 16px; color: #1e1b18; }
+.gp-opt-text span { font-size: 14px; color: #5c554d; }
+.gp-opt-hint { font-style: normal; font-size: 12px; color: #8a6510; margin-top: 2px; }
+.gp-note { margin-top: 16px; padding: 14px 18px; border-radius: 10px; background: #f6efe1; font-size: 14px; line-height: 1.5; color: #4c443b; }
+.gp-error { margin: 10px 0 0; font-size: 13px; color: #b93636; }
+
+.gp-inline { margin: 0 0 16px; padding: 14px 18px; border: 1px solid #ecd9a8; border-radius: 12px; background: #faf1dc; font-family: 'DM Sans', sans-serif; }
+.gp-inline-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.gp-inline-label { font-size: 14px; color: #4c443b; }
+.gp-select { height: 40px; min-width: 150px; padding: 0 14px; border-radius: 999px; border: 1px solid #e3d6bd; background: #fffdf8; font: 400 14px 'DM Sans', sans-serif; color: #1e1b18; }
+.gp-inline-hint { margin: 8px 0 0; font-size: 12.5px; color: #6b6357; }
+
+.gp-badge { display: inline-flex; align-items: center; height: 24px; padding: 0 11px; border-radius: 999px; background: #2a2420; color: #fff; font: 600 12px 'DM Sans', sans-serif; white-space: nowrap; letter-spacing: .01em; }
+.gp-badge--corner { position: absolute; top: 10px; right: 10px; z-index: 3; }
+.gp-notfor { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid #e3dccd; background: #f0ebe1; color: #6b6357; font: 500 14px 'DM Sans', sans-serif; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .gp-card { padding: 18px 16px; }
+  .gp-title { font-size: 26px; }
+  .gp-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Deep Dive "Who do you want in your group?" pills. */
+.gp-pref-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.gp-pref { height: 46px; padding: 0 22px; border-radius: 999px; border: 1px solid #e3d6bd; background: #fffdf8; color: #1e1b18; font: 500 15px 'DM Sans', sans-serif; cursor: pointer; }
+.gp-pref.on { background: #c49a28; border-color: #c49a28; color: #241a07; font-weight: 700; }
+.gp-pref.off { opacity: .45; cursor: not-allowed; }
+.gp-pref:focus-visible { outline: 2px solid #c49a28; outline-offset: 2px; }
+.gp-pref-inline { margin-top: 14px; }
+
+/* Placement tweaks for the badge and the disabled button in existing cards. */
+.gp-badge { vertical-align: middle; margin-left: 6px; }
+h1 .gp-badge, .hab-hero-title .gp-badge { font-size: 12px; transform: translateY(-3px); }
+.gp-notfor--inline { width: auto; min-height: 32px; margin-top: 8px; font-size: 12.5px; padding: 0 14px; }
+.shc-notfor { width: auto; min-height: 32px; font-size: 12px; padding: 0 12px; }
+.dhp-notfor { width: auto; }
+.hmd-cta .gp-notfor { width: 100%; }
+/* On the Hive page's dark header the dark pill disappears: invert it. */
+.hive-dark-card .gp-badge, .dhp-header-top .gp-badge, .hdl-ident .gp-badge, .hdl-ident-name .gp-badge { background: #f3ecdd; color: #2a2420; }

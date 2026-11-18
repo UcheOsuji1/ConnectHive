@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { GenderBadge, NotForYouButton } from '../../components/GenderPolicyBits.jsx';
 import { useOutletContext, useNavigate, Link } from 'react-router-dom';
 import Avatar from '../../components/Avatar.jsx';
 import { Icon } from '../../components/home/HomeBits.jsx';
@@ -136,7 +137,7 @@ export default function HiveAboutPage() {
         <div className="hab-hero-inner">
           <div className="hab-hero-text">
             <div className="hab-eyebrow">ABOUT THIS HIVE</div>
-            <h1 className="hab-hero-title">{hive.hive_name}</h1>
+            <h1 className="hab-hero-title">{hive.hive_name} <GenderBadge policy={hive.gender_policy} /></h1>
             {hive.tagline ? (
               <p className="hab-hero-desc">{hive.tagline}</p>
             ) : canEdit ? (

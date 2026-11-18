@@ -1,4 +1,6 @@
 import { MonetizationForm, emptyConfig, configPayload } from '../components/billing/BillingUI.jsx';
+import { WhoCanJoinCard } from '../components/GenderPolicyBits.jsx';
+import { fits, saveMyGender } from '../lib/genderPolicy.js';
 import { useState, useRef, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -253,6 +255,13 @@ function SectionCard({ number, title, desc, children, disabled = false }) {
 
 export default function CreateHivePage() {
   const [monetization, setMonetization] = useState({...emptyConfig});
+  // Who can join (Prompt 88). myGender is the creator's own private gender
+  // (undefined until loaded); pendingGender is chosen in the inline field
+  // when it's unset, and saved to the profile just before the Hive is created.
+  const [genderPolicy, setGenderPolicy] = useState('open');
+  const [myGender, setMyGender] = useState(undefined);
+  const [pendingGender, setPendingGender] = useState(null);
+  useEffect(() => { api.get('/api/users/profile').then(d => setMyGender(d.profile?.gender ?? null)).catch(() => setMyGender(null)); }, []);
   const [billingPlus, setBillingPlus] = useState(false);
   useEffect(() => { api.get('/api/billing/summary').then(d => setBillingPlus(d.plus)).catch(() => {}); }, []);
   const location    = useLocation();
@@ -366,6 +375,7 @@ export default function CreateHivePage() {
 
   // ── Refs ───────────────────────────────────────────────────────
   const hiveNameRef      = useRef(null);
+  const genderRef        = useRef(null);
   const catFieldRef      = useRef(null);
   const descRef          = useRef(null);
   const compensationRef  = useRef(null);
@@ -409,6 +419,7 @@ export default function CreateHivePage() {
     idealMembers:        whoFor.trim(),
     joinPolicy:          joinMode,
     discoverable:        showInSearch,
+    gender_policy:       genderPolicy,
     maxMembers:          sizeKey === 'custom'
                            ? (Number(customMax) || null)
                            : (MAX_MEMBERS_MAP[sizeKey] ?? null),
@@ -473,6 +484,11 @@ export default function CreateHivePage() {
     if (!description.trim()) errs.description = 'Please add a description.';
     if (sizeKey === 'custom' && !customMax.trim()) errs.customMax = 'Please enter a max number of members.';
     if (customMaxError) errs.customMax = customMaxError;
+    if (genderPolicy !== 'open') {
+      const g = myGender || pendingGender;
+      if (!g) errs.genderPolicy = 'Choose your gender (private) to use this option.';
+      else if (!fits(genderPolicy, g)) errs.genderPolicy = 'You can only choose options you fit.';
+    }
 
     if (isProject) {
       if (!projectFields.compensation.length) errs.compensation = 'Choose at least one thing you can offer collaborators.';
@@ -498,6 +514,7 @@ export default function CreateHivePage() {
                      : errs.roles          ? rolesRef
                      : errs.capacity       ? capacityWarnRef
                      : errs.proIndustries  ? proIndustriesRef
+                     : errs.genderPolicy   ? genderRef
                      : null;
       firstRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -507,6 +524,9 @@ export default function CreateHivePage() {
     setSubmitState('submitting');
     setSubmitError(null);
     try {
+      if (genderPolicy !== 'open' && !myGender && pendingGender) {
+        setMyGender(await saveMyGender(api, pendingGender));
+      }
       const result = await createHive(buildPayload());
       const hiveId = result?.id;
       const openRoles = isProject ? roles.filter(r => r.title.trim()).length : 0;
@@ -536,6 +556,7 @@ export default function CreateHivePage() {
       navigate(hiveId ? (monetization.mode === 'paid' ? `/hive/${hiveId}/billing` : `/hive/${hiveId}`) : '/my-hive');
     } catch (err) {
       console.error('[CreateHive] launch failed:', err);
+      if (err.data?.needs_gender) { setMyGender(null); genderRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
       setSubmitError(err.data?.error ?? 'Something went wrong — please try again.');
       setSubmitState('error');
     }
@@ -818,6 +839,16 @@ export default function CreateHivePage() {
             Section 3 — Membership & size
         ════════════════════════════════════════════════════════════ */}
         <SectionCard number={numMembership} title="Membership & size" desc="How many, and when does it go live">
+          <div ref={genderRef}>
+            <WhoCanJoinCard
+              value={genderPolicy}
+              onChange={setGenderPolicy}
+              myGender={myGender}
+              pendingGender={pendingGender}
+              onPendingGender={setPendingGender}
+            />
+            {errors.genderPolicy && <p className="ch-field-error" role="alert">{errors.genderPolicy}</p>}
+          </div>
 
           <div className="ch-field">
             <div className="ch-field-label">

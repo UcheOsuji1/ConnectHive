@@ -44,6 +44,8 @@ export async function suggestEvents(db, userId, { limit = 3 } = {}) {
        AND p.visibility = 'public'
        AND h.discoverable = TRUE
        AND h.hive_status = 'active'
+       -- Prompt 88: never suggest a plan in a Hive the viewer doesn't fit.
+       AND gender_fits(h.gender_policy, (SELECT gender FROM profiles WHERE user_id = $1))
        AND NOT EXISTS(
          SELECT 1 FROM hive_members
          WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active'

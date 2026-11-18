@@ -1991,3 +1991,75 @@ END $$;
 
 CREATE INDEX IF NOT EXISTS idx_hive_posts_personal
   ON hive_posts(author_user_id, created_at DESC) WHERE hive_id IS NULL;
+
+-- ─── Hive gender policy and private member gender (Prompt 88) ─────────────────
+-- A member's gender is self-declared and private: it is returned only by the
+-- member's own GET /api/users/profile and saved only through their own
+-- PUT /api/users/profile/gender. NULL (unset) and 'prefer_not' fit only
+-- 'open' Hives. Every existing profile starts NULL.
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS gender TEXT;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                  WHERE conrelid = 'profiles'::regclass AND conname = 'profiles_gender_check') THEN
+    ALTER TABLE profiles ADD CONSTRAINT profiles_gender_check
+      CHECK (gender IS NULL OR gender IN ('woman','man','nonbinary','prefer_not'));
+  END IF;
+END $$;
+
+-- Who may join a Hive. Every existing Hive (and every seed) is 'open'.
+ALTER TABLE hives ADD COLUMN IF NOT EXISTS gender_policy TEXT NOT NULL DEFAULT 'open';
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+                  WHERE conrelid = 'hives'::regclass AND conname = 'hives_gender_policy_check') THEN
+    ALTER TABLE hives ADD CONSTRAINT hives_gender_policy_check
+      CHECK (gender_policy IN ('open','women','men','women_nonbinary'));
+  END IF;
+END $$;
+
+-- The one definition of "who fits" for SQL. lib/genderPolicy.js fits() must
+-- match it exactly; `npm run check:gender` compares the two for every
+-- combination. COALESCE because `NULL IN (...)` is NULL, not FALSE.
+CREATE OR REPLACE FUNCTION gender_fits(policy TEXT, gender TEXT) RETURNS BOOLEAN
+LANGUAGE sql IMMUTABLE AS $$
+  SELECT CASE COALESCE(policy, 'open')
+    WHEN 'open'            THEN TRUE
+    WHEN 'women'           THEN COALESCE(gender = 'woman', FALSE)
+    WHEN 'men'             THEN COALESCE(gender = 'man', FALSE)
+    WHEN 'women_nonbinary' THEN COALESCE(gender IN ('woman','nonbinary'), FALSE)
+    ELSE FALSE
+  END
+$$;
+
+-- Backstop for every join path (request accept, instant joins, billing
+-- inserts, anything added later): a row that is *becoming* active must fit
+-- the Hive's policy. Owners are exempt here; createHive and the ownership
+-- handoff in leaveHive check the owner explicitly. Re-activating someone who
+-- is already active is a no-op, and changing your own gender later never
+-- removes you, because nothing re-checks an existing active row.
+-- Fires after billing_membership_limit (same BEFORE timing, triggers run in
+-- name order) and before the AFTER hive_members_connect trigger, so a
+-- rejected join is never connected to anyone.
+CREATE OR REPLACE FUNCTION hive_members_gender_guard() RETURNS TRIGGER AS $$
+DECLARE
+  pol TEXT;
+  g   TEXT;
+BEGIN
+  IF NEW.membership_status IS DISTINCT FROM 'active' THEN RETURN NEW; END IF;
+  IF TG_OP = 'UPDATE' AND OLD.membership_status = 'active' THEN RETURN NEW; END IF;
+  IF NEW.role = 'owner' THEN RETURN NEW; END IF;
+  SELECT gender_policy INTO pol FROM hives WHERE hive_id = NEW.hive_id;
+  IF pol IS NULL OR pol = 'open' THEN RETURN NEW; END IF;
+  SELECT gender INTO g FROM profiles WHERE user_id = NEW.user_id;
+  IF NOT gender_fits(pol, g) THEN
+    RAISE EXCEPTION 'gender_policy' USING ERRCODE = 'P0001';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS hive_members_gender_guard ON hive_members;
+CREATE TRIGGER hive_members_gender_guard
+  BEFORE INSERT OR UPDATE OF membership_status ON hive_members
+  FOR EACH ROW EXECUTE FUNCTION hive_members_gender_guard();

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { GenderBadge, NotForYouButton } from '../components/GenderPolicyBits.jsx';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
@@ -172,6 +173,7 @@ function HiveMatchCard({ hive, autoFetch = false }) {
           <span className="hmd-hive-name">{hive.hive_name}</span>
           {hive.category_name && <span className="hmd-cat-badge">{hive.category_name}</span>}
           <StarterHiveBadge hive={hive} />
+          <GenderBadge policy={hive.gender_policy} />
         </div>
         <div className="hmd-score-pill">{Math.round(hive.match_score)}% Hive fit</div>
       </div>
@@ -345,7 +347,7 @@ function HiveMatchCard({ hive, autoFetch = false }) {
 
       {/* ── CTA ── */}
       <div className="hmd-cta">
-        {hive.paid_membership ? <a href={`/paid-hive/${hive.hive_id}`} className="hmd-btn">Paid · ${(hive.paid_membership.monthly_price_cents/100).toFixed(2)} / month · View membership</a> : joinState === 'joined' ? (
+        {hive.viewer_fits === false ? <NotForYouButton policy={hive.gender_policy} className="hmd-btn" /> : hive.paid_membership ? <a href={`/paid-hive/${hive.hive_id}`} className="hmd-btn">Paid · ${(hive.paid_membership.monthly_price_cents/100).toFixed(2)} / month · View membership</a> : joinState === 'joined' ? (
           <a href={`/hive/${hive.hive_id}`} className="hmd-btn hmd-btn-joined">
             Joined — Open Hive →
           </a>
@@ -691,7 +693,8 @@ export default function HiveDiscoveryPage() {
   const placeLabels = state.placeLabels ?? {};
   const { searchMode, searchMetroKey, searchPlaceLabel } = deriveSearchFields(chips, metroKeys, placeLabels);
   const ageBands = asArray(cards['social-age']).length ? asArray(cards['social-age']) : asArray(cards['event-age']);
-  const prefillData = { chips, cards, textValues, searchMetroKey, searchMode, searchPlaceLabel, ageBands, refineFilters: state.refineFilters };
+  // genderPref (Prompt 88): the Deep Dive's "Who do you want in your group?" answer.
+  const prefillData = { chips, cards, textValues, searchMetroKey, searchMode, searchPlaceLabel, ageBands, refineFilters: state.refineFilters, genderPref: state.genderPref ?? 'none' };
 
   const categoryLabel = CATEGORY_LABELS[category] ?? 'Hive';
   const city = searchPlaceLabel || textValues['social-city'] || textValues['event-city'] || textValues['professional-city'] || textValues['travel-city'] || textValues['project-city'] || textValues['spec-city'] || null;
@@ -712,7 +715,7 @@ export default function HiveDiscoveryPage() {
   const area = matchResult.area ?? null;
   const resolvedPrefills = { ...prefillData, searchMetroKey: area?.metro_key ?? searchMetroKey, searchPlaceLabel: city || area?.name || null };
   const outsideLaunch = searchMode !== 'online' && area && matchResult.isLaunchArea === false && !matchResult.hives.some(h => h.location_type === 'in-person' || h.location_type === 'hybrid');
-  const questionState = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters: state.refineFilters };
+  const questionState = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters: state.refineFilters, genderPref: state.genderPref ?? 'none' };
 
   useEffect(() => {
     let cancelled = false;

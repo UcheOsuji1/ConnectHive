@@ -35,6 +35,20 @@ import { display, PROJECT_TYPES, PROJECT_STAGES, PROJECT_TIMELINES, COMMITMENTS,
          FUNDING, COMPENSATION, PROJECT_INDUSTRIES, PRO_INDUSTRIES, CAREER_STAGES,
          INDUSTRY_SCOPES, EXPERIENCE_LEVELS, normalizeDeepDive } from '../lib/collabVocabulary.js';
 import { validateUrl } from '../lib/validateUrl.js';
+import { POLICIES, isPolicy, fits, isGenderPolicyError, forbiddenBody, genderVisibleClause, viewerFitsSql } from '../lib/genderPolicy.js';
+
+// Deep Dive "Who do you want in your group?" (Prompt 88). 'none' changes
+// nothing; 'mixed' re-sorts open Hives first after scoring; a policy key keeps
+// only Hives with exactly that policy. Runs after scoring, outside the
+// scoring library, so scores and reasons never change.
+const GENDER_PREFS = ['none', 'mixed', 'women', 'men', 'women_nonbinary'];
+const RESTRICTED_PREFS = ['women', 'men', 'women_nonbinary'];
+
+// 403 { error: 'This Hive is for women.', code: 'gender_policy' } for a Hive.
+async function genderForbidden(res, hiveId) {
+  const { rows: [h] } = await query('SELECT gender_policy FROM hives WHERE hive_id = $1', [hiveId]);
+  return res.status(403).json(forbiddenBody(h?.gender_policy));
+}
 
 export const CATEGORY_NAME_MAP = {
   social:       'Social Groups',
@@ -148,6 +162,17 @@ export const matchHives = async (req, res) => {
     );
     if (!profile) return res.json({ hives: [], waitingCount: 0, needsProfile: true });
 
+    const genderPref = GENDER_PREFS.includes(req.body.genderPref) ? req.body.genderPref : 'none';
+    const restrictedPref = RESTRICTED_PREFS.includes(genderPref);
+    if (restrictedPref) {
+      if (!profile.gender) {
+        return res.status(400).json({ error: 'Set your gender (private) to see these Hives.', needs_gender: true });
+      }
+      if (!fits(genderPref, profile.gender)) {
+        return res.status(403).json({ error: 'Only shown to members who fit.', code: 'gender_pref_mismatch' });
+      }
+    }
+
     // Resolved once per request, not per Hive — the seeker side of collab
     // matching never depends on which Hive is being scored.
     const collabAnswers = resolveCollabAnswers(category, profile, req.body);
@@ -220,6 +245,16 @@ export const matchHives = async (req, res) => {
       }
     }
 
+    // Gender policy (Prompt 88): a restricted Hive is hidden from anyone who
+    // doesn't fit (followed Hives excepted), and a restricted genderPref keeps
+    // only Hives with exactly that policy. Pushed before the distance params,
+    // so the radius count query below reuses them too.
+    const genderClauses = [`AND ${genderVisibleClause('h', '$1')}`];
+    if (restrictedPref) {
+      candidateParams.push(genderPref);
+      genderClauses.push(`AND h.gender_policy = $${candidateParams.length}`);
+    }
+
     // Distance radius — an explicit refineFilters.maxDistance (including
     // explicit null for "Any") wins; a request that never mentions distance
     // at all (no refineFilters.maxDistance key) falls back to the caller's
@@ -250,6 +285,7 @@ export const matchHives = async (req, res) => {
          AND ${openRolesClause('h')}
          ${areaFilter}
          ${refineClauses.join('\n')}
+         ${genderClauses.join('\n')}
          ${distanceWhereClause}
          AND h.hive_status  = 'active'
          AND NOT EXISTS(
@@ -276,6 +312,7 @@ export const matchHives = async (req, res) => {
            AND ${openRolesClause('h')}
            ${areaFilter}
            ${refineClauses.join('\n')}
+           ${genderClauses.join('\n')}
            AND h.hive_status = 'active'
            AND NOT EXISTS(
              SELECT 1 FROM hive_members
@@ -408,6 +445,7 @@ export const matchHives = async (req, res) => {
         member_matches,
         reasons,
         ...(collab ? { collab } : {}),
+        viewer_fits:       fits(hive.gender_policy, profile.gender),
         _category_score:   purposeFactors.category,
       });
     }
@@ -415,6 +453,10 @@ export const matchHives = async (req, res) => {
     // 5. Sort DESC, drop zero-category if category is selected, cap 20
     let results = scored.sort((a, b) => b.match_score - a.match_score);
     if (category) results = results.filter(h => h._category_score > 0);
+    // 'mixed': a stable re-sort putting open Hives first; scores untouched.
+    if (genderPref === 'mixed') {
+      results = [...results.filter(h => h.gender_policy === 'open'), ...results.filter(h => h.gender_policy !== 'open')];
+    }
     results = results.map(({ _category_score, ...h }) => h).slice(0, 20);
 
     // 6. waitingCount for this category AND area — a queue for "Social in
@@ -463,6 +505,7 @@ export const quickFindHives = async (req, res) => {
     const { rows } = await query(
       `SELECT h.hive_id, h.hive_name, h.hive_code, h.location, h.location_type,
               h.logo_url, h.banner_url, h.description, h.join_policy, h.is_seed,
+              h.gender_policy, ${viewerFitsSql('h', '$4')} AS viewer_fits,
               c.category_name,
               COUNT(hm.user_id) FILTER (WHERE hm.membership_status = 'active' AND ${excludeSystemClause('hm')})::int AS member_count
        FROM hives h
@@ -470,13 +513,16 @@ export const quickFindHives = async (req, res) => {
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.hive_status = 'active'
          AND (
-           (h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND ${openRolesClause('h')} AND h.hive_name ILIKE $1)
+           (h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND ${openRolesClause('h')} AND h.hive_name ILIKE $1
+            AND ${genderVisibleClause('h', '$4')})
+           -- An exact code still finds a restricted Hive (with viewer_fits
+           -- false), so its card shows the badge and the disabled button.
            OR h.hive_code = $2
          )
        GROUP BY h.hive_id, c.category_name
        ORDER BY (h.hive_code = $2) DESC, h.hive_name ASC
        LIMIT $3`,
-      [namePattern, codeGuess, limit],
+      [namePattern, codeGuess, limit, req.userId],
     );
 
     res.json({ hives: await withPaidOffers(rows) });
@@ -495,7 +541,9 @@ export const getCategoryCounts = async (req, res) => {
        LEFT JOIN hives h ON h.category_id = c.category_id
                          AND h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
                          AND ${openRolesClause('h')}
+                         AND ${genderVisibleClause('h', '$1')}
        GROUP BY c.category_id, c.category_name`,
+      [req.userId],
     );
     res.json({ counts: rows });
   } catch (err) {
@@ -517,7 +565,9 @@ export const getFilterFacets = async (req, res) => {
               h.latitude, h.longitude, c.category_name
        FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id
        WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
-         AND ${openRolesClause('h')}`,
+         AND ${openRolesClause('h')}
+         AND ${genderVisibleClause('h', '$1')}`,
+      [req.userId],
     );
 
     const filters = await readRefineFilters(req.query);
@@ -589,6 +639,7 @@ export const getSuggestions = async (req, res) => {
        LEFT JOIN hive_members hm ON hm.hive_id    = h.hive_id
        WHERE h.discoverable = TRUE AND NOT EXISTS(SELECT 1 FROM hive_monetization pm WHERE pm.hive_id=h.hive_id AND pm.state<>'active') AND h.hive_status = 'active'
          AND ${openRolesClause('h')}
+         AND ${genderVisibleClause('h', '$1')}
          AND NOT EXISTS (
            SELECT 1 FROM hive_members
            WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active'
@@ -701,6 +752,8 @@ export const getSuggestions = async (req, res) => {
         reasons,
         ...(collab ? { collab } : {}),
         is_seed:       hive.is_seed,
+        gender_policy: hive.gender_policy,
+        viewer_fits:   fits(hive.gender_policy, profile.gender),
       });
     }
 
@@ -792,7 +845,8 @@ export const getHive = async (req, res) => {
            WHERE hm_owner.hive_id = h.hive_id AND hm_owner.role = 'owner'
              AND hm_owner.membership_status = 'active'
            LIMIT 1
-         ), false) AS owner_is_system
+         ), false) AS owner_is_system,
+         ${viewerFitsSql('h', '$1')} AS viewer_fits
        FROM hives h
        LEFT JOIN categories               c       ON c.category_id  = h.category_id
        LEFT JOIN hive_members             hm_all  ON hm_all.hive_id = h.hive_id
@@ -821,6 +875,8 @@ export const getHive = async (req, res) => {
           discoverable:  false,
           my_role:       null,
           is_following:  row.is_following,
+          gender_policy: row.gender_policy,
+          viewer_fits:   row.viewer_fits,
           private:       true,
         },
       });
@@ -1069,6 +1125,20 @@ export const createHive = async (req, res) => {
       return res.status(400).json({ error: maxMembersCheck.error });
     }
 
+    // Who can join (Prompt 88). The owner row is exempt from the membership
+    // trigger, so the creator's fit is checked here instead.
+    const genderPolicy = req.body.gender_policy ?? 'open';
+    if (!isPolicy(genderPolicy)) return res.status(400).json({ error: 'Invalid membership option.' });
+    if (genderPolicy !== 'open') {
+      const { rows: [me] } = await query('SELECT gender FROM profiles WHERE user_id = $1', [userId]);
+      if (!me?.gender) {
+        return res.status(400).json({ error: 'Set your gender (private) to choose this option.', needs_gender: true });
+      }
+      if (!fits(genderPolicy, me.gender)) {
+        return res.status(400).json({ error: 'You can only choose a membership option you fit.' });
+      }
+    }
+
     // Project/Professional basics + roles (Prompt 80) — validated up front,
     // before anything is written. Project and Professional Hives always
     // validate (even an empty body), so the "pay is required" / "pick an
@@ -1145,8 +1215,8 @@ export const createHive = async (req, res) => {
           creator_user_id, category_id, hive_name, description, ideal_members,
           max_members, activation_threshold, tags, join_policy, discoverable,
           location_type, location, cadence, pinned_goal, ground_rules, icebreaker,
-          hive_values, metro_key, latitude, longitude
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+          hive_values, metro_key, latitude, longitude, gender_policy
+        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
         RETURNING *`,
         [
           userId,
@@ -1169,6 +1239,7 @@ export const createHive = async (req, res) => {
           resolvedMetroKey,
           hiveLatitude,
           hiveLongitude,
+          genderPolicy,
         ],
       );
 
@@ -1331,7 +1402,46 @@ export const updateHive = async (req, res) => {
         updates[key] = req.body[key];
       }
     }
-    if (Object.keys(updates).length === 0) {
+
+    // Who can join (Prompt 88): owner only, and only a policy the owner fits.
+    // A change to a restricted policy closes pending requests from people who
+    // don't fit, in the same transaction as the change. `dry_run` returns how
+    // many it would close (for the confirm dialog) without changing anything.
+    let policyChange = null;
+    if (Object.prototype.hasOwnProperty.call(req.body, 'gender_policy')) {
+      const next = req.body.gender_policy;
+      if (!isPolicy(next)) return res.status(400).json({ error: 'Invalid membership option.' });
+      if (myRole.role !== 'owner') return res.status(403).json({ error: 'Only the owner can change who can join.' });
+      const { rows: [cur] } = await query(
+        `SELECT h.gender_policy, p.gender FROM hives h LEFT JOIN profiles p ON p.user_id = $2 WHERE h.hive_id = $1`,
+        [hiveId, req.userId],
+      );
+      if (next !== 'open' && !cur.gender) {
+        return res.status(400).json({ error: 'Set your gender (private) to choose this option.', needs_gender: true });
+      }
+      if (!fits(next, cur.gender)) {
+        return res.status(400).json({ error: 'You can only choose a membership option you fit.' });
+      }
+      if (next !== cur.gender_policy) policyChange = next;
+      if (req.body.dry_run === true) {
+        const { rows: [{ n }] } = await query(
+          `SELECT COUNT(*)::int AS n FROM join_requests jr
+            WHERE jr.hive_id = $1 AND jr.status = 'pending'
+              AND NOT gender_fits($2, (SELECT gender FROM profiles WHERE user_id = jr.user_id))`,
+          [hiveId, next],
+        );
+        return res.json({ dry_run: true, would_close: next === cur.gender_policy ? 0 : n });
+      }
+    }
+
+    if (Object.keys(updates).length === 0 && !policyChange) {
+      if (Object.prototype.hasOwnProperty.call(req.body, 'gender_policy')) {
+        const { rows: [unchanged] } = await query(
+          `SELECT h.*, c.category_name FROM hives h LEFT JOIN categories c ON c.category_id = h.category_id WHERE h.hive_id = $1`,
+          [hiveId],
+        );
+        return res.json({ hive: unchanged, closed_requests: 0 });
+      }
       return res.status(400).json({ error: 'No valid fields to update.' });
     }
 
@@ -1402,14 +1512,46 @@ export const updateHive = async (req, res) => {
       updates[key] = trimmed;
     }
 
+    if (policyChange) updates.gender_policy = policyChange;
     const keys = Object.keys(updates);
     const vals = Object.values(updates);
     const setClauses = keys.map((k, i) => `${k} = $${i + 1}`).join(', ');
 
-    await query(
-      `UPDATE hives SET ${setClauses}, updated_at = NOW() WHERE hive_id = $${keys.length + 1}`,
-      [...vals, hiveId],
-    );
+    let closed = [];
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE hives SET ${setClauses}, updated_at = NOW() WHERE hive_id = $${keys.length + 1}`,
+        [...vals, hiveId],
+      );
+      if (policyChange && policyChange !== 'open') {
+        // The reject path's own status; the notice below says why instead.
+        ({ rows: closed } = await client.query(
+          `UPDATE join_requests jr
+              SET status = 'rejected', reviewed_at = NOW(), reviewed_by = $2
+            WHERE jr.hive_id = $1 AND jr.status = 'pending'
+              AND NOT gender_fits($3, (SELECT gender FROM profiles WHERE user_id = jr.user_id))
+            RETURNING jr.user_id`,
+          [hiveId, req.userId, policyChange],
+        ));
+      }
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+
+    if (closed.length) {
+      const { rows: [h] } = await query('SELECT hive_name FROM hives WHERE hive_id = $1', [hiveId]);
+      await Promise.all(closed.map(r => createNotification({
+        userId: r.user_id, type: 'request_closed', category: 'system',
+        title: `Your request to join ${h.hive_name} was closed because its membership settings changed.`,
+        hiveId, link: '/find-your-hive',
+      }).catch(e => console.error('[hives/updateHive] request-closed notice failed', e))));
+    }
 
     const { rows: [updated] } = await query(
       `SELECT h.*, c.category_name
@@ -1419,7 +1561,7 @@ export const updateHive = async (req, res) => {
       [hiveId],
     );
 
-    res.json({ hive: updated });
+    res.json({ hive: updated, closed_requests: closed.length });
   } catch (err) {
     console.error('[hives/updateHive]', err);
     if (err.status || /^P730/.test(err.code || '')) return res.status(err.status || 409).json({ error: err.message });
@@ -1474,6 +1616,13 @@ async function joinWithRole(roleId, writeMember) {
 export const requestToJoin = async (req, res) => {
   try {
     const hiveId = req.params.id;
+    // Gender policy first (Prompt 88): before the paid-Hive redirect, so
+    // someone who doesn't fit is never pointed at checkout from here.
+    const { rows: [gp] } = await query(
+      `SELECT h.gender_policy, p.gender FROM hives h LEFT JOIN profiles p ON p.user_id = $2 WHERE h.hive_id = $1`,
+      [hiveId, req.userId],
+    );
+    if (gp && !fits(gp.gender_policy, gp.gender)) return res.status(403).json(forbiddenBody(gp.gender_policy));
     if ((await query('SELECT 1 FROM hive_monetization WHERE hive_id=$1', [hiveId])).rows.length) {
       return res.status(402).json({ error: 'This Hive requires a paid membership. Review its benefits and subscribe to join.', membershipUrl: `/paid-hive/${hiveId}` });
     }
@@ -1792,6 +1941,8 @@ export const requestToJoin = async (req, res) => {
 
     res.json({ requested: true });
   } catch (err) {
+    // The trigger backstop (gender changed between the check and the write).
+    if (isGenderPolicyError(err)) return genderForbidden(res, req.params.id);
     const guard = billingGuardError(err);
     if (guard) return res.status(guard.status).json({ error: guard.message });
     console.error('[hives/requestToJoin]', err);
@@ -1906,6 +2057,7 @@ export const getHiveRequests = async (req, res) => {
 
 // ── reviewRequest ─────────────────────────────────────────────────────────────
 export const reviewRequest = async (req, res) => {
+  let reviewApplicantId = null;
   try {
     const { id: hiveId, requestId } = req.params;
     const { action } = req.body;
@@ -1929,6 +2081,7 @@ export const reviewRequest = async (req, res) => {
       [requestId, hiveId],
     );
     if (!request) return res.status(404).json({ error: 'Request not found or already reviewed.' });
+    reviewApplicantId = request.user_id;
 
     // The decision (status UPDATE + member INSERT/UPSERT + capacity re-check)
     // is one transaction — previously these were separate statements, so a
@@ -2186,6 +2339,14 @@ export const reviewRequest = async (req, res) => {
       roleFilled:   action === 'accept' ? roleFilled : undefined,
     });
   } catch (err) {
+    // The applicant changed their gender after requesting: the trigger blocked
+    // the membership and the transaction rolled back, so the request is still
+    // pending for the owner to decide on later.
+    if (isGenderPolicyError(err)) {
+      const { rows: [p] } = await query('SELECT full_name FROM profiles WHERE user_id = $1', [reviewApplicantId]);
+      const first = p?.full_name?.trim().split(/\s+/)[0] || 'This person';
+      return res.status(409).json({ error: `${first} no longer fits this Hive's membership settings.`, code: 'gender_policy' });
+    }
     const guard = billingGuardError(err);
     if (guard) return res.status(guard.status).json({ error: guard.message });
     console.error('[hives/reviewRequest]', err);
@@ -2752,6 +2913,19 @@ export const leaveHive = async (req, res) => {
         if (!successor) {
           await client.query('ROLLBACK');
           return res.status(400).json({ error: 'transfer_to_user_id must be an active member of this Hive.' });
+        }
+        // Prompt 88: the owner row is exempt from the membership trigger, so
+        // a new owner's fit with the Hive's policy is checked here.
+        const { rows: [fit] } = await client.query(
+          `SELECT h.gender_policy, p.gender, p.full_name
+             FROM hives h LEFT JOIN profiles p ON p.user_id = $2
+            WHERE h.hive_id = $1`,
+          [hiveId, transfer_to_user_id],
+        );
+        if (!fits(fit.gender_policy, fit.gender)) {
+          await client.query('ROLLBACK');
+          const first = fit.full_name?.trim().split(/\s+/)[0] || 'This member';
+          return res.status(409).json({ error: `${first} can't own this Hive because of its membership settings.` });
         }
         await client.query(
           `UPDATE hive_members SET role = 'owner'

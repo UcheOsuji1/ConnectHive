@@ -1167,3 +1167,12 @@
 @media (max-width: 720px) { .mp-ph-list { grid-template-columns: minmax(0, 1fr); } }
 .mp-public-hives, .mp-posts { padding: 20px 22px; }
 .mp-posts .th-post-author, .mp-posts .th-post-identity a { text-decoration: none; }
+
+/* ── Prompt 88: Private details (gender), own profile only ───────────────── */
+.prof-private { margin: 14px 0 6px; padding: 14px 16px; border: 1px solid #ece3d3; border-radius: 12px; background: #fffdf8; max-width: 480px; }
+.prof-private-eyebrow { font: 700 11px 'DM Sans', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8a6510; margin-bottom: 8px; }
+.prof-private-label { display: block; font-family: 'DM Sans', sans-serif; font-size: .9rem; color: #1e1b18; margin-bottom: 8px; }
+.prof-private-label span { color: #7a6f60; font-weight: 400; font-size: .82rem; }
+.prof-private-select { width: 100%; max-width: 300px; border-radius: 10px; }
+.prof-private-view { margin: 6px 0 4px; font-family: 'DM Sans', sans-serif; font-size: .84rem; color: #4c443b; }
+.prof-private-view span { color: #7a6f60; }

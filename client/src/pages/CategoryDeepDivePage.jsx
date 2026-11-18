@@ -1,4 +1,6 @@
 import AreaLocationInput from '../components/AreaLocationInput.jsx';
+import { PrivateGenderField } from '../components/GenderPolicyBits.jsx';
+import { fits, saveMyGender } from '../lib/genderPolicy.js';
 import DistanceSlider from '../components/DistanceSlider.jsx';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
@@ -1278,6 +1280,48 @@ function PrefCardRow({ id, cards, selectedCard, onSelect }) {
 }
 
 
+// "Who do you want in your group?" (Prompt 88) — every category's last
+// question. Restricted options the person doesn't fit are disabled (with a
+// tooltip); with gender unset they stay enabled, and picking one shows the
+// inline private gender card, saved before results load.
+const GENDER_PREF_OPTIONS = [
+  { value: 'none',            label: 'No preference' },
+  { value: 'mixed',           label: 'Mixed groups' },
+  { value: 'women',           label: 'Women only' },
+  { value: 'men',             label: 'Men only' },
+  { value: 'women_nonbinary', label: 'Women & non-binary' },
+];
+const RESTRICTED_PREFS = ['women', 'men', 'women_nonbinary'];
+
+function GenderPrefQuestion({ value, onChange, myGender, pendingGender, onPendingGender, error }) {
+  const known = !!myGender;
+  return (
+    <div className="cdd-section gp-pref-section">
+      <div className="cdd-section-label">Who do you want in your group?</div>
+      <p className="cdd-hint">Pick one. Women-only and men-only Hives only appear for members who fit.</p>
+      <div className="gp-pref-row" role="radiogroup" aria-label="Who do you want in your group?">
+        {GENDER_PREF_OPTIONS.map(o => {
+          const off = known && RESTRICTED_PREFS.includes(o.value) && !fits(o.value, myGender);
+          return (
+            <button key={o.value} type="button" role="radio" aria-checked={value === o.value}
+                    aria-disabled={off || undefined} title={off ? 'Only shown to members who fit.' : undefined}
+                    className={`gp-pref${value === o.value ? ' on' : ''}${off ? ' off' : ''}`}
+                    onClick={() => { if (!off) onChange(o.value); }}>
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
+      {!known && RESTRICTED_PREFS.includes(value) && (
+        <div className="gp-pref-inline">
+          <PrivateGenderField value={pendingGender} onChange={onPendingGender} id="deep-dive-gender" />
+        </div>
+      )}
+      {error && <p className="gp-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
 function CreateBtn({ text, onClick }) {
   const [hov, setHov] = useState(false);
   return (
@@ -1329,6 +1373,15 @@ export default function CategoryDeepDivePage() {
   const [metroKeys,     setMetroKeys]     = useState(location.state?.metroKeys ?? {});
   const [placeLabels,   setPlaceLabels]   = useState(location.state?.placeLabels ?? {});
   const [roles,         setRoles]         = useState(location.state?.roles ?? []);
+  // Prompt 88: group preference + the viewer's own private gender (only to
+  // decide which options are enabled; never shown anywhere else).
+  const [genderPref,    setGenderPref]    = useState(location.state?.genderPref ?? 'none');
+  const [myGender,      setMyGender]      = useState(undefined);
+  const [pendingGender, setPendingGender] = useState(null);
+  const [genderError,   setGenderError]   = useState(null);
+  useEffect(() => {
+    api.get('/api/users/profile').then(d => setMyGender(d.profile?.gender ?? null)).catch(() => setMyGender(null));
+  }, []);
   const [saveSkillsToProfile, setSaveSkillsToProfile] = useState(true);
 
   // Pre-fill prof-skills / proj-skills from the signed-in user's saved
@@ -1543,12 +1596,21 @@ export default function CategoryDeepDivePage() {
   }
 
   // ── Navigate next ──
-  const handleNext = () => {
+  const handleNext = async () => {
+    // A restricted preference needs the person's own gender first: saved to
+    // their profile here, then the search continues.
+    if (RESTRICTED_PREFS.includes(genderPref) && !myGender) {
+      if (!pendingGender) { setGenderError('Choose your gender (private) to see these Hives.'); return; }
+      if (!fits(genderPref, pendingGender)) { setGenderError('Only shown to members who fit.'); return; }
+      try { setMyGender(await saveMyGender(api, pendingGender)); }
+      catch { setGenderError('Could not save. Try again.'); return; }
+    }
+    setGenderError(null);
     const refineFilters = { ...(location.state?.refineFilters ?? {}), maxDistance };
     // The full (unfiltered) answers — this is what seeds this page's own
     // state again if the person comes Back from Discovery, so the hidden
     // group's answers survive the round trip, not just in-session switches.
-    const fullAnswers = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters, roles };
+    const fullAnswers = { category, chips, cards, textValues, metroKeys, placeLabels, refineFilters, roles, genderPref };
     window.history.replaceState({ ...window.history.state, usr: fullAnswers }, '');
     // What actually travels to Discovery — for Project, only the visible
     // path's answers (Part 4: "don't send hidden-group answers").
@@ -2695,6 +2757,16 @@ export default function CategoryDeepDivePage() {
           </div>
 
         </>)}
+
+        {/* ── Who do you want in your group? (every category, last) ── */}
+        <GenderPrefQuestion
+          value={genderPref}
+          onChange={v => { setGenderPref(v); setGenderError(null); }}
+          myGender={myGender}
+          pendingGender={pendingGender}
+          onPendingGender={g => { setPendingGender(g); setGenderError(null); }}
+          error={genderError}
+        />
 
         {/* ── Bottom Nav ── */}
         <div className="cdd-nav">

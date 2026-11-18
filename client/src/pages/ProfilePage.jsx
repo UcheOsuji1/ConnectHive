@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
 import HoneycombBg from '../components/HoneycombBg.jsx';
 import PersonalPosts from '../components/PersonalPosts.jsx';
+import { GENDER_OPTIONS, genderLabel, saveMyGender } from '../lib/genderPolicy.js';
+import '../styles/gender-policy.css';
 import '../styles/profile.css';
 
 const LINK_LABELS = ['LinkedIn', 'Portfolio', 'GitHub', 'Website', 'Other'];
@@ -292,6 +294,7 @@ export default function ProfilePage() {
 
   function startEdit() {
     setDraft({
+      gender:              profile.gender ?? '',
       full_name:           profile.full_name || '',
       location:            profile.location || '',
       school_company:      profile.school_company || '',
@@ -368,12 +371,18 @@ export default function ProfilePage() {
       .map(l => ({ label: l.label, url: l.url.trim() }))
       .filter(l => l.url);
 
+    // Private gender (Prompt 88) has its own endpoint: never part of the
+    // whole-row setup payload, and saved only when it actually changed.
+    const nextGender = draft.gender || null;
+    const genderChanged = nextGender !== (profile.gender ?? null);
+
     try {
       await Promise.all([
         api.post('/api/users/profile/setup', payload),
         api.patch('/api/users/profile/collab', { headline: trimmedHeadline, links: cleanedLinks }),
+        genderChanged ? saveMyGender(api, nextGender) : Promise.resolve(),
       ]);
-      setProfile(prev => ({ ...prev, ...payload, headline: trimmedHeadline || null, links: cleanedLinks }));
+      setProfile(prev => ({ ...prev, ...payload, headline: trimmedHeadline || null, links: cleanedLinks, gender: nextGender }));
       await refreshUser();
       setDraft(null);
       setEditing(false);
@@ -621,6 +630,22 @@ export default function ProfilePage() {
                         <div className="prof-loc-dot" aria-hidden="true" />
                         <span>{locationLine}</span>
                       </div>
+                    )}
+                    {editing ? (
+                      <div className="prof-private">
+                        <div className="prof-private-eyebrow">Private details</div>
+                        <label className="prof-private-label" htmlFor="prof-gender">
+                          <strong>Gender</strong> <span>· only you can see this</span>
+                        </label>
+                        <select id="prof-gender" className="gp-select prof-private-select" value={draft.gender}
+                                onChange={e => setDraft(d => ({ ...d, gender: e.target.value }))}>
+                          <option value="">Not set</option>
+                          {GENDER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        <p className="prof-field-hint">Used only to show you Hives you can join. “Prefer not to say” hides women-only and men-only Hives.</p>
+                      </div>
+                    ) : profile.gender && (
+                      <p className="prof-private-view">Gender: {genderLabel(profile.gender)} <span>(only you can see this)</span></p>
                     )}
                     {!editing && network && (
                       <p className="mp-counts prof-counts">

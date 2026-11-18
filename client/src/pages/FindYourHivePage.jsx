@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { GenderBadge, NotForYouButton } from '../components/GenderPolicyBits.jsx';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { api } from '../lib/api';
@@ -259,7 +260,7 @@ function QuickFind({ navigate, purposeWhere = 'on the right' }) {
                   )}
                 </div>
                 <div>
-                  <b>{h.hive_name}</b>
+                  <b>{h.hive_name} <GenderBadge policy={h.gender_policy} /></b>
                   <span>{h.category_name || 'Hive'}{h.location ? ` · ${h.location}` : ''}</span>
                 </div>
                 <div className="dcode">{h.hive_code}</div>
@@ -400,6 +401,7 @@ function SuggestCard({ hive, navigate }) {
           <span className="hmd-hive-name">{hive.hive_name}</span>
           {hive.category_name && <span className="hmd-cat-badge">{hive.category_name}</span>}
           <StarterHiveBadge hive={hive} />
+          <GenderBadge policy={hive.gender_policy} />
         </div>
         <span className="hmd-score-pill">{hive.match_score}% Match</span>
       </div>

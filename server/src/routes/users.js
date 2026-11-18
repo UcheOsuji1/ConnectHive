@@ -20,6 +20,7 @@ import {
   getMyConnections,
   getMyNetwork,
   getPersonalUploadSignature,
+  updateGender,
 } from '../controllers/usersController.js';
 import { getUserPosts } from '../controllers/postsController.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -48,6 +49,7 @@ const profileCollabLimiter = rateLimit({
 
 router.get('/profile',               requireAuth, getProfile);
 router.put('/profile',               requireAuth, updateProfile);
+router.put('/profile/gender',        requireAuth, updateGender);
 router.patch('/profile/collab',      requireAuth, profileCollabLimiter, updateCollabProfile);
 router.post('/profile/setup',        requireAuth, setupProfile);
 router.post('/location',             requireAuth, setLocationFromCoords);

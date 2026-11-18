@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { GenderBadge, NotForYouButton } from './GenderPolicyBits.jsx';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import { getInitials } from '../lib/initials.js';
@@ -39,6 +40,7 @@ function HiveRow({ hive }) {
       <HiveAvatar hive={hive} />
       <div className="shc-row-mid">
         <Link to={`/hive/${hive.hive_id}`} className="shc-hive-name">{hive.hive_name}</Link>
+        <GenderBadge policy={hive.gender_policy} />
         <div className="shc-meta">
           {hive.category_name}
         </div>
@@ -46,7 +48,9 @@ function HiveRow({ hive }) {
         {joinError && <div className="shc-join-error">{joinError}</div>}
       </div>
       {fit !== null && <div className="th-match-ring" style={{ '--match': `${Math.max(0, Math.min(100, fit))}%` }} aria-label={`${fit}% compatibility`}><strong>{fit}%</strong><small>match</small></div>}
-      {joinState === 'joined' ? (
+      {hive.viewer_fits === false ? (
+        <NotForYouButton policy={hive.gender_policy} className="shc-notfor" />
+      ) : joinState === 'joined' ? (
         <button type="button" className="shc-join-btn shc-join-btn--done" disabled>Joined</button>
       ) : joinState === 'pending' ? (
         <button type="button" className="shc-join-btn shc-join-btn--done" disabled>Requested</button>

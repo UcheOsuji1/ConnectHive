@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { GenderBadge, NotForYouButton } from './GenderPolicyBits.jsx';
 import {
   Outlet, useParams, useNavigate, useLocation, Link, NavLink,
 } from 'react-router-dom';
@@ -269,7 +270,7 @@ function HiveSidebar({
 
         {uploadError && <div className="hdl-ident-error">{uploadError}</div>}
 
-        <h1 className="hdl-ident-name">{hive.hive_name}</h1>
+        <h1 className="hdl-ident-name">{hive.hive_name} <GenderBadge policy={hive.gender_policy} /></h1>
 
         {metaLines.length > 0 && (
           <div className="hdl-ident-meta">
@@ -368,7 +369,7 @@ function safeTags(val) {
   try { return JSON.parse(val) || []; } catch { return []; }
 }
 
-function JoinBtn({ hiveId, hiveName, initialPending, paid, hasOpenRoles, bestRoleId }) {
+function JoinBtn({ hiveId, hiveName, initialPending, paid, hasOpenRoles, bestRoleId, viewerFits = true, genderPolicy = 'open' }) {
   const [state, setState] = useState(initialPending ? 'pending' : 'idle');
   const [err, setErr] = useState(null);
   const [applyOpen, setApplyOpen] = useState(false);
@@ -390,6 +391,9 @@ function JoinBtn({ hiveId, hiveName, initialPending, paid, hasOpenRoles, bestRol
     }
   }
 
+  // Prompt 88: someone who doesn't fit sees the disabled stand-in (the
+  // server would 403 anyway); the Follow button beside it stays.
+  if (!viewerFits) return <NotForYouButton policy={genderPolicy} className="dhp-notfor" />;
   if (paid) return <Link className="dhp-join-btn" to={`/paid-hive/${hiveId}`}>View paid membership · ${(paid.monthly_price_cents/100).toFixed(2)} / month</Link>;
   if (state === 'joined')  return <div className="dhp-join-joined">Joined ✓</div>;
   if (state === 'pending') return <div className="dhp-join-disabled">Request pending</div>;
@@ -517,6 +521,7 @@ function PublicHiveView({ hive, hiveId }) {
             <div className="dhp-header-content">
               <div className="dhp-hive-name-row">
                 <span className="dhp-hive-name">{hive.hive_name}</span>
+                <GenderBadge policy={hive.gender_policy} />
               </div>
               <div className="dhp-meta">{meta}</div>
               <StarterHiveBadge hive={hive} />
@@ -541,6 +546,7 @@ function PublicHiveView({ hive, hiveId }) {
                 paid={hive.paid_membership} hiveId={hive.hive_id} hiveName={hive.hive_name}
                 initialPending={Boolean(hive.request_pending)}
                 hasOpenRoles={hasOpenRoles} bestRoleId={collab?.viewerBestRoleId ?? null}
+                viewerFits={hive.viewer_fits !== false} genderPolicy={hive.gender_policy}
               />
               <button type="button" onClick={() => setShowReport(true)}
                 style={{ background: 'none', border: 'none', color: '#8a8070', fontSize: '0.78rem',
