@@ -1394,3 +1394,6 @@
   flex-shrink: 0;
   display: block;
 }
+
+/* Prompt 87: personal post character count. */
+.cpm-counter { margin-top: 4px; text-align: right; font: 400 11.5px 'DM Sans', sans-serif; color: #8a8070; }

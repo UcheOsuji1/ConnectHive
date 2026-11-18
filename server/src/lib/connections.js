@@ -123,20 +123,91 @@ export async function removeConnection(removerId, otherId) {
 }
 
 // Used by every place that creates a block (Block button, report-and-block).
-// The block insert and the connection delete are one statement, so they're
-// one transaction. Unblocking never restores the connection; the trigger
-// won't re-create it while blocked, and after an unblock only a *new* shared
-// active membership would.
+// The block insert, the connection delete and both follow deletes (Prompt 87)
+// are one statement, so they're one transaction. This is the one place that
+// writes user_follows outside lib/follows.js, for exactly that atomicity.
+// Unblocking restores none of it: the trigger won't re-connect while blocked,
+// after an unblock only a *new* shared active membership would, and follows
+// are only ever re-created by a person choosing Follow again.
 export async function blockAndDisconnect(blockerId, blockedId) {
   await query(
     `WITH b AS (
        INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1, $2)
        ON CONFLICT (blocker_id, blocked_id) DO NOTHING
+     ), f AS (
+       DELETE FROM user_follows
+        WHERE (follower_id = $1 AND followed_id = $2) OR (follower_id = $2 AND followed_id = $1)
      )
      DELETE FROM user_connections
       WHERE user_a = LEAST($1::uuid, $2::uuid) AND user_b = GREATEST($1::uuid, $2::uuid)`,
     [blockerId, blockedId],
   );
+}
+
+// ── Lists and counts (Prompt 87) ─────────────────────────────────────────────
+// The other side of each of userId's connections, active non-system accounts
+// only, never someone userId is blocked with.
+const CONNECTED_PEOPLE = `
+  SELECT CASE WHEN c.user_a = $1 THEN c.user_b ELSE c.user_a END AS user_id, c.created_at
+    FROM user_connections c
+   WHERE c.user_a = $1 OR c.user_b = $1`;
+const VISIBLE_PERSON = `
+  JOIN users u ON u.user_id = cp.user_id AND u.account_status = 'active' AND NOT u.is_system
+  LEFT JOIN profiles p ON p.user_id = u.user_id
+  WHERE NOT EXISTS (SELECT 1 FROM user_blocks b
+                     WHERE (b.blocker_id = $1 AND b.blocked_id = u.user_id)
+                        OR (b.blocker_id = u.user_id AND b.blocked_id = $1))`;
+
+export async function connectionCount(userId) {
+  const { rows: [r] } = await query(
+    `SELECT COUNT(*)::int AS n FROM (${CONNECTED_PEOPLE}) cp ${VISIBLE_PERSON}`, [userId],
+  );
+  return r.n;
+}
+
+export const CONNECTION_PAGE = 30;
+
+// The viewer's connections, newest first, name-searchable, with `via` (the
+// earliest still-existing source Hive) and is_following.
+export async function connectionList(viewerId, q = '', offset = 0) {
+  const term = String(q ?? '').trim().slice(0, 80).replace(/[\\%_]/g, (m) => '\\' + m);
+  const { rows } = await query(
+    `SELECT u.user_id, p.full_name, p.profile_photo_url, p.headline, cp.created_at AS connected_at,
+            FALSE AS is_me,
+            EXISTS (SELECT 1 FROM user_follows f WHERE f.follower_id = $1 AND f.followed_id = u.user_id) AS is_following,
+            (SELECT h.hive_name
+               FROM user_connection_sources s
+               JOIN hives h ON h.hive_id = s.hive_id AND h.hive_status <> 'deleted'
+              WHERE s.user_a = LEAST($1::uuid, u.user_id) AND s.user_b = GREATEST($1::uuid, u.user_id)
+              ORDER BY s.created_at ASC LIMIT 1) AS via
+       FROM (${CONNECTED_PEOPLE}) cp
+       ${VISIBLE_PERSON}
+         AND ($2 = '' OR p.full_name ILIKE '%' || $2 || '%')
+      ORDER BY cp.created_at DESC, u.user_id
+      LIMIT ${CONNECTION_PAGE + 1} OFFSET $3`,
+    [viewerId, term, offset],
+  );
+  return { people: rows.slice(0, CONNECTION_PAGE), has_more: rows.length > CONNECTION_PAGE };
+}
+
+// Up to 3 connections made in the last 30 days, newest first.
+export async function newConnections(viewerId) {
+  const { rows } = await query(
+    `SELECT u.user_id, p.full_name, p.profile_photo_url,
+            EXISTS (SELECT 1 FROM user_follows f WHERE f.follower_id = $1 AND f.followed_id = u.user_id) AS is_following,
+            (SELECT h.hive_name
+               FROM user_connection_sources s
+               JOIN hives h ON h.hive_id = s.hive_id AND h.hive_status <> 'deleted'
+              WHERE s.user_a = LEAST($1::uuid, u.user_id) AND s.user_b = GREATEST($1::uuid, u.user_id)
+              ORDER BY s.created_at ASC LIMIT 1) AS via
+       FROM (${CONNECTED_PEOPLE}) cp
+       ${VISIBLE_PERSON}
+         AND cp.created_at > NOW() - INTERVAL '30 days'
+      ORDER BY cp.created_at DESC, u.user_id
+      LIMIT 3`,
+    [viewerId],
+  );
+  return rows;
 }
 
 // "New message" recipients: your connections plus everyone you share an

@@ -7,6 +7,8 @@ import HoneycombBg from '../components/HoneycombBg.jsx';
 import ProfileLinkButtons from '../components/ProfileLinkButtons.jsx';
 import BlockModal from '../components/BlockModal.jsx';
 import ReportModal from '../components/ReportModal.jsx';
+import FollowPersonButton from '../components/FollowPersonButton.jsx';
+import PersonalPosts from '../components/PersonalPosts.jsx';
 import { api } from '../lib/api.js';
 import '../styles/profile.css';
 import '../styles/memberprofile.css';
@@ -272,12 +274,54 @@ export default function MemberProfilePage() {
   return <MemberProfileView id={id} />;
 }
 
+// "{First}'s Hives" (Prompt 87): discoverable Hives they're active in. Join
+// goes to the Hive page, whose own non-member join flow (request, approval,
+// policies) runs there; members and pending requests just get a label.
+function PublicHives({ firstName, hives }) {
+  if (!hives?.length) return null;
+  return (
+    <div className="pf-card mp-public-hives reveal">
+      <div className="pf-card-title">{firstName}’s Hives</div>
+      <ul className="mp-ph-list" role="list">
+        {hives.map(h => (
+          <li key={h.hive_id} className="mp-ph-row">
+            <Link to={`/hive/${h.hive_id}`} className="mp-ph-main">
+              <span className="mp-ph-hex" aria-hidden="true">
+                {h.logo_url || h.banner_url ? <img src={h.logo_url || h.banner_url} alt="" /> : null}
+              </span>
+              <span className="mp-ph-body">
+                <span className="mp-ph-name">{h.hive_name}</span>
+                <span className="mp-ph-meta">
+                  {[h.category_name, `${h.member_count} member${h.member_count === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}
+                </span>
+              </span>
+            </Link>
+            {h.viewer_status === 'member' ? <span className="mp-ph-status">You’re a member</span>
+              : h.viewer_status === 'pending' ? <span className="mp-ph-status">Requested</span>
+              : <Link to={`/hive/${h.hive_id}`} className="mp-ph-join">Join</Link>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+
+
 function MemberProfileView({ id }) {
   const navigate = useNavigate();
   const [data,     setData]     = useState(undefined);
   const [activity, setActivity] = useState([]);
   const [error,    setError]    = useState(null);
   const [blocked,  setBlocked]  = useState(false);
+
+  function setFollowing(next) {
+    setData(d => ({
+      ...d,
+      is_following: next,
+      follower_count: Math.max(0, (d.follower_count ?? 0) + (next === d.is_following ? 0 : next ? 1 : -1)),
+    }));
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -380,6 +424,13 @@ function MemberProfileView({ id }) {
                   </span>
                 )}
               </div>
+              <p className="mp-counts">
+                <strong>{data.follower_count ?? 0}</strong> follower{data.follower_count === 1 ? '' : 's'}
+                <span aria-hidden="true"> · </span>
+                <strong>{data.following_count ?? 0}</strong> following
+                <span aria-hidden="true"> · </span>
+                <strong>{data.connection_count ?? 0}</strong> connection{data.connection_count === 1 ? '' : 's'}
+              </p>
               <ProfileLinkButtons links={p.links} />
               {p.bio && <p className="prof-bio">{p.bio}</p>}
 
@@ -391,11 +442,13 @@ function MemberProfileView({ id }) {
                 </div>
               )}
 
-              {/* Follow arrives with Prompt 87; Message is the outlined
-                  button from the mockup. Hidden across a block (the profile
-                  404s then anyway). */}
+              {/* Follow (gold) and Message (outlined), as in the mockup. Both
+                  hidden across a block (the profile 404s then anyway). */}
               {(data.dm_mode !== 'blocked' || sharedHives.length > 0) && (
                 <div className="mp-actions">
+                  {data.dm_mode && data.dm_mode !== 'blocked' && (
+                    <FollowPersonButton userId={id} following={!!data.is_following} onChange={setFollowing} size="lg" />
+                  )}
                   {data.dm_mode && data.dm_mode !== 'blocked' && (
                     <Link to={`/messages?to=${id}`} className="mp-msg-btn">Message</Link>
                   )}
@@ -406,11 +459,18 @@ function MemberProfileView({ id }) {
                   )}
                 </div>
               )}
+              {data.dm_mode !== 'blocked' && !data.connection?.connected && !data.shares_active_hive
+                && (data.public_hives ?? []).some(h => h.viewer_status === 'none') && (
+                <p className="mp-connect-hint">Join one of {firstName}’s Hives to connect.</p>
+              )}
             </div>
           </div>
 
+          <PublicHives firstName={firstName} hives={data.public_hives} />
+
           <div className="mp-grid">
             <div className="mp-main">
+              <PersonalPosts userId={id} firstName={firstName} />
               <CompatibilityCard compat={compatibility} name={p.full_name} />
 
               {/* ── Shared Hives ───────────────────────────────────── */}

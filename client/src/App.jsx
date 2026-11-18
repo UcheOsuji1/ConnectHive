@@ -18,6 +18,7 @@ import MyHivePage from './pages/MyHivePage';
 import ProfilePage from './pages/ProfilePage';
 import MemberProfilePage from './pages/MemberProfilePage';
 import MessagesPage from './pages/MessagesPage';
+import NetworkPage from './pages/NetworkPage';
 import AccountSettingsPage from './pages/AccountSettingsPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import AdminNewsletterPage from './pages/AdminNewsletterPage';
@@ -166,6 +167,7 @@ export default function App() {
         <Route path="/profile/:id" element={<MemberProfilePage />} />
         <Route path="/messages" element={<MessagesPage />} />
         <Route path="/messages/:conversationId" element={<MessagesPage />} />
+        <Route path="/network" element={<NetworkPage />} />
         <Route path="/settings" element={<AccountSettingsPage />} />
         <Route path="/paid-hive/:id" element={<PaidHivePage />} />
         <Route path="/admin/monetization" element={<AdminMonetizationPage />} />

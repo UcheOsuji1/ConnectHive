@@ -338,7 +338,11 @@ export const resolveAdminReport = async (req, res) => {
       await createNotification({
         userId: authorId,
         type: 'content_removed', category: 'system',
-        title: `Your ${targetType} in ${hiveName ?? 'your Hive'} was removed by a Hive admin for: ${label}.`,
+        // A personal post/comment (Prompt 87) has no Hive, and TrueHive (not
+        // a Hive admin) is who reviews it.
+        title: hiveId
+          ? `Your ${targetType} in ${hiveName ?? 'your Hive'} was removed by a Hive admin for: ${label}.`
+          : `Your ${targetType} was removed by TrueHive for: ${label}.`,
         hiveId,
       }).catch(e => console.error('[admin/resolve] author notify failed', e));
     }

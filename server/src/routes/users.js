@@ -13,7 +13,15 @@ import {
   getMemberProfile,
   getMemberActivity,
   deleteConnection,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing,
+  getMyConnections,
+  getMyNetwork,
+  getPersonalUploadSignature,
 } from '../controllers/usersController.js';
+import { getUserPosts } from '../controllers/postsController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { LIMITS } from '../lib/limits.js';
 import { isUuid } from '../lib/isUuid.js';
@@ -47,9 +55,17 @@ router.put('/max-distance',          requireAuth, setMaxDistance);
 router.get('/compatibility/:hiveId', requireAuth, getCompatibility);
 router.get('/activity',              requireAuth, getActivity);
 router.get('/suggestions',           requireAuth, getSuggestions);
+router.get('/me/network',            requireAuth, getMyNetwork);
+router.get('/me/connections',        requireAuth, getMyConnections);
+router.get('/me/upload-signature',   requireAuth, getPersonalUploadSignature);
 // Static paths above must stay ahead of these parameterised ones.
 router.get('/:id/profile',           requireAuth, getMemberProfile);
 router.get('/:id/activity',          requireAuth, getMemberActivity);
 router.delete('/:id/connection',     requireAuth, deleteConnection);
+router.post('/:id/follow',           requireAuth, followUser);
+router.delete('/:id/follow',         requireAuth, unfollowUser);
+router.get('/:id/followers',         requireAuth, getFollowers);
+router.get('/:id/following',         requireAuth, getFollowing);
+router.get('/:id/posts',             requireAuth, getUserPosts);
 
 export default router;

@@ -9,6 +9,7 @@ import { validateUrl } from '../lib/validateUrl.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { INTEREST_CATS } from '../data/interestTaxonomy.js';
 import HoneycombBg from '../components/HoneycombBg.jsx';
+import PersonalPosts from '../components/PersonalPosts.jsx';
 import '../styles/profile.css';
 
 const LINK_LABELS = ['LinkedIn', 'Portfolio', 'GitHub', 'Website', 'Other'];
@@ -399,11 +400,13 @@ export default function ProfilePage() {
   }, [editing, draft?.bio]);
 
   const pageRef = useRef(null);
+  // Prompt 87: followers · following · connections, each linking to /network.
+  const [network, setNetwork] = useState(null);
 
   // Fetch data
   useEffect(() => {
     Promise.all([
-      api.get('/api/users/profile').then(d => setProfile(d.profile)).catch(() => setProfile(null)),
+      api.get('/api/users/profile').then(d => { setProfile(d.profile); setNetwork({ followers: d.follower_count ?? 0, following: d.following_count ?? 0, connections: d.connection_count ?? 0 }); }).catch(() => setProfile(null)),
       api.get('/api/hives/mine').then(d => setHives(d.hives ?? [])).catch(() => setHives([])),
       api.get('/api/users/activity').then(d => setActivity(d.activity ?? [])).catch(() => setActivity([])),
       api.get('/api/users/suggestions').then(d => setSuggestions(d.suggestions ?? [])).catch(() => setSuggestions([])),
@@ -619,6 +622,15 @@ export default function ProfilePage() {
                         <span>{locationLine}</span>
                       </div>
                     )}
+                    {!editing && network && (
+                      <p className="mp-counts prof-counts">
+                        <Link to="/network?tab=followers"><strong>{network.followers}</strong> follower{network.followers === 1 ? '' : 's'}</Link>
+                        <span aria-hidden="true"> · </span>
+                        <Link to="/network?tab=following"><strong>{network.following}</strong> following</Link>
+                        <span aria-hidden="true"> · </span>
+                        <Link to="/network?tab=connections"><strong>{network.connections}</strong> connection{network.connections === 1 ? '' : 's'}</Link>
+                      </p>
+                    )}
 
                     {editing ? (
                       <>
@@ -771,6 +783,9 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            {/* ── Your posts (Prompt 87) ── */}
+            {user?.userId && <PersonalPosts userId={user.userId} title="Your posts" emptyText="You haven’t posted yet. Share something from Home." />}
 
             {/* ── 2. TOP INTERESTS ── */}
             {topInterests.length > 0 && (

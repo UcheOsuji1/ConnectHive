@@ -1928,3 +1928,66 @@ BEGIN
       CHECK (target_type IN ('message','post','comment','user','hive','dm_message'));
   END IF;
 END $$;
+
+-- ─── Follows and personal posts (Prompt 87) ──────────────────────────────────
+-- Follow is one-way and open: no approval, and separate from connections
+-- (connecting never follows). Following someone puts their personal posts in
+-- your Home feed. lib/follows.js is the single source of truth for reading
+-- this table. A block deletes both directions (lib/connections.js
+-- blockAndDisconnect), and purge clears it through ON DELETE CASCADE.
+CREATE TABLE IF NOT EXISTS user_follows (
+  follower_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  followed_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (follower_id, followed_id),
+  CHECK (follower_id <> followed_id)
+);
+CREATE INDEX IF NOT EXISTS idx_user_follows_followed ON user_follows(followed_id);
+
+-- Personal posts are hive_posts rows with no Hive, so reactions, comments,
+-- saves, reports and moderation keep working unchanged. A no-op once the
+-- column is already nullable.
+ALTER TABLE hive_posts ALTER COLUMN hive_id DROP NOT NULL;
+
+-- visibility gains 'personal'. The original CHECK was declared inline on
+-- ADD COLUMN, so Postgres named it (hive_posts_visibility_check by default).
+-- Found by definition in pg_constraint rather than assumed by name; the
+-- NOT LIKE '%personal%' keeps it from matching the widened one (or the
+-- shape check below) on a re-run, which then does nothing.
+DO $$
+DECLARE c RECORD;
+BEGIN
+  FOR c IN
+    SELECT con.conname
+      FROM pg_constraint con
+     WHERE con.conrelid = 'hive_posts'::regclass
+       AND con.contype = 'c'
+       AND pg_get_constraintdef(con.oid) LIKE '%visibility%'
+       AND pg_get_constraintdef(con.oid) NOT LIKE '%personal%'
+  LOOP
+    EXECUTE format('ALTER TABLE hive_posts DROP CONSTRAINT %I', c.conname);
+  END LOOP;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'hive_posts'::regclass AND conname = 'hive_posts_visibility_check'
+  ) THEN
+    ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_visibility_check
+      CHECK (visibility IN ('hive','public','personal'));
+  END IF;
+END $$;
+
+-- A post has a Hive exactly when it isn't personal: no Hive post can be
+-- 'personal', and no Hive-less row can claim 'hive'/'public'.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+     WHERE conrelid = 'hive_posts'::regclass AND conname = 'hive_posts_personal_shape'
+  ) THEN
+    ALTER TABLE hive_posts ADD CONSTRAINT hive_posts_personal_shape
+      CHECK ((hive_id IS NULL) = (visibility = 'personal'));
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_hive_posts_personal
+  ON hive_posts(author_user_id, created_at DESC) WHERE hive_id IS NULL;

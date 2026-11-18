@@ -488,8 +488,13 @@ export default function PostCard({ post: initialPost, variant, homeLayout = fals
   }
 
   const isPostHidden = Boolean(post.hidden) || reportedIds.has(post.post_id);
-  const hasBanner = Boolean(post.banner_url);
-  const followBtn = !post.is_member && (
+  // Personal post (Prompt 87): about a person, not a Hive. No Hive banner,
+  // name or Follow-Hive button; its own header and ⋯ menu instead.
+  const personal = Boolean(post.is_personal);
+  const isMine = post.author_user_id === user?.userId;
+  const authorFirst = post.author_name?.split(' ')[0] || 'this member';
+  const hasBanner = !personal && Boolean(post.banner_url);
+  const followBtn = !personal && !post.is_member && (
     <FollowButton
       hiveId={post.hive_id}
       initialFollowing={post.is_following}
@@ -501,14 +506,44 @@ export default function PostCard({ post: initialPost, variant, homeLayout = fals
     <div className={`post-card${variant === 'light' ? ' post-card--light' : ''}${hasBanner ? ' post-card--banner' : ''}`}>
       {actionError && <p role="alert" className="th-feedback">{actionError}</p>}
       {shareStatus && <p role="status">{shareStatus}</p>}
-      {!homeLayout && <div className="th-post-tools">
+      {!homeLayout && !personal && <div className="th-post-tools">
         <button type="button" disabled={actionBusy} aria-pressed={!!post.is_saved} onClick={() => runAction(async () => { const d = await api.put(`/api/posts/${post.post_id}/save`, { saved: !post.is_saved }); setPost(p => ({ ...p, is_saved: d.saved })); })}>{post.is_saved ? 'Saved ✓' : 'Save'}</button>
         <button type="button" onClick={() => runAction(async () => { const url = `${window.location.origin}/home?post=${post.post_id}`; if (navigator.share) { try { await navigator.share({ title: post.headline, url }); } catch (e) { if (e.name !== 'AbortError') throw e; } } else { await navigator.clipboard.writeText(url); setShareStatus('Post link copied.'); } })}>Share ↗</button>
         {post.author_user_id === user?.userId && <><button type="button" disabled={actionBusy} onClick={() => setEditing(v => !v)}>Edit</button><button type="button" disabled={actionBusy} onClick={() => { if (window.confirm('Delete this post? This cannot be undone.')) runAction(async () => { await api.delete(`/api/posts/${post.post_id}`); setDeleted(true); }); }}>Delete</button></>}
       </div>}
-      {editing && <form className="th-edit-post" onSubmit={e => { e.preventDefault(); runAction(async () => { const d = await api.patch(`/api/posts/${post.post_id}`, { headline: editHeadline, body: editBody }); setPost(p => ({ ...p, ...d })); setEditing(false); }); }}><label>Headline<input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} maxLength={120} required /></label><label>Details<textarea value={editBody} onChange={e => setEditBody(e.target.value)} maxLength={10000} /></label><button type="submit" disabled={actionBusy}>Save changes</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></form>}
+      {editing && personal && <form className="th-edit-post" onSubmit={e => { e.preventDefault(); runAction(async () => { const d = await api.patch(`/api/posts/${post.post_id}`, { body: editBody }); setPost(p => ({ ...p, ...d })); setEditing(false); }); }}><label>Your post<textarea value={editBody} onChange={e => setEditBody(e.target.value)} maxLength={3000} required /></label><button type="submit" disabled={actionBusy || !editBody.trim()}>Save changes</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></form>}
+      {editing && !personal && <form className="th-edit-post" onSubmit={e => { e.preventDefault(); runAction(async () => { const d = await api.patch(`/api/posts/${post.post_id}`, { headline: editHeadline, body: editBody }); setPost(p => ({ ...p, ...d })); setEditing(false); }); }}><label>Headline<input value={editHeadline} onChange={e => setEditHeadline(e.target.value)} maxLength={120} required /></label><label>Details<textarea value={editBody} onChange={e => setEditBody(e.target.value)} maxLength={10000} /></label><button type="submit" disabled={actionBusy}>Save changes</button><button type="button" onClick={() => setEditing(false)}>Cancel</button></form>}
 
-      {homeLayout ? <header className="th-post-header">
+      {personal ? <header className="th-post-header th-post-header--personal">
+        <Avatar name={post.author_name} src={post.author_photo} size={42} />
+        <div className="th-post-identity">
+          <div className="th-post-namerow">
+            <Link className="th-post-author" to={authorHref}>{post.author_name || 'Member'}</Link>
+            {post.author_connected && !isMine && <span className="th-chip-connected">Connected</span>}
+          </div>
+          <div className="th-post-sub">
+            {post.author_headline && <>{post.author_headline} · </>}
+            <time dateTime={post.created_at}>{relativeTime(post.created_at)}</time> · Personal update
+          </div>
+        </div>
+        <PostOverflowMenu>
+          {isMine && <>
+            <button type="button" disabled={actionBusy} onClick={() => { setEditBody(post.body || ''); setEditing(v => !v); }}>Edit post</button>
+            <button type="button" disabled={actionBusy} onClick={() => {
+              if (window.confirm('Delete this post? This cannot be undone.')) runAction(async () => {
+                await api.delete(`/api/posts/${post.post_id}`); setDeleted(true);
+              });
+            }}>Delete post</button>
+          </>}
+          <button type="button" disabled={actionBusy} onClick={copyLink}>Copy link</button>
+          {!isMine && post.following_author && <button type="button" disabled={actionBusy} onClick={() => runAction(async () => {
+            await api.delete(`/api/users/${post.author_user_id}/follow`);
+            setPost(p => ({ ...p, following_author: false }));
+          })}>Unfollow {authorFirst}</button>}
+          {!isMine && !isPostHidden && <button type="button" onClick={() => setReportTarget({ targetType: 'post', targetId: post.post_id, personName: authorFirst })}>Report post</button>}
+          {!isMine && <button type="button" onClick={() => setBlockTarget({ userId: post.author_user_id, name: authorFirst })}>Block member</button>}
+        </PostOverflowMenu>
+      </header> : homeLayout ? <header className="th-post-header">
         <Avatar name={post.author_name} src={post.author_photo} size={42} />
         <div className="th-post-identity">
           {post.author_deleted || !post.author_user_id ? <strong>{post.author_deleted ? 'Deleted member' : 'Hive Member'}</strong> : <Link className="th-post-author" to={authorHref}>{post.author_name || 'Hive Member'}</Link>}
@@ -597,8 +632,8 @@ export default function PostCard({ post: initialPost, variant, homeLayout = fals
         <HiddenPlaceholder kind="post" reason={post.hidden ?? 'auto'} />
       ) : (
         <>
-          <div className="post-headline">{post.headline}</div>
-          {post.body && <div className="post-body">{post.body}</div>}
+          {post.headline && <div className="post-headline">{post.headline}</div>}
+          {post.body && <div className={`post-body${personal ? ' th-post-body--personal' : ''}`}>{post.body}</div>}
           {post.media_url && <img className="th-post-photo" src={post.media_url} alt="Post attachment" loading="lazy" />}
         </>
       )}

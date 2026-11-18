@@ -61,13 +61,30 @@ export const FEED_SELECT = `
     EXISTS(SELECT 1 FROM hive_members   WHERE hive_id = h.hive_id AND user_id = $1
            AND membership_status = 'active')                                                          AS is_member,
     prof.full_name AS author_name, prof.profile_photo_url AS author_photo,
-    (au.account_status = 'deleted') AS author_deleted
+    prof.headline AS author_headline,
+    (au.account_status = 'deleted') AS author_deleted,
+    (p.hive_id IS NULL) AS is_personal,
+    EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $1 AND followed_id = p.author_user_id)     AS following_author,
+    EXISTS(SELECT 1 FROM user_connections
+            WHERE user_a = LEAST($1::uuid, p.author_user_id)
+              AND user_b = GREATEST($1::uuid, p.author_user_id))                                      AS author_connected
   FROM hive_posts p
-  JOIN hives h ON h.hive_id = p.hive_id
+  -- LEFT: a personal post (Prompt 87) has no Hive. Every h.* column and the
+  -- h.hive_id subqueries above come out NULL / 0 / false for it.
+  LEFT JOIN hives h ON h.hive_id = p.hive_id
   LEFT JOIN categories c   ON c.category_id = h.category_id
   LEFT JOIN profiles  prof ON prof.user_id   = p.author_user_id
   LEFT JOIN users      au  ON au.user_id     = p.author_user_id
 `;
+
+// Neither the viewer ($1) nor the post's author has blocked the other.
+// Applied to every Home feed post (Prompt 87).
+const AUTHOR_NOT_BLOCKED = `NOT EXISTS (
+  SELECT 1 FROM user_blocks ub
+   WHERE (ub.blocker_id = $1 AND ub.blocked_id = p.author_user_id)
+      OR (ub.blocker_id = p.author_user_id AND ub.blocked_id = $1))`;
+
+const PERSONAL_BODY_MAX = 3000;
 
 // ── Nest flat comment rows into a top-level → replies tree (one level deep) ──
 function nestComments(rows) {
@@ -90,34 +107,62 @@ function nestComments(rows) {
 
 // ── Access helpers ────────────────────────────────────────────────────────────
 
-// Returns { hive_id, visibility } for a post, or null.
+// Returns { hive_id, visibility, author_user_id, author_status } for a post, or null.
 async function _getPostInfo(postId) {
   const { rows: [row] } = await query(
-    'SELECT hive_id, visibility FROM hive_posts WHERE post_id = $1',
+    `SELECT hp.hive_id, hp.visibility, hp.author_user_id, u.account_status AS author_status
+       FROM hive_posts hp LEFT JOIN users u ON u.user_id = hp.author_user_id
+      WHERE hp.post_id = $1`,
     [postId],
   );
   return row ?? null;
 }
 
-// Returns { hive_id, post_id, visibility } resolved from a comment, or null.
+// Returns { hive_id, post_id, visibility, author_user_id, author_status }
+// resolved from a comment (the post's author, not the comment's), or null.
 async function _getCommentInfo(commentId) {
   const { rows: [row] } = await query(
-    `SELECT hp.hive_id, pc.post_id, hp.visibility
+    `SELECT hp.hive_id, pc.post_id, hp.visibility, hp.author_user_id, u.account_status AS author_status
      FROM post_comments pc
      JOIN hive_posts hp ON hp.post_id = pc.post_id
+     LEFT JOIN users u ON u.user_id = hp.author_user_id
      WHERE pc.comment_id = $1`,
     [commentId],
   );
   return row ?? null;
 }
 
-// Read gate: member OR (follower + visibility = 'public').
-// Sends 404/403 and returns false when access is denied.
+// Personal posts (Prompt 87): any signed-in member who isn't blocked either
+// way with the author, while the author's account is active. Unlike a Hive
+// post, a deleted (or suspended) author's personal post is gone (404): their
+// profile 404s too, and the post is about them, not a Hive conversation.
+async function _assertCanReadPersonal(postInfo, userId, res) {
+  if (postInfo.author_user_id === userId) return true;
+  if (postInfo.author_status !== 'active') {
+    res.status(404).json({ error: 'Not found.' });
+    return false;
+  }
+  const { rows: [b] } = await query(
+    `SELECT EXISTS (SELECT 1 FROM user_blocks
+                     WHERE (blocker_id = $1 AND blocked_id = $2)
+                        OR (blocker_id = $2 AND blocked_id = $1)) AS blocked`,
+    [userId, postInfo.author_user_id],
+  );
+  if (b.blocked) {
+    res.status(404).json({ error: 'Not found.' });
+    return false;
+  }
+  return true;
+}
+
+// Read gate: member OR (follower + visibility = 'public'); for a personal
+// post, _assertCanReadPersonal. Sends 404/403 and returns false when denied.
 async function _assertCanRead(postInfo, userId, res) {
   if (!postInfo) {
     res.status(404).json({ error: 'Not found.' });
     return false;
   }
+  if (!postInfo.hive_id) return _assertCanReadPersonal(postInfo, userId, res);
   const { hive_id, visibility } = postInfo;
   const { rows: [row] } = await query(
     `SELECT
@@ -144,6 +189,13 @@ async function _assertMemberForHive(hiveId, userId, res) {
     return false;
   }
   return true;
+}
+
+// Reactions and comments: on a personal post anyone who can read it may
+// interact; on a Hive post it stays member-only, exactly as before.
+async function _assertCanInteract(postInfo, userId, res) {
+  if (postInfo && !postInfo.hive_id) return _assertCanReadPersonal(postInfo, userId, res);
+  return _assertMemberForHive(postInfo?.hive_id, userId, res);
 }
 
 // ── Reaction summary helper ───────────────────────────────────────────────────
@@ -179,10 +231,45 @@ async function attachTopComments(posts) {
 }
 
 // ── createPost ────────────────────────────────────────────────────────────────
+// Personal post (Prompt 87): no Hive, body required (1-3000), optional photo,
+// no events, no visibility choice. No notifyNewPost: the feed is the signal.
+async function createPersonalPost(req, res) {
+  const { body, mediaUrl, postType } = req.body;
+  if (postType === 'event') return res.status(400).json({ error: 'Events belong to a Hive.' });
+  const text = typeof body === 'string' ? body.trim() : '';
+  if (!text) return res.status(400).json({ error: 'Write something to post.' });
+  if (text.length > PERSONAL_BODY_MAX) {
+    return res.status(400).json({ error: `Posts can be up to ${PERSONAL_BODY_MAX} characters.` });
+  }
+  // A photo must be one this person uploaded via /api/users/me/upload-signature:
+  // our Cloudinary account, image delivery, their own posts/{userId} folder.
+  let media = null;
+  if (typeof mediaUrl === 'string' && mediaUrl.trim()) {
+    const cloud = process.env.CLOUDINARY_CLOUD_NAME;
+    try {
+      const u = new URL(mediaUrl.trim());
+      if (!cloud || u.protocol !== 'https:' || u.hostname !== 'res.cloudinary.com'
+          || !u.pathname.startsWith(`/${cloud}/image/upload/`) || !u.pathname.includes(`/posts/${req.userId}/`)) throw new Error();
+      media = u.toString();
+    } catch {
+      return res.status(400).json({ error: 'Invalid photo.' });
+    }
+  }
+  const { rows: [inserted] } = await query(
+    `INSERT INTO hive_posts (hive_id, author_user_id, post_type, headline, body, media_url, visibility)
+     VALUES (NULL, $1, 'update', '', $2, $3, 'personal')
+     RETURNING post_id`,
+    [req.userId, text, media],
+  );
+  const { rows: [post] } = await query(`${FEED_SELECT} WHERE p.post_id = $2`, [req.userId, inserted.post_id]);
+  return res.status(201).json({ post: { ...post, top_comment: null } });
+}
+
 export const createPost = async (req, res) => {
   try {
     const { hiveId, headline, body, mediaUrl, postType, eventAt, eventLocation, visibility } = req.body;
-    if (!headline?.trim() || !hiveId) {
+    if (!hiveId) return await createPersonalPost(req, res);
+    if (!headline?.trim()) {
       return res.status(400).json({ error: 'Headline and hiveId are required.' });
     }
     const { rows: [member] } = await query(
@@ -228,18 +315,26 @@ export const createPost = async (req, res) => {
 // ── getFeed ───────────────────────────────────────────────────────────────────
 // Members see all posts from their Hives.
 // Followers see only public posts from Hives they follow (but are not members of).
+// Personal posts (Prompt 87): your own and those of people you follow
+// (personalScope, per tab). No post from someone blocked either way, Hive
+// posts included; Hive posts from blocked authors were not excluded before.
 export const getFeed = async (req, res) => {
   try {
-    const { limit, offset, filter, order } = homeFeedOptions(req.query);
+    const { limit, offset, filter, order, personalScope } = homeFeedOptions(req.query);
     const { rows: posts } = await query(
       `${FEED_SELECT}
        WHERE (
-         EXISTS(SELECT 1 FROM hive_members WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active')
-         OR (
-           EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)
-           AND p.visibility = 'public'
-         )
+         (p.hive_id IS NOT NULL AND (
+           EXISTS(SELECT 1 FROM hive_members WHERE hive_id = h.hive_id AND user_id = $1 AND membership_status = 'active')
+           OR (
+             EXISTS(SELECT 1 FROM hive_followers WHERE hive_id = h.hive_id AND user_id = $1)
+             AND p.visibility = 'public'
+           )
+         ))
+         OR (p.hive_id IS NULL AND ${personalScope}
+             AND (p.author_user_id = $1 OR au.account_status = 'active'))
        )
+       AND ${AUTHOR_NOT_BLOCKED}
        ${filter}
        ORDER BY ${order}
        LIMIT $2 OFFSET $3`,
@@ -289,6 +384,41 @@ export const getHivePosts = async (req, res) => {
   }
 };
 
+// ── getUserPosts ──────────────────────────────────────────────────────────────
+// GET /api/users/:id/posts: that person's personal posts, newest first, 20 a
+// page. 403 across a block; :id may be the viewer's own id (for /profile).
+const USER_POSTS_PAGE = 20;
+export const getUserPosts = async (req, res) => {
+  try {
+    const targetId = req.params.id;
+    const offset = Math.min(100000, Math.max(0, Math.trunc(Number(req.query.offset)) || 0));
+    if (targetId !== req.userId) {
+      const { rows: [t] } = await query(
+        `SELECT u.account_status,
+                EXISTS (SELECT 1 FROM user_blocks
+                         WHERE (blocker_id = $1 AND blocked_id = $2)
+                            OR (blocker_id = $2 AND blocked_id = $1)) AS blocked
+           FROM users u WHERE u.user_id = $2`,
+        [req.userId, targetId],
+      );
+      if (!t || t.account_status !== 'active') return res.status(404).json({ error: 'Member not found.' });
+      if (t.blocked) return res.status(403).json({ error: 'Not available.' });
+    }
+    const { rows } = await query(
+      `${FEED_SELECT}
+       WHERE p.hive_id IS NULL AND p.author_user_id = $2
+       ORDER BY p.created_at DESC, p.post_id DESC
+       LIMIT ${USER_POSTS_PAGE + 1} OFFSET $3`,
+      [req.userId, targetId, offset],
+    );
+    const posts = await attachTopComments(rows.slice(0, USER_POSTS_PAGE));
+    res.json({ posts, has_more: rows.length > USER_POSTS_PAGE });
+  } catch (err) {
+    console.error('[posts/getUserPosts]', err);
+    res.status(500).json({ error: 'Failed to load posts.' });
+  }
+};
+
 // ── getPost ───────────────────────────────────────────────────────────────────
 export const getPost = async (req, res) => {
   try {
@@ -314,7 +444,8 @@ export const deletePost = async (req, res) => {
       'SELECT hive_id, author_user_id FROM hive_posts WHERE post_id=$1', [req.params.id],
     );
     if (!post) return res.status(404).json({ error: 'Post not found.' });
-    if (!await _assertMemberForHive(post.hive_id, req.userId, res)) return;
+    // Personal post: only its author, no Hive involved.
+    if (post.hive_id && !await _assertMemberForHive(post.hive_id, req.userId, res)) return;
     if (post.author_user_id !== req.userId) {
       return res.status(403).json({ error: 'Not authorised.' });
     }
@@ -340,6 +471,14 @@ export const editPost = async (req, res) => {
   try {
     const { rows: [post] } = await query('SELECT hive_id,author_user_id FROM hive_posts WHERE post_id=$1',[req.params.id]);
     if (!post) return res.status(404).json({ error: 'Post not found.' });
+    if (!post.hive_id) {
+      // Personal post: author only, body only (1-3000), headline stays ''.
+      if (post.author_user_id !== req.userId) return res.status(403).json({ error: 'Not authorised.' });
+      const text = typeof req.body.body === 'string' ? req.body.body.trim() : '';
+      if (!text || text.length > PERSONAL_BODY_MAX) return res.status(400).json({ error: `Write up to ${PERSONAL_BODY_MAX} characters.` });
+      await query('UPDATE hive_posts SET body=$1, updated_at=NOW() WHERE post_id=$2', [text, req.params.id]);
+      return res.json({ headline: '', body: text });
+    }
     if (!await _assertMemberForHive(post.hive_id, req.userId, res)) return;
     if (post.author_user_id !== req.userId) return res.status(403).json({ error: 'Not authorised.' });
     const { headline, body } = req.body;
@@ -354,7 +493,7 @@ export const toggleReaction = async (req, res) => {
   try {
     const postId   = req.params.id;
     const postInfo = await _getPostInfo(postId);
-    if (!await _assertMemberForHive(postInfo?.hive_id, req.userId, res)) return;
+    if (!await _assertCanInteract(postInfo, req.userId, res)) return;
     const reaction = REACTIONS.includes(req.body.reaction) ? req.body.reaction : 'like';
 
     const { rows: [existing] } = await query(
@@ -458,7 +597,7 @@ export const getReactors = async (req, res) => {
 export const addComment = async (req, res) => {
   try {
     const postInfo = await _getPostInfo(req.params.id);
-    if (!await _assertMemberForHive(postInfo?.hive_id, req.userId, res)) return;
+    if (!await _assertCanInteract(postInfo, req.userId, res)) return;
     const { body, parentCommentId } = req.body;
     if (!body?.trim()) return res.status(400).json({ error: 'Comment body is required.' });
 
@@ -522,7 +661,7 @@ export const getComments = async (req, res) => {
 export const deleteComment = async (req, res) => {
   try {
     const commentInfo = await _getCommentInfo(req.params.commentId);
-    if (!await _assertMemberForHive(commentInfo?.hive_id, req.userId, res)) return;
+    if (!await _assertCanInteract(commentInfo, req.userId, res)) return;
     const { rows: [comment] } = await query(
       'SELECT user_id FROM post_comments WHERE comment_id=$1',
       [req.params.commentId],
@@ -555,6 +694,7 @@ export const updatePostVisibility = async (req, res) => {
       [req.params.id],
     );
     if (!post) return res.status(404).json({ error: 'Post not found.' });
+    if (!post.hive_id) return res.status(400).json({ error: 'Personal posts have no visibility setting.' });
 
     const member = await getMembership(post.hive_id, req.userId);
     if (!member) {

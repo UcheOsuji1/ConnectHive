@@ -862,7 +862,10 @@ export const getHiveMembers = async (req, res) => {
               hls.last_seen_at,
               COUNT(mop.step_id)::int AS completed_steps,
               (SELECT COUNT(*)::int FROM hive_onboarding_steps hos
-               WHERE hos.hive_id = hm.hive_id) AS total_steps
+               WHERE hos.hive_id = hm.hive_id) AS total_steps,
+              -- Prompt 87: the member card's Follow / Unfollow item.
+              EXISTS (SELECT 1 FROM user_follows uf
+                       WHERE uf.follower_id = $3 AND uf.followed_id = u.user_id) AS is_following
        FROM hive_members hm
        JOIN  users    u ON u.user_id  = hm.user_id
        LEFT JOIN profiles p ON p.user_id = hm.user_id
@@ -881,7 +884,7 @@ export const getHiveMembers = async (req, res) => {
        ORDER BY
          CASE hm.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 ELSE 3 END,
          hm.joined_at ASC NULLS LAST`,
-      [req.params.id, await blockedIdsFor(req.userId)],
+      [req.params.id, await blockedIdsFor(req.userId), req.userId],
     );
     res.json({ members: rows });
   } catch (err) {

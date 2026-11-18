@@ -1,9 +1,13 @@
+import crypto from 'crypto';
 import { query } from '../db/index.js';
 import { MIN_AGE } from '../lib/policy.js';
 import { flatten, norm } from '../lib/compatibility.js';
 import { getPairScore } from '../lib/pairScoreCache.js';
 import { isBlockedEitherWay } from '../lib/blocks.js';
-import { contextFor, removeConnection } from '../lib/connections.js';
+import { contextFor, removeConnection, connectionCount, connectionList, newConnections } from '../lib/connections.js';
+import { follow, unfollow, followCounts, followState, followList, recentlyNotifiedFollow } from '../lib/follows.js';
+import { createNotification } from './notificationsController.js';
+import { excludeSystemClause } from '../lib/systemUser.js';
 import { geocode, reverseGeocode } from '../services/geocode.js';
 import { validateUrl } from '../lib/validateUrl.js';
 import { normalizeDeepDive } from '../lib/collabVocabulary.js';
@@ -17,7 +21,13 @@ export const getProfile = async (req, res) => {
       [req.userId],
     );
 
-    return res.json({ profile: rows[0] ?? null });
+    const [counts, connection_count] = await Promise.all([followCounts(req.userId), connectionCount(req.userId)]);
+    return res.json({
+      profile: rows[0] ?? null,
+      follower_count: counts.followers,
+      following_count: counts.following,
+      connection_count,
+    });
   } catch (err) {
     console.error('[users/getProfile]', err);
     return res.status(500).json({ error: 'Failed to fetch profile.' });
@@ -512,9 +522,47 @@ export const getMemberProfile = async (req, res) => {
     const connection = { connected: !!ctx?.connected, via: ctx?.via ?? null };
     const dm_mode = ctx && (ctx.sharedHive || ctx.connected) ? 'direct' : 'request';
 
+    // ── Follow + network (Prompt 87) ───────────────────────────────────────
+    // public_hives: Hives the target is an active member of that anyone can
+    // find — discoverable, not deleted, not closed. viewer_status drives the
+    // Join / "You're a member" / "Requested" choice on each row.
+    const [counts, connection_count, fstate, { rows: publicHives }] = await Promise.all([
+      followCounts(targetId),
+      connectionCount(targetId),
+      followState(viewerId, targetId),
+      query(
+        `SELECT h.hive_id, h.hive_name, h.logo_url, h.banner_url, c.category_name,
+                (SELECT COUNT(*)::int FROM hive_members m
+                  WHERE m.hive_id = h.hive_id AND m.membership_status = 'active'
+                    AND ${excludeSystemClause('m')}) AS member_count,
+                CASE
+                  WHEN EXISTS (SELECT 1 FROM hive_members v
+                                WHERE v.hive_id = h.hive_id AND v.user_id = $2 AND v.membership_status = 'active') THEN 'member'
+                  WHEN EXISTS (SELECT 1 FROM join_requests jr
+                                WHERE jr.hive_id = h.hive_id AND jr.user_id = $2 AND jr.status = 'pending') THEN 'pending'
+                  ELSE 'none'
+                END AS viewer_status
+           FROM hive_members hm
+           JOIN hives h ON h.hive_id = hm.hive_id
+           LEFT JOIN categories c ON c.category_id = h.category_id
+          WHERE hm.user_id = $1 AND hm.membership_status = 'active'
+            AND h.discoverable = TRUE AND h.hive_status = 'active' AND h.deleted_at IS NULL
+          ORDER BY hm.joined_at DESC
+          LIMIT 12`,
+        [targetId, viewerId],
+      ),
+    ]);
+
     return res.json({
       connection,
       dm_mode,
+      follower_count:     counts.followers,
+      following_count:    counts.following,
+      connection_count,
+      is_following:       fstate.following,
+      follows_you:        fstate.follows_you,
+      public_hives:       publicHives,
+      shares_active_hive: !!ctx?.sharedHive,
       profile: {
         user_id: target.user_id,
         full_name: target.full_name,
@@ -542,6 +590,114 @@ export const getMemberProfile = async (req, res) => {
   } catch (err) {
     console.error('[users/getMemberProfile]', err);
     return res.status(500).json({ error: 'Failed to load member profile.' });
+  }
+};
+
+// ── Follows (Prompt 87) ───────────────────────────────────────────────────────
+// POST /api/users/:id/follow — idempotent. "{name} started following you"
+// goes out only on a real new follow, and not again if this same person
+// already triggered one in the last 24 h (follow → unfollow → follow).
+export const followUser = async (req, res) => {
+  try {
+    const followerId = req.userId;
+    const followedId = req.params.id;
+    const { created } = await follow(followerId, followedId);
+    res.json({ following: true });
+    if (created && !(await recentlyNotifiedFollow(followerId, followedId))) {
+      const { rows: [me] } = await query(`SELECT full_name FROM profiles WHERE user_id = $1`, [followerId]);
+      await createNotification({
+        userId: followedId,
+        type: 'new_follower',
+        title: `${me?.full_name ?? 'Someone'} started following you`,
+        actorUserId: followerId,
+        link: `/profile/${followerId}`,
+      });
+    }
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message });
+    console.error('[users/followUser]', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Failed to follow.' });
+  }
+};
+
+// DELETE /api/users/:id/follow — idempotent, silent.
+export const unfollowUser = async (req, res) => {
+  try {
+    await unfollow(req.userId, req.params.id);
+    res.json({ following: false });
+  } catch (err) {
+    console.error('[users/unfollowUser]', err);
+    res.status(500).json({ error: 'Failed to unfollow.' });
+  }
+};
+
+const pageOffset = (q) => Math.min(100000, Math.max(0, Math.trunc(Number(q.offset)) || 0));
+
+// GET /api/users/:id/followers | /following — 404 across a block, the same
+// as the profile itself.
+async function listFollows(req, res, direction) {
+  try {
+    if (await isBlockedEitherWay(req.userId, req.params.id)) {
+      return res.status(404).json({ error: 'Member not found.' });
+    }
+    res.json(await followList(req.userId, req.params.id, direction, pageOffset(req.query)));
+  } catch (err) {
+    console.error(`[users/${direction}]`, err);
+    res.status(500).json({ error: 'Failed to load people.' });
+  }
+}
+export const getFollowers = (req, res) => listFollows(req, res, 'followers');
+export const getFollowing = (req, res) => listFollows(req, res, 'following');
+
+// GET /api/users/me/connections?q=&offset=
+export const getMyConnections = async (req, res) => {
+  try {
+    res.json(await connectionList(req.userId, req.query.q ?? '', pageOffset(req.query)));
+  } catch (err) {
+    console.error('[users/getMyConnections]', err);
+    res.status(500).json({ error: 'Failed to load connections.' });
+  }
+};
+
+// GET /api/users/me/network — the Home "Your Network" panel.
+export const getMyNetwork = async (req, res) => {
+  try {
+    const [counts, connections, fresh] = await Promise.all([
+      followCounts(req.userId), connectionCount(req.userId), newConnections(req.userId),
+    ]);
+    res.json({
+      followers: counts.followers,
+      following: counts.following,
+      connections,
+      new_connections: fresh,
+    });
+  } catch (err) {
+    console.error('[users/getMyNetwork]', err);
+    res.status(500).json({ error: 'Failed to load your network.' });
+  }
+};
+
+// GET /api/users/me/upload-signature — a personal post's photo (Prompt 87).
+// Same signing as the Hive post upload, into posts/{userId}, images only;
+// createPost accepts a personal media_url only from that folder.
+export const getPersonalUploadSignature = async (req, res) => {
+  try {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey    = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    if (!cloudName || !apiKey || !apiSecret) {
+      return res.status(503).json({ error: 'Photo uploads are not configured yet.' });
+    }
+    const allowed_formats = 'jpeg,jpg,png,webp';
+    const folder    = `posts/${req.userId}`;
+    const timestamp = Math.round(Date.now() / 1000);
+    const signature = crypto.createHash('sha1')
+      .update(`allowed_formats=${allowed_formats}&folder=${folder}&timestamp=${timestamp}${apiSecret}`)
+      .digest('hex');
+    res.json({ signature, timestamp, api_key: apiKey, cloud_name: cloudName, folder, allowed_formats });
+  } catch (err) {
+    console.error('[users/getPersonalUploadSignature]', err);
+    res.status(500).json({ error: 'Failed to prepare the upload.' });
   }
 };
 

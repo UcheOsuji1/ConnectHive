@@ -88,6 +88,8 @@ const REQUIRED = {
   dm_conversations: [],
   dm_members: [],
   dm_messages: [],
+  // Prompt 87 — follows.
+  user_follows: [],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -197,6 +199,7 @@ const IMPACT = {
   'dm_conversations (table absent)':         'Direct Messages — the Messages page, nav badge and every send fail',
   'dm_members (table absent)':               'Direct Messages — the Messages page, nav badge and every send fail',
   'dm_messages (table absent)':              'Direct Messages — the Messages page, nav badge and every send fail',
+  'user_follows (table absent)':             'following people — Follow/Unfollow, follower counts, the Home Network panel and every feed query fail (the feed reads it for personal posts)',
 };
 
 let state = { checked: false, ok: true, missing: [] };

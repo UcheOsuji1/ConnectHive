@@ -88,19 +88,41 @@ async function resolveTarget(targetType, targetId, reporterId) {
            FROM hive_posts WHERE post_id = $1`,
         [targetId],
       );
-      row = p && { hiveId: p.hive_id, authorId: p.author_user_id, visibility: p.visibility,
+      row = p && { hiveId: p.hive_id, authorId: p.author_user_id, postAuthorId: p.author_user_id, visibility: p.visibility,
         snapshot: [p.headline, p.body].filter(Boolean).join('\n\n') };
     } else {
       const { rows: [c] } = await query(
-        `SELECT pc.comment_id, pc.user_id, pc.body, hp.hive_id, hp.visibility
+        `SELECT pc.comment_id, pc.user_id, pc.body, hp.hive_id, hp.visibility, hp.author_user_id AS post_author_id
            FROM post_comments pc
            JOIN hive_posts hp ON hp.post_id = pc.post_id
           WHERE pc.comment_id = $1`,
         [targetId],
       );
-      row = c && { hiveId: c.hive_id, authorId: c.user_id, visibility: c.visibility, snapshot: c.body };
+      row = c && { hiveId: c.hive_id, authorId: c.user_id, postAuthorId: c.post_author_id, visibility: c.visibility, snapshot: c.body };
     }
     if (!row) throw notFound();
+
+    // Personal post, or a comment on one (Prompt 87): readable by anyone not
+    // blocked with the post's author while that account is active. No Hive,
+    // so it goes to the TrueHive admin queue only and never to a Hive
+    // owner; `personal` keeps the 2-reporter auto-hide on.
+    if (!row.hiveId) {
+      if (row.postAuthorId !== reporterId) {
+        const { rows: [a] } = await query(
+          `SELECT account_status FROM users WHERE user_id = $1`, [row.postAuthorId],
+        );
+        if (a?.account_status !== 'active') throw notFound();
+        if (await isBlockedEitherWay(reporterId, row.postAuthorId)) throw notFound();
+      }
+      return {
+        hiveId:          null,
+        isPrivate:       false,
+        personal:        true,
+        targetUserId:    row.authorId,
+        contentSnapshot: clip(row.snapshot, SNAPSHOT_MAX),
+        hiveName:        null,
+      };
+    }
 
     const { rows: [access] } = await query(
       `SELECT
@@ -228,8 +250,10 @@ export const createReport = async (req, res) => {
     if (isNewReport) {
       const isHiveRoomContent = ['message', 'post', 'comment'].includes(targetType)
         && target.hiveId && !target.isPrivate;
+      // Personal posts/comments auto-hide the same way, with no Hive to tell.
+      const autoHideable = isHiveRoomContent || target.personal === true;
 
-      if (isHiveRoomContent) {
+      if (autoHideable) {
         const { rows: [{ n: reporterCount }] } = await query(
           `SELECT COUNT(DISTINCT reporter_id)::int AS n FROM reports WHERE target_type = $1 AND target_id = $2`,
           [targetType, targetId],
@@ -240,7 +264,7 @@ export const createReport = async (req, res) => {
         // Never on the 2nd+ report for the same target (that's the auto-hide
         // signal, a separate event), and never for a pair-chat or person/Hive
         // report, which a Hive owner must never see.
-        if (reporterCount === 1) {
+        if (reporterCount === 1 && isHiveRoomContent) {
           const { rows: leaders } = await query(
             `SELECT user_id FROM hive_members
               WHERE hive_id = $1 AND membership_status = 'active' AND role IN ('owner','admin')`,

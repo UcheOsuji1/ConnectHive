@@ -27,7 +27,7 @@
 .th-outline { border:1px solid var(--th-highlight); border-radius:30px; padding:9px 17px; background:linear-gradient(120deg,color-mix(in srgb,var(--th-highlight) 18%,transparent),transparent); color:var(--th-text); display:inline-flex; align-items:center; justify-content:center; gap:12px; min-height:42px; font-size:13px; font-weight:600; }
 .th-profile .th-outline { display:flex; margin:0 20px; }
 .th-shortcuts { display:flex; flex-direction:column; gap:4px; }
-.th-left>.th-panel:nth-child(2)>h2 { display:none; }
+.th-left>.th-quick-access>h2 { display:none; }
 .th-shortcuts a { display:flex; gap:17px; align-items:center; padding:9px 11px; border:1px solid transparent; border-radius:8px; font-size:14px; min-height:44px; }
 .th-shortcuts a.active { background:color-mix(in srgb,var(--th-highlight) 25%,transparent); border-color:var(--th-highlight); }
 .th-shortcuts svg { color:var(--th-gold); }
@@ -204,3 +204,40 @@ html[data-home="true"] body { background:var(--th-bg); }
 .app-nav-label { display:inline-flex; align-items:center; gap:5px; }
 .app-nav-count { display:inline-flex; align-items:center; justify-content:center; min-width:17px; height:17px; padding:0 5px; border-radius:99px; background:#c89b2c; color:#fff; font-size:10.5px; font-weight:700; line-height:1; }
 .app-mobile-menu .app-nav-count { margin-left:8px; }
+
+/* ── Prompt 87: follow people, personal posts, Your Network ─────────────────── */
+/* Follow a person (FollowPersonButton): gold "Follow", gold-outline "✓ Following". */
+.fpb { display:inline-flex; align-items:center; justify-content:center; border-radius:999px; border:1px solid #c49a28; background:linear-gradient(115deg,#e8c84a,#c49a28); color:#241a07; font:600 13px 'DM Sans',sans-serif; cursor:pointer; white-space:nowrap; flex:none; }
+.fpb--sm { height:30px; padding:0 14px; font-size:12px; }
+.fpb--md { height:36px; padding:0 18px; }
+.fpb--lg { min-height:44px; padding:0 26px; font-size:.88rem; }
+.fpb--on { background:var(--th-card,#fffdf8); color:#8a6510; }
+:root[data-theme="dark"] .fpb--on { color:var(--th-gold); }
+.fpb--on:hover, .fpb--on:focus-visible { border-color:#b93636; color:#b93636; }
+.fpb:disabled { opacity:.7; cursor:default; }
+.fpb:focus-visible { outline:2px solid #c49a28; outline-offset:2px; }
+
+/* Your Network panel (th-left, under the profile card). */
+.th-net-tiles { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.th-net-tiles a { display:flex; flex-direction:column; align-items:center; gap:2px; padding:12px 4px; border-radius:10px; background:var(--th-raised); color:var(--th-text); text-decoration:none; }
+.th-net-tiles a:hover { background:var(--th-hover); }
+.th-net-tiles strong { font:600 22px/1.1 'DM Sans',sans-serif; }
+.th-net-tiles span { font-size:11.5px; color:var(--th-muted); }
+.th-net-new { margin-top:14px; padding-top:12px; border-top:1px solid var(--th-border); }
+.th-net-new h3 { font:600 13px 'DM Sans',sans-serif; margin:0 0 8px; letter-spacing:0; }
+.th-net-row { display:flex; align-items:center; gap:8px; padding:6px 0; }
+.th-net-person { display:flex; align-items:center; gap:9px; min-width:0; flex:1; color:var(--th-text); text-decoration:none; }
+.th-net-person span { display:flex; flex-direction:column; min-width:0; }
+.th-net-person strong { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.th-net-person small { font-size:11.5px; color:var(--th-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.th-net-all { display:block; margin-top:10px; color:var(--th-gold); font-size:12.5px; }
+.th-net-note { margin:6px 0 0; font-size:11.5px; color:var(--th-muted); line-height:1.45; }
+
+/* Personal post header (PostCard is_personal). */
+.th-post-namerow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; color:var(--th-text) !important; }
+.th-chip-connected { display:inline-flex; align-items:center; height:20px; padding:0 9px; border-radius:999px; background:color-mix(in srgb,var(--th-highlight) 20%,transparent); color:var(--th-gold); font:600 11px 'DM Sans',sans-serif; }
+.th-post-sub { font-size:12px; color:var(--th-muted); }
+.th-post-body--personal { white-space:pre-wrap; overflow-wrap:anywhere; }
+/* The small Follow in the Network panel is the mockup's gold outline. */
+.fpb--outline:not(.fpb--on) { background:transparent; color:#8a6510; }
+:root[data-theme="dark"] .fpb--outline:not(.fpb--on) { color:var(--th-gold); }

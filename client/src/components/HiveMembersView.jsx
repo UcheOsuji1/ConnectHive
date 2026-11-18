@@ -154,6 +154,9 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
   const [mode, setMode]   = useState(null); // null | 'confirm-remove' | 'notify'
   const [text, setText]   = useState('');
   const [busy, setBusy]   = useState(false);
+  // Follow / Unfollow (Prompt 87) — optimistic, rolled back on error.
+  const [following, setFollowing]   = useState(!!member.is_following);
+  const [followBusy, setFollowBusy] = useState(false);
   const wrapRef = useRef(null);
   const navigate = useNavigate();
 
@@ -197,6 +200,20 @@ function CardMenu({ member, actions, isMe, onPromote, onDemote, onRemove, onNoti
             <button type="button" className="hmv2-cardmenu-item hmv2-cardmenu-item--primary"
               onClick={() => { setOpen(false); navigate(`/messages?to=${member.user_id}`); }}>
               Message {first}
+            </button>
+          )}
+          {!isMe && (
+            <button type="button" className="hmv2-cardmenu-item" disabled={followBusy}
+              onClick={async () => {
+                const next = !following;
+                setFollowing(next); setFollowBusy(true);
+                try {
+                  if (next) await api.post(`/api/users/${member.user_id}/follow`, {});
+                  else await api.delete(`/api/users/${member.user_id}/follow`);
+                } catch { setFollowing(!next); }
+                finally { setFollowBusy(false); setOpen(false); }
+              }}>
+              {following ? `Unfollow ${first}` : `Follow ${first}`}
             </button>
           )}
           {actions.promote && (

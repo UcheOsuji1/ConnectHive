@@ -30,6 +30,7 @@ function whereLabel(g) {
   if (g.target_type === 'user') return 'Profile';
   if (g.target_type === 'hive') return 'Hive page';
   if (g.target_type === 'dm_message') return 'Direct message';
+  if ((g.target_type === 'post' || g.target_type === 'comment') && !g.hive_id) return 'Personal post';
   if (g.is_private) return 'Private chat';
   return g.hive_name ?? '—';
 }
