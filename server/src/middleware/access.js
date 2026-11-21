@@ -14,7 +14,16 @@ import { query } from '../db/index.js';
 // Mounted as app.use('/api', requireAccess) — Express strips the '/api'
 // mount prefix before this runs, so req.path here is already relative
 // (e.g. '/account/delete'), not '/api/account/delete'.
-const ALLOWED_PREFIXES = ['/waitlist', '/account'];
+//
+// /blocks and the exact /users/profile path are here too: AccountSettingsPage
+// calls both (blocked-users management, payment handles) directly, not
+// through /api/account/*, and /settings is an allowed page — the gate must
+// not break pieces of an otherwise-allowed page. /users/profile is an EXACT
+// match, not a prefix: a waiting account can read/save its own profile
+// fields, but /users/profile/setup (the full onboarding save) and
+// /users/:id/profile (browsing another member) stay gated.
+const ALLOWED_PREFIXES = ['/waitlist', '/account', '/blocks'];
+const ALLOWED_EXACT = ['/users/profile'];
 
 const CACHE_TTL_MS = 30_000;
 const statusCache = new Map(); // userId -> { status, expiresAt }
@@ -36,7 +45,7 @@ export function invalidateAccessStatus(userId) {
 }
 
 export async function requireAccess(req, res, next) {
-  if (ALLOWED_PREFIXES.some(p => req.path.startsWith(p))) return next();
+  if (ALLOWED_PREFIXES.some(p => req.path.startsWith(p)) || ALLOWED_EXACT.includes(req.path)) return next();
 
   const token = req.cookies?.token;
   if (!token) return next();
