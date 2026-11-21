@@ -32,6 +32,13 @@ async function request(path, { body, method = 'GET', headers = {} } = {}) {
     window.location.href = '/confirm-details';
   }
 
+  // Waitlist gate (Prompt 89) — a 'waiting' account's request anywhere else
+  // comes back 403 'waitlisted'. One place to catch it, same as 428 above.
+  if (res.status === 403 && data?.code === 'waitlisted' &&
+      !['/waitlist', '/settings'].includes(window.location.pathname)) {
+    window.location.href = '/waitlist';
+  }
+
   if (!res.ok) {
     const err = new Error(data.error ?? `Request failed (${res.status})`);
     err.status = res.status;

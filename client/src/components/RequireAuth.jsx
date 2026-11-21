@@ -38,5 +38,20 @@ export default function RequireAuth() {
     return <Navigate to={`/login?next=${encodeURIComponent(next)}`} replace />;
   }
 
+  // Waitlist (Prompt 89) — a 'waiting' account can only use the waitlist
+  // page itself, Settings and the consent screen; every other authenticated
+  // route sends it back to /waitlist. Checked before youreInPending: a
+  // waiting account is never also youreInPending.
+  if (user.accessStatus === 'waiting' &&
+      !['/waitlist', '/settings', '/confirm-details'].includes(location.pathname)) {
+    return <Navigate to="/waitlist" replace />;
+  }
+
+  // Let in but hasn't seen the "You're in" screen yet — route there first,
+  // same way requireConsent routes to /confirm-details above.
+  if (user.youreInPending && !['/youre-in', '/settings'].includes(location.pathname)) {
+    return <Navigate to="/youre-in" replace />;
+  }
+
   return <Outlet />;
 }

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TrueHive waitlist</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&amp;family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f0e8}
+a{color:#8a6510}a:hover{color:#5e450b}
+.th-hive{background:linear-gradient(135deg,#e8c84a,#c49a28 50%,#8a6510);-webkit-background-clip:text;background-clip:text;color:transparent}
+</style>
+</helmet>
+<div style="min-height: 1640px; background: #f5f0e8; font-family: 'DM Sans', sans-serif; color: #1e1b18">
+
+  <!-- Header: minimal, signed in but not let in yet -->
+  <header style="border-bottom: 1px solid #e4d9c3; background: #fbf8f2">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px">
+      <a href="#" style="display: flex; align-items: center; gap: 10px; text-decoration: none" aria-label="TrueHive home">
+        <img src="/brand/truehive-mark-256.png" alt="" style="width: 36px; height: 36px">
+        <span style="font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 700; color: #1e1b18">True<span class="th-hive">Hive</span></span>
+      </a>
+      <div style="display: flex; align-items: center; gap: 14px">
+        <span style="width: 34px; height: 34px; border-radius: 50%; background: #c49a28; color: #1e1b18; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px">U</span>
+        <span style="font-size: 14px; font-weight: 500">Uche</span>
+        <button type="button" style="font: inherit; font-size: 14px; background: none; border: 1px solid #d6c8a8; border-radius: 999px; padding: 8px 16px; color: #1e1b18; cursor: pointer">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main style="max-width: 1120px; margin: 0 auto; padding: 56px 24px 72px; display: flex; flex-direction: column; gap: 40px">
+
+    <!-- Hero: place in line -->
+    <section style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 14px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 28px; height: 1px; background: #8a6510"></span>
+        <span style="font-size: 12px; font-weight: 700; letter-spacing: 0.16em; color: #8a6510">YOUR ACCOUNT IS READY · YOU'RE ON THE LIST</span>
+        <span style="width: 28px; height: 1px; background: #8a6510"></span>
+      </div>
+      <h1 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-weight: 700; font-size: 76px; line-height: 1.02">You're <span class="th-hive">#214</span> in line.</h1>
+      <p style="margin: 0; max-width: 620px; font-size: 18px; line-height: 1.6; color: #4a443b">We let people into TrueHive in small groups so we can welcome each one personally. Invite friends to move up.</p>
+
+      <div style="margin-top: 18px; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px">
+        <div style="background: #fff; border: 1px solid #e4d9c3; border-radius: 14px; padding: 16px 26px; min-width: 170px">
+          <div style="font-family: 'Cormorant Garamond', serif; font-size: 34px; font-weight: 700">1,032</div>
+          <div style="font-size: 13px; color: #5c554a">people waiting</div>
+        </div>
+        <div style="background: #fff; border: 1px solid #e4d9c3; border-radius: 14px; padding: 16px 26px; min-width: 170px">
+          <div style="font-family: 'Cormorant Garamond', serif; font-size: 34px; font-weight: 700">180</div>
+          <div style="font-size: 13px; color: #5c554a">let in so far</div>
+        </div>
+        <div style="background: #1e1b18; color: #f5f0e8; border-radius: 14px; padding: 16px 26px; min-width: 170px">
+          <div style="font-family: 'Cormorant Garamond', serif; font-size: 34px; font-weight: 700; color: #e8c84a">25 spots</div>
+          <div style="font-size: 13px; color: #d8cfbf">in the next group</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Two columns -->
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+
+      <!-- LEFT -->
+      <div style="flex: 1 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+
+        <!-- Invite link -->
+        <section style="background: #fff; border: 1px solid #e4d9c3; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 16px">
+          <h2 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 700">Move up the line</h2>
+          <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #4a443b">Share your link. Every friend who joins moves you up <strong>10 spots</strong>.</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 10px">
+            <label for="invite-link" style="position: absolute; left: -9999px">Your invite link</label>
+            <input id="invite-link" type="text" readonly value="truehive.app/join/uche-7K2Q" style="flex: 1 1 240px; min-width: 0; font: inherit; font-size: 15px; padding: 13px 16px; border: 1px solid #d6c8a8; border-radius: 12px; background: #fbf8f2; color: #1e1b18">
+            <button type="button" style="font: inherit; font-weight: 700; font-size: 15px; padding: 13px 22px; border: none; border-radius: 12px; background: linear-gradient(135deg,#e8c84a,#c49a28); color: #1e1b18; cursor: pointer">Copy link</button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px">
+            <button type="button" style="font: inherit; font-size: 14px; padding: 10px 16px; border: 1px solid #d6c8a8; border-radius: 999px; background: #fff; color: #1e1b18; cursor: pointer">Text a friend</button>
+            <button type="button" style="font: inherit; font-size: 14px; padding: 10px 16px; border: 1px solid #d6c8a8; border-radius: 999px; background: #fff; color: #1e1b18; cursor: pointer">Share to Instagram</button>
+            <button type="button" style="font: inherit; font-size: 14px; padding: 10px 16px; border: 1px solid #d6c8a8; border-radius: 999px; background: #fff; color: #1e1b18; cursor: pointer">Share to TikTok</button>
+            <button type="button" style="font: inherit; font-size: 14px; padding: 10px 16px; border: 1px solid #d6c8a8; border-radius: 999px; background: #fff; color: #1e1b18; cursor: pointer">Email</button>
+          </div>
+          <p style="margin: 0; font-size: 13px; color: #5c554a">A friend counts once they sign up and verify their email.</p>
+        </section>
+
+        <!-- Rewards -->
+        <section style="background: #fff; border: 1px solid #e4d9c3; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 18px">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap">
+            <h2 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 700">Your rewards</h2>
+            <span style="font-size: 15px; font-weight: 600">2 friends joined</span>
+          </div>
+          <div style="height: 10px; border-radius: 999px; background: #efe6d3; overflow: hidden" role="img" aria-label="2 of 25 friends">
+            <div style="width: 8%; height: 100%; background: linear-gradient(90deg,#e8c84a,#c49a28)"></div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; background: #fbf3dc; border: 1px solid #ecd9a0">
+              <span style="flex: 0 0 52px; height: 52px; border-radius: 12px; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 20px">3<span style="font-size: 10px; font-weight: 600; color: #5c554a">friends</span></span>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-weight: 700; font-size: 15px">Priority</div>
+                <div style="font-size: 14px; color: #4a443b">Jump into the next group we let in.</div>
+              </div>
+              <span style="font-size: 13px; font-weight: 600; color: #8a6510">1 more to go</span>
+            </div>
+            <div style="display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; border: 1px solid #e4d9c3">
+              <span style="flex: 0 0 52px; height: 52px; border-radius: 12px; background: #f5f0e8; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 20px">10<span style="font-size: 10px; font-weight: 600; color: #5c554a">friends</span></span>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-weight: 700; font-size: 15px">Skip the line</div>
+                <div style="font-size: 14px; color: #4a443b">You're let in right away.</div>
+              </div>
+              <span style="font-size: 13px; color: #5c554a">8 more</span>
+            </div>
+            <div style="display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; border: 1px solid #e4d9c3">
+              <span style="flex: 0 0 52px; height: 52px; border-radius: 12px; background: #f5f0e8; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 20px">25<span style="font-size: 10px; font-weight: 600; color: #5c554a">friends</span></span>
+              <div style="flex: 1; min-width: 0">
+                <div style="font-weight: 700; font-size: 15px">A free month on a paid Hive</div>
+                <div style="font-size: 14px; color: #4a443b">For a paid Hive you create or own.</div>
+              </div>
+              <span style="font-size: 13px; color: #5c554a">23 more</span>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- RIGHT -->
+      <div style="flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+
+        <!-- Questions -->
+        <section style="background: #fff; border: 1px solid #e4d9c3; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 18px">
+          <div>
+            <h2 style="margin: 0 0 6px; font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 700">Help us build your Hive</h2>
+            <p style="margin: 0; font-size: 14px; line-height: 1.55; color: #4a443b">Three quick questions. Your answers decide which Hives we start first.</p>
+          </div>
+
+          <fieldset style="border: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+            <legend style="font-weight: 600; font-size: 14px; margin-bottom: 10px; padding: 0">What kind of group do you want? <span style="font-weight: 400; color: #5c554a">Pick any</span></legend>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px">
+              <button type="button" aria-pressed="true" style="font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 999px; border: 1px solid #c49a28; background: #fbf3dc; color: #1e1b18; font-weight: 600; cursor: pointer">Social Groups</button>
+              <button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 999px; border: 1px solid #d6c8a8; background: #fff; color: #1e1b18; cursor: pointer">Professional Networking</button>
+              <button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 999px; border: 1px solid #d6c8a8; background: #fff; color: #1e1b18; cursor: pointer">Travel Buddies</button>
+              <button type="button" aria-pressed="true" style="font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 999px; border: 1px solid #c49a28; background: #fbf3dc; color: #1e1b18; font-weight: 600; cursor: pointer">Project Collaboration</button>
+              <button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 999px; border: 1px solid #d6c8a8; background: #fff; color: #1e1b18; cursor: pointer">Event Buddies</button>
+              <button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; padding: 9px 14px; border-radius: 999px; border: 1px solid #d6c8a8; background: #fff; color: #1e1b18; cursor: pointer">Specialized Groups</button>
+            </div>
+          </fieldset>
+
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <label for="wl-city" style="font-weight: 600; font-size: 14px">Where are you?</label>
+            <input id="wl-city" type="text" value="Los Angeles, CA" style="font: inherit; font-size: 15px; padding: 12px 14px; border: 1px solid #d6c8a8; border-radius: 12px; background: #fbf8f2; color: #1e1b18">
+          </div>
+
+          <fieldset style="border: none; margin: 0; padding: 0">
+            <legend style="font-weight: 600; font-size: 14px; margin-bottom: 10px; padding: 0">How do you like to meet?</legend>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap">
+              <button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; padding: 9px 16px; border-radius: 999px; border: 1px solid #d6c8a8; background: #fff; color: #1e1b18; cursor: pointer">Online</button>
+              <button type="button" aria-pressed="false" style="font: inherit; font-size: 14px; padding: 9px 16px; border-radius: 999px; border: 1px solid #d6c8a8; background: #fff; color: #1e1b18; cursor: pointer">In person</button>
+              <button type="button" aria-pressed="true" style="font: inherit; font-size: 14px; padding: 9px 16px; border-radius: 999px; border: 1px solid #c49a28; background: #fbf3dc; color: #1e1b18; font-weight: 600; cursor: pointer">Both</button>
+            </div>
+          </fieldset>
+
+          <button type="button" style="align-self: flex-start; font: inherit; font-weight: 700; font-size: 15px; padding: 12px 22px; border: none; border-radius: 12px; background: #1e1b18; color: #f5f0e8; cursor: pointer">Save answers</button>
+        </section>
+
+        <!-- Top inviters -->
+        <section style="background: #fff; border: 1px solid #e4d9c3; border-radius: 18px; padding: 28px; display: flex; flex-direction: column; gap: 14px">
+          <h2 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 30px; font-weight: 700">Top inviters this week</h2>
+          <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px">
+            <li style="display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid #efe6d3">
+              <span style="width: 22px; font-weight: 700; color: #8a6510">1</span>
+              <span style="width: 32px; height: 32px; border-radius: 50%; background: #8a6510; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">A</span>
+              <span style="flex: 1; font-size: 15px">Ana R.</span>
+              <span style="font-size: 14px; font-weight: 600">41 friends</span>
+            </li>
+            <li style="display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid #efe6d3">
+              <span style="width: 22px; font-weight: 700; color: #8a6510">2</span>
+              <span style="width: 32px; height: 32px; border-radius: 50%; background: #c49a28; color: #1e1b18; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">J</span>
+              <span style="flex: 1; font-size: 15px">Jordan M.</span>
+              <span style="font-size: 14px; font-weight: 600">27 friends</span>
+            </li>
+            <li style="display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-bottom: 1px solid #efe6d3">
+              <span style="width: 22px; font-weight: 700; color: #8a6510">3</span>
+              <span style="width: 32px; height: 32px; border-radius: 50%; background: #b8902a; color: #1e1b18; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">K</span>
+              <span style="flex: 1; font-size: 15px">Kemi O.</span>
+              <span style="font-size: 14px; font-weight: 600">19 friends</span>
+            </li>
+            <li style="display: flex; align-items: center; gap: 12px; padding: 10px 4px; background: #fbf3dc; border-radius: 10px">
+              <span style="width: 22px; font-weight: 700; color: #5c554a">88</span>
+              <span style="width: 32px; height: 32px; border-radius: 50%; background: #c49a28; color: #1e1b18; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700">U</span>
+              <span style="flex: 1; font-size: 15px; font-weight: 600">You</span>
+              <span style="font-size: 14px; font-weight: 600">2 friends</span>
+            </li>
+          </ol>
+          <p style="margin: 0; font-size: 13px; color: #5c554a">First names and last initials only. You can hide your name in Settings.</p>
+        </section>
+      </div>
+    </div>
+
+    <!-- Hive invite hint -->
+    <p style="margin: 0; text-align: center; font-size: 15px; color: #4a443b">Did a friend invite you to their Hive? Open their invite link and you'll go straight in.</p>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1640}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

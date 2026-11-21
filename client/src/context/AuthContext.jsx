@@ -57,8 +57,8 @@ export function AuthProvider({ children }) {
 
   // ── register ─────────────────────────────────────────────────────────────────
   // Throws on validation / duplicate — let callers handle the message.
-  const register = useCallback(async (email, password, acceptedTerms, dateOfBirth, newsOptIn) => {
-    const data = await api.post('/api/auth/register', { email, password, acceptedTerms, dateOfBirth, newsOptIn });
+  const register = useCallback(async (email, password, acceptedTerms, dateOfBirth, newsOptIn, ref) => {
+    const data = await api.post('/api/auth/register', { email, password, acceptedTerms, dateOfBirth, newsOptIn, ref });
     // register endpoint returns user without hasProfile/hasActiveHive,
     // so fetch /me immediately to get the full shape.
     const me = await api.get('/api/auth/me');

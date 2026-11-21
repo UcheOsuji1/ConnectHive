@@ -2063,3 +2063,60 @@ DROP TRIGGER IF EXISTS hive_members_gender_guard ON hive_members;
 CREATE TRIGGER hive_members_gender_guard
   BEFORE INSERT OR UPDATE OF membership_status ON hive_members
   FOR EACH ROW EXECUTE FUNCTION hive_members_gender_guard();
+
+-- ─── Site waitlist (cold-start admission queue, Prompt 89) ───────────────────
+-- Unrelated to the `waitlist` table above (that's the category/location queue
+-- used for Hive matching) — this one gates account access to the whole app.
+-- Ships with waitlist_enabled = false; a site admin turns it on.
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS access_status TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_access_status_check;
+ALTER TABLE users ADD CONSTRAINT users_access_status_check
+  CHECK (access_status IN ('active', 'waiting'));
+
+CREATE TABLE IF NOT EXISTS site_settings (
+  key        TEXT        PRIMARY KEY,
+  value      JSONB       NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+INSERT INTO site_settings (key, value) VALUES ('waitlist_enabled', 'false') ON CONFLICT DO NOTHING;
+INSERT INTO site_settings (key, value) VALUES ('next_group_size', 'null')  ON CONFLICT DO NOTHING;
+
+CREATE SEQUENCE IF NOT EXISTS site_waitlist_seq;
+
+CREATE TABLE IF NOT EXISTS site_waitlist (
+  user_id              UUID        PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+  joined_seq           BIGINT      NOT NULL DEFAULT nextval('site_waitlist_seq'),
+  referral_code        TEXT        NOT NULL UNIQUE,
+  referred_by          UUID        REFERENCES users(user_id) ON DELETE SET NULL,
+  status               TEXT        NOT NULL DEFAULT 'waiting'
+                          CHECK (status IN ('waiting', 'let_in')),
+  let_in_at            TIMESTAMPTZ,
+  let_in_reason        TEXT        CHECK (let_in_reason IS NULL OR
+                          let_in_reason IN ('group', 'manual', 'referrals_10')),
+  let_in_batch_id      UUID,
+  youre_in_seen_at     TIMESTAMPTZ,
+  wants                JSONB       NOT NULL DEFAULT '[]',
+  city                 TEXT,
+  meet_pref            TEXT        CHECK (meet_pref IS NULL OR
+                          meet_pref IN ('online', 'in_person', 'both')),
+  show_on_leaderboard  BOOLEAN     NOT NULL DEFAULT TRUE,
+  free_month_earned_at TIMESTAMPTZ,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_site_waitlist_status_seq  ON site_waitlist(status, joined_seq);
+CREATE INDEX IF NOT EXISTS idx_site_waitlist_referred_by ON site_waitlist(referred_by);
+
+-- credits are never cached on site_waitlist — always COUNT(*) over credited_at
+-- IS NOT NULL rows here. That's what makes account purge (both FKs CASCADE)
+-- correctly shrink a user's credit count or erase their own credited-friend
+-- row with zero extra purge-job code — see purgeJob.js's dynamic FK scan.
+CREATE TABLE IF NOT EXISTS site_referrals (
+  referred_user_id UUID        PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+  referrer_user_id UUID        NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  credited_at      TIMESTAMPTZ,
+  CHECK (referred_user_id <> referrer_user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_site_referrals_referrer ON site_referrals(referrer_user_id, credited_at);

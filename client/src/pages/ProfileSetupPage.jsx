@@ -702,6 +702,27 @@ export default function ProfileSetupPage() {
       .finally(() => setHydrating(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // First-time setup only (Prompt 89) — prefill from the waitlist answers,
+  // if any. 404 (never on the waitlist) is expected and silently ignored.
+  // Location: a direct carry-over, filled only if the profile has none yet.
+  // Purposes: PURPOSE_CARDS' keys are the same six categories the waitlist
+  // asks "what kind of group do you want?" with — an obvious 1:1 mapping,
+  // except the waitlist's singular 'event' vs this page's plural 'events'.
+  // Interests/skills are NOT prefilled: those are hobby/skill vocabularies,
+  // not group-type categories, so there's no obvious mapping to carry over.
+  useEffect(() => {
+    if (isEdit) return;
+    api.get('/api/waitlist')
+      .then(view => {
+        const { city, wants } = view.answers ?? {};
+        if (city) setForm1(f => f.location ? f : { ...f, location: city });
+        if (Array.isArray(wants) && wants.length) {
+          setPurposes(wants.map(w => (w === 'event' ? 'events' : w)));
+        }
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const scrollToSection = n => {
     const el = document.getElementById(`ps-s${n}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });

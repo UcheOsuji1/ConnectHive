@@ -24,7 +24,7 @@ const REQUIRED = {
           'deletion_requested_at', 'deletion_scheduled_for', 'deleted_at',
           'suspended_at', 'suspension_note',
           'email_joins', 'email_digest', 'email_news', 'email_news_opted_in_at',
-          'last_active_at', 'last_digest_sent_at'],
+          'last_active_at', 'last_digest_sent_at', 'access_status'],
   profiles: ['connection_purposes', 'social_preferences', 'venmo_handle', 'cashapp_handle', 'paypal_handle', 'headline',
              'links', 'deep_dive_answers', 'gender'],
   hives: ['hive_code', 'banner_url', 'logo_url', 'cadence', 'hive_values',
@@ -90,6 +90,10 @@ const REQUIRED = {
   dm_messages: [],
   // Prompt 87 — follows.
   user_follows: [],
+  site_settings: [],
+  site_waitlist: ['referral_code', 'let_in_reason', 'let_in_batch_id', 'youre_in_seen_at',
+                  'wants', 'city', 'meet_pref', 'show_on_leaderboard', 'free_month_earned_at'],
+  site_referrals: [],
 };
 
 // What breaks for a user when a given column is absent. Generic guidance is
@@ -202,6 +206,10 @@ const IMPACT = {
   'profiles.gender':             'private gender — saving it fails, and every discovery query 500s (gender_fits reads it)',
   'hives.gender_policy':         'Hive membership settings — every discovery query and the hive_members gender guard fail, so joins 500',
   'user_follows (table absent)':             'following people — Follow/Unfollow, follower counts, the Home Network panel and every feed query fail (the feed reads it for personal posts)',
+  'users.access_status':                 'the waitlist — every signup and every /api/* request fails closed instead of gating correctly',
+  'site_settings (table absent)':        'the waitlist — the on/off toggle and next-group-size setting cannot be read or saved',
+  'site_waitlist (table absent)':        'the waitlist — placing in line, invite links and admin let-in all fail',
+  'site_referrals (table absent)':       'the waitlist — friend credits and reward tiers fail',
 };
 
 let state = { checked: false, ok: true, missing: [] };

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin waitlist</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&amp;family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f0e8}
+a{color:#8a6510}a:hover{color:#5e450b}
+.th-hive{background:linear-gradient(135deg,#e8c84a,#c49a28 50%,#8a6510);-webkit-background-clip:text;background-clip:text;color:transparent}
+td,th{padding:12px 14px;text-align:left;border-bottom:1px solid #efe6d3;white-space:nowrap}
+th{font-size:12px;font-weight:700;letter-spacing:.06em;color:#5c554a;background:#fbf8f2}
+</style>
+</helmet>
+<div style="min-height: 1120px; background: #f5f0e8; font-family: 'DM Sans', sans-serif; color: #1e1b18">
+  <header style="background: #1e1b18; color: #f5f0e8">
+    <div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+      <span style="display: flex; align-items: center; gap: 10px">
+        <img src="/brand/truehive-mark-256.png" alt="" style="width: 30px; height: 30px">
+        <span style="font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 700; color: #fff">True<span class="th-hive">Hive</span> <span style="font-family: 'DM Sans', sans-serif; font-size: 13px; color: #d8cfbf; font-weight: 500">Admin</span></span>
+      </span>
+      <nav style="display: flex; gap: 18px; font-size: 14px">
+        <a href="#" style="color: #e8c84a; font-weight: 700; text-decoration: none">Waitlist</a>
+        <a href="FounderDashboard.dc.html" style="color: #d8cfbf; text-decoration: none">Dashboard</a>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width: 1280px; margin: 0 auto; padding: 36px 24px 56px; display: flex; flex-direction: column; gap: 24px">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap">
+      <div>
+        <h1 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 48px; font-weight: 700">Waitlist</h1>
+        <p style="margin: 4px 0 0; font-size: 15px; color: #4a443b">1,032 waiting · 180 let in · 64 joined this week</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #e4d9c3; border-radius: 999px; padding: 8px 8px 8px 16px">
+        <span style="font-size: 14px; font-weight: 600">New sign-ups go to the waitlist</span>
+        <button type="button" role="switch" aria-checked="true" aria-label="Waitlist on" style="width: 48px; height: 28px; border-radius: 999px; border: none; background: #c49a28; position: relative; cursor: pointer"><span style="position: absolute; right: 3px; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff"></span></button>
+      </div>
+    </div>
+
+    <!-- Let in panel -->
+    <section style="background: #fff; border: 1px solid #e4d9c3; border-radius: 18px; padding: 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between">
+      <div style="display: flex; flex-direction: column; gap: 6px; max-width: 560px">
+        <h2 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 700">Let in the next group</h2>
+        <p style="margin: 0; font-size: 14px; line-height: 1.55; color: #4a443b">Takes people from the top of the line (Priority first), using the filters below. Each gets the "You're in" email. The number you set is the "spots in the next group" everyone in line sees.</p>
+      </div>
+      <div style="display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="batch" style="font-size: 13px; font-weight: 600">How many</label>
+          <input id="batch" type="number" value="25" min="1" style="width: 96px; font: inherit; font-size: 16px; padding: 12px; border: 1px solid #d6c8a8; border-radius: 12px; background: #fbf8f2; color: #1e1b18">
+        </div>
+        <button type="button" style="font: inherit; font-weight: 600; font-size: 15px; padding: 13px 18px; border-radius: 12px; border: 1px solid #d6c8a8; background: #fff; color: #1e1b18; cursor: pointer">Save as next group size</button>
+        <button type="button" style="font: inherit; font-weight: 700; font-size: 15px; padding: 13px 22px; border-radius: 12px; border: none; background: linear-gradient(135deg,#e8c84a,#c49a28); color: #1e1b18; cursor: pointer">Let in 25 people</button>
+      </div>
+    </section>
+
+    <!-- Filters -->
+    <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end">
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="f-city" style="font-size: 13px; font-weight: 600">City</label>
+        <select id="f-city" style="font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid #d6c8a8; border-radius: 10px; background: #fff; color: #1e1b18; min-width: 180px"><option>Los Angeles, CA</option><option>Any city</option></select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="f-type" style="font-size: 13px; font-weight: 600">Wants</label>
+        <select id="f-type" style="font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid #d6c8a8; border-radius: 10px; background: #fff; color: #1e1b18; min-width: 200px"><option>Any group type</option><option>Project Collaboration</option></select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <label for="f-meet" style="font-size: 13px; font-weight: 600">Meets</label>
+        <select id="f-meet" style="font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid #d6c8a8; border-radius: 10px; background: #fff; color: #1e1b18; min-width: 140px"><option>Any</option></select>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px; flex: 1 1 220px">
+        <label for="f-q" style="font-size: 13px; font-weight: 600">Search</label>
+        <input id="f-q" type="search" placeholder="Name or email" style="font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid #d6c8a8; border-radius: 10px; background: #fff; color: #1e1b18">
+      </div>
+      <span style="font-size: 14px; color: #4a443b; padding-bottom: 10px">412 match</span>
+    </div>
+
+    <!-- Queue table -->
+    <div style="background: #fff; border: 1px solid #e4d9c3; border-radius: 18px; overflow-x: auto">
+      <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+        <thead>
+          <tr><th>Line</th><th>Name</th><th>City</th><th>Wants</th><th>Meets</th><th>Friends joined</th><th>Signed up</th><th><span style="position: absolute; left: -9999px">Action</span></th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>1</strong></td><td>Ana Ruiz <span style="margin-left: 6px; font-size: 11px; font-weight: 700; background: #fbf3dc; border: 1px solid #ecd9a0; color: #8a6510; padding: 3px 8px; border-radius: 999px">Priority</span></td><td>Los Angeles</td><td>Social, Events</td><td>In person</td><td>9</td><td>Nov 12</td><td><button type="button" style="font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid #c49a28; background: #fff; color: #1e1b18; cursor: pointer">Let in</button></td></tr>
+          <tr><td><strong>2</strong></td><td>Jordan Miles <span style="margin-left: 6px; font-size: 11px; font-weight: 700; background: #fbf3dc; border: 1px solid #ecd9a0; color: #8a6510; padding: 3px 8px; border-radius: 999px">Priority</span></td><td>Los Angeles</td><td>Project Collab</td><td>Both</td><td>4</td><td>Nov 14</td><td><button type="button" style="font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid #c49a28; background: #fff; color: #1e1b18; cursor: pointer">Let in</button></td></tr>
+          <tr><td><strong>3</strong></td><td>Kemi Okafor</td><td>Long Beach</td><td>Professional</td><td>Both</td><td>2</td><td>Nov 9</td><td><button type="button" style="font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid #c49a28; background: #fff; color: #1e1b18; cursor: pointer">Let in</button></td></tr>
+          <tr><td><strong>4</strong></td><td>Dev Patel</td><td>Los Angeles</td><td>Travel</td><td>In person</td><td>1</td><td>Nov 10</td><td><button type="button" style="font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid #c49a28; background: #fff; color: #1e1b18; cursor: pointer">Let in</button></td></tr>
+          <tr><td><strong>5</strong></td><td>Sam Lee</td><td>Pasadena</td><td>Social</td><td>Online</td><td>0</td><td>Nov 8</td><td><button type="button" style="font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid #c49a28; background: #fff; color: #1e1b18; cursor: pointer">Let in</button></td></tr>
+          <tr><td><strong>6</strong></td><td>Rosa Diaz</td><td>Carson</td><td>Events, Specialized</td><td>In person</td><td>0</td><td>Nov 8</td><td><button type="button" style="font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 8px; border: 1px solid #c49a28; background: #fff; color: #1e1b18; cursor: pointer">Let in</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Recently let in -->
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 700">Recently let in</h2>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px">
+        <span style="background: #fff; border: 1px solid #e4d9c3; border-radius: 12px; padding: 10px 14px; font-size: 14px">Tara B. · <span style="color: #5c554a">Hive invite (LA Startup Hive)</span></span>
+        <span style="background: #fff; border: 1px solid #e4d9c3; border-radius: 12px; padding: 10px 14px; font-size: 14px">Chris N. · <span style="color: #5c554a">10 friends joined</span></span>
+        <span style="background: #fff; border: 1px solid #e4d9c3; border-radius: 12px; padding: 10px 14px; font-size: 14px">Lena K. · <span style="color: #5c554a">You, Nov 18 group</span></span>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

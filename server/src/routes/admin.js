@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getAdminReports, resolveAdminReport, unsuspendUser, getSuspendedUsers, getHivesWithoutArea, setHiveMetro } from '../controllers/adminController.js';
 import { getNewsletterStatus, testNewsletter, sendNewsletter } from '../controllers/newsletterController.js';
 import { getSignupFunnel } from '../controllers/funnelController.js';
+import { getWaitlistQueue, updateWaitlistSettings, letInNextBatch, letInOne } from '../controllers/adminWaitlistController.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireSiteAdmin } from '../lib/siteAdmin.js';
 import { isUuid } from '../lib/isUuid.js';
@@ -32,5 +33,10 @@ router.post('/newsletter/test',   testNewsletter);
 router.post('/newsletter/send',   sendNewsletter);
 
 router.get('/funnel', getSignupFunnel);
+
+router.get('/waitlist',                 getWaitlistQueue);
+router.put('/waitlist/settings',        updateWaitlistSettings);
+router.post('/waitlist/let-in-next',    letInNextBatch);
+router.post('/waitlist/:id/let-in',     letInOne);
 
 export default router;

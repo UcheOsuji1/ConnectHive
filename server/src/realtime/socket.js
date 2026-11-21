@@ -125,6 +125,13 @@ export function initSocket(httpServer, allowedOrigins) {
         }
       }
 
+      // Waitlist gate (Prompt 89) — a waiting user has nothing to connect a
+      // socket for (chat, presence, notifications all live behind a Hive).
+      const { rows: [u] } = await query('SELECT access_status FROM users WHERE user_id = $1', [payload.userId]);
+      if (u?.access_status === 'waiting') {
+        return next(new Error('waitlisted'));
+      }
+
       socket.data.userId = payload.userId;
       next();
     } catch (err) {

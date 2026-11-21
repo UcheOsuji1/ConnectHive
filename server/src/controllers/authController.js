@@ -14,6 +14,8 @@ import { disconnectUserSockets }  from '../realtime/socket.js';
 import { financialBlockers, assertNoFinancialBlockers } from '../lib/billingStore.js';
 import { BILLING_DELETE_MESSAGE } from '../lib/billingPolicy.js';
 import { POLICY_VERSION, MIN_AGE, ageFromDob } from '../lib/policy.js';
+import { isWaitlistOn, createEntry, creditReferral, checkReferralTiers } from '../lib/siteWaitlist.js';
+import { siteAdminEmails } from '../lib/siteAdmin.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -124,7 +126,7 @@ async function _createVerificationToken(userId) {
 
 export async function register(req, res) {
   try {
-    const { email, password, acceptedTerms, dateOfBirth, newsOptIn } = req.body ?? {};
+    const { email, password, acceptedTerms, dateOfBirth, newsOptIn, ref } = req.body ?? {};
 
     if (!email || !isValidEmail(email)) {
       return res.status(400).json({ error: 'A valid email address is required.' });
@@ -153,14 +155,32 @@ export async function register(req, res) {
     // missing/false value here just leaves email_news at its schema default
     // (false) with no opted_in_at, same as never touching this at all.
     const newsOptInBool = newsOptIn === true;
-    const { rows } = await query(
-      `INSERT INTO users (email, password_hash, date_of_birth, terms_accepted_at, terms_policy_version,
-                           email_news, email_news_opted_in_at)
-       VALUES ($1, $2, $3, NOW(), $4, $5, CASE WHEN $5 THEN NOW() ELSE NULL END)
-       RETURNING user_id, email, account_status, created_at, member_id, token_version`,
-      [email.toLowerCase(), passwordHash, dateOfBirth, POLICY_VERSION, newsOptInBool],
-    );
-    const user = rows[0];
+
+    // Waitlist (Prompt 89): site admins are always 'active'; everyone else
+    // gets 'waiting' while the setting is on. Insert + waitlist entry happen
+    // in one transaction so a half-created account never exists.
+    const toWaitlist = (await isWaitlistOn()) && !siteAdminEmails().includes(email.toLowerCase());
+
+    let user;
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      const { rows } = await client.query(
+        `INSERT INTO users (email, password_hash, date_of_birth, terms_accepted_at, terms_policy_version,
+                             email_news, email_news_opted_in_at, access_status)
+         VALUES ($1, $2, $3, NOW(), $4, $5, CASE WHEN $5 THEN NOW() ELSE NULL END, $6)
+         RETURNING user_id, email, account_status, created_at, member_id, token_version, access_status`,
+        [email.toLowerCase(), passwordHash, dateOfBirth, POLICY_VERSION, newsOptInBool, toWaitlist ? 'waiting' : 'active'],
+      );
+      user = rows[0];
+      if (toWaitlist) await createEntry(client, user.user_id, { refCode: ref });
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
 
     // Send verification email (non-blocking — registration succeeds either way)
     _createVerificationToken(user.user_id)
@@ -175,6 +195,7 @@ export async function register(req, res) {
         userId:        user.user_id,
         email:         user.email,
         accountStatus: user.account_status,
+        accessStatus:  user.access_status,
         createdAt:     user.created_at,
         memberId:      user.member_id,
         emailVerified: false,
@@ -268,7 +289,7 @@ export async function getMe(req, res) {
     const userId = req.userId;
 
     const userResult = await query(
-      `SELECT user_id, email, account_status, created_at, member_id, email_verified
+      `SELECT user_id, email, account_status, access_status, created_at, member_id, email_verified
        FROM users WHERE user_id = $1`,
       [userId],
     );
@@ -276,6 +297,13 @@ export async function getMe(req, res) {
       return res.status(404).json({ error: 'User not found.' });
     }
     const user = userResult.rows[0];
+
+    const waitlistEntryResult = await query(
+      `SELECT status, youre_in_seen_at FROM site_waitlist WHERE user_id = $1`,
+      [userId],
+    );
+    const waitlistEntry = waitlistEntryResult.rows[0];
+    const youreInPending = Boolean(waitlistEntry && waitlistEntry.status === 'let_in' && !waitlistEntry.youre_in_seen_at);
 
     const profileResult = await query(
       'SELECT profile_id, full_name, profile_photo_url FROM profiles WHERE user_id = $1 LIMIT 1',
@@ -300,6 +328,8 @@ export async function getMe(req, res) {
         userId:          user.user_id,
         email:           user.email,
         accountStatus:   user.account_status,
+        accessStatus:    user.access_status,
+        youreInPending,
         createdAt:       user.created_at,
         memberId:        user.member_id,
         emailVerified:   user.email_verified,
@@ -332,6 +362,12 @@ export function googleRedirect(req, res) {
     res.cookie('oauth_intent', 'confirm-delete', STATE_COOKIE_OPTS);
   }
 
+  // Waitlist referral code (Prompt 89) — validated to the exact 8-character
+  // shape and stored in a cookie, same as intent above. Never a URL.
+  if (typeof req.query?.ref === 'string' && /^[A-Za-z0-9]{8}$/.test(req.query.ref)) {
+    res.cookie('oauth_ref', req.query.ref, STATE_COOKIE_OPTS);
+  }
+
   const url = googleClient.generateAuthUrl({
     access_type: 'offline',
     scope:       ['openid', 'email', 'profile'],
@@ -355,6 +391,9 @@ export async function googleCallback(req, res) {
   const confirmDelete = req.cookies?.oauth_intent === 'confirm-delete';
   res.clearCookie('oauth_intent', { ...STATE_COOKIE_OPTS, maxAge: 0 });
   const postLoginUrl = confirmDelete ? `${CLIENT_URL}/settings?confirmDelete=1` : `${CLIENT_URL}/home`;
+
+  const oauthRef = req.cookies?.oauth_ref;
+  res.clearCookie('oauth_ref', { ...STATE_COOKIE_OPTS, maxAge: 0 });
 
   try {
     const { tokens } = await googleClient.getToken(code);
@@ -432,28 +471,51 @@ export async function googleCallback(req, res) {
       // Consent is recorded here because the "Sign up with Google" button on the
       // signup page is gated behind the Terms checkbox (client-side). The consent
       // timestamp and policy version are stored so the record exists server-side.
-      const { rows: [newUser] } = await query(
-        `INSERT INTO users (email, password_hash, email_verified, terms_accepted_at, terms_policy_version)
-         VALUES ($1, NULL, TRUE, NOW(), $2)
-         RETURNING user_id, token_version`,
-        [email, POLICY_VERSION],
-      );
-      userId       = newUser.user_id;
-      tokenVersion = newUser.token_version;
+      const toWaitlist = (await isWaitlistOn()) && !siteAdminEmails().includes(email);
 
-      await query(
-        `INSERT INTO auth_identities (user_id, provider, provider_user_id, email)
-         VALUES ($1, 'google', $2, $3)`,
-        [userId, googleId, email],
-      );
-
-      // Pre-fill profile with name from Google.
-      if (name) {
-        await query(
-          'INSERT INTO profiles (user_id, full_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [userId, name],
+      const client = await getClient();
+      try {
+        await client.query('BEGIN');
+        const { rows: [newUser] } = await client.query(
+          `INSERT INTO users (email, password_hash, email_verified, terms_accepted_at, terms_policy_version, access_status)
+           VALUES ($1, NULL, TRUE, NOW(), $2, $3)
+           RETURNING user_id, token_version`,
+          [email, POLICY_VERSION, toWaitlist ? 'waiting' : 'active'],
         );
+        userId       = newUser.user_id;
+        tokenVersion = newUser.token_version;
+
+        await client.query(
+          `INSERT INTO auth_identities (user_id, provider, provider_user_id, email)
+           VALUES ($1, 'google', $2, $3)`,
+          [userId, googleId, email],
+        );
+
+        // Pre-fill profile with name from Google.
+        if (name) {
+          await client.query(
+            'INSERT INTO profiles (user_id, full_name) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+            [userId, name],
+          );
+        }
+
+        if (toWaitlist) {
+          await createEntry(client, userId, { refCode: oauthRef });
+          // Google emails are verified at creation, so a credited friend
+          // counts immediately — no separate verify-email step for them.
+          await creditReferral(client, userId);
+        }
+        await client.query('COMMIT');
+      } catch (txErr) {
+        await client.query('ROLLBACK');
+        throw txErr;
+      } finally {
+        client.release();
       }
+
+      const jwtToken = signToken(userId, tokenVersion);
+      res.cookie('token', jwtToken, COOKIE_OPTS);
+      return res.redirect(toWaitlist ? `${CLIENT_URL}/waitlist` : postLoginUrl);
     }
 
     const jwtToken = signToken(userId, tokenVersion);
@@ -506,10 +568,24 @@ export async function verifyEmail(req, res) {
     }
 
     const { id: tokenId, user_id: userId } = rows[0];
-    await Promise.all([
-      query('UPDATE auth_tokens SET used_at = NOW() WHERE id = $1', [tokenId]),
-      query('UPDATE users SET email_verified = TRUE WHERE user_id = $1', [userId]),
-    ]);
+
+    const client = await getClient();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE auth_tokens SET used_at = NOW() WHERE id = $1', [tokenId]);
+      await client.query('UPDATE users SET email_verified = TRUE WHERE user_id = $1', [userId]);
+      // Credit whoever referred this user (now that their email is verified),
+      // and separately re-check this user's OWN tier in case they already
+      // had 10+ credits of their own as an inviter while still unverified.
+      await creditReferral(client, userId);
+      await checkReferralTiers(client, userId);
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
 
     return res.json({ message: 'Email verified.' });
   } catch (err) {

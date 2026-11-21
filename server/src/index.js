@@ -29,6 +29,8 @@ import { testConnection } from './db/index.js';
 import { checkSchema, getSchemaState, checkHiveChannels, getDataState } from './db/schemaGuard.js';
 import { initSocket }     from './realtime/socket.js';
 import { requireConsent } from './middleware/consent.js';
+import { requireAccess } from './middleware/access.js';
+import waitlistRoutes from './routes/waitlist.js';
 import { startRsvpReminderJob } from './jobs/rsvpReminderJob.js';
 import { startPlanSuggestionJob } from './jobs/planSuggestionJob.js';
 import { startCostNudgeJob } from './jobs/costNudgeJob.js';
@@ -161,6 +163,10 @@ app.use('/api/email',         emailRoutes);
 // Stripe callbacks use scoped expiring state, independently of browser login/consent.
 app.use('/api/billing/connect/callback', connectCallbacks);
 app.use('/api',               requireConsent);
+// Waitlist gate — right after requireConsent, same no-cookie/bad-token
+// pass-through pattern. Exempts /api/waitlist/* and /api/account/* itself.
+app.use('/api',               requireAccess);
+app.use('/api/waitlist',      waitlistRoutes);
 app.use('/api/hives',         hiveRoutes);
 app.use('/api/users',         userRoutes);
 app.use('/api/posts',         postRoutes);

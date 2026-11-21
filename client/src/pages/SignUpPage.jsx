@@ -41,6 +41,12 @@ export default function SignUpPage() {
   const location = useLocation();
   const nextPath = new URLSearchParams(location.search).get('next') || '/profile-setup';
 
+  // Waitlist referral code (Prompt 89) — from the URL if present, otherwise
+  // from the /join/:code redirect's sessionStorage drop. URL wins so a
+  // pasted ?ref= link always takes effect even if an older code is stored.
+  const ref = new URLSearchParams(location.search).get('ref') ||
+    (() => { try { return sessionStorage.getItem('th_ref'); } catch { return null; } })();
+
   const maxDob = (() => {
     const d = new Date();
     d.setFullYear(d.getFullYear() - MIN_AGE);
@@ -69,9 +75,9 @@ export default function SignUpPage() {
     if (!validateConsent()) return;
     setSubmitting(true);
     try {
-      await register(email, password, agreed, dob, newsOptIn);
+      const newUser = await register(email, password, agreed, dob, newsOptIn, ref || undefined);
       if (isPostHogEnabled) posthog.capture('account_registered');
-      navigate(nextPath);
+      navigate(newUser.accessStatus === 'waiting' ? '/waitlist' : nextPath);
     } catch (err) {
       setError(err.message || 'Something went wrong, please try again.');
     } finally {
@@ -81,7 +87,8 @@ export default function SignUpPage() {
 
   function handleGoogleClick() {
     if (!validateConsent()) return;
-    window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/auth/google`;
+    const refParam = ref ? `?ref=${encodeURIComponent(ref)}` : '';
+    window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/auth/google${refParam}`;
   }
 
   return (

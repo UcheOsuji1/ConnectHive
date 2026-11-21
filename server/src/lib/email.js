@@ -5,6 +5,11 @@ import { Resend } from 'resend';
 import { unsubscribeUrl, sendIfAllowed, unsubscribeHeaders } from './emailPrefs.js';
 import { renderNewsletterBody } from './newsletterFormat.js';
 import { reportProblem } from './reportProblem.js';
+import { query } from '../db/index.js';
+// Same deal as emailPrefs.js above: siteWaitlist.js -> hivesController.js ->
+// email.js is a real cycle, but CATEGORY_SHORT_LABELS is only touched inside
+// sendLetInEmail's body, never at module-eval time, so it resolves fine.
+import { CATEGORY_SHORT_LABELS } from './siteWaitlist.js';
 
 const FROM       = process.env.EMAIL_FROM ?? 'TrueHive <hello@send.truehive.app>';
 const CLIENT_URL = process.env.CLIENT_URL;
@@ -282,6 +287,67 @@ export async function sendAccountDeletionEmail(to, scheduledFor) {
     html,
     text,
   });
+}
+
+// ── Waitlist: "You're in" (Prompt 89) ──────────────────────────────────────────
+// The site waitlist's own "you're in" email — NOT sendYoureInEmail above,
+// which is the unrelated Hive-join email. This is a transactional account
+// email (no preference to opt out of), so it goes through sendEmail
+// directly rather than sendIfAllowed. A failed send never fails the let-in
+// itself — see letIn's caller, which only logs via reportProblem.
+export async function sendLetInEmail(userId, { place }) {
+  const { rows: [row] } = await query(
+    `SELECT u.email, p.full_name, sw.wants, sw.city
+       FROM users u
+       LEFT JOIN profiles p ON p.user_id = u.user_id
+       LEFT JOIN site_waitlist sw ON sw.user_id = u.user_id
+      WHERE u.user_id = $1`,
+    [userId],
+  );
+  if (!row?.email) return;
+
+  const firstName = row.full_name ? row.full_name.trim().split(/\s+/)[0] : 'there';
+  const link = `${CLIENT_URL}/youre-in`;
+  const wants = Array.isArray(row.wants) ? row.wants : [];
+  const wantsLine = wants.length
+    ? `You said you're looking for ${wants.map(w => CATEGORY_SHORT_LABELS[w] ?? w).join(' and ')} groups` +
+      `${row.city ? ` in ${row.city}` : ''}. I'll point you to the best fits when you sign in.`
+    : null;
+  const callUrl = process.env.FOUNDER_CALL_URL;
+  const placeLine = place != null
+    ? `Your spot opened up. You were #${place} in line, and you're in.`
+    : `You're in.`;
+
+  const html = _htmlWrap(`
+    <tr>
+      <td style="padding:36px 40px 24px;">
+        <h1 style="margin:0 0 16px;font-family:Georgia,'Times New Roman',serif;
+                   font-size:24px;font-weight:700;color:#1E1B18;line-height:1.2;">
+          You're in. Welcome to TrueHive
+        </h1>
+        <p style="margin:0 0 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">Hi ${firstName},</p>
+        <p style="margin:0 0 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">${placeLine}</p>
+        ${wantsLine ? `<p style="margin:0 0 12px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">${wantsLine}</p>` : ''}
+      </td>
+    </tr>
+    ${_ctaButton(link, 'Open TrueHive')}
+    ${callUrl ? `<tr><td style="padding:0 40px 28px;"><p style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">Want help getting started?
+                  <a href="${callUrl}" style="color:#C9A24A;">Book 15 minutes with me</a>.</p></td></tr>` : ''}
+    <tr><td style="padding:0 40px 32px;"><p style="margin:0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+                  font-size:15px;color:#3a2e1a;line-height:1.6;">Uche<br>Founder, TrueHive</p></td></tr>`);
+
+  const text =
+    `You're in. Welcome to TrueHive\n\nHi ${firstName},\n\n${placeLine}\n\n` +
+    (wantsLine ? `${wantsLine}\n\n` : '') +
+    `Open TrueHive: ${link}\n\n` +
+    (callUrl ? `Want help getting started? Book 15 minutes with me: ${callUrl}\n\n` : '') +
+    `Uche\nFounder, TrueHive`;
+
+  await sendEmail({ to: row.email, subject: "You're in. Welcome to TrueHive", html, text });
 }
 
 // ── Report alert (Prompt 69 Part C) ────────────────────────────────────────────

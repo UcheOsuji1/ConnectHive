@@ -66,6 +66,10 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import GoodbyePage from './pages/GoodbyePage';
 import ConfirmDetailsPage from './pages/ConfirmDetailsPage';
+import JoinRedirectPage from './pages/JoinRedirectPage';
+import WaitlistPage from './pages/WaitlistPage';
+import YoureInPage from './pages/YoureInPage';
+import AdminWaitlistPage from './pages/AdminWaitlistPage';
 
 import AboutPage from './pages/marketing/AboutPage';
 import MissionPage from './pages/marketing/MissionPage';
@@ -89,6 +93,7 @@ export default function App() {
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/verify-email" element={<VerifyEmailPage />} />
       <Route path="/goodbye" element={<GoodbyePage />} />
+      <Route path="/join/:code" element={<JoinRedirectPage />} />
 
       {/* Marketing routes */}
       <Route element={<MarketingLayout />}>
@@ -106,6 +111,9 @@ export default function App() {
       {/* Protected routes */}
       <Route element={<RequireAuth />}>
         <Route path="/confirm-details" element={<ConfirmDetailsPage />} />
+        <Route path="/waitlist" element={<WaitlistPage />} />
+        <Route path="/youre-in" element={<YoureInPage />} />
+        <Route path="/admin/waitlist" element={<AdminWaitlistPage />} />
         <Route path="/profile-setup" element={<ProfileSetupPage />} />
         <Route path="/profile/edit" element={<ProfileSetupPage />} />
         <Route path="/home" element={<HomePage />} />

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Founder dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&amp;family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f5f0e8}
+a{color:#8a6510}a:hover{color:#5e450b}
+.th-hive{background:linear-gradient(135deg,#e8c84a,#c49a28 50%,#8a6510);-webkit-background-clip:text;background-clip:text;color:transparent}
+</style>
+</helmet>
+<div style="min-height: 1120px; background: #f5f0e8; font-family: 'DM Sans', sans-serif; color: #1e1b18">
+  <header style="background: #1e1b18; color: #f5f0e8">
+    <div style="max-width: 1280px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 24px; flex-wrap: wrap">
+      <span style="display: flex; align-items: center; gap: 10px">
+        <img src="/brand/truehive-mark-256.png" alt="" style="width: 30px; height: 30px">
+        <span style="font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 700; color: #fff">True<span class="th-hive">Hive</span> <span style="font-family: 'DM Sans', sans-serif; font-size: 13px; color: #d8cfbf; font-weight: 500">Admin</span></span>
+      </span>
+      <nav style="display: flex; gap: 18px; font-size: 14px">
+        <a href="AdminQueue.dc.html" style="color: #d8cfbf; text-decoration: none">Waitlist</a>
+        <a href="#" style="color: #e8c84a; font-weight: 700; text-decoration: none">Dashboard</a>
+      </nav>
+    </div>
+  </header>
+  <main style="max-width: 1280px; margin: 0 auto; padding: 36px 24px 56px; display: flex; flex-direction: column; gap: 24px">
+    <h1 style="margin: 0; font-family: 'Cormorant Garamond', serif; font-size: 48px; font-weight: 700">How the waitlist is doing</h1>
+    <p style="margin: 0; font-size: 15px; color: #4a443b">Prompt 91. Not built in Prompt 89.</p>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+class Component extends DCLogic {
+renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
