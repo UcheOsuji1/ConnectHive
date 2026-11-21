@@ -3,23 +3,21 @@ import { Link } from 'react-router-dom';
 import { api } from '../lib/api.js';
 import posthog, { isPostHogEnabled } from '../lib/posthog';
 import NotFoundPage from './NotFoundPage.jsx';
+import TrueHiveMark from '../components/TrueHiveMark.jsx';
+import TrueHiveWordmark from '../components/TrueHiveWordmark.jsx';
+import { GROUP_OPTIONS, MEET_OPTIONS, groupShortLabel, meetLabel } from '../lib/waitlistOptions.js';
 
 const INK = '#1e1b18';
 const GOLD = '#c49a28';
 const PAPER = '#f5f0e8';
 
-const GROUP_OPTIONS = [
-  { key: '',             label: 'Any group type' },
-  { key: 'social',       label: 'Social Groups' },
-  { key: 'professional', label: 'Professional Networking' },
-  { key: 'travel',       label: 'Travel Buddies' },
-  { key: 'project',      label: 'Project Collaboration' },
-  { key: 'event',        label: 'Event Buddies' },
-  { key: 'specialized',  label: 'Specialized Groups' },
-];
+const WANTS_FILTER_OPTIONS = [{ key: '', label: 'Any group type' }, ...GROUP_OPTIONS];
+const MEET_FILTER_OPTIONS = [{ key: '', label: 'Any' }, ...MEET_OPTIONS];
 
 const th = { padding: '12px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', color: '#5c554a', background: '#fbf8f2', borderBottom: '1px solid #efe6d3', whiteSpace: 'nowrap' };
 const td = { padding: '12px 14px', borderBottom: '1px solid #efe6d3', whiteSpace: 'nowrap' };
+const srOnly = { position: 'absolute', left: -9999, top: 'auto', width: 1, height: 1, overflow: 'hidden' };
+const fieldLabel = { fontSize: 13, fontWeight: 600, color: INK };
 
 export default function AdminWaitlistPage() {
   const [allowed, setAllowed] = useState(null);
@@ -89,7 +87,13 @@ export default function AdminWaitlistPage() {
     <div style={{ minHeight: '100vh', background: PAPER, fontFamily: "'DM Sans', sans-serif", color: INK }}>
       <header style={{ background: INK, color: PAPER }}>
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-          <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 700 }}>TrueHive Admin</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <TrueHiveMark size={26} />
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <TrueHiveWordmark variant="dark" size={22} />
+              <span style={{ fontSize: 13, color: '#d8cfbf', fontWeight: 500 }}>Admin</span>
+            </span>
+          </span>
           <nav style={{ display: 'flex', gap: 18, fontSize: 14 }}>
             <span style={{ color: '#e8c84a', fontWeight: 700 }}>Waitlist</span>
             <Link to="/admin/funnel" style={{ color: '#d8cfbf', textDecoration: 'none' }}>Dashboard</Link>
@@ -111,8 +115,8 @@ export default function AdminWaitlistPage() {
                 </p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #e4d9c3', borderRadius: 999, padding: '8px 8px 8px 16px' }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>New sign-ups go to the waitlist</span>
-                <button type="button" role="switch" aria-checked={data.settings.waitlistEnabled}
+                <span id="wl-toggle-label" style={{ fontSize: 14, fontWeight: 600 }}>New sign-ups go to the waitlist</span>
+                <button type="button" role="switch" aria-checked={data.settings.waitlistEnabled} aria-labelledby="wl-toggle-label"
                   onClick={() => toggleWaitlist(!data.settings.waitlistEnabled)}
                   style={{ width: 48, height: 28, borderRadius: 999, border: 'none', background: data.settings.waitlistEnabled ? GOLD : '#d6c8a8', position: 'relative', cursor: 'pointer' }}>
                   <span style={{ position: 'absolute', top: 3, width: 22, height: 22, borderRadius: '50%', background: '#fff', left: data.settings.waitlistEnabled ? 23 : 3, transition: 'left .15s' }} />
@@ -123,32 +127,47 @@ export default function AdminWaitlistPage() {
             <section style={{ background: '#fff', border: '1px solid #e4d9c3', borderRadius: 18, padding: 24, display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ maxWidth: 560 }}>
                 <h2 style={{ margin: 0, fontFamily: "'Cormorant Garamond', serif", fontSize: 24, fontWeight: 700 }}>Let in the next group</h2>
-                <p style={{ margin: 0, fontSize: 14, color: '#4a443b' }}>Takes people from the top of the line (Priority first), using the filters below. Each gets the "You're in" email.</p>
+                <p style={{ margin: 0, fontSize: 14, color: '#4a443b' }}>
+                  Takes people from the top of the line (Priority first), using the filters below. Each gets the "You're in" email.
+                  The number you set is the "spots in the next group" everyone in line sees.
+                </p>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
-                <input type="number" min="1" value={batchSize} onChange={e => setBatchSize(parseInt(e.target.value, 10) || 1)}
-                  style={{ width: 96, font: 'inherit', fontSize: 16, padding: 12, border: '1px solid #d6c8a8', borderRadius: 12, background: '#fbf8f2' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <label htmlFor="wl-batch" style={fieldLabel}>How many</label>
+                  <input id="wl-batch" type="number" min="1" value={batchSize} onChange={e => setBatchSize(parseInt(e.target.value, 10) || 1)}
+                    style={{ width: 96, font: 'inherit', fontSize: 16, padding: 12, border: '1px solid #d6c8a8', borderRadius: 12, background: '#fbf8f2' }} />
+                </div>
                 <button type="button" onClick={saveGroupSize} style={{ font: 'inherit', fontWeight: 600, fontSize: 14, padding: '13px 16px', borderRadius: 12, border: '1px solid #d6c8a8', background: '#fff', cursor: 'pointer' }}>Save as next group size</button>
                 <button type="button" onClick={letInNext} style={{ font: 'inherit', fontWeight: 700, fontSize: 14, padding: '13px 20px', borderRadius: 12, border: 'none', background: `linear-gradient(135deg,#e8c84a,${GOLD})`, color: INK, cursor: 'pointer' }}>Let in {batchSize} people</button>
               </div>
             </section>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end' }}>
-              <input placeholder="City" value={city} onChange={e => { setCity(e.target.value); setPage(1); }}
-                style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10, minWidth: 160 }} />
-              <select value={wants} onChange={e => { setWants(e.target.value); setPage(1); }}
-                style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10, minWidth: 200 }}>
-                {GROUP_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-              </select>
-              <select value={meet} onChange={e => { setMeet(e.target.value); setPage(1); }}
-                style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10, minWidth: 140 }}>
-                <option value="">Any</option>
-                <option value="online">Online</option>
-                <option value="in_person">In person</option>
-                <option value="both">Both</option>
-              </select>
-              <input placeholder="Name or email" value={q} onChange={e => { setQ(e.target.value); setPage(1); }}
-                style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10, flex: '1 1 220px' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label htmlFor="wl-city-filter" style={fieldLabel}>City</label>
+                <input id="wl-city-filter" placeholder="City" value={city} onChange={e => { setCity(e.target.value); setPage(1); }}
+                  style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10, minWidth: 160 }} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label htmlFor="wl-wants-filter" style={fieldLabel}>Wants</label>
+                <select id="wl-wants-filter" value={wants} onChange={e => { setWants(e.target.value); setPage(1); }}
+                  style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10, minWidth: 200 }}>
+                  {WANTS_FILTER_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <label htmlFor="wl-meet-filter" style={fieldLabel}>Meets</label>
+                <select id="wl-meet-filter" value={meet} onChange={e => { setMeet(e.target.value); setPage(1); }}
+                  style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10, minWidth: 140 }}>
+                  {MEET_FILTER_OPTIONS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 220px' }}>
+                <label htmlFor="wl-q-filter" style={fieldLabel}>Search</label>
+                <input id="wl-q-filter" placeholder="Name or email" value={q} onChange={e => { setQ(e.target.value); setPage(1); }}
+                  style={{ font: 'inherit', fontSize: 14, padding: '10px 12px', border: '1px solid #d6c8a8', borderRadius: 10 }} />
+              </div>
               <span style={{ fontSize: 14, color: '#4a443b', paddingBottom: 10 }}>{data.matchCount} match</span>
             </div>
 
@@ -157,7 +176,8 @@ export default function AdminWaitlistPage() {
                 <thead>
                   <tr>
                     <th style={th}>Line</th><th style={th}>Name</th><th style={th}>City</th><th style={th}>Wants</th>
-                    <th style={th}>Meets</th><th style={th}>Friends joined</th><th style={th}>Signed up</th><th style={th}>Action</th>
+                    <th style={th}>Meets</th><th style={th}>Friends joined</th><th style={th}>Signed up</th>
+                    <th style={th}><span style={srOnly}>Action</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -168,8 +188,8 @@ export default function AdminWaitlistPage() {
                         <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 700, background: '#fbf3dc', border: '1px solid #ecd9a0', color: '#8a6510', padding: '3px 8px', borderRadius: 999 }}>Priority</span>
                       )}</td>
                       <td style={td}>{r.city || '—'}</td>
-                      <td style={td}>{(r.wants || []).join(', ') || '—'}</td>
-                      <td style={td}>{r.meetPref || '—'}</td>
+                      <td style={td}>{(r.wants || []).map(groupShortLabel).join(', ') || '—'}</td>
+                      <td style={td}>{r.meetPref ? meetLabel(r.meetPref) : '—'}</td>
                       <td style={td}>{r.credits}</td>
                       <td style={td}>{new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
                       <td style={td}>

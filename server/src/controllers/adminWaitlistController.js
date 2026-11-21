@@ -80,7 +80,7 @@ export async function getWaitlistQueue(req, res) {
       reason: r.let_in_reason,
       reasonText: r.let_in_reason === 'group'
         ? `Your group, ${new Date(r.let_in_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
-        : r.let_in_reason === 'referrals_10' ? '10 friends invited'
+        : r.let_in_reason === 'referrals_10' ? '10 friends joined'
         : 'Manual let-in',
       letInAt: r.let_in_at,
     }));

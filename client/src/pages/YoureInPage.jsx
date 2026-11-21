@@ -50,22 +50,24 @@ export default function YoureInPage() {
         <h1 style={{ margin: 0, fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(36px, 6vw, 56px)', lineHeight: 1.02, fontWeight: 700 }}>
           You're <span style={{ color: GOLD }}>in</span>{view.firstName ? `, ${view.firstName}` : ''}.
         </h1>
-        <p style={{ margin: 0, fontSize: 16, lineHeight: 1.6, color: '#4a443b' }}>
+        <p style={{ margin: 0, fontSize: 17, lineHeight: 1.6, color: '#4a443b' }}>
           {reasonLine(view)} Let's set up your profile and find your first Hive.
         </p>
 
         <div style={{ display: 'flex', gap: 14, padding: 18, borderRadius: 14, background: '#fbf8f2', border: '1px solid #efe6d3' }}>
           <span style={{ flex: '0 0 44px', height: 44, borderRadius: '50%', background: INK, color: '#e8c84a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Cormorant Garamond', serif", fontWeight: 700, fontSize: 18 }}>U</span>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <p style={{ margin: 0, fontSize: 14, lineHeight: 1.55 }}>
+            <p style={{ margin: 0, fontSize: 15, lineHeight: 1.55, color: INK }}>
               "Hey, I'm Uche, I built TrueHive. I read every waitlist answer.
               {view.founderCallUrl ? ' If you want help finding the right Hive, grab 15 minutes with me.' : ''}"
             </p>
             {view.founderCallUrl && (
-              <a href={view.founderCallUrl} target="_blank" rel="noreferrer" style={{ fontSize: 14, fontWeight: 600 }}>Book a 15-minute call (optional)</a>
+              <a href={view.founderCallUrl} target="_blank" rel="noreferrer" className="yi-call-link"
+                style={{ fontSize: 14, fontWeight: 600, color: '#8a6510' }}>Book a 15-minute call (optional)</a>
             )}
           </div>
         </div>
+        <style>{`.yi-call-link:hover { color: #5e450b; }`}</style>
 
         <button type="button" onClick={handleSetupProfile}
           style={{ alignSelf: 'flex-start', font: 'inherit', fontWeight: 700, fontSize: 16, padding: '15px 28px', border: 'none', borderRadius: 12, background: `linear-gradient(135deg,#e8c84a,${GOLD})`, color: INK, cursor: 'pointer' }}>
